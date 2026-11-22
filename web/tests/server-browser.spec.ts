@@ -553,6 +553,32 @@ for (const width of [1440, 390]) {
         await page.getByTestId("menu-explain").click();
         await openView(page);
         await page.setViewportSize({ width, height: 900 });
+        const windowWrites: string[] = [];
+        page.on("request", (request) => {
+          if (
+            request.method() === "POST" &&
+            /\/api\/v1\/browser\/(control|window)$/.test(request.url())
+          )
+            windowWrites.push(request.url());
+        });
+        for (const [control, cardId] of [
+          ["browser-window-select", "B12"],
+          ["browser-window-close", "B13"],
+        ]) {
+          await page.getByTestId(control).first().click();
+          await expect(page.getByTestId("explain-card")).toHaveAttribute(
+            "data-card",
+            cardId,
+          );
+          expect(windowWrites).toEqual([]);
+          if (process.env.OH_POPUP_CAPTURE) {
+            await snapshot(
+              page,
+              `${process.env.OH_POPUP_CAPTURE}/${cardId}-${width}-${language}`,
+              { labOrigin: new URL(page.url()).origin },
+            );
+          }
+        }
         await button(page, "browser-clip-toggle").click();
         const password = page.getByTestId("browser-password");
         await password.fill("synthetic-only");

@@ -43,7 +43,7 @@ func (a *Auth) browserHTTP(w http.ResponseWriter, r *http.Request) {
 			safe(w, 400, "invalid_request")
 			return
 		}
-	case path == browserWindowPath:
+	case path == browserWindowPath && r.Method == http.MethodGet:
 		id := r.URL.Query().Get("id")
 		if r.Method != http.MethodGet || !a.exact(r, browserWindowPath, "id") || r.URL.RawQuery != "id="+id || !browserTarget.MatchString(id) || r.ContentLength > 0 {
 			safe(w, 400, "invalid_request")
@@ -55,7 +55,7 @@ func (a *Auth) browserHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		write = true
-	case path == browserControlPath:
+	case path == browserControlPath || path == browserWindowPath:
 		if r.Method != http.MethodPost || !a.exact(r, path) || r.ContentLength < 2 || r.ContentLength > 128 || r.Header.Get("Content-Type") != "application/json" || len(r.Header.Values("Content-Type")) != 1 {
 			safe(w, 400, "invalid_request")
 			return

@@ -53,8 +53,8 @@ type State = {
   status?: BrowserStatus;
   /** The last read failed; the previous status stays shown. */
   failed: boolean;
-  busy?: "start" | "stop" | "control";
-  error?: "start" | "stop" | "control";
+  busy?: "start" | "stop" | "control" | "closeWindow";
+  error?: "start" | "stop" | "control" | "closeWindow";
   sheet?: SheetMode;
 };
 
@@ -209,7 +209,7 @@ export function closeBrowserSheet() {
 }
 
 async function write(
-  kind: "start" | "stop" | "control",
+  kind: "start" | "stop" | "control" | "closeWindow",
   send: (csrf: string) => Promise<Response>,
 ): Promise<boolean> {
   const { csrf, key } = state;
@@ -275,6 +275,17 @@ export function setBrowserControl(
       "browser.control",
       "/api/v1/browser/control",
       control === "person" && window ? { control, window } : { control },
+      csrf,
+    ),
+  );
+}
+
+export function closeBrowserWindow(window: string) {
+  return write("closeWindow", (csrf) =>
+    jsonWrite(
+      "browser.closeWindow",
+      "/api/v1/browser/window",
+      { window },
       csrf,
     ),
   );

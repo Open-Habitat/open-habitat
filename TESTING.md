@@ -366,6 +366,18 @@ prove physical keyboards, IMEs, other client browsers, installed-host isolation
 or Chrome's sandbox. A sandbox-disabled Chromium wrapper may be used only in
 this disposable lab, never as sandbox qualification.
 
+### Native server-browser popups
+
+With the same `BROWSER_HOST_REAL_BROWSER` setting, run
+`./scripts/test-focused.sh --area browser --spec server-browser-popup-native.spec.ts`.
+The synthetic site opens a real `window.open` feature popup. Viewer header
+controls must switch keyboard input between main and popup, close only the
+popup, and leave the opener usable after both an explicit close and an
+OAuth-style `postMessage` plus self-close. `OH_POPUP_CAPTURE` names an external
+evidence directory for paired snapshots. The native CLI fixture above also
+checks that existing `tabs` and `close` commands handle a feature popup.
+These are disposable-profile tests, not provider OAuth or sandbox qualification.
+
 ### Inspect Playwright traces
 
 Record a trace for a focused run with Playwright's `--trace on` (including lab

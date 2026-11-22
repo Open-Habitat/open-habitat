@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-habitat.invalid/contracts/v1/browser.schema.json",
   "title": "The person's own server browser (experimental)",
-  "description": "Read and asked of the person's daemon, which runs one Google Chrome on a virtual display as the person. App routes: GET /api/v1/browser (status; reading never starts it), POST /api/v1/browser/start and /stop (empty bodies), POST /api/v1/browser/control (who drives), GET /api/v1/browser/window?id= (one window's picture as image/jpeg, not JSON) and the viewer WebSocket /api/v1/browser/view, whose first message is the CSRF proof as for the browser shell and the rest RFB. Agent routes: GET /agent/v1/browser, POST /agent/v1/browser/start and POST /agent/v1/browser/request. No field carries a page's address beyond its origin, page content, a cookie or a credential.",
+  "description": "Read and asked of the person's daemon, which runs one Google Chrome on a virtual display as the person. App routes: GET /api/v1/browser (status; reading never starts it), POST /api/v1/browser/start and /stop (empty bodies), POST /api/v1/browser/control (who drives), GET /api/v1/browser/window?id= (one window's picture as image/jpeg, not JSON), POST /api/v1/browser/window (close one page) and the viewer WebSocket /api/v1/browser/view, whose first message is the CSRF proof as for the browser shell and the rest RFB. Agent routes: GET /agent/v1/browser, POST /agent/v1/browser/start and POST /agent/v1/browser/request. No field carries a page's address beyond its origin, page content, a cookie or a credential.",
   "oneOf": [
     {"$ref": "#/$defs/status"},
     {"$ref": "#/$defs/controlRequest"},
@@ -68,7 +68,7 @@
         "survives_restart": {"type": "boolean"},
         "control": {"$ref": "#/$defs/control"},
         "agent_connected": {"type": "boolean"},
-        "windows": {"type": "array", "maxItems": 24, "items": {"$ref": "#/$defs/window"}},
+        "windows": {"type": "array", "items": {"$ref": "#/$defs/window"}},
         "pointer": {"$ref": "#/$defs/pointer"},
         "request": {"$ref": "#/$defs/request"}
       }
@@ -79,6 +79,13 @@
         {"type": "object", "additionalProperties": false, "required": ["control"], "properties": {"control": {"const": "person"}, "window": {"$ref": "#/$defs/windowId"}}},
         {"type": "object", "additionalProperties": false, "required": ["control"], "properties": {"control": {"const": "agent"}}}
       ]
+    },
+    "closeWindowRequest": {
+      "description": "POST /api/v1/browser/window: take person control and close exactly one page target, including a popup. The last page is protected; stop closes the browser. Replies with status.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["window"],
+      "properties": {"window": {"$ref": "#/$defs/windowId"}}
     },
     "agentStatus": {
       "description": "GET /agent/v1/browser and the replies of start and request: what the agent needs to drive the browser. cdp_endpoint is a ws+unix DevTools address reachable only by the person's account.",
@@ -91,7 +98,7 @@
         "control": {"$ref": "#/$defs/control"},
         "agent_connected": {"type": "boolean"},
         "cdp_endpoint": {"type": "string", "pattern": "^ws\\+unix:///[^\\s:]+/cdp\\.sock:/devtools/browser$", "maxLength": 300},
-        "windows": {"type": "array", "maxItems": 24, "items": {"$ref": "#/$defs/window"}},
+        "windows": {"type": "array", "items": {"$ref": "#/$defs/window"}},
         "request": {"$ref": "#/$defs/request"}
       }
     },

@@ -1337,6 +1337,17 @@ const fi = {
       lead: "Silmä näyttää kentän tekstin. Yliviivattu silmä peittää sen uudelleen.",
       know: "Näyttäminen ei lähetä tekstiä sivulle. Peittäminen ei piilota sivulle jo syötettyä tekstiä agentilta.",
     },
+    B12: {
+      name: "Selaimen ikkuna",
+      lead: "Tuo valitun ikkunan tai välilehden näkyviin ja antaa ohjauksen sinulle.",
+      know: "Myös ponnahdusikkunat näkyvät luettelossa. Agentti odottaa, kun sinä ohjaat.",
+    },
+    B13: {
+      name: "Sulje ikkuna",
+      lead: "Sulkee vain tämän ikkunan tai välilehden ja antaa ohjauksen sinulle.",
+      know: "Muut ikkunat jäävät auki. Sivun tallentamattomat tiedot voivat kadota.",
+      grey: "Viimeisen ikkunan voit sulkea Sulje selain -painikkeesta.",
+    },
     H01: {
       name: "Keskustelun avustaja",
       lead: "Näyttää avustajan kierroksen tilan ja onko työ yhdistetty.",
@@ -3329,6 +3340,17 @@ export const explainModeText = catalog(fi, {
       name: "Show or hide text",
       lead: "The eye reveals the field's text. The crossed-out eye masks it again.",
       know: "Revealing does not send text to the page. Masking does not hide text already entered on the page from the agent.",
+    },
+    B12: {
+      name: "Browser window",
+      lead: "Brings the selected window or tab into view and gives you control.",
+      know: "Popups appear in the list too. The agent waits while you drive.",
+    },
+    B13: {
+      name: "Close window",
+      lead: "Closes only this window or tab and gives you control.",
+      know: "Other windows stay open. Unsaved page data may be lost.",
+      grey: "Use Close browser to close the last window.",
     },
     H01: {
       name: "Conversation's helper",

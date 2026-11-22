@@ -4,7 +4,15 @@ Generated from web/src/app/BrowserViewer.tsx; do not edit.
 
 ```tsx
 import RFB from "@novnc/novnc";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type Ref,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { ControlButton } from "../components/ControlElements";
 import { BrowserClipboard, BrowserFrame } from "../components/ServerBrowser";
 import { useText } from "../i18n";
@@ -63,12 +71,14 @@ const modifierKeys = new Set([
  * back to their clipboard. Giving control back empties the remote
  * clipboard first, so nothing they pasted outlives their turn there. */
 export default function BrowserViewer({
+  ref,
   csrf,
   status,
   busy,
   onTake,
   onGiveBack,
 }: {
+  ref?: Ref<{ focus: () => void }>;
   csrf: string;
   status: BrowserStatus;
   busy: boolean;
@@ -78,6 +88,11 @@ export default function BrowserViewer({
   const txt = useText(serverBrowserText);
   const target = useRef<HTMLElement>(null);
   const rfb = useRef<RFB | undefined>(undefined);
+  useImperativeHandle(
+    ref,
+    () => ({ focus: () => rfb.current?.focus({ preventScroll: true }) }),
+    [],
+  );
   const [phase, setPhase] = useState<"connecting" | "connected" | "lost">(
     "connecting",
   );

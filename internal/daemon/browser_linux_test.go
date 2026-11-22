@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net"
@@ -52,7 +53,11 @@ func (s *standInHost) serve(t *testing.T, dir string) {
 		s.mu.Unlock()
 		switch r.URL.Path {
 		case browserhost.WindowPath:
-			_, _ = w.Write(pic)
+			if r.Method == http.MethodGet {
+				_, _ = w.Write(pic)
+			} else {
+				_ = json.NewEncoder(w).Encode(st)
+			}
 		case browserhost.ViewerPath:
 			w.WriteHeader(204)
 		default:
@@ -176,6 +181,43 @@ func TestBrowserControlNamesAWindowOnlyWhenThePersonTakesIt(t *testing.T) {
 	got := host.requests()
 	if last := got[len(got)-1]; !strings.Contains(last, browserhost.ControlPath) || !strings.Contains(last, win) {
 		t.Fatalf("host got %v", got)
+	}
+}
+
+func TestBrowserStatusKeepsWindowsBeyondThumbnailCount(t *testing.T) {
+	h, _, _ := browserTestHost(t, true)
+	st := browserhost.Status{Control: "person"}
+	for i := 0; i < 30; i++ {
+		st.Windows = append(st.Windows, browserhost.Window{ID: fmt.Sprintf("%032X", i)})
+	}
+	if got := h.fromHost(st, false); len(got.Windows) != 30 {
+		t.Fatalf("hidden windows: %d", len(got.Windows))
+	}
+}
+
+func TestBrowserCloseWindowValidatesBeforeForwarding(t *testing.T) {
+	_, handler, dir := browserTestHost(t, true)
+	host := &standInHost{status: browserhost.Status{Control: "person", Windows: []browserhost.Window{}}}
+	host.serve(t, dir)
+	id := strings.Repeat("D", 32)
+	for _, bad := range []string{`{}`, `{"window":"x"}`, `{"window":"` + id + `","owner":"bob"}`, `{"window":"` + id + `"} {}`} {
+		if w := browserGet(t, handler, "POST", BrowserWindowPath, bad); w.Code != 400 {
+			t.Fatalf("%s: %d", bad, w.Code)
+		}
+	}
+	if got := host.requests(); len(got) != 0 {
+		t.Fatalf("invalid requests reached host: %v", got)
+	}
+	if w := browserGet(t, handler, "POST", BrowserWindowPath, `{"window":"`+id+`"}`); w.Code != 200 {
+		t.Fatalf("close: %d %s", w.Code, w.Body)
+	}
+	got := host.requests()
+	if len(got) != 1 || got[0] != `POST /window {"window":"`+id+`"}` {
+		t.Fatalf("host got %v", got)
+	}
+	_, denied, _ := browserTestHost(t, false)
+	if w := browserGet(t, denied, "POST", BrowserWindowPath, `{"window":"`+id+`"}`); w.Code != 403 {
+		t.Fatalf("foreign peer: %d", w.Code)
 	}
 }
 

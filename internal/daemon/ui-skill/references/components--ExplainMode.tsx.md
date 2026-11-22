@@ -53,8 +53,8 @@ import { WorkerMark, type WorkerMarkKind } from "./WorkerMark";
  * while the pointer travels from its own part onto it, so its footer can be
  * reached even across other parts, and arriving from anywhere else passes
  * through as before. An open report holds the card until it is sent or
- * cancelled. A focused part explains itself, and F moves focus to the
- * report. */
+ * cancelled. A focused part explains itself, and F opens the report
+ * for typing. */
 
 const workerKinds: WorkerMarkKind[] = [
   "working",
@@ -634,7 +634,7 @@ function ExplainLayer({
   const pinned = open || keyHold;
   const card = useRef<HTMLDivElement>(null);
   // Where focus goes once the card has rendered: in the same commit, so
-  // keys typed right after Enter land in the field rather than before it.
+  // keys typed right after F or Enter land in the field rather than before it.
   const focusNext = useRef<string>(undefined);
   // The card's box when a report was sent: the sent card is smaller, and
   // the pointer resting where the note was must not fall through to the
@@ -861,10 +861,15 @@ function ExplainLayer({
         !(focused instanceof HTMLElement && focused.isContentEditable)
       ) {
         block(event);
-        setKeyHold(true);
-        focusNext.current =
-          '[data-testid="explain-report"], [data-testid="explain-feedback-done"]';
-        setTick((n) => n + 1);
+        const report = card.current?.querySelector<HTMLButtonElement>(
+          '[data-testid="explain-report"]',
+        );
+        if (report) report.click();
+        else {
+          setKeyHold(true);
+          focusNext.current = 'textarea, [data-testid="explain-feedback-done"]';
+          setTick((n) => n + 1);
+        }
         return;
       }
       if (event.key !== "Enter" && event.key !== " ") return;

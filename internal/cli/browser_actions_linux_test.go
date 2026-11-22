@@ -355,6 +355,23 @@ func TestBrowserActionsNative(t *testing.T) {
 	if got := run(browserAction{verb: "eval", tab: tab, value: "document.title"}); got["value"] != "Redirected" {
 		t.Fatalf("did not follow redirect: %v", got)
 	}
+	// A feature popup is a page target too: existing agent commands must
+	// list and close it without closing or severing its opener.
+	run(browserAction{verb: "eval", tab: tab, value: "window.popup = window.open('about:blank', 'flow', 'popup,width=400,height=300'); popup.document.title = 'Popup fixture'; 'opened'"})
+	popupID := ""
+	for _, raw := range run(browserAction{verb: "tabs"})["tabs"].([]any) {
+		page := raw.(map[string]any)
+		if page["title"] == "Popup fixture" {
+			popupID = page["id"].(string)
+		}
+	}
+	if popupID == "" || popupID == tab {
+		t.Fatal("popup absent from agent tabs")
+	}
+	run(browserAction{verb: "close", tab: popupID})
+	if got := run(browserAction{verb: "eval", tab: tab, value: "popup.closed && document.title === 'Redirected'"}); got["value"] != true {
+		t.Fatalf("opener after popup close: %v", got)
+	}
 	// Closing must remain a recovery path when the renderer cannot evaluate
 	// metadata (for example a modal dialog left by a page action).
 	if _, err := executeBrowserAction(browserAction{verb: "eval", tab: tab, value: "alert('synthetic dialog')", timeout: time.Second}, st); err == nil {

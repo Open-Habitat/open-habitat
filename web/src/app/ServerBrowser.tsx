@@ -1,8 +1,16 @@
-import { lazy, type ReactNode, Suspense, useEffect, useMemo } from "react";
+import {
+  lazy,
+  type ReactNode,
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 import {
   BrowserRailRow,
   BrowserRowMarks,
   BrowserSheet,
+  BrowserWindows,
 } from "../components/ServerBrowser";
 import { useText } from "../i18n";
 import { serverBrowserText } from "../text/serverBrowser";
@@ -18,6 +26,7 @@ import {
 import type { ToolReport } from "./editorChanges";
 import {
   closeBrowserSheet,
+  closeBrowserWindow,
   openBrowserSheet,
   setBrowserControl,
   startBrowser,
@@ -116,6 +125,7 @@ export function ServerBrowserSheetHost({
   const txt = useText(serverBrowserText);
   const on = useExperimentalFeature("remote-browser", { identity, csrf });
   const browser = useServerBrowser(identity, csrf, on);
+  const viewer = useRef<{ focus: () => void }>(null);
   if (!on || !browser.sheet) return null;
   const running = browser.status?.state === "running";
   // The host decides who drives; the sheet follows it.
@@ -126,6 +136,21 @@ export function ServerBrowserSheetHost({
       running={running}
       busy={browser.busy}
       error={browser.error}
+      windows={
+        running ? (
+          <BrowserWindows
+            windows={browser.status?.windows ?? []}
+            busy={!!browser.busy}
+            onSelect={async (id) => {
+              if (await setBrowserControl("person", id))
+                viewer.current?.focus();
+            }}
+            onClose={async (id) => {
+              if (await closeBrowserWindow(id)) viewer.current?.focus();
+            }}
+          />
+        ) : undefined
+      }
       onClose={closeBrowserSheet}
       onStop={async () => {
         if (await stopBrowser()) closeBrowserSheet();
@@ -136,6 +161,7 @@ export function ServerBrowserSheetHost({
           fallback={<p className="sb-viewer-note">{txt.sheet.connecting}</p>}
         >
           <BrowserViewer
+            ref={viewer}
             csrf={csrf}
             status={browser.status}
             busy={!!browser.busy}

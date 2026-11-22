@@ -117,6 +117,10 @@ func TestBrowserRoutesNeedTheSessionAndCSRFForWrites(t *testing.T) {
 		{"POST", browserControlPath, `{"control":"person"}`, true, 200},
 		{"POST", browserControlPath, `{"control":"person"}`, false, 403},
 		{"GET", browserControlPath, "", false, 400},
+		{"POST", browserWindowPath, `{"window":"` + id + `"}`, true, 200},
+		{"POST", browserWindowPath, `{"window":"` + id + `"}`, false, 403},
+		{"POST", browserWindowPath + "?id=" + id, `{"window":"` + id + `"}`, true, 400},
+		{"DELETE", browserWindowPath, "", true, 400},
 	} {
 		r := httptest.NewRequest(tc.method, "https://host.test"+tc.path, strings.NewReader(tc.body))
 		r.AddCookie(&http.Cookie{Name: cookieName, Value: "browser"})
@@ -135,7 +139,7 @@ func TestBrowserRoutesNeedTheSessionAndCSRFForWrites(t *testing.T) {
 			t.Errorf("%s %s csrf=%v: %d, want %d", tc.method, tc.path, tc.csrf, w.Code, tc.status)
 		}
 	}
-	if len(seen) != 4 {
+	if len(seen) != 5 {
 		t.Fatalf("daemon reached %d times: %v", len(seen), seen)
 	}
 }

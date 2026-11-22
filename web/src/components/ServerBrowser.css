@@ -274,10 +274,37 @@ button.sb-rail-item:focus-visible {
   position: relative;
   z-index: 4;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--ah-s3);
   padding: var(--ah-s2) var(--ah-s3) var(--ah-s2) var(--ah-s4);
   border-bottom: 1px solid var(--ah-line);
+}
+.sb-window-list {
+  display: flex;
+  flex: 0 0 100%;
+  gap: var(--ah-s2);
+  overflow-x: auto;
+  min-width: 0;
+}
+.sb-window-chip {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  max-width: 220px;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-sm);
+}
+.sb-window-chip > button:first-child {
+  min-width: 0;
+  padding: var(--ah-s2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
 }
 .sb-sheet-head h2 {
   margin: 0;

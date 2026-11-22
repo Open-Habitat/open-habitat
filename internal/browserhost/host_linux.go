@@ -428,13 +428,15 @@ type host struct {
 	log  *slog.Logger
 	stop func()
 
-	mu      sync.Mutex
-	images  map[string]*image
-	metrics map[string]viewport
-	failed  map[string]time.Time
-	shot    sync.Mutex
-	windows []window
-	listed  time.Time
+	// Serialize person window/control actions across viewer sessions.
+	windowAction sync.Mutex
+	mu           sync.Mutex
+	images       map[string]*image
+	metrics      map[string]viewport
+	failed       map[string]time.Time
+	shot         sync.Mutex
+	windows      []window
+	listed       time.Time
 }
 
 // serveCDP accepts one agent's DevTools WebSocket on any path, as Chrome's

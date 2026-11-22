@@ -109,6 +109,7 @@ export const mutationClasses = {
   "browser.start": "confirmed",
   "browser.stop": "confirmed",
   "browser.control": "confirmed",
+  "browser.closeWindow": "confirmed",
   "view.handoff": "confirmed",
   "view.address": "confirmed",
   "server.view_address": "confirmed",

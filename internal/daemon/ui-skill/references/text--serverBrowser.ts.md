@@ -181,7 +181,10 @@ const fi = {
   },
   truth:
     "Agentti saa käyttää kaikkea, mihin tämä selain on kirjautunut, sinun nimissäsi.",
+  closeWindow: (title: string) => `Sulje ikkuna: ${title}`,
   errors: {
+    closeWindow:
+      "Ikkunan sulkemista ei voitu vahvistaa. Tarkista ikkunaluettelo.",
     start: "Selain ei käynnistynyt. Yritä hetken päästä uudelleen.",
     stop: "Selain ei sulkeutunut. Yritä uudelleen.",
     control: "Ohjauksen vaihto ei onnistunut. Yritä uudelleen.",
@@ -359,7 +362,9 @@ export const serverBrowserText = catalog(fi, {
   },
   truth:
     "The agent may use everything this browser is signed in to, in your name.",
+  closeWindow: (title: string) => `Close window: ${title}`,
   errors: {
+    closeWindow: "Could not confirm the window closed. Check the window list.",
     start: "The browser did not start. Try again in a moment.",
     stop: "The browser did not close. Try again.",
     control: "Control could not be changed. Try again.",

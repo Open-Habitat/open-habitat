@@ -21,6 +21,7 @@ A label alone does not establish that a control is available to this person.
 - [app/SwitcherHost.tsx](app--SwitcherHost.tsx.md)
 - [app/WorkspaceEditor.tsx](app--WorkspaceEditor.tsx.md)
 - [app/attentionSound.ts](app--attentionSound.ts.md)
+- [app/placeNavigation.ts](app--placeNavigation.ts.md)
 - [app/railKeyboard.ts](app--railKeyboard.ts.md)
 - [app/recapHold.ts](app--recapHold.ts.md)
 - [app/settingsIndex.ts](app--settingsIndex.ts.md)

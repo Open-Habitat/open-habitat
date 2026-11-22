@@ -15,7 +15,7 @@ import {
 } from "react-aria-components";
 import { createPortal } from "react-dom";
 import type { BrowserRowState } from "../app/browserConversations";
-import type { BrowserSummary } from "../app/serverBrowser";
+import type { BrowserSummary, BrowserWindow } from "../app/serverBrowser";
 import type { BrowserVisits } from "../app/turnBrowserVisits";
 import { formatDate, useText } from "../i18n";
 import { serverBrowserText } from "../text/serverBrowser";
@@ -500,18 +500,66 @@ export function BrowserGaveBackLine({ at }: { at: number }) {
 // The viewer owns its controls; the sheet supplies their place in the one header.
 const BrowserBarTarget = createContext<HTMLElement | null>(null);
 
+export function BrowserWindows({
+  windows,
+  busy,
+  onSelect,
+  onClose,
+}: {
+  windows: BrowserWindow[];
+  busy: boolean;
+  onSelect: (id: string) => void;
+  onClose: (id: string) => void;
+}) {
+  const txt = useText(serverBrowserText);
+  return (
+    <section
+      className="sb-window-list"
+      data-testid="browser-window-list"
+      aria-label={txt.ownBrowser}
+    >
+      {windows.map((w) => (
+        <div className="sb-window-chip" key={w.id} data-window={w.id}>
+          <button
+            type="button"
+            data-testid="browser-window-select"
+            disabled={busy}
+            title={w.title || w.origin || txt.ownBrowser}
+            onClick={() => onSelect(w.id)}
+          >
+            {w.title || w.origin || txt.ownBrowser}
+          </button>
+          <ControlButton
+            size="inline"
+            variant="quiet"
+            presentation="icon"
+            data-testid="browser-window-close"
+            aria-label={txt.closeWindow(w.title || w.origin || txt.ownBrowser)}
+            isDisabled={busy || windows.length < 2}
+            onPress={() => onClose(w.id)}
+          >
+            <Icon name="cross" />
+          </ControlButton>
+        </div>
+      ))}
+    </section>
+  );
+}
+
 /** The sheet: the live view of the whole browser. */
 export function BrowserSheet({
   mode,
   running,
   busy,
   error,
+  windows,
   children,
   onClose,
   onStop,
 }: {
   mode: "view" | "control";
   running: boolean;
+  windows?: ReactNode;
   busy?: string;
   error?: string;
   children: ReactNode;
@@ -563,6 +611,7 @@ export function BrowserSheet({
             >
               <Icon name="cross" />
             </ControlButton>
+            {windows}
           </div>
           {error ? (
             <p
@@ -570,11 +619,13 @@ export function BrowserSheet({
               className="sb-error sb-sheet-error"
               data-testid="browser-error"
             >
-              {error === "control"
-                ? txt.errors.control
-                : error === "stop"
-                  ? txt.errors.stop
-                  : txt.errors.start}
+              {error === "closeWindow"
+                ? txt.errors.closeWindow
+                : error === "control"
+                  ? txt.errors.control
+                  : error === "stop"
+                    ? txt.errors.stop
+                    : txt.errors.start}
             </p>
           ) : null}
           <BrowserBarTarget.Provider value={barTarget}>

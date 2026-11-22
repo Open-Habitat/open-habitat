@@ -80,7 +80,6 @@ const (
 	imageFresh = 900 * time.Millisecond
 	clickShown = 4 * time.Second
 	pointShown = 15 * time.Second
-	maxWindows = 24
 	// unpaintedRetry spaces the pictures of a tab Chrome does not paint.
 	unpaintedRetry = 10 * time.Second
 )
@@ -93,11 +92,18 @@ func (h *host) list(ctx context.Context) []window {
 		return w
 	}
 	h.mu.Unlock()
+	windows, _ := h.fetchWindows(ctx)
+	return windows
+}
+
+// Mutations always read Chrome directly: an older concurrent status read can
+// repopulate the presentation cache even after invalidation.
+func (h *host) fetchWindows(ctx context.Context) ([]window, error) {
 	res, err := h.mux.call(ctx, "Target.getTargets", map[string]any{}, "")
 	if err != nil {
 		h.mu.Lock()
 		defer h.mu.Unlock()
-		return h.windows
+		return h.windows, err
 	}
 	var r struct {
 		TargetInfos []struct {
@@ -107,10 +113,12 @@ func (h *host) list(ctx context.Context) []window {
 			URL      string `json:"url"`
 		} `json:"targetInfos"`
 	}
-	_ = json.Unmarshal(res, &r)
+	if err := json.Unmarshal(res, &r); err != nil {
+		return nil, err
+	}
 	var out []window
 	for _, t := range r.TargetInfos {
-		if t.Type == "page" && TargetPattern.MatchString(t.TargetID) && len(out) < maxWindows {
+		if t.Type == "page" && TargetPattern.MatchString(t.TargetID) {
 			out = append(out, window{t.TargetID, t.Title, t.URL})
 		}
 	}
@@ -124,7 +132,36 @@ func (h *host) list(ctx context.Context) []window {
 			delete(h.failed, id)
 		}
 	}
-	return out
+	return out, nil
+}
+
+func (h *host) invalidateWindows() {
+	h.mu.Lock()
+	h.listed = time.Time{}
+	h.mu.Unlock()
+}
+
+func (h *host) activateWindow(ctx context.Context, id string) error {
+	// Feature popups can choose dimensions and positions outside the display.
+	// Use normal bounds, not maximized: there is no window manager in Xvnc.
+	res, err := h.mux.call(ctx, "Browser.getWindowForTarget", map[string]string{"targetId": id}, "")
+	if err != nil {
+		return err
+	}
+	var win struct {
+		ID int `json:"windowId"`
+	}
+	if err := json.Unmarshal(res, &win); err != nil {
+		return err
+	}
+	if _, err = h.mux.call(ctx, "Browser.setWindowBounds", map[string]any{"windowId": win.ID, "bounds": map[string]any{"windowState": "normal"}}, ""); err != nil {
+		return err
+	}
+	if _, err = h.mux.call(ctx, "Browser.setWindowBounds", map[string]any{"windowId": win.ID, "bounds": map[string]any{"left": 0, "top": 0, "width": h.cfg.Width, "height": h.cfg.Height}}, ""); err != nil {
+		return err
+	}
+	_, err = h.mux.call(ctx, "Target.activateTarget", map[string]string{"targetId": id}, "")
+	return err
 }
 
 func hasWindow(ws []window, id string) bool {
@@ -318,6 +355,37 @@ func (h *host) controlHandler() http.Handler {
 			w.Header().Set("Content-Type", "image/jpeg")
 			w.Header().Set("Content-Length", strconv.Itoa(len(img)))
 			_, _ = w.Write(img)
+		case r.URL.Path == WindowPath && r.Method == http.MethodPost:
+			var body struct {
+				Window string `json:"window"`
+			}
+			if !decodeExact(r, &body) || !TargetPattern.MatchString(body.Window) {
+				controlJSON(w, 400, map[string]string{"error": "invalid_request"})
+				return
+			}
+			h.windowAction.Lock()
+			defer h.windowAction.Unlock()
+			windows, listErr := h.fetchWindows(r.Context())
+			if listErr != nil {
+				controlJSON(w, 503, map[string]string{"error": "window_list_failed"})
+				return
+			}
+			if !hasWindow(windows, body.Window) || len(windows) < 2 {
+				controlJSON(w, 409, map[string]string{"error": "window_unavailable"})
+				return
+			}
+			// Refused preconditions change nothing; an accepted close takes control.
+			h.mux.setControl(true)
+			res, err := h.mux.call(r.Context(), "Target.closeTarget", map[string]string{"targetId": body.Window}, "")
+			var closed struct {
+				Success bool `json:"success"`
+			}
+			if err != nil || json.Unmarshal(res, &closed) != nil || !closed.Success {
+				controlJSON(w, 503, map[string]string{"error": "window_close_failed"})
+				return
+			}
+			h.invalidateWindows()
+			controlJSON(w, 200, h.status(r.Context()))
 		case r.URL.Path == ControlPath && r.Method == http.MethodPost:
 			var body struct {
 				Control string `json:"control"`
@@ -327,11 +395,27 @@ func (h *host) controlHandler() http.Handler {
 				controlJSON(w, 400, map[string]string{"error": "invalid_request"})
 				return
 			}
-			h.mux.setControl(body.Control == "person")
+			h.windowAction.Lock()
+			defer h.windowAction.Unlock()
 			// Taking control for one window brings it to the front, so the
 			// person's view shows what needs them.
-			if body.Window != "" && hasWindow(h.list(r.Context()), body.Window) {
-				h.mux.fire("Target.activateTarget", map[string]string{"targetId": body.Window}, "")
+			if body.Window != "" {
+				windows, err := h.fetchWindows(r.Context())
+				if err != nil {
+					controlJSON(w, 503, map[string]string{"error": "window_list_failed"})
+					return
+				}
+				if !hasWindow(windows, body.Window) {
+					controlJSON(w, 409, map[string]string{"error": "window_unavailable"})
+					return
+				}
+				h.mux.setControl(true)
+				if err := h.activateWindow(r.Context(), body.Window); err != nil {
+					controlJSON(w, 503, map[string]string{"error": "window_activate_failed"})
+					return
+				}
+			} else {
+				h.mux.setControl(body.Control == "person")
 			}
 			h.log.Info("browser_control", "outcome", "accepted", "reason", body.Control)
 			controlJSON(w, 200, h.status(r.Context()))

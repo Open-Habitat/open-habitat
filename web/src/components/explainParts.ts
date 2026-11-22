@@ -495,6 +495,8 @@ export const parts: Record<CardId, Part> = {
     kind: "once",
     sel: '[data-testid="browser-password-eye"], [data-testid="browser-paste-hide"]',
   },
+  B12: { kind: "once", sel: '[data-testid="browser-window-select"]' },
+  B13: { kind: "once", sel: '[data-testid="browser-window-close"]' },
   H01: {
     kind: "info",
     sel: '[data-testid="helper-archive-row"]',
@@ -745,6 +747,8 @@ export const parts: Record<CardId, Part> = {
  * workspace, send a wish to a model). In the mode they wait,
  * so that nothing happens by accident while the person explores. */
 export const waiting: ReadonlySet<CardId> = new Set<CardId>([
+  "B12",
+  "B13",
   "GH03",
   "GH05",
   "GH06",

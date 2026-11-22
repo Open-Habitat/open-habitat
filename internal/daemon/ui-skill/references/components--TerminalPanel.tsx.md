@@ -9,7 +9,9 @@ import {
   type ReactNode,
   type Ref,
   useId,
+  useLayoutEffect,
   useRef,
+  useState,
 } from "react";
 import { textNow, useText } from "../i18n";
 import { terminalPanelText } from "../text/terminalPanel";
@@ -19,6 +21,7 @@ import { Menu } from "./Overlays";
 import { TooltipButton } from "./QuickTooltip";
 import "./TerminalPanel.css";
 import type { TerminalSelection } from "./Terminal";
+import { terminalSelectionPosition } from "./terminalSelectionPosition";
 
 // Paneeli (proto-browser-shell, Jari 19.10.2026): the workspace's shells as a
 // dock under the conversation. This component draws the dock and reports the
@@ -237,6 +240,31 @@ export function TerminalPanel({
   const txt = useText(terminalPanelText);
   const hostId = useId();
   const tabsRef = useRef<HTMLDivElement | null>(null);
+  const hostRef = useRef<HTMLDivElement>(null);
+  const chipRef = useRef<HTMLDivElement>(null);
+  const [chipPosition, setChipPosition] = useState<{
+    top: number;
+    left: number;
+  }>();
+  useLayoutEffect(() => {
+    const host = hostRef.current;
+    const chip = chipRef.current;
+    if (!selection || !host || !chip) return;
+    const place = () => {
+      setChipPosition(
+        terminalSelectionPosition(
+          selection.at,
+          { width: host.clientWidth, height: host.clientHeight },
+          { width: chip.offsetWidth, height: chip.offsetHeight },
+        ),
+      );
+    };
+    place();
+    const observer = new ResizeObserver(place);
+    observer.observe(host);
+    observer.observe(chip);
+    return () => observer.disconnect();
+  }, [selection]);
   const setTabs = (node: HTMLDivElement | null) => {
     tabsRef.current = node;
     if (typeof tablistRef === "function") tablistRef(node);
@@ -463,6 +491,7 @@ export function TerminalPanel({
       {feedback}
       <div
         className="ah-terminal-host"
+        ref={hostRef}
         id={hostId}
         role="tabpanel"
         aria-labelledby={activeTabId}
@@ -496,14 +525,8 @@ export function TerminalPanel({
         {selection ? (
           <div
             className="ah-terminal-chip"
-            style={
-              selection.at
-                ? {
-                    top: Math.max(4, selection.at.top - 40),
-                    left: Math.max(4, selection.at.left),
-                  }
-                : undefined
-            }
+            ref={chipRef}
+            style={chipPosition ?? { visibility: "hidden" }}
           >
             <button
               data-testid="copy-selection"

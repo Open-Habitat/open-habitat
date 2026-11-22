@@ -421,7 +421,7 @@ func (h *browserHost) fromHost(st browserhost.Status, survives bool) browserView
 	}
 	ids := map[string]bool{}
 	for _, w := range st.Windows {
-		if !browserhost.TargetPattern.MatchString(w.ID) || ids[w.ID] || len(v.Windows) >= 24 {
+		if !browserhost.TargetPattern.MatchString(w.ID) || ids[w.ID] {
 			continue
 		}
 		ids[w.ID] = true
@@ -499,9 +499,39 @@ func (h *browserHost) handler(trusted func(*http.Request) bool) http.Handler {
 			}
 			ctx, cancel := context.WithTimeout(r.Context(), 4*time.Second)
 			defer cancel()
-			st, _, err := h.hostPost(ctx, browserhost.ControlPath, body)
+			st, code, err := h.hostPost(ctx, browserhost.ControlPath, body)
 			if err != nil {
-				snapshotError(w, 409, "browser_not_running")
+				if code == 409 {
+					snapshotError(w, 409, "window_unavailable")
+				} else {
+					snapshotError(w, 503, "browser_control_failed")
+				}
+				return
+			}
+			historyJSON(w, h.fromHost(st, h.survives()))
+		case r.URL.Path == BrowserWindowPath && r.Method == http.MethodPost && r.URL.RawQuery == "":
+			var body struct {
+				Window string `json:"window"`
+			}
+			if r.Header.Get("Content-Type") != "application/json" || r.ContentLength < 2 || r.ContentLength > 128 {
+				snapshotError(w, 400, "invalid_request")
+				return
+			}
+			dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, 128))
+			dec.DisallowUnknownFields()
+			if dec.Decode(&body) != nil || dec.Decode(new(any)) != io.EOF || !browserhost.TargetPattern.MatchString(body.Window) {
+				snapshotError(w, 400, "invalid_request")
+				return
+			}
+			ctx, cancel := context.WithTimeout(r.Context(), 4*time.Second)
+			defer cancel()
+			st, code, err := h.hostPost(ctx, browserhost.WindowPath, body)
+			if err != nil {
+				if code == 409 {
+					snapshotError(w, 409, "window_unavailable")
+				} else {
+					snapshotError(w, 503, "browser_window_close_failed")
+				}
 				return
 			}
 			historyJSON(w, h.fromHost(st, h.survives()))
