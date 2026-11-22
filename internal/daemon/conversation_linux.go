@@ -47,11 +47,14 @@ type ConversationController struct {
 
 	mu       sync.Mutex
 	sessions map[string]*conversation
-	cfg      transport.Config
-	runtime  *core.PiRuntimeConfig
-	status   func(context.Context) string
-	trusted  func(*http.Request) bool
-	closed   bool
+	// titleWork counts histories being named without a handle, by
+	// conversation, for the work census (work_census_linux.go).
+	titleWork map[string]int
+	cfg       transport.Config
+	runtime   *core.PiRuntimeConfig
+	status    func(context.Context) string
+	trusted   func(*http.Request) bool
+	closed    bool
 	// facts are the snapshot's derived native facts (snapshot_facts_linux.go).
 	facts *snapshotFacts
 	// home is the native root; discover resolves workspaces beneath it.

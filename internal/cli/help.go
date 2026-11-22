@@ -138,6 +138,7 @@ var helpSpecs = []helpSpec{
 	{"agent file remove", "Remove one file offer's frozen copy; its card says it was removed", "agent file remove --offer-id fabcdefghijklmnopqrstuvwxyz --dry-run --json", []string{"--offer-id", "--dry-run"}},
 	{"agent environment show", "Read own quota, capacity, daemon version, the site's public origin for links and whether it shows views", "agent environment show --json", nil},
 	{"agent workspace list", "Discover native workspaces", "agent workspace list --json", []string{"--output"}},
+	{"agent work show", "Read what stopping your daemon would cut: conversations with a turn, a command, Habitat's own work or running background processes, and handle-less jobs; never starts Pi", "agent work show --json", nil},
 	{"agent conversation show", "Read an explicit live record or verified inherited context", "agent conversation show --current --json", []string{"--current", "--conversation"}},
 }
 

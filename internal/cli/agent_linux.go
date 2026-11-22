@@ -112,8 +112,11 @@ func agentRequestPath(args []string) (string, error) {
 	if len(args) == 2 && args[0] == "workspace" && args[1] == "list" {
 		return daemon.AgentWorkspacesPath, nil
 	}
+	if len(args) == 2 && args[0] == "work" && args[1] == "show" {
+		return daemon.AgentWorkPath, nil
+	}
 	if len(args) < 3 || args[0] != "conversation" || args[1] != "show" {
-		return "", usage(fmt.Sprintf("invalid agent arguments %q; expected environment show, workspace list [--output FILE.jsonl], or conversation show <pi:UUID>|--current", args))
+		return "", usage(fmt.Sprintf("invalid agent arguments %q; expected environment show, workspace list [--output FILE.jsonl], work show, or conversation show <pi:UUID>|--current", args))
 	}
 	q := url.Values{}
 	if len(args) == 3 && args[2] == "--current" {

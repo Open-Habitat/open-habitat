@@ -479,8 +479,20 @@ needs diagnosis before any upgrade.
 
 Schedule the maintenance window explicitly. Add `--approve-interruption` only
 when interruption of daemon work is approved; the preview's `work` lists each
-live daemon and its active turns. A live daemon is conservatively unobservable
-work: an idle list cannot exclude a previously admitted in-flight request.
+live daemon with what stopping it would cut. `active_turns` counts the work a
+quiet window waits for: conversations with a turn, a question, a command the
+person ran, Habitat's own work (titles, recaps, publishing a finished turn) or
+an unreadable state, and handle-less jobs such as naming a history or a clone.
+`background_processes` counts processes Pi started that keep running, such as
+a preview server; they would hold every window, so they are not waited for,
+and the plan's `upgrade.background_processes` action says that they stop.
+`active_work` names each conversation and job. `work_census` says what the
+counts rest on: `daemon` when the predecessor offers its work census,
+`list_only` when an older predecessor offers only its conversation list,
+which sees turns but not commands, Habitat's work or background processes,
+and `unavailable` when neither could be read (`turns_observable` is then
+false). A live daemon is conservatively unobservable
+work: an idle census cannot exclude a previously admitted in-flight request.
 Without that approval the operator refuses rather than assuming drain. The old `maintenance enter`
 marker is unrelated. Root's upgrade fence denies new native agent mutations;
 HTTP entry and product socket activation close independently. Unpublished

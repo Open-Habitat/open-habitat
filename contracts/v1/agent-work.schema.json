@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/agent-work.schema.json",
+  "title": "Agent work census: what stopping the person's daemon would cut",
+  "description": "The daemon's own children that hold work: conversations whose handle holds a turn, a question, a person's command or Habitat's own work, a start under way, Pi background processes still running, or a Pi process bridge that does not answer clearly; and work without a handle. Native SSH, tmux and Taskfleet Pi are not the daemon's children and are not listed. Reading starts no Pi.",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "conversations", "jobs"],
+  "properties": {
+    "schema_version": {"$ref": "common.schema.json#/$defs/schemaVersion"},
+    "conversations": {"type": "array", "maxItems": 256, "items": {
+      "type": "object", "additionalProperties": false,
+      "required": ["agent_id", "activities", "processes"],
+      "properties": {
+        "agent_id": {"$ref": "common.schema.json#/$defs/agentId"},
+        "workspace_id": {"$ref": "common.schema.json#/$defs/workspaceId", "description": "Absent when the handle names no workspace the daemon can identify; the conversation is listed all the same."},
+        "activities": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": {"enum": ["question", "turn", "command", "habitat", "processes", "unknown"]},
+          "description": "turn: the person's turn, a start, or messages held or queued for it; question: Pi waits for the person's answer; command: a command the person ran through the conversation; habitat: Habitat's own use of the child (title, recap, its own wake, publishing the finished turn); processes: background processes Pi started still run; unknown: the child's state or its process bridge cannot be read with certainty."
+        },
+        "processes": {"type": "array", "maxItems": 256, "items": {
+          "type": "object", "additionalProperties": false,
+          "required": ["id", "name"],
+          "properties": {
+            "id": {"type": "string", "maxLength": 80},
+            "name": {"type": "string", "maxLength": 80, "description": "Pi's label for the process, never its command line."},
+            "started_at": {"$ref": "common.schema.json#/$defs/timestamp"}
+          }
+        }}
+      }
+    }},
+    "jobs": {"type": "array", "maxItems": 256, "items": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": {"enum": ["history_title", "clone"], "description": "history_title: a history being named without a handle (a title-model call and a temporary Pi); clone: a repository clone under way."},
+        "agent_id": {"$ref": "common.schema.json#/$defs/agentId"}
+      }
+    }}
+  }
+}

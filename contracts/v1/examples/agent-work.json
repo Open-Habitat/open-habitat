@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "conversations": [
+    {"agent_id": "pi:00000000-0000-4000-8000-000000000001", "workspace_id": "ws_example123", "activities": ["turn"], "processes": []},
+    {"agent_id": "pi:00000000-0000-4000-8000-000000000002", "workspace_id": "ws_example123", "activities": ["processes"], "processes": [{"id": "proc_1", "name": "preview server", "started_at": "2026-11-22T08:00:00Z"}]},
+    {"agent_id": "pi:00000000-0000-4000-8000-000000000003", "activities": ["command", "habitat"], "processes": []}
+  ],
+  "jobs": [
+    {"kind": "clone"},
+    {"kind": "history_title", "agent_id": "pi:00000000-0000-4000-8000-000000000004"}
+  ]
+}

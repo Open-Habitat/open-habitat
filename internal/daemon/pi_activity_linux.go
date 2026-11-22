@@ -112,48 +112,85 @@ func liveChild(s *conversation) bool {
 // "" means idle as far as the controller knows; background processes still
 // have to be asked from Pi. Caller holds c.mu.
 func heldActivity(s *conversation) string {
+	work := heldWork(s)
 	switch {
-	case s.questionID != "":
-		return "question"
-	case s.runActive, s.aborting, s.naming, s.recapping, s.rewinding, s.compacting, s.waking, len(s.held) > 0, len(s.guestHeld) > 0, len(s.queueSteering)+len(s.queueFollowUp) > 0, s.bash.active():
-		return "turn"
-	case s.settled && s.settlement == nil:
-		return "turn" // the finished turn's native history is still being published
-	}
-	switch s.state {
-	case "idle", "rejected":
+	case len(work) == 0:
 		return ""
-	case "pending", "accepted", "starting":
-		return "turn"
+	case work[0] == "question", work[0] == "unknown":
+		return work[0]
 	}
-	return "unknown"
+	return "turn"
+}
+
+// heldWork names what heldActivity sees, in kinds the upgrade's work census
+// tells apart (work_census_linux.go): "question" first, then "turn" (the
+// person's turn, messages held or queued for it, an abort, a rewind or a
+// compaction), "command" (a `!command` the person ran through the
+// conversation) and "habitat" (Habitat's own use of the child: a title, a
+// recap, its own wake, publishing the finished turn's history). "unknown"
+// comes alone, for a state the controller cannot read as idle. Caller holds
+// c.mu.
+func heldWork(s *conversation) []string {
+	var work []string
+	if s.questionID != "" {
+		work = append(work, "question")
+	}
+	if s.runActive || s.aborting || s.rewinding || s.compacting || len(s.held) > 0 || len(s.guestHeld) > 0 || len(s.queueSteering)+len(s.queueFollowUp) > 0 {
+		work = append(work, "turn")
+	} else if s.state == "pending" || s.state == "accepted" || s.state == "starting" {
+		work = append(work, "turn")
+	}
+	if s.bash.active() {
+		work = append(work, "command")
+	}
+	if s.naming || s.recapping || s.waking || s.settled && s.settlement == nil {
+		work = append(work, "habitat")
+	}
+	if len(work) == 0 && s.state != "idle" && s.state != "rejected" {
+		work = append(work, "unknown")
+	}
+	return work
 }
 
 // backgroundActivity asks Pi's process bridge whether anything it started
 // still runs. A bridge that does not exist runs nothing; a bridge that does
 // not answer clearly is unknown, never idle.
 func (p *piRPC) backgroundActivity(ctx context.Context) string {
+	running, ok := p.runningProcesses(ctx)
+	switch {
+	case !ok:
+		return "unknown"
+	case len(running) > 0:
+		return "processes"
+	}
+	return ""
+}
+
+// runningProcesses is the bridge's records of processes that have not ended.
+// ok is false when the bridge did not answer clearly.
+func (p *piRPC) runningProcesses(ctx context.Context) ([]nativeProcess, bool) {
 	var reply struct {
 		Records  []nativeProcess `json:"records"`
 		Protocol int             `json:"protocol"`
 	}
 	if err := p.processRequest(ctx, map[string]string{"op": "list"}, &reply); err != nil {
 		if err.Error() == "extension_missing" || errors.Is(err, syscall.ENOENT) || errors.Is(err, syscall.ECONNREFUSED) {
-			return ""
+			return nil, true
 		}
-		return "unknown"
+		return nil, false
 	}
 	if reply.Protocol != 1 || reply.Records == nil {
-		return "unknown"
+		return nil, false
 	}
+	var running []nativeProcess
 	for _, r := range reply.Records {
 		switch r.Status {
 		case "exited", "killed":
 		default:
-			return "processes"
+			running = append(running, r)
 		}
 	}
-	return ""
+	return running, true
 }
 
 // busyConversation names one conversation that is doing something.

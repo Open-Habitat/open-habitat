@@ -68,6 +68,7 @@ checks = {
     "agent-workspaces.json": "agent-workspaces.schema.json",
     "agent-conversation.json": "agent-conversation.schema.json",
     "agent-conversation-list.json": "agent-conversation-list.schema.json",
+    "agent-work.json": "agent-work.schema.json",
 
     "workspace-git.json": "workspace-git.schema.json",
     "workspace-icon-suggestions.json": "workspace-icon-suggestions.schema.json",
@@ -316,6 +317,15 @@ for change in ({"lifecycle": "idle"}, {"lifecycle": None}, {"title": None}, {"ui
     must_reject("agent-conversation-list.schema.json", {**conversation_list, "sessions": [{**conversation_row, **change}]})
 for missing in ("title", "lifecycle", "agent_id", "workspace_id"):
     must_reject("agent-conversation-list.schema.json", {**conversation_list, "sessions": [{k: v for k, v in conversation_row.items() if k != missing}]})
+
+work = json.loads((BASE / "examples/agent-work.json").read_text())
+work_row = work["conversations"][1]
+for change in ({"activities": []}, {"activities": ["idle"]}, {"processes": [{"id": "p", "name": "x", "command": "make"}]}, {"workspace_id": ""}, {"uid": 123}):
+    must_reject("agent-work.schema.json", {**work, "conversations": [{**work_row, **change}]})
+for missing in ("agent_id", "activities", "processes"):
+    must_reject("agent-work.schema.json", {**work, "conversations": [{k: v for k, v in work_row.items() if k != missing}]})
+for change in ({"kind": "naming"}, {"kind": None}):
+    must_reject("agent-work.schema.json", {**work, "jobs": [{**work["jobs"][0], **change}]})
 
 # Change exactly one field of a valid reply, so a newly required field
 # cannot make every negative check pass for the wrong reason.

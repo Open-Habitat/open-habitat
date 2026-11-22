@@ -41,6 +41,10 @@ func (c *ConversationController) historyTitle(w http.ResponseWriter, r *http.Req
 // nameHistory proves a settled history has no writer before naming it. A
 // manual name needs only Pi's session writer; generation keeps its RPC path.
 func (c *ConversationController) nameHistory(w http.ResponseWriter, r *http.Request, id, workspaceID, given string) {
+	c.mu.Lock()
+	c.beginTitleWork(id)
+	c.mu.Unlock()
+	defer c.endTitleWork(id)
 	operation := "history"
 	if given != "" {
 		operation = "given"

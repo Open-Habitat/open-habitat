@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -44,8 +43,30 @@ type upgradeUser struct {
 	UserUnitsObservable bool     `json:"user_units_observable"`
 	Daemon              bool     `json:"daemon"`
 	Admitted            bool     `json:"admitted"`
-	ActiveTurns         int      `json:"active_turns"`
-	TurnsObservable     bool     `json:"turns_observable"`
+	// ActiveTurns is the work an unattended upgrade waits out: every
+	// conversation of a live daemon with a turn, question, command,
+	// Habitat's own work or an unknown state, and every handle-less job.
+	ActiveTurns     int  `json:"active_turns"`
+	TurnsObservable bool `json:"turns_observable"`
+	// BackgroundProcesses run until someone stops them (a preview server),
+	// so they do not hold the quiet window; the approval names them.
+	BackgroundProcesses int `json:"background_processes"`
+	// WorkCensus says what the counts rest on: "daemon" (the predecessor's
+	// work census), "list_only" (a predecessor without it: the conversation
+	// list, which sees only controller states) or "unavailable".
+	WorkCensus string             `json:"work_census,omitempty"`
+	ActiveWork []upgradeWorkEntry `json:"active_work,omitempty"`
+}
+
+// upgradeWorkEntry names one piece of daemon work in the plan: a
+// conversation with its activities and its running processes' labels, or a
+// handle-less job.
+type upgradeWorkEntry struct {
+	AgentID     string   `json:"agent_id,omitempty"`
+	WorkspaceID string   `json:"workspace_id,omitempty"`
+	Activities  []string `json:"activities,omitempty"`
+	Processes   []string `json:"processes,omitempty"`
+	Job         string   `json:"job,omitempty"`
 }
 type nativeUpgrade struct {
 	site    Site
@@ -504,8 +525,15 @@ func gatewayStateDigest(name string, uid uint32) (string, error) {
 	return hex.EncodeToString(h[:]), nil
 }
 func userCommand(ctx context.Context, u upgradeUser, path string, args ...string) ([]byte, error) {
+	b, _, e := userCommandOutput(ctx, u, path, args...)
+	return b, e
+}
+
+// userCommandOutput also returns the command's bounded stderr, which carries
+// the product CLI's JSON error.
+func userCommandOutput(ctx context.Context, u upgradeUser, path string, args ...string) ([]byte, []byte, error) {
 	if !siteIDRE.MatchString(u.Name) || u.UID == 0 || u.GID == 0 {
-		return nil, ErrTrust
+		return nil, nil, ErrTrust
 	}
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
@@ -515,13 +543,25 @@ func userCommand(ctx context.Context, u upgradeUser, path string, args ...string
 	c.Env = []string{"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "HOME=/home/" + u.Name, "USER=" + u.Name, "LOGNAME=" + u.Name, "LANG=C", "LC_ALL=C", "XDG_RUNTIME_DIR=/run/user/" + id, "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/" + id + "/bus"}
 	c.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: u.UID, Gid: u.GID, Groups: []uint32{u.GID}}}
 	c.WaitDelay = time.Second
-	b := &packageOutput{}
+	b, stderr := &packageOutput{}, &boundedStderr{}
 	c.Stdout = b
-	c.Stderr = io.Discard
+	c.Stderr = stderr
 	if e := c.Run(); e != nil {
-		return nil, ErrNativeApply
+		return nil, stderr.data, ErrNativeApply
 	}
-	return b.data.Bytes(), nil
+	return b.data.Bytes(), stderr.data, nil
+}
+
+// boundedStderr keeps the first 64 KiB and drops the rest without failing
+// the command: stderr was discarded before it was read, and a chatty one
+// must not turn a success into a failure.
+type boundedStderr struct{ data []byte }
+
+func (b *boundedStderr) Write(p []byte) (int, error) {
+	if room := 64<<10 - len(b.data); room > 0 {
+		b.data = append(b.data, p[:min(room, len(p))]...)
+	}
+	return len(p), nil
 }
 
 // userUnits lists what a user manager is running, for the operator's preview
@@ -700,15 +740,131 @@ func observeUpgradeWork(ctx context.Context, s Site, binary string) ([]upgradeUs
 		u.UserUnits, u.UserUnitsObservable = userUnits(ctx, u)
 		if u.Daemon {
 			// Inventory is observational, not an in-flight mutation barrier. A live
-			// daemon always needs interruption consent even if this list says idle.
-			data, e := userCommand(ctx, u, binary, "agent", "conversation", "list", "--json")
-			if e == nil {
-				u.ActiveTurns, u.TurnsObservable = activeTurns(data)
-			}
+			// daemon always needs interruption consent even if this says idle.
+			observeDaemonWork(ctx, &u, binary)
 		}
 		out = append(out, u)
 	}
 	return out, nil
+}
+
+// observeDaemonWork reads the predecessor's work census and, from a
+// predecessor whose CLI does not know it, the conversation list. Only that
+// CLI's own refusal of the arguments selects the list: any other failure of
+// the census leaves the work unobservable rather than reading less.
+func observeDaemonWork(ctx context.Context, u *upgradeUser, binary string) {
+	readDaemonWork(u, func(args ...string) ([]byte, []byte, error) { return userCommandOutput(ctx, *u, binary, args...) })
+}
+
+func readDaemonWork(u *upgradeUser, run func(...string) ([]byte, []byte, error)) {
+	u.WorkCensus = "unavailable"
+	data, refusal, e := run("agent", "work", "show", "--json")
+	if e == nil {
+		if census, ok := parseWorkCensus(data); ok {
+			u.ActiveTurns, u.BackgroundProcesses, u.ActiveWork = census.counts()
+			u.TurnsObservable, u.WorkCensus = true, "daemon"
+		}
+		return
+	}
+	if !censusUnknownToCLI(refusal) {
+		return
+	}
+	data, _, e = run("agent", "conversation", "list", "--json")
+	if e == nil {
+		u.ActiveTurns, u.TurnsObservable = activeTurns(data)
+		if u.TurnsObservable {
+			u.WorkCensus = "list_only"
+		}
+	}
+}
+
+// censusUnknownToCLI is a CLI refusing `agent work show` before it asks the
+// daemon: a release without the census. The daemon's census never answers
+// invalid_arguments.
+func censusUnknownToCLI(stderr []byte) bool {
+	var reply struct {
+		SchemaVersion int `json:"schema_version"`
+		Error         struct {
+			Code string `json:"code"`
+		} `json:"error"`
+	}
+	return json.Unmarshal(stderr, &reply) == nil && reply.SchemaVersion == 1 && reply.Error.Code == "invalid_arguments"
+}
+
+type workCensus struct {
+	Conversations []struct {
+		AgentID     string   `json:"agent_id"`
+		WorkspaceID string   `json:"workspace_id"`
+		Activities  []string `json:"activities"`
+		Processes   []struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		} `json:"processes"`
+	} `json:"conversations"`
+	Jobs []struct {
+		Kind    string `json:"kind"`
+		AgentID string `json:"agent_id"`
+	} `json:"jobs"`
+}
+
+// parseWorkCensus reads the predecessor's `agent work show --json` reply. A
+// reply without the census schema is unobservable.
+func parseWorkCensus(data []byte) (workCensus, bool) {
+	var reply struct {
+		Data struct {
+			Result struct {
+				SchemaVersion int `json:"schema_version"`
+				workCensus
+			} `json:"result"`
+		} `json:"data"`
+	}
+	r := &reply.Data.Result
+	if json.Unmarshal(data, &reply) != nil || r.SchemaVersion != 1 || r.Conversations == nil || r.Jobs == nil {
+		return workCensus{}, false
+	}
+	return r.workCensus, true
+}
+
+// counts sorts the census into what the quiet window waits for and what the
+// approval names. A conversation is active work when anything but its
+// background processes holds it, including an activity this release does
+// not know and a conversation listed with none; its processes are counted
+// either way. Every job is active work.
+func (w workCensus) counts() (active, processes int, named []upgradeWorkEntry) {
+	for _, c := range w.Conversations {
+		busy := len(c.Activities) == 0
+		for _, a := range c.Activities {
+			if a != "processes" {
+				busy = true
+			}
+		}
+		if busy {
+			active++
+		}
+		labels := []string{}
+		for _, p := range c.Processes {
+			label := p.Name
+			if label == "" {
+				label = p.ID
+			}
+			labels = append(labels, label)
+		}
+		processes += len(c.Processes)
+		if len(c.Processes) == 0 && slices.Contains(c.Activities, "processes") {
+			// Named as running but without records: still one to stop.
+			processes++
+		}
+		named = append(named, upgradeWorkEntry{AgentID: c.AgentID, WorkspaceID: c.WorkspaceID, Activities: c.Activities, Processes: labels})
+	}
+	for _, j := range w.Jobs {
+		active++
+		job := j.Kind
+		if job == "" {
+			job = "unknown"
+		}
+		named = append(named, upgradeWorkEntry{AgentID: j.AgentID, Job: job})
+	}
+	return active, processes, named
 }
 
 // activeTurns counts the daemon work an upgrade would cut in the
@@ -728,9 +884,10 @@ func observeUpgradeWork(ctx context.Context, s Site, binary string) ([]upgradeUs
 // reply without the list's schema counts as active or unobservable.
 //
 // The count is the quiet-window hint, not consent: interruptionRequired asks
-// consent for every live daemon. The list is all a published predecessor
-// offers, and it cannot see daemon work that leaves a handle idle (a bash
-// command, a title, Pi's background processes) or runs without one.
+// consent for every live daemon. The list is read only from a predecessor
+// without the work census, and it cannot see daemon work that leaves a
+// handle idle (a bash command, a title, Pi's background processes) or runs
+// without one; the plan says so with work_census "list_only".
 func activeTurns(data []byte) (int, bool) {
 	var reply struct {
 		Data struct {

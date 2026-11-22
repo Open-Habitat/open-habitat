@@ -10,6 +10,7 @@ import (
 	"errors"
 	"golang.org/x/sys/unix"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -123,6 +124,11 @@ func BuildUpgradePlan(ctx context.Context, sitePath string) (UpgradePlan, error)
 	} else {
 		p.Work = work
 		p.InterruptionRequired = interruptionRequired(work)
+		// Long-lived processes would hold every quiet window, so they are
+		// not waited for; the approval names that they stop.
+		if slices.ContainsFunc(work, func(u upgradeUser) bool { return u.BackgroundProcesses > 0 }) {
+			p.Actions = append(p.Actions, Action{"upgrade.background_processes", "planned", "background_processes_stop"})
+		}
 	}
 	binding, e := inputBinding(ctx, sitePath)
 	if e != nil {
