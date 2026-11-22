@@ -209,6 +209,9 @@ func TestMicrosoftDaemonStartFollowsTheTenant(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	c.Start(ctx)
+	// Stop waits for the catalog's background work, which otherwise may
+	// still write into the home while TempDir removes it.
+	defer c.Stop()
 	deadline := time.Now().Add(5 * time.Second)
 	for m.Misaligned(env, address) {
 		if time.Now().After(deadline) {
