@@ -47,6 +47,21 @@ first disconnects, so disconnect when a step is done. Closing your
 connection never closes the person's browser or their windows. Leave pages
 you opened only if the person will want them; close the rest.
 
+## Files and site settings
+
+Downloads stay on the server, not on the person's laptop. The initial folder is
+`~/.local/share/open-habitat/browser/profile/Downloads`; the person can find
+files in Chrome's Downloads page (`chrome://downloads`). Check
+`chrome://settings/downloads` if they have chosen another folder. Verify every
+expected file finished downloading before reporting success; allowing multiple
+downloads does not guarantee that a site delivered all of them.
+
+Existing site permissions and browser choices belong to the person. If a popup,
+download or sign-in is blocked, explain which setting the site needs rather
+than bypassing a security warning or silently overriding their choice. PDFs
+normally open in Chrome; save a copy when the task needs a file. Do not change
+PDF handling globally just to collect one document.
+
 ## When the person must act
 
 Some steps belong to the person: signing in with their password, a captcha,

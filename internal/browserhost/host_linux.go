@@ -101,8 +101,9 @@ func Run(ctx context.Context, cfg Config) error {
 			return err
 		}
 	}
-	if err := firstPreferences(cfg.Profile); err != nil {
-		log.Warn("browser_profile", "outcome", "ignored", "reason", "preferences_unwritable")
+	if err := preparePreferences(cfg.Profile); err != nil {
+		log.Warn("browser_profile", "outcome", "failed", "reason", "preferences_unavailable")
+		return err
 	}
 	cookie := filepath.Join(cfg.Dir, cookieFile)
 	if err := writeCookie(cookie); err != nil {
@@ -215,26 +216,15 @@ func chromeArgs(cfg Config) []string {
 		// Without a desktop keyring Chrome would wait for one; the profile
 		// is protected by the home's permissions, like gh's and Pi's tokens.
 		"--password-store=basic",
+		// Site defaults belong to this server browser, not the person's other
+		// Chrome installations via account sync.
+		"--disable-sync",
 		"--no-first-run",
 		"--no-default-browser-check",
 		"--window-position=0,0",
 		fmt.Sprintf("--window-size=%d,%d", cfg.Width, cfg.Height),
 	}
 	return append(args, cfg.ChromeArgs...)
-}
-
-// firstPreferences turns session restore on in a new profile, so a browser
-// stopped for idleness comes back with its windows and session cookies.
-func firstPreferences(profile string) error {
-	dir := filepath.Join(profile, "Default")
-	path := filepath.Join(dir, "Preferences")
-	if _, err := os.Lstat(path); err == nil {
-		return nil
-	}
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return err
-	}
-	return os.WriteFile(path, []byte(`{"session":{"restore_on_startup":1},"browser":{"has_seen_welcome_page":true}}`), 0o600)
 }
 
 // ownDir accepts only the person's own 0700 directory.
