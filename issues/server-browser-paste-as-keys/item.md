@@ -19,3 +19,9 @@ preparation: ready
 Implement Jari's decision in server-browser-paste-flow (22.11.2026): Ctrl/Cmd+V on the
 server browser types the clipboard text as keystrokes directly, no popover; the text
 never reaches the remote clipboard; fallbacks and the focus/eye details per that decision.
+
+## Decisions
+
+### 2026-11-22T12:51:52Z · @jari
+
+Jari 22.11.2026: for the edge cases (characters that cannot be typed, very long text, multi-line text where Enter could submit) do not fall back to the remote clipboard; show a warning that paste does not work in this situation and why. The Leikepöytä popover's explicit 'Liitä sivulle' stays as the deliberate clipboard route.
