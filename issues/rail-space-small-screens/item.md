@@ -3,7 +3,7 @@ created: 2026-11-22
 updated: 2026-11-22
 type: improvement
 reporter: jari
-status: open
+status: testing
 priority: normal
 provenance: chat
 source_ref: habitat:pi-current/2026-11-22-rail-space
@@ -24,10 +24,11 @@ get only a few rows each and scroll in tight separate boxes. He asks how the
 space could be used better, and where each of these rail items could live
 instead ("mihin ja minne näitä voisi laittaa").
 
-Next action: a prototype round (one view: the rail at laptop height, e.g.
-1440×800 and 1280×720 CSS px) showing distinct directions for relocating or
-compacting the rail's fixed items so conversations and workspaces get the room.
-Jari picks a direction; implementation waits for that.
+Next action: Jari reviews round 3 (result.md, *Kierros 3*): the
+utility-threshold allocation rule, its default bounds and the three
+directions (A Tasan, B Keskustelut ensin, C Leveämpi). Implementation
+waits for his pick; the rule to implement is written out there and in the
+round's `model.ts`.
 
 ## Decisions
 
