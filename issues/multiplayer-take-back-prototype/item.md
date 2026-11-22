@@ -1,15 +1,14 @@
 ---
 created: 2026-11-21
-updated: 2026-11-21
+updated: 2026-11-22
 type: feature
 reporter: jari
 status: done
 priority: normal
-related: ['@multiplayer-membership']
+closed: 2026-11-21
 lane: multiplayer-take-back
 lane_seq: 1
 preparation: ready
-closed: 2026-11-21
 ---
 
 # Prototype: taking back a participant's full rights

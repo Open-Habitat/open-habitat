@@ -1,6 +1,6 @@
 ---
 created: 2026-11-21
-updated: 2026-11-21
+updated: 2026-11-22
 type: feature
 status: done
 priority: normal
@@ -10,11 +10,10 @@ source_ref: taskfleet:01m7ys433k48ngv5prdxv58f4e/adr-0038-implementation:browser
 originating_run: 01m7ys433k48ngv5prdxv58f4e
 originating_run_kind: technical-decision
 preparation: ready
-related: ['@multiplayer-conversations']
+closed_by: agent
 lane: multiplayer
 lane_seq: 6
 closed: 2026-11-21
-closed_by: agent
 ---
 
 # Multiplayer: owner card and participant strip in the browser
