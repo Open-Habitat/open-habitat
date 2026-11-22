@@ -432,6 +432,8 @@
   overflow: hidden;
 }
 .sb-sheet-head {
+  position: relative;
+  z-index: 4;
   display: flex;
   align-items: center;
   gap: var(--ah-s3);
@@ -439,8 +441,29 @@
   border-bottom: 1px solid var(--ah-line);
 }
 .sb-sheet-head h2 {
-  margin: 0 auto 0 0;
+  margin: 0;
   font-size: var(--ah-size-title);
+  flex: none;
+}
+.sb-sheet-head > button {
+  flex: none;
+}
+.sb-bar-slot {
+  flex: 1;
+  min-width: 0;
+}
+@media (max-width: 900px) {
+  .sb-sheet-head h2,
+  .sb-bar-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 }
 .sb-sheet-error {
   padding: var(--ah-s2) var(--ah-s4);
@@ -450,7 +473,7 @@
   flex: 1;
   min-height: 0;
   display: flex;
-  padding: calc(var(--ah-s4) + var(--ah-s2)) var(--ah-s3) var(--ah-s3);
+  padding: var(--ah-s3);
   background: var(--ah-surface-2);
 }
 
@@ -461,7 +484,6 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  padding-top: calc(var(--ah-s4) + var(--ah-s1));
   border: 3px dashed var(--ah-line-strong);
   border-radius: var(--ah-r-lg);
   background: var(--ah-surface);
@@ -470,47 +492,38 @@
   border-style: solid;
   border-color: var(--ah-accent);
 }
-.sb-tab {
-  position: absolute;
-  top: -17px;
-  z-index: 3;
+.sb-bar-controls,
+.sb-bar-turn {
   display: flex;
   align-items: center;
   gap: var(--ah-s2);
   min-width: 0;
-  padding: 2px 4px 2px 10px;
-  background: var(--ah-surface);
-  border: 1px solid var(--ah-line-strong);
-  border-radius: var(--ah-r-pill);
   font-size: var(--ah-size-meta);
 }
-.sb-tab > svg {
+.sb-bar-turn > svg {
   width: 16px;
   height: 16px;
   flex: none;
 }
-.sb-tab strong {
+.sb-bar-turn strong {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.sb-tab-turn {
-  left: var(--ah-s3);
+.sb-bar-turn button,
+.sb-bar-clip {
+  flex: none;
 }
-.sb-frame[data-control="person"] .sb-tab-turn {
-  border-color: var(--ah-accent);
-}
-.sb-tab-clip {
-  right: var(--ah-s3);
-  padding: 2px;
+.sb-bar-clip {
+  margin-left: auto;
 }
 .sb-clip-pop {
   position: absolute;
-  top: var(--ah-s4);
+  top: 100%;
   right: var(--ah-s3);
   z-index: 4;
   width: min(400px, calc(100% - 2 * var(--ah-s3)));
-  max-height: calc(100% - 2 * var(--ah-s4));
+  max-height: min(600px, calc(100dvh - 100px));
   overflow: auto;
   display: grid;
   gap: var(--ah-s3);
@@ -600,9 +613,11 @@
   font-size: var(--ah-size-meta);
 }
 .sb-says {
-  align-self: flex-start;
-  max-width: calc(100% - 2 * var(--ah-s3));
-  margin: 0 var(--ah-s3) var(--ah-s2);
+  flex: 1;
+  min-width: 0;
+  max-height: 3.5em;
+  overflow: auto;
+  margin: 0;
   padding: var(--ah-s1) var(--ah-s3);
   border: 1px solid var(--ah-line);
   border-radius: var(--ah-r-md);
@@ -774,28 +789,28 @@
     height: 100dvh;
     border-radius: 0;
   }
-  /* On a phone the frame flows: the picture gets the width, and what
-   * would cover it joins the column under it. */
   .sb-sheet-screen {
-    padding: var(--ah-s4) var(--ah-s2) var(--ah-s2);
+    padding: var(--ah-s2);
   }
-  .sb-tab {
-    font-size: var(--ah-size-meta);
+  .sb-sheet-head {
+    gap: var(--ah-s1);
+    padding: var(--ah-s2);
+  }
+  .sb-bar-controls,
+  .sb-bar-turn {
     gap: var(--ah-s1);
   }
-  .sb-tab-turn {
-    left: var(--ah-s1);
-    max-width: calc(100% - 7.5rem);
+  .sb-bar-turn {
+    flex: 1;
   }
-  .sb-tab-clip {
-    right: var(--ah-s1);
+  .sb-bar-turn:has(+ .sb-says) {
+    flex: 0 0 auto;
   }
-  .sb-clip-pop {
-    position: static;
-    width: auto;
-    margin: 0 var(--ah-s2) var(--ah-s2);
-    box-shadow: none;
-    max-height: none;
+  .sb-bar-turn:has(+ .sb-says) strong {
+    max-width: 4em;
+  }
+  .sb-says {
+    padding: var(--ah-s1);
   }
   .sb-mid {
     left: var(--ah-s2);

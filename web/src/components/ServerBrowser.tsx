@@ -1,10 +1,18 @@
-import { type CSSProperties, type ReactNode, useEffect } from "react";
+import {
+  type CSSProperties,
+  createContext,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import {
   Dialog as AriaDialog,
   Heading,
   Modal,
   ModalOverlay,
 } from "react-aria-components";
+import { createPortal } from "react-dom";
 import type {
   BrowserPointer,
   BrowserStatus,
@@ -376,8 +384,10 @@ export function BrowserRailRow({
   );
 }
 
-/** The sheet: the live view of the whole browser. The frame inside it
- * (BrowserFrame) says who drives and takes and gives back control. */
+// The viewer owns its controls; the sheet supplies their place in the one header.
+const BrowserBarTarget = createContext<HTMLElement | null>(null);
+
+/** The sheet: the live view of the whole browser. */
 export function BrowserSheet({
   mode,
   running,
@@ -396,6 +406,7 @@ export function BrowserSheet({
   onStop: () => void;
 }) {
   const txt = useText(serverBrowserText);
+  const [barTarget, setBarTarget] = useState<HTMLDivElement | null>(null);
   return (
     <ModalOverlay
       className="ah-overlay sb-sheet-overlay"
@@ -412,17 +423,21 @@ export function BrowserSheet({
           data-mode={mode}
           aria-label={txt.ownBrowser}
         >
-          <div className="sb-sheet-head">
+          <div className="sb-sheet-head" data-testid="browser-top-bar">
             <Heading slot="title">{txt.ownBrowser}</Heading>
+            <div className="sb-bar-slot" ref={setBarTarget} />
             {running ? (
               <ControlButton
                 size="row"
                 variant="quiet"
                 data-testid="browser-stop"
+                aria-label={txt.stop}
+                title={txt.stop}
                 isDisabled={!!busy}
                 onPress={onStop}
               >
-                {txt.stop}
+                <Icon name="stop" />
+                <span className="sb-bar-label">{txt.stop}</span>
               </ControlButton>
             ) : null}
             <ControlButton
@@ -449,7 +464,9 @@ export function BrowserSheet({
                   : txt.errors.start}
             </p>
           ) : null}
-          <div className="sb-sheet-screen">{children}</div>
+          <BrowserBarTarget.Provider value={barTarget}>
+            <div className="sb-sheet-screen">{children}</div>
+          </BrowserBarTarget.Provider>
           <p className="sb-truth">{txt.truth}</p>
         </AriaDialog>
       </Modal>
@@ -457,12 +474,12 @@ export function BrowserSheet({
   );
 }
 
-/** Who the agent is for the turn tab, as the app layer reads the host. */
+/** Who the agent is for the turn controls, as the app layer reads the host. */
 export type FrameAgent = "idle" | "busy" | "waits";
 
 /** The frame around the live picture (Kehys): its border is the turn
- * (solid accent: the person, dashed: the agent), a tab on the left holds
- * the turn and Done, a tab on the right opens the clipboard. The picture
+ * (solid accent: the person, dashed: the agent). Turn and clipboard controls
+ * appear in the sheet's top bar. The picture
  * itself is `children`; the app layer owns noVNC and every decision. */
 export function BrowserFrame({
   control,
@@ -524,6 +541,7 @@ export function BrowserFrame({
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
   }, [dismiss]);
+  const barTarget = useContext(BrowserBarTarget);
   const mine = control === "person";
   const turn = mine
     ? txt.frame.you
@@ -532,59 +550,75 @@ export function BrowserFrame({
       : agent === "waits"
         ? txt.frame.agentWaits
         : txt.frame.agent;
-  return (
-    <div
-      className="sb-frame"
-      data-testid="browser-frame"
-      data-control={control}
-      data-agent={agent}
-      data-waiting={waiting || undefined}
-    >
-      <div className="sb-tab sb-tab-turn" data-testid="browser-turn">
+  const controls = (
+    <div className="sb-bar-controls">
+      <div className="sb-bar-turn" data-testid="browser-turn">
         <Icon name={mine ? "user" : "agent"} />
-        <strong>{waiting ? txt.frame.waiting : turn}</strong>
+        <strong title={waiting ? txt.frame.waiting : turn}>
+          {waiting ? txt.frame.waiting : turn}
+        </strong>
         {mine ? (
           <ControlButton
             size="inline"
             variant="primary"
             data-testid="browser-give-back"
+            aria-label={txt.frame.done}
+            title={txt.frame.done}
             isDisabled={busy}
             onPress={onDone}
           >
             <Icon name="check" />
-            {txt.frame.done}
+            <span className="sb-bar-label">{txt.frame.done}</span>
           </ControlButton>
         ) : waiting ? (
           <ControlButton
             size="inline"
             data-testid="browser-cancel-wait"
+            aria-label={txt.frame.cancel}
+            title={txt.frame.cancel}
             onPress={onCancelWait}
           >
-            {txt.frame.cancel}
+            <Icon name="cross" />
+            <span className="sb-bar-label">{txt.frame.cancel}</span>
           </ControlButton>
         ) : (
           <ControlButton
             size="inline"
             data-testid="browser-take-control"
+            aria-label={txt.takeControl}
+            title={txt.takeControl}
             isDisabled={busy}
             onPress={onTake}
           >
-            {txt.takeControl}
+            <Icon name="user" />
+            <span className="sb-bar-label">{txt.takeControl}</span>
           </ControlButton>
         )}
       </div>
-      <div className="sb-tab sb-tab-clip">
+      {says ? (
+        <section
+          className="sb-says"
+          data-testid="browser-says"
+          aria-label={txt.frame.says}
+          // biome-ignore lint/a11y/noNoninteractiveTabindex: the bounded request region must be keyboard-scrollable
+          tabIndex={0}
+        >
+          <b>{txt.frame.says}:</b> <span>{says}</span>
+        </section>
+      ) : null}
+      <div className="sb-bar-clip">
         <ControlButton
           size="inline"
           variant="quiet"
           data-testid="browser-clip-toggle"
+          aria-label={txt.clip.tab}
+          title={txt.clip.tab}
           aria-expanded={clipOpen}
           aria-controls="sb-clip-pop"
           onPress={onClipToggle}
         >
           <Icon name="copy" />
-          {txt.clip.tab}
-          <Icon name="down" />
+          <span className="sb-bar-label">{txt.clip.tab}</span>
         </ControlButton>
       </div>
       {clipOpen ? (
@@ -597,11 +631,17 @@ export function BrowserFrame({
           {clipboard}
         </section>
       ) : null}
-      {says ? (
-        <p className="sb-says" data-testid="browser-says">
-          <b>{txt.frame.says}:</b> <span>{says}</span>
-        </p>
-      ) : null}
+    </div>
+  );
+  return (
+    <div
+      className="sb-frame"
+      data-testid="browser-frame"
+      data-control={control}
+      data-agent={agent}
+      data-waiting={waiting || undefined}
+    >
+      {barTarget ? createPortal(controls, barTarget) : controls}
       <div className="sb-frame-screen">
         {children}
         {!mine && !waiting && !mid ? (

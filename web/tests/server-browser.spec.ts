@@ -231,7 +231,9 @@ test("@server-browser opens from the rail; looking sends no input, control does"
 
   // The agent is mid-step: a click only asks, and reaches nothing.
   await fixture(page, "agent=on");
-  await expect(frame.getByTestId("browser-take-control")).toBeVisible();
+  await expect(
+    page.getByTestId("browser-top-bar").getByTestId("browser-take-control"),
+  ).toBeVisible();
   const before = await input(page);
   await expect(frame).toHaveAttribute("data-agent", "busy");
   await canvas.click({ position: { x: 80, y: 80 } });
@@ -320,7 +322,7 @@ test("@server-browser the clipboard: paste in by shortcut, field and keystrokes,
   await expect(toast).not.toBeEmpty();
   await expect(toast).not.toContainText(secret);
 
-  // The clipboard tab: the paste field sends with its own Ctrl+V and
+  // The clipboard popover: the paste field sends with its own Ctrl+V and
   // clears itself.
   await button(page, "browser-clip-toggle").click();
   const pop = page.getByTestId("browser-clipboard");
@@ -527,8 +529,14 @@ test("@server-browser the frame fits a phone", async ({ page }, testInfo) => {
   test.setTimeout(60000);
   await signIn(page, true);
   await openView(page);
-  await page.setViewportSize({ width: 390, height: 844 });
-  await button(page, "browser-take-control").click();
+  await page.setViewportSize({ width: 320, height: 844 });
+  const bar = page.getByTestId("browser-top-bar");
+  await fixture(
+    page,
+    `request=${encodeURIComponent("Please sign in to the example website, then return control when finished.")}&window=0`,
+  );
+  await expect(bar.getByTestId("browser-says")).toBeVisible();
+  await bar.getByTestId("browser-take-control").click();
   await expect(page.getByTestId("browser-sheet")).toHaveAttribute(
     "data-mode",
     "control",
@@ -536,8 +544,37 @@ test("@server-browser the frame fits a phone", async ({ page }, testInfo) => {
   await button(page, "browser-clip-toggle").click();
   await expect(page.getByTestId("browser-clipboard")).toBeVisible();
   const width = await page.evaluate(() => document.documentElement.scrollWidth);
-  expect(width).toBeLessThanOrEqual(390);
-  // The picture keeps a usable size under the tabs and the popover.
+  expect(width).toBeLessThanOrEqual(320);
+  // All actions stay in the one bar without wrapping or overlapping at phone width.
+  const controls = [
+    "browser-give-back",
+    "browser-clip-toggle",
+    "browser-stop",
+    "browser-sheet-close",
+  ];
+  const boxes = await Promise.all(
+    controls.map((id) => bar.getByTestId(id).boundingBox()),
+  );
+  const first = boxes[0];
+  if (!first) throw new Error("Missing top-bar control");
+  for (let i = 0; i < boxes.length; i++) {
+    const box = boxes[i];
+    if (!box) throw new Error("Missing top-bar control");
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(320);
+    expect(
+      Math.abs(box.y + box.height / 2 - (first.y + first.height / 2)),
+    ).toBeLessThan(2);
+    const previous = boxes[i - 1];
+    if (previous)
+      expect(box.x).toBeGreaterThanOrEqual(previous.x + previous.width);
+  }
+  const popBox = await page.getByTestId("browser-clipboard").boundingBox();
+  const barBox = await bar.boundingBox();
+  if (!popBox || !barBox) throw new Error("Missing bar or clipboard popover");
+  expect(popBox.y).toBeGreaterThanOrEqual(barBox.y + barBox.height - 1);
+  expect(popBox.x + popBox.width).toBeLessThanOrEqual(320);
+  // The picture keeps a usable size beneath the bar and popover.
   const canvasBox = await page
     .getByTestId("browser-viewer")
     .locator("canvas")
