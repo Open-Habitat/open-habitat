@@ -1321,6 +1321,17 @@ const fi = {
       lead: "Sulkee selaimen suuren näkymän. Selain jää käyntiin palvelimelle.",
       try: "Sulje näkymä",
     },
+    B09: {
+      name: "Salasana näppäilyinä",
+      lead: "Liitä tähän yksi salasana omalta laitteeltasi. Merkit pysyvät peitettyinä.",
+      know: "Pidä salasananhallinta omalla laitteellasi. Sivulle syötetty salasana ja kirjautunut istunto eivät ole agentilta piilossa.",
+    },
+    B10: {
+      name: "Kirjoita näppäilyinä",
+      lead: "Kirjoittaa salasanan sivun valittuun kenttään ja tyhjentää tämän kentän.",
+      know: "Ei käytä etäkoneen leikepöytää. Valitse sivun salasanakenttä ennen lähettämistä.",
+      grey: "Ota selaimen ohjaus, odota yhteyttä ja syötä salasana ensin.",
+    },
     H01: {
       name: "Keskustelun avustaja",
       lead: "Näyttää avustajan kierroksen tilan ja onko työ yhdistetty.",
@@ -3297,6 +3308,17 @@ export const explainModeText = catalog(fi, {
       name: "Close view",
       lead: "Closes the large browser view. The browser keeps running on the server.",
       try: "Close view",
+    },
+    B09: {
+      name: "Password as keystrokes",
+      lead: "Paste one password from your own device here. Characters stay masked.",
+      know: "Keep your password manager on your device. The entered password and signed-in session are not hidden from the agent.",
+    },
+    B10: {
+      name: "Type as keystrokes",
+      lead: "Types the password into the selected page field and clears this field.",
+      know: "Does not use the remote clipboard. Select the page's password field before sending.",
+      grey: "Take control, wait for the connection and enter a password first.",
     },
     H01: {
       name: "Conversation's helper",

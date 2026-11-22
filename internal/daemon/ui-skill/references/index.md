@@ -14,6 +14,7 @@ A label alone does not establish that a control is available to this person.
 
 - [app/BrowserConversation.tsx](app--BrowserConversation.tsx.md)
 - [app/BrowserShell.tsx](app--BrowserShell.tsx.md)
+- [app/BrowserViewer.tsx](app--BrowserViewer.tsx.md)
 - [app/HelperArchiveFlow.tsx](app--HelperArchiveFlow.tsx.md)
 - [app/HistoryView.tsx](app--HistoryView.tsx.md)
 - [app/SoundSettings.tsx](app--SoundSettings.tsx.md)
@@ -47,6 +48,7 @@ A label alone does not establish that a control is available to this person.
 - [components/Primitives.tsx](components--Primitives.tsx.md)
 - [components/QuickTooltip.tsx](components--QuickTooltip.tsx.md)
 - [components/ServerAccess.tsx](components--ServerAccess.tsx.md)
+- [components/ServerBrowser.tsx](components--ServerBrowser.tsx.md)
 - [components/SettingsSearch.tsx](components--SettingsSearch.tsx.md)
 - [components/Switcher.tsx](components--Switcher.tsx.md)
 - [components/Terminal.tsx](components--Terminal.tsx.md)

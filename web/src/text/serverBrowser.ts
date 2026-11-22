@@ -78,7 +78,10 @@ const fi = {
   },
   clip: {
     tab: "Leikepöytä",
-    label: "Teksti sivulle",
+    password: "Salasana näppäilyinä",
+    passwordNote:
+      "Salasana menee sivulle eikä ole agentilta piilossa. Pidä salasananhallinta omalla laitteellasi.",
+    label: "Tavallinen teksti sivulle",
     placeholder: "Liitä tai kirjoita tähän",
     hintKeys: "⌘/Ctrl+V liittää suoraan sivulle. Jos se ei toimi, liitä tähän.",
     hintTouch: "Liitä tai kirjoita tähän ja lähetä sivulle.",
@@ -86,14 +89,14 @@ const fi = {
     type: "Kirjoita näppäilyinä",
     hide: "Piilota teksti",
     keysNote:
-      "Näppäilyinä toimii sivuilla, jotka estävät liittämisen, eikä käy leikepöydän kautta, mutta vain kirjaimilla a–z, numeroilla ja tavallisilla välimerkeillä. Teksti lähtee vain sivulle, ja kenttä tyhjenee lähetyksen jälkeen.",
+      "Näppäilyt toimivat myös sivuilla, jotka estävät liittämisen. Kenttä tyhjenee lähetyksen jälkeen.",
     enterWarn: (n: number) =>
       `Tekstissä on ${n === 1 ? "rivinvaihto" : `${n} rivinvaihtoa`}. Ne lähtevät Enter-painalluksina, mikä voi lähettää lomakkeen. Paina uudelleen, jos haluat sen.`,
     copySelection: "Kopioi valinta",
     copied: "Kopioitu etäsivulta",
     copiedText: "Kopioitu teksti",
     copyLocal: "Kopioi koneellesi",
-    note: "Liitetty teksti menee vain sivulle. Etäkoneen leikepöytä tyhjennetään, kun annat ohjauksen takaisin.",
+    note: "Etäkoneen leikepöytä tyhjennetään, kun annat ohjauksen takaisin.",
   },
   toast: {
     took: "Sinä ohjaat. Agentti odottaa.",
@@ -202,7 +205,10 @@ export const serverBrowserText = catalog(fi, {
   },
   clip: {
     tab: "Clipboard",
-    label: "Text for the page",
+    password: "Password as keystrokes",
+    passwordNote:
+      "The password goes to the page and is not hidden from the agent. Keep your password manager on your own device.",
+    label: "Ordinary text for the page",
     placeholder: "Paste or type here",
     hintKeys:
       "⌘/Ctrl+V pastes straight into the page. If that doesn’t work, paste here.",
@@ -211,14 +217,14 @@ export const serverBrowserText = catalog(fi, {
     type: "Type as keystrokes",
     hide: "Hide text",
     keysNote:
-      "Keystrokes work on sites that block pasting and do not use the clipboard, but only for letters a–z, digits and common punctuation. The text goes only to the page, and this field clears after sending.",
+      "Keystrokes also work on sites that block pasting. The field clears after sending.",
     enterWarn: (n: number) =>
       `The text has ${n === 1 ? "a line break" : `${n} line breaks`}. They are sent as Enter, which may submit a form. Press again if you want that.`,
     copySelection: "Copy selection",
     copied: "Copied on the remote page",
     copiedText: "Copied text",
     copyLocal: "Copy to your computer",
-    note: "Pasted text goes only to the page. The remote clipboard is cleared when you give control back.",
+    note: "The remote clipboard is cleared when you give control back.",
   },
   toast: {
     took: "You are in control. The agent waits.",

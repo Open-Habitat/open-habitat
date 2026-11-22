@@ -486,6 +486,8 @@ export const parts: Record<CardId, Part> = {
   B06: { kind: "once", sel: '[data-testid="browser-stop"]' },
   B07: { kind: "nav", sel: '[data-testid="browser-rail-row"]', opens: true },
   B08: { kind: "once", sel: '[data-testid="browser-sheet-close"]' },
+  B09: { kind: "input", sel: '[data-testid="browser-password"]' },
+  B10: { kind: "once", sel: '[data-testid="browser-password-send"]' },
   H01: {
     kind: "info",
     sel: '[data-testid="helper-archive-row"]',
@@ -769,6 +771,7 @@ export const waiting: ReadonlySet<CardId> = new Set<CardId>([
   "B04",
   "B05",
   "B06",
+  "B10",
   "V29",
   "V31",
   "V32",

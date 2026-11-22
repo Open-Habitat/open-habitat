@@ -131,7 +131,9 @@ PDF handling globally just to collect one document.
 
 ## When the person must act
 
-Tell the person which window needs them and why, and mark it:
+Tell the person which window needs them and why, and mark it. Never ask for a
+password in the conversation. The person enters it in the viewer using
+**Type as keystrokes** (Kirjoita näppäilyinä), or pastes it into the page:
 
 ```sh
 open-habitat agent browser request --window <id> --text "The service asks for a confirmation code" --json
@@ -145,9 +147,12 @@ the picture: its remaining commands then wait and, when control returns,
 fail with `browser_person_took_control` without being carried out. Inspect
 the page before continuing after that error or any timeout.
 
-Do not read or use the clipboard. The person pastes passwords and codes into
-the browser; clipboard permissions are refused to you, and the browser's
-clipboard is cleared when control returns.
+Do not read or use the clipboard. The Clipboard tab offers a masked password
+field and **Type as keystrokes**, which clears the field after use and does not
+use the remote clipboard. The person can also paste text into the page; the
+remote clipboard is cleared when control returns. Keep the password manager
+on the person's own device: the entered credential and signed-in session are
+not hidden from the agent. Do not inspect or return entered credentials.
 
 ## Optional external clients
 

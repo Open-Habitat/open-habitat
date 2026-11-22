@@ -102,12 +102,26 @@ export type AssetControls = {
 
 function time(iso: string) {
   const d = new Date(iso);
-  const today = new Date().toDateString() === d.toDateString();
-  return formatDate(
-    d,
-    today
-      ? { hour: "2-digit", minute: "2-digit" }
-      : { day: "numeric", month: "numeric" },
+  const now = new Date();
+  const today = now.toDateString() === d.toDateString();
+  return (
+    <time
+      dateTime={iso}
+      title={formatDate(d, { dateStyle: "short", timeStyle: "medium" })}
+    >
+      {formatDate(d, {
+        ...(today
+          ? {}
+          : {
+              day: "numeric",
+              month: "numeric",
+              year:
+                d.getFullYear() === now.getFullYear() ? undefined : "numeric",
+            }),
+        hour: "2-digit",
+        minute: "2-digit",
+      })}
+    </time>
   );
 }
 
@@ -207,10 +221,7 @@ function EntryRow({
               <span className="ah-asset-meta">
                 {until ? <OfferSeen until={until} /> : null}
                 {offerFacts(entry.offer, entry.state).join(" · ")}
-                <span className="ah-asset-meta-time">
-                  {" · "}
-                  {time(entry.at)}
-                </span>
+                <span className="ah-asset-meta-time">{time(entry.at)}</span>
               </span>
             </span>
             <span className="ah-asset-time">{time(entry.at)}</span>
@@ -246,12 +257,15 @@ function EntryRow({
           )}
           <span className="ah-asset-text">
             <span className="ah-asset-title">{view.title}</span>
-            {n ? null : (
+            {n ? (
+              <span className="ah-asset-meta ah-asset-meta-time">
+                {time(view.created_at)}
+              </span>
+            ) : (
               <span className="ah-asset-meta">
                 {until ? <OfferSeen until={until} /> : null}
                 {viewFacts(view).join(" · ")}
                 <span className="ah-asset-meta-time">
-                  {" · "}
                   {time(view.created_at)}
                 </span>
               </span>

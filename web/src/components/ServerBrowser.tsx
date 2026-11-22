@@ -692,6 +692,9 @@ export function BrowserFrame({
  * cannot raise), typing as keystrokes, and a remote copy waiting for the
  * person's own press. */
 export function BrowserClipboard({
+  password,
+  onPassword,
+  onTypePassword,
   text,
   hidden,
   touch,
@@ -706,6 +709,9 @@ export function BrowserClipboard({
   onCopySelection,
   onCopyLocal,
 }: {
+  password: string;
+  onPassword: (password: string) => void;
+  onTypePassword: () => void;
   text: string;
   hidden: boolean;
   touch: boolean;
@@ -727,6 +733,32 @@ export function BrowserClipboard({
   return (
     <>
       <div className="sb-paste">
+        <label htmlFor="sb-password">{txt.clip.password}</label>
+        <input
+          id="sb-password"
+          type="password"
+          data-testid="browser-password"
+          autoComplete="off"
+          spellCheck={false}
+          value={password}
+          onChange={(e) => onPassword(e.target.value)}
+          aria-describedby="sb-password-note"
+        />
+        <div className="sb-paste-actions">
+          <ControlButton
+            size="row"
+            variant="primary"
+            data-testid="browser-password-send"
+            isDisabled={!canCopy || !password}
+            onPress={onTypePassword}
+          >
+            <Icon name="key" />
+            {txt.clip.type}
+          </ControlButton>
+        </div>
+        <small id="sb-password-note">{txt.clip.passwordNote}</small>
+      </div>
+      <div className="sb-paste">
         <label htmlFor="sb-paste-text">{txt.clip.label}</label>
         <textarea
           id="sb-paste-text"
@@ -743,7 +775,6 @@ export function BrowserClipboard({
         <div className="sb-paste-actions">
           <ControlButton
             size="row"
-            variant="primary"
             data-testid="browser-paste-send"
             isDisabled={!canCopy}
             onPress={onPaste}

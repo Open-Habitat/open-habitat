@@ -89,6 +89,7 @@ export default function BrowserViewer({
   const [midAt, setMidAt] = useState<{ x: number; y: number }>();
   const [clipOpen, setClipOpen] = useState(false);
   const [text, setText] = useState("");
+  const [password, setPassword] = useState("");
   const [hidden, setHidden] = useState(false);
   const [enterWarn, setEnterWarn] = useState<number>();
   const [remote, setRemote] = useState<string>();
@@ -197,6 +198,7 @@ export default function BrowserViewer({
       setRemote(undefined);
       setRemoteShown(false);
       setText("");
+      setPassword("");
       setEnterWarn(undefined);
       setIdle(undefined);
       pasted.current = false;
@@ -462,11 +464,15 @@ export default function BrowserViewer({
     return () => clearInterval(id);
   }, [control, phase]);
 
-  const sendType = () => {
+  useEffect(() => {
+    if (phase !== "connected") setPassword("");
+  }, [phase]);
+
+  const sendType = (secret = false) => {
     noteInput();
     const c = rfb.current;
-    if (!c || c.viewOnly) return;
-    const r = keystrokes(text);
+    if (!c || c.viewOnly || phase !== "connected") return;
+    const r = keystrokes(secret ? password : text);
     if (!r.ok) {
       say(
         r.why === "long"
@@ -477,13 +483,16 @@ export default function BrowserViewer({
       );
       return;
     }
-    if (r.enters > 0 && enterWarn !== r.enters) {
+    if (!secret && r.enters > 0 && enterWarn !== r.enters) {
       setEnterWarn(r.enters);
       return;
     }
     for (const k of r.keysyms) c.sendKey(k, null);
-    setText("");
-    setEnterWarn(undefined);
+    if (secret) setPassword("");
+    else {
+      setText("");
+      setEnterWarn(undefined);
+    }
     say(txt.toast.typed(r.keysyms.length));
   };
 
@@ -531,13 +540,19 @@ export default function BrowserViewer({
       onClipClose={() => setClipOpen(false)}
       clipboard={
         <BrowserClipboard
+          password={password}
+          onPassword={(v) => {
+            noteInput();
+            setPassword(v);
+          }}
+          onTypePassword={() => sendType(true)}
           text={text}
           hidden={hidden}
           touch={touch}
           enterWarn={enterWarn}
           remote={remote}
           remoteShown={remoteShown}
-          canCopy={control === "person"}
+          canCopy={control === "person" && phase === "connected"}
           onText={(v) => {
             noteInput();
             setText(v);
@@ -551,7 +566,7 @@ export default function BrowserViewer({
               setEnterWarn(undefined);
             }
           }}
-          onType={sendType}
+          onType={() => sendType()}
           onCopySelection={() => {
             noteInput();
             copyAt.current = Date.now();

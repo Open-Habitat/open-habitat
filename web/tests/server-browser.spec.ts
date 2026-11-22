@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
+import { snapshot } from "../lab/session.mjs";
 import { hostOrigin } from "../test-ports.mjs";
-import { expect, type Page, test } from "./worker-host";
+import { createHostTest, expect, type Page, test } from "./worker-host";
 
 // The person's server browser (experimental) through the real gateway and
 // the real daemon routes and viewer relay. The browser host is the synthetic
@@ -332,6 +333,25 @@ test("@server-browser the clipboard: paste in by shortcut, field and keystrokes,
         .analyze()
     ).violations,
   ).toEqual([]);
+  const password = pop.getByTestId("browser-password");
+  await expect(password).toHaveAttribute("type", "password");
+  await password.fill("äöå€@Ł");
+  const passwordKeys = (await input(page)).keysyms.length;
+  const passwordCuts = (await input(page)).cuts.length;
+  await button(page, "browser-password-send").click();
+  await expect
+    .poll(async () => (await input(page)).keysyms.slice(passwordKeys))
+    .toEqual([0xe4, 0xf6, 0xe5, 0x20ac, 0x40, 0x1a3]);
+  await expect(password).toHaveValue("");
+  expect((await input(page)).cuts.length).toBe(passwordCuts);
+  await expect(toast).not.toContainText("äöå€@Ł");
+  // Refusal preserves the masked value without partially typing it.
+  await password.fill("ä😀");
+  await button(page, "browser-password-send").click();
+  await expect(password).toHaveValue("ä😀");
+  expect((await input(page)).keysyms.length).toBe(passwordKeys + 6);
+  await expect(password).toHaveAttribute("type", "password");
+
   const field = pop.getByTestId("browser-paste-text");
   await field.fill("koodi 123456");
   let mark = (await input(page)).keysyms.length;
@@ -394,6 +414,9 @@ test("@server-browser the clipboard: paste in by shortcut, field and keystrokes,
   await button(page, "browser-give-back").click();
   await expect(sheet).toHaveAttribute("data-mode", "view");
   expect((await input(page)).cuts.at(-1)).toBe("");
+  await button(page, "browser-clip-toggle").click();
+  await expect(password).toHaveValue("");
+  await expect(button(page, "browser-password-send")).toBeDisabled();
 });
 
 test("@server-browser control goes back after three idle minutes, never while the agent asks", async ({
@@ -428,6 +451,77 @@ test("@server-browser control goes back after three idle minutes, never while th
   await expect(page.getByTestId("browser-idle")).toHaveCount(0);
   await expect(sheet).toHaveAttribute("data-mode", "control");
 });
+
+const passwordTest = createHostTest(false, { BROWSER_HOST_LAB: "1" });
+passwordTest.use({
+  baseURL: hostOrigin,
+  ignoreHTTPSErrors: true,
+  reducedMotion: "reduce",
+});
+for (const width of [1440, 390]) {
+  for (const language of ["fi", "en-US"]) {
+    passwordTest(
+      `@server-browser password explanation holds sending ${width} ${language}`,
+      async ({ page }) => {
+        const csrf = await signIn(page, true);
+        for (const data of [
+          { language },
+          { experimental: { "explain-mode": true } },
+        ]) {
+          expect(
+            (
+              await page.request.put("/api/v1/account/preferences", {
+                headers: {
+                  Origin: new URL(page.url()).origin,
+                  "X-Agent-Host-CSRF": csrf,
+                },
+                data,
+              })
+            ).ok(),
+          ).toBe(true);
+        }
+        await page.reload();
+        await expect(page.locator("html")).toHaveAttribute("lang", language);
+        await openView(page);
+        await button(page, "browser-take-control").click();
+        await expect(page.getByTestId("browser-sheet")).toHaveAttribute(
+          "data-mode",
+          "control",
+        );
+        await button(page, "browser-sheet-close").click();
+        await page.getByTestId("account-menu-trigger").click();
+        await page.getByTestId("menu-explain").click();
+        await openView(page);
+        await page.setViewportSize({ width, height: 900 });
+        await button(page, "browser-clip-toggle").click();
+        const password = page.getByTestId("browser-password");
+        await password.fill("synthetic-only");
+        const before = (await input(page)).keysyms.length;
+        await button(page, "browser-password-send").click();
+        const card = page.getByTestId("explain-card");
+        await expect(card).toHaveAttribute("data-card", "B10");
+        await expect(password).toHaveValue("synthetic-only");
+        expect((await input(page)).keysyms.length).toBe(before);
+        if (process.env.OH_PASSWORD_CAPTURE) {
+          await snapshot(
+            page,
+            `${process.env.OH_PASSWORD_CAPTURE}/send-${width}-${language}`,
+            { labOrigin: new URL(page.url()).origin },
+          );
+        }
+        await password.hover();
+        await expect(card).toHaveAttribute("data-card", "B09");
+        if (process.env.OH_PASSWORD_CAPTURE) {
+          await snapshot(
+            page,
+            `${process.env.OH_PASSWORD_CAPTURE}/field-${width}-${language}`,
+            { labOrigin: new URL(page.url()).origin },
+          );
+        }
+      },
+    );
+  }
+}
 
 test("@server-browser the frame fits a phone", async ({ page }, testInfo) => {
   test.setTimeout(60000);

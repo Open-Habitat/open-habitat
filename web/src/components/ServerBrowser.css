@@ -528,7 +528,8 @@
   font-weight: 600;
   font-size: var(--ah-size-meta);
 }
-.sb-paste textarea {
+.sb-paste textarea,
+.sb-paste > input {
   width: 100%;
   box-sizing: border-box;
   resize: vertical;
