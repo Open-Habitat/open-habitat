@@ -581,3 +581,41 @@ html[data-explain-mode] {
   margin-top: 3px;
   color: var(--ah-ok);
 }
+
+/* The following card (explain-follow, experimental; round
+   2026-11-22-explain-follow direction A): it trails the pointer with a short
+   ease, holds still once F pins it, and never eases where the person asked
+   for less motion (the layer does not trail there at all). A touch screen's
+   sheet does not move with anything. */
+.ah-explain-card[data-follow] {
+  transition:
+    left 90ms linear,
+    top 90ms linear;
+}
+.ah-explain-card[data-follow][data-pinned],
+.ah-explain-card[data-follow][data-held],
+.ah-explain-card[data-follow][data-touch] {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ah-explain-card[data-follow] {
+    transition: none;
+  }
+}
+/* The report while the card follows is a reminder of the key, not a
+   button: the card never takes the pointer until F pins it. */
+.ah-explain-report.ah-explain-report-key {
+  cursor: default;
+}
+.ah-explain-report.ah-explain-report-key:hover {
+  background: var(--ah-surface);
+  border-color: var(--ah-line-strong);
+}
+.ah-explain-pinned {
+  margin-left: auto;
+  padding: 1px 6px;
+  border-radius: var(--ah-r-sm);
+  background: var(--ah-accent-soft);
+  color: var(--ah-accent-ink);
+  white-space: nowrap;
+}

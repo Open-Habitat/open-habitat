@@ -44,7 +44,8 @@ function Picture({ id, on }: { id: string; on: boolean }) {
     id === "rewind-conversation" ||
     id === "multiplayer" ||
     id === "agent-instructions" ||
-    id === "attention-sound"
+    id === "attention-sound" ||
+    id === "explain-follow"
   )
     body = (
       <>

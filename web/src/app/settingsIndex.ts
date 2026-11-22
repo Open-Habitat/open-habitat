@@ -700,6 +700,20 @@ export const settingsSections = [
         kw: ["ääni", "sound", "pling", "kilahdus", "chime", "notification"],
         desc: "Lyhyt ääni, kun agentti on valmis tai haluaa huomiosi, ja työtilojen omat äänet.",
       },
+      {
+        id: "explain-follow",
+        label: "Selityskortti seuraa osoitinta",
+        kw: [
+          "selitystila",
+          "selitä",
+          "explain",
+          "kortti",
+          "card",
+          "osoitin",
+          "pointer",
+        ],
+        desc: "Selitystilan kortti kulkee osoittimen vieressä; F pysäyttää sen ja avaa ilmoituksen.",
+      },
     ],
   },
   {

@@ -13,6 +13,7 @@ const features = [
   "multiplayer",
   "agent-instructions",
   "attention-sound",
+  "explain-follow",
 ];
 const retired = [
   "terminal-copy-on-select",
