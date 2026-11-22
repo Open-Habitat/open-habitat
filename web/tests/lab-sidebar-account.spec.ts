@@ -1,7 +1,13 @@
+import AxeBuilder from "@axe-core/playwright";
+import { snapshot } from "../lab/session.mjs";
 import { labOrigin } from "../test-ports.mjs";
 import { expect, test } from "./lab-host";
 
-test.use({ baseURL: labOrigin, ignoreHTTPSErrors: true });
+test.use({
+  baseURL: labOrigin,
+  ignoreHTTPSErrors: true,
+  reducedMotion: "reduce",
+});
 
 async function login(
   page: import("@playwright/test").Page,
@@ -22,8 +28,56 @@ async function login(
     )
     .click();
   await expect(
-    page.getByRole("button").and(page.getByTestId("account-menu-trigger")),
+    page
+      .getByTestId("account-menu-trigger")
+      .or(page.getByTestId("navigation-open"))
+      .filter({ visible: true }),
   ).toBeVisible();
+}
+
+for (const width of [1440, 390]) {
+  for (const locale of ["fi-FI", "en-US"]) {
+    test.describe(`feedback card ${width} ${locale}`, () => {
+      test.use({
+        viewport: { width, height: 900 },
+        locale,
+        hasTouch: width === 390,
+        isMobile: width === 390,
+      });
+      test("@lab feedback entry explains and opens the shared panel", async ({
+        page,
+      }) => {
+        await login(page, "Alice");
+        if (width === 390) await page.getByTestId("navigation-open").tap();
+        await page.getByTestId("account-menu-trigger").click();
+        await page.getByTestId("menu-explain").click();
+        const trigger = page.getByTestId("account-menu-trigger");
+        if (width === 390) {
+          await trigger.tap();
+          await trigger.tap();
+          await page.getByTestId("menu-feedback").tap();
+        } else {
+          await trigger.click();
+          await page.getByTestId("menu-feedback").hover();
+        }
+        await expect(page.getByTestId("explain-card")).toHaveAttribute(
+          "data-card",
+          "S42",
+        );
+        if (process.env.OH_ACCOUNT_MENU_CAPTURE)
+          await snapshot(
+            page,
+            `${process.env.OH_ACCOUNT_MENU_CAPTURE}/card-${locale}-${width}`,
+          );
+        if (width === 390) await page.getByTestId("menu-feedback").tap();
+        else await page.getByTestId("menu-feedback").click();
+        await expect(page.getByTestId("general-text")).toBeFocused();
+        await page.keyboard.press("Escape");
+        await expect(trigger).toBeFocused();
+        await expect(page.getByTestId("general-feedback")).toHaveCount(0);
+      });
+    });
+  }
 }
 
 test("@lab admin and non-admin account menus reflect host role", async ({
@@ -51,6 +105,39 @@ test("@lab admin and non-admin account menus reflect host role", async ({
   ).toHaveCount(0);
   await page.keyboard.press("Escape");
   await expect(account).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("menu-settings")).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByTestId("menu-administration")).toBeFocused();
+  expect(
+    (await new AxeBuilder({ page }).include(".ah-account-menu").analyze())
+      .violations,
+  ).toEqual([]);
+  await page.keyboard.press("End");
+  await expect(page.getByTestId("menu-feedback")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("general-text")).toBeFocused();
+  await expect(page.locator(".ah-account-menu")).toHaveCount(0);
+  expect(
+    (
+      await new AxeBuilder({ page })
+        .include('[data-testid="general-feedback"]')
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+  if (process.env.OH_ACCOUNT_MENU_CAPTURE)
+    await snapshot(
+      page,
+      `${process.env.OH_ACCOUNT_MENU_CAPTURE}/feedback-desktop`,
+    );
+  const panel = await page.getByTestId("general-feedback").boundingBox();
+  if (!panel) throw new Error("Feedback panel missing");
+  expect(panel.y).toBeGreaterThanOrEqual(0);
+  expect(panel.y + panel.height).toBeLessThanOrEqual(
+    await page.evaluate(() => innerHeight),
+  );
+  await page.keyboard.press("Escape");
+  await expect(account).toBeFocused();
   administrator = false;
   await page.reload();
   await expect(account).toBeVisible();
@@ -74,6 +161,19 @@ test("@lab long rail, workspace actions, drawer and four visual states", async (
   const account = page
     .getByRole("button")
     .and(page.getByTestId("account-menu-trigger"));
+  const session = await (await page.request.get("/auth/session")).json();
+  expect(
+    (
+      await page.request.put("/api/v1/account/preferences", {
+        headers: {
+          Origin: new URL(page.url()).origin,
+          "X-Agent-Host-CSRF": session.csrf,
+        },
+        data: { experimental: { "attention-sound": true } },
+      })
+    ).ok(),
+  ).toBe(true);
+  await page.reload();
   const list = page.locator(".ah-rail-content");
   await list.evaluate((element) => {
     const row = element.querySelector(".ah-workspace");
@@ -130,9 +230,11 @@ test("@lab long rail, workspace actions, drawer and four visual states", async (
     await page.locator("main").evaluate((element) => {
       element.scrollTop = 0;
     });
-    await page.screenshot({
-      path: `test-results-lab/evidence/sidebar-account-desktop-${theme}.png`,
-    });
+    if (process.env.OH_ACCOUNT_MENU_CAPTURE)
+      await snapshot(
+        page,
+        `${process.env.OH_ACCOUNT_MENU_CAPTURE}/desktop-${theme}`,
+      );
     await page.keyboard.press("Escape");
     await page.setViewportSize({ width: 390, height: 844 });
     await page
@@ -141,10 +243,21 @@ test("@lab long rail, workspace actions, drawer and four visual states", async (
       .click();
     await expect(account).toBeVisible();
     await account.click();
-    await page.screenshot({
-      path: `test-results-lab/evidence/sidebar-account-phone-${theme}.png`,
-    });
+    if (process.env.OH_ACCOUNT_MENU_CAPTURE)
+      await snapshot(
+        page,
+        `${process.env.OH_ACCOUNT_MENU_CAPTURE}/phone-${theme}`,
+      );
+    await page.getByTestId("menu-feedback").click();
+    await expect(page.getByTestId("general-text")).toBeFocused();
+    if (process.env.OH_ACCOUNT_MENU_CAPTURE)
+      await snapshot(
+        page,
+        `${process.env.OH_ACCOUNT_MENU_CAPTURE}/feedback-phone-${theme}`,
+      );
+    await page.getByTestId("general-text").fill("Synthetic feedback draft");
     await page.keyboard.press("Escape");
+    await expect(account).toBeFocused();
     await page
       .getByRole("button")
       .and(page.getByTestId("close-navigation"))

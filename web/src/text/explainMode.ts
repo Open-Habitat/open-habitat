@@ -509,6 +509,12 @@ const fi = {
       lead: "Avaa kavennetun sivupalkin takaisin täyteen leveyteen.",
       know: "Kavennettuna sivupalkki näyttää vain kuvakkeet ja tilapisteet.",
     },
+    S42: {
+      name: "Palaute Habitatista…",
+      lead: "Avaa palautepaneelin, jossa voit kertoa ongelmasta tai ehdottaa parannusta.",
+      know: "Palaute lähetetään julkisena GitHub-issuena. Näet sisällön ennen lähettämistä.",
+      try: "Avaa palautepaneeli",
+    },
     S21: {
       name: "Tilivalikko",
       lead: "Asetukset, teema, agentin työn näkyvyys ja uloskirjautuminen.",
@@ -2528,6 +2534,12 @@ export const explainModeText = catalog(fi, {
       name: "All workspaces",
       lead: "Opens the narrowed sidebar back to full width.",
       know: "Narrowed, the sidebar shows only icons and state dots.",
+    },
+    S42: {
+      name: "Feedback about Habitat…",
+      lead: "Opens a feedback panel to report a problem or suggest an improvement.",
+      know: "Feedback is submitted as a public GitHub issue. You can preview its contents before submitting.",
+      try: "Open feedback panel",
     },
     S21: {
       name: "Account menu",

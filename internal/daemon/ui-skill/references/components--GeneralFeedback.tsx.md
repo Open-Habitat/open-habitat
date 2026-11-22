@@ -30,10 +30,12 @@ export function GeneralFeedback({
   anchor,
   onClose,
   explain = false,
+  placement = "below",
 }: {
   anchor: RefObject<HTMLButtonElement | null>;
   onClose: () => void;
   explain?: boolean;
+  placement?: "below" | "above";
 }) {
   const t = useText(generalFeedbackText);
   const f = useText(explainModeText).feedback;
@@ -79,9 +81,14 @@ export function GeneralFeedback({
       const el = panel.current;
       const r = anchor.current?.getBoundingClientRect();
       if (!el || !r) return;
-      el.style.left = `${Math.max(8, Math.min(r.right - el.offsetWidth, innerWidth - el.offsetWidth - 8))}px`;
-      el.style.top = `${r.bottom + 10}px`;
-      el.style.maxHeight = `${Math.max(80, innerHeight - r.bottom - 18)}px`;
+      el.style.left = `${Math.max(8, Math.min(placement === "above" ? r.left : r.right - el.offsetWidth, innerWidth - el.offsetWidth - 8))}px`;
+      if (placement === "above") {
+        el.style.bottom = `${innerHeight - r.top + 10}px`;
+        el.style.maxHeight = `${Math.max(80, r.top - 18)}px`;
+      } else {
+        el.style.top = `${r.bottom + 10}px`;
+        el.style.maxHeight = `${Math.max(80, innerHeight - r.bottom - 18)}px`;
+      }
     };
     place();
     window.addEventListener("resize", place);
@@ -90,7 +97,7 @@ export function GeneralFeedback({
       window.removeEventListener("resize", place);
       window.removeEventListener("scroll", place, true);
     };
-  }, [anchor]);
+  }, [anchor, placement]);
   useEffect(() => {
     const block = (e: Event) => {
       e.preventDefault();

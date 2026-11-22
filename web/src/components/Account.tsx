@@ -5,6 +5,7 @@ import {
   Modal,
   ModalOverlay,
 } from "react-aria-components";
+import { createPortal } from "react-dom";
 import { AccountKeys } from "../app/AccountKeys";
 import { AgentInstructionsSettings } from "../app/AgentInstructionsSettings";
 import { useAISignIn } from "../app/AISignIn";
@@ -73,6 +74,7 @@ import { ChoiceMenu } from "./ChoiceMenu";
 import { ControlButton, Segmented } from "./ControlElements";
 import { DefaultModelRow } from "./DefaultModelRow";
 import { useExplainEntry } from "./ExplainMode";
+import { GeneralFeedback } from "./GeneralFeedback";
 import { Icon } from "./Icon";
 import { LetterMark } from "./Integrations";
 import { Menu } from "./Overlays";
@@ -162,6 +164,8 @@ export function AccountShelf({
   onLogout: () => void;
 }) {
   const theme = useThemeChoice();
+  const accountButton = useRef<HTMLButtonElement>(null);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [workChoice, setWorkChoice] = useState(getWorkPreference);
   useEffect(() => {
     const sync = () => setWorkChoice(getWorkPreference());
@@ -202,6 +206,7 @@ export function AccountShelf({
     <div className="ah-account-shelf" data-account-controls>
       <Menu
         label={t.accountMenu}
+        buttonRef={accountButton}
         triggerLabel={
           mutedMark
             ? soundText.menuOf(
@@ -223,9 +228,17 @@ export function AccountShelf({
         }
         heading={<AccountIdentity profile={person} />}
         betweenItems={
-          <>
+          <section className="ah-account-quick" aria-label={t.groupQuick}>
             <div className="ah-account-menu-theme-row">
-              <span>{t.theme}</span>
+              <span className="ah-account-row-label">
+                <Icon
+                  name={
+                    themes.find((choice) => choice.id === theme)?.icon ??
+                    "system"
+                  }
+                />
+                {t.theme}
+              </span>
               <Segmented
                 data-testid="theme-choice"
                 label={t.theme}
@@ -241,7 +254,10 @@ export function AccountShelf({
               />
             </div>
             <div className="ah-account-menu-theme-row">
-              <span>{t.agentWork}</span>
+              <span className="ah-account-row-label">
+                <Icon name="eye" />
+                {t.agentWork}
+              </span>
               <Segmented
                 label={t.agentWork}
                 className="ah-account-menu-theme"
@@ -254,26 +270,72 @@ export function AccountShelf({
               />
             </div>
             {soundsOn ? <SoundMenuRow status={soundStatus} /> : null}
-          </>
+          </section>
         }
         popoverClassName="ah-account-menu"
         placement="top start"
         items={[
-          { id: "settings", label: t.settings },
-          // Selitä tämä näkymä: in every view, wherever the person is.
-          ...(explain ? [{ id: explain.id, label: explain.label }] : []),
+          {
+            id: "settings",
+            label: t.settings,
+            icon: <Icon name="gear" />,
+            section: t.groupPages,
+          },
           ...(onAdministration
-            ? [{ id: "administration", label: t.administration }]
+            ? [
+                {
+                  id: "administration",
+                  label: t.administration,
+                  icon: <Icon name="server" />,
+                  section: t.groupPages,
+                },
+              ]
             : []),
-          { id: "logout", label: t.logout, danger: true },
+          ...(explain
+            ? [
+                {
+                  id: explain.id,
+                  label: explain.label,
+                  icon: (
+                    <span className="ah-explain-q" aria-hidden="true">
+                      ?
+                    </span>
+                  ),
+                  section: t.groupHelp,
+                },
+              ]
+            : []),
+          {
+            id: "feedback",
+            label: t.feedback,
+            icon: <Icon name="message" />,
+            section: t.groupHelp,
+          },
+          {
+            id: "logout",
+            label: t.logout,
+            icon: <Icon name="logout" />,
+            danger: true,
+          },
         ]}
         onAction={(id) => {
           if (id === "settings") onSettings();
           if (id === "explain") explain?.run();
+          if (id === "feedback") setFeedbackOpen(true);
           if (id === "administration") onAdministration?.();
           if (id === "logout") onLogout();
         }}
       />
+      {feedbackOpen
+        ? createPortal(
+            <GeneralFeedback
+              anchor={accountButton}
+              placement="above"
+              onClose={() => setFeedbackOpen(false)}
+            />,
+            document.body,
+          )
+        : null}
     </div>
   );
 }
@@ -321,7 +383,10 @@ function SoundMenuRow({ status }: { status: Silence | undefined }) {
   return (
     <div className="ah-sound-menu" data-testid="sound-menu-row">
       <div className="ah-account-menu-theme-row">
-        <span>{t.menuRow}</span>
+        <span className="ah-account-row-label">
+          <Speaker muted={!!status} />
+          {t.menuRow}
+        </span>
         <Segmented
           data-testid="sound-menu-mute"
           label={`${t.menuRow}, ${t.menuScope}`}

@@ -6,10 +6,12 @@ import {
   Tabs as AriaTabs,
   DialogTrigger,
   Heading,
+  MenuSection,
   MenuTrigger,
   Modal,
   ModalOverlay,
   Popover,
+  Separator,
   TabList,
   TabPanel,
 } from "react-aria-components";
@@ -210,6 +212,8 @@ export function Menu({
     id: string;
     label: string;
     description?: string;
+    icon?: ReactNode;
+    section?: string;
     availability?: Availability;
     danger?: boolean;
     selected?: boolean;
@@ -237,12 +241,41 @@ export function Menu({
     document.addEventListener("pointerdown", dismiss, true);
     return () => document.removeEventListener("pointerdown", dismiss, true);
   }, [isNonModal, open, triggerRef]);
+  const actionItems = betweenItems ? items.slice(0, -1) : items;
+  const renderItem = (item: (typeof items)[number]) => (
+    <ControlMenuItem
+      data-menu-item={item.id}
+      danger={item.danger}
+      className={item.danger ? "ah-menu-danger" : undefined}
+      data-group={item.group}
+      data-group-selected={item.selected || undefined}
+      data-testid={`menu-${item.id}`}
+      id={item.id}
+      key={item.id}
+      isDisabled={Boolean(unavailableReason(item.availability))}
+      textValue={item.label}
+      aria-label={item.displayLabel ? item.label : undefined}
+    >
+      {item.icon}
+      <span>{item.displayLabel ?? item.label}</span>
+      {item.description ? <small>{item.description}</small> : null}
+      {unavailableReason(item.availability) ? (
+        <small>{unavailableReason(item.availability)}</small>
+      ) : null}
+    </ControlMenuItem>
+  );
+  const sections = [...new Set(actionItems.map((item) => item.section))];
   return (
     <MenuTrigger
       isOpen={isNonModal ? open : undefined}
       onOpenChange={(open) => {
         setOpen(open);
-        if (!open) queueMicrotask(() => triggerRef.current?.focus());
+        if (!open)
+          queueMicrotask(() => {
+            // An action may already have focused the dialog it opened.
+            if (!document.activeElement?.closest('[role="dialog"]'))
+              triggerRef.current?.focus();
+          });
       }}
     >
       <ControlButton
@@ -279,27 +312,16 @@ export function Menu({
           aria-label={label}
           onAction={(key) => onAction(String(key))}
         >
-          {(betweenItems ? items.slice(0, -1) : items).map((item) => (
-            <ControlMenuItem
-              data-menu-item={item.id}
-              danger={item.danger}
-              className={item.danger ? "ah-menu-danger" : undefined}
-              data-group={item.group}
-              data-group-selected={item.selected || undefined}
-              data-testid={`menu-${item.id}`}
-              id={item.id}
-              key={item.id}
-              isDisabled={Boolean(unavailableReason(item.availability))}
-              textValue={item.label}
-              aria-label={item.displayLabel ? item.label : undefined}
-            >
-              <span>{item.displayLabel ?? item.label}</span>
-              {item.description ? <small>{item.description}</small> : null}
-              {unavailableReason(item.availability) ? (
-                <small>{unavailableReason(item.availability)}</small>
-              ) : null}
-            </ControlMenuItem>
-          ))}
+          {sections.some(Boolean)
+            ? sections.flatMap((section, index) => [
+                ...(index ? [<Separator key={`separator-${section}`} />] : []),
+                <MenuSection key={section ?? "ungrouped"} aria-label={section}>
+                  {actionItems
+                    .filter((item) => item.section === section)
+                    .map(renderItem)}
+                </MenuSection>,
+              ])
+            : actionItems.map(renderItem)}
         </AriaMenu>
         {betweenItems ? (
           <>
@@ -317,7 +339,8 @@ export function Menu({
                 }
                 textValue={items[items.length - 1].label}
               >
-                {items[items.length - 1].label}
+                {items[items.length - 1].icon}
+                <span>{items[items.length - 1].label}</span>
               </ControlMenuItem>
             </AriaMenu>
           </>

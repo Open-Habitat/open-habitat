@@ -892,7 +892,8 @@ function ExplainLayer({
     const onKey = (event: KeyboardEvent) => {
       // The panel owns Escape and F; lasting actions elsewhere must still wait.
       if (
-        live.current.general &&
+        (live.current.general ||
+          document.activeElement?.closest(".ah-general-feedback")) &&
         (event.key === "Escape" || event.code === "KeyF")
       )
         return;

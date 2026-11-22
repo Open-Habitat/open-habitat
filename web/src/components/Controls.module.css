@@ -398,7 +398,9 @@ span.button {
 :global(.ah-account-menu) .menuItem:not([data-group="theme"]) {
   grid-column: 1 / -1;
   padding: var(--ah-s2) var(--ah-s3);
-  border-bottom: 1px solid var(--ah-line-soft);
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 :global(.ah-account-menu) .menuItem.menuDanger {
   border-top: 1px solid var(--ah-line-soft);

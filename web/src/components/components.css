@@ -1933,8 +1933,29 @@ details[open] > summary:not([class])::before {
 }
 
 .ah-account-menu {
-  min-width: 17rem;
+  min-width: 18.5rem;
+  max-width: min(22rem, calc(100vw - 16px));
   padding: var(--ah-s2);
+}
+.ah-account-menu [role="group"] {
+  display: flex;
+  flex-direction: column;
+}
+.ah-account-menu [role="separator"] {
+  border-top: 1px solid var(--ah-line-soft);
+  margin: var(--ah-s1) 0;
+}
+.ah-account-quick {
+  border-top: 1px solid var(--ah-line-soft);
+  margin-top: var(--ah-s1);
+  padding-top: var(--ah-s1);
+}
+.ah-account-row-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+  color: var(--ah-ink);
 }
 .ah-account-menu [role="menu"] {
   display: flex;

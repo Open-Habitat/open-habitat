@@ -168,6 +168,7 @@ export const parts: Record<CardId, Part> = {
   S18: { kind: "nav", sel: '.ah-rail a[data-testid^="workspace-"]' },
   S19: { kind: "once", sel: '[data-testid^="workspace-start-"]' },
   S20: { kind: "nav", sel: '[data-testid="rail-all-workspaces"]' },
+  S42: { kind: "nav", sel: '[data-testid="menu-feedback"]', opens: true },
   S21: { kind: "menu", sel: '[data-testid="account-menu-trigger"]' },
   S22: { kind: "nav", sel: '[data-testid="menu-settings"]' },
   S23: { kind: "nav", sel: '[data-testid="menu-administration"]' },

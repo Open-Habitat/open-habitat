@@ -121,8 +121,26 @@ describe("account presentation", () => {
       const option = await screen.findByTestId("segment-dark");
       expect(option.getAttribute("aria-pressed")).toBe("true");
 
-      expect(screen.getByTestId("menu-settings")).toBeTruthy();
-      expect(screen.getByTestId("menu-logout")).toBeTruthy();
+      expect(
+        screen.getAllByRole("menuitem").map((item) => item.dataset.testid),
+      ).toEqual([
+        "menu-settings",
+        "menu-explain",
+        "menu-feedback",
+        "menu-logout",
+      ]);
+      const groups = screen
+        .getAllByRole("menu")[0]
+        .querySelectorAll('[role="group"]');
+      expect(groups).toHaveLength(2);
+      for (const group of groups)
+        expect(group.getAttribute("aria-label")).toBeTruthy();
+      expect(
+        screen
+          .getByTestId("theme-choice")
+          .compareDocumentPosition(screen.getByTestId("menu-logout")) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
     } finally {
       act(() => setThemeChoice("system"));
     }
