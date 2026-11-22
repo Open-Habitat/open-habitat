@@ -3,12 +3,16 @@ created: 2026-11-22
 updated: 2026-11-22
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 provenance: chat
 source_ref: habitat:pi-current/2026-11-22-sharepoint-write
 lane: unlaned
 preparation: ready
+closed: 2026-11-22
+commits:
+- hash: e7a2adab1
+  summary: enable consented Microsoft file writes without library sync
 ---
 
 # SharePoint libraries are read-only for the agent although the person can write
