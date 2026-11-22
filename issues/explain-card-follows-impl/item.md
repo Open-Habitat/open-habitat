@@ -21,3 +21,9 @@ commits:
 ## Description
 
 Implement the accepted Explain mode card (explain-card-follows-pointer, Jari 22.11.2026: A Vieressä).
+
+## Decisions
+
+### 2026-11-22T16:03:25Z · @jari
+
+Jari 22.11.2026: graduate the following Explain card from experimental to the default (remove the explain-follow switch; the following card is how Explain mode works). Done together with explain-f-hint-impl.
