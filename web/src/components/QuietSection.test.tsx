@@ -39,6 +39,29 @@ const choice = (c: Partial<QuietChoice>): QuietChoice => ({
   ...c,
 });
 
+describe("empty quiet section", () => {
+  it("keeps its accessible empty state in the header when folded or open, and removes it when populated", () => {
+    const props = { rows: [], choice: choice({}) };
+    const view = render(<QuietSection {...props} />);
+    for (const folded of [false, true]) {
+      view.rerender(<QuietSection {...props} folded={folded} />);
+      const status = view.getByRole("status");
+      expect(view.getByRole("heading").contains(status)).toBe(true);
+      expect(status.closest("button")).toBeNull();
+      expect(
+        view.getByTestId("rail-quiet-fold").getAttribute("aria-expanded"),
+      ).toBe(String(!folded));
+      expect(view.queryByRole("list")).toBeNull();
+    }
+    view.rerender(
+      <MemoryRouter>
+        <QuietSection {...props} rows={rows} />
+      </MemoryRouter>,
+    );
+    expect(view.queryByRole("status")).toBeNull();
+  });
+});
+
 describe("quietView", () => {
   it("orders newest first, by workspace or by name", () => {
     expect(ids(quietView(rows, choice({})).shown)).toEqual(ids(rows));
@@ -162,7 +185,7 @@ describe("QuietSection", () => {
         <QuietSection rows={[]} choice={choice({})} />
       </MemoryRouter>,
     );
-    expect(view.getByText("Ei hiljaisia keskusteluja.")).toBeTruthy();
+    expect(view.getByRole("status")).toBeTruthy();
     expect(view.queryByTestId("rail-quiet-menu")).toBeNull();
   });
 });

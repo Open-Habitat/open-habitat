@@ -1333,6 +1333,15 @@ export function NowSections({
           ref={yoursHead}
         >
           <span id={yoursId}>{t.yourTurn}</span>
+          {!yours.length ? (
+            <span
+              className="ah-rail-empty"
+              role="status"
+              data-testid="rail-yours-empty"
+            >
+              {t.nothingWaits}
+            </span>
+          ) : null}
           <SectionCount
             testId="rail-yours-count"
             view={yoursView}
@@ -1372,9 +1381,7 @@ export function NowSections({
               />
             ))}
           </ul>
-        ) : yours.length ? null : (
-          <p className="ah-now-empty">{t.nothingWaits}</p>
-        )}
+        ) : null}
       </section>
       <section
         className={iconed ? "ah-now ah-now-iconed" : "ah-now"}
@@ -1386,6 +1393,15 @@ export function NowSections({
           ref={runningHead}
         >
           <span id={runningId}>{t.running}</span>
+          {!running.length ? (
+            <span
+              className="ah-rail-empty"
+              role="status"
+              data-testid="rail-running-empty"
+            >
+              {t.nothingRuns}
+            </span>
+          ) : null}
           <SectionCount
             testId="rail-running-count"
             view={runningView}
@@ -1419,9 +1435,7 @@ export function NowSections({
             rename={rename}
             card={card}
           />
-        ) : running.length ? null : (
-          <p className="ah-now-empty">{t.nothingRuns}</p>
-        )}
+        ) : null}
       </section>
       {quiet}
     </>

@@ -3,12 +3,13 @@ created: 2026-11-22
 updated: 2026-11-22
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: habitat:pi-current/2026-11-22-rail-empty-section
 lane: unlaned
 preparation: ready
+closed: 2026-11-22
 ---
 
 # Rail: an empty section's empty text on the header's row

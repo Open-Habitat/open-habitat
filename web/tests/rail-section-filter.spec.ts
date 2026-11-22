@@ -107,6 +107,64 @@ async function sectionWorld(page: Page) {
   return ids;
 }
 
+for (const locale of ["fi-FI", "en-US"]) {
+  test.describe(`empty headings ${locale}`, () => {
+    test.use({ locale, reducedMotion: "reduce" });
+    test("@rail-section-filter empty sections occupy only their header row", async ({
+      page,
+    }) => {
+      await page.route("**/api/v1/snapshot", async (route) => {
+        const response = await route.fetch();
+        const body = await response.json();
+        body.agents = [];
+        await route.fulfill({ response, json: body });
+      });
+      await login(page);
+      const nav = page.getByTestId("workspace-navigation");
+      for (const id of ["rail-yours", "rail-running", "rail-quiet"]) {
+        const section = nav.getByTestId(id);
+        const status = section.getByRole("status");
+        await expect(status).toBeVisible();
+        const head = await section.getByRole("heading").boundingBox();
+        const empty = await status.boundingBox();
+        const box = await section.boundingBox();
+        if (!head || !empty || !box)
+          throw new Error("Missing section geometry");
+        expect(empty.y).toBeGreaterThanOrEqual(head.y);
+        expect(empty.y + empty.height).toBeLessThanOrEqual(
+          head.y + head.height + 1,
+        );
+        expect(empty.x + empty.width).toBeLessThanOrEqual(
+          head.x + head.width + 1,
+        );
+        expect(box.height).toBeLessThanOrEqual(head.height + 1);
+      }
+      const fold = nav.getByTestId("rail-quiet-fold");
+      const before = await fold.getAttribute("aria-expanded");
+      await fold.click();
+      await expect(fold).toHaveAttribute(
+        "aria-expanded",
+        String(before !== "true"),
+      );
+      await expect(nav.getByTestId("rail-quiet-empty")).toBeVisible();
+      const audit = await new AxeBuilder({ page })
+        .include('[data-testid="workspace-navigation"]')
+        .analyze();
+      expect(audit.violations).toEqual([]);
+      if (process.env.OH_EMPTY_CAPTURE) {
+        await page.screenshot({
+          path: `${process.env.OH_EMPTY_CAPTURE}/${locale}.png`,
+        });
+        const { writeFile } = await import("node:fs/promises");
+        await writeFile(
+          `${process.env.OH_EMPTY_CAPTURE}/${locale}.html`,
+          await page.content(),
+        );
+      }
+    });
+  });
+}
+
 test("@rail-section-filter Sinun vuorosi and Käynnissä narrow each on their own, follow the account, and ⌥↑/⌥↓ walks only what is shown", async ({
   page,
 }) => {

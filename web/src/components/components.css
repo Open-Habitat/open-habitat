@@ -4817,6 +4817,16 @@ h2.ah-rail-section-head {
   line-height: 18px;
   text-align: center;
 }
+.ah-rail-empty {
+  flex: none;
+  margin-inline-start: auto;
+  padding-inline-end: 6px;
+  color: var(--ah-muted);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
 .ah-now-empty {
   margin: 0;
   padding: 2px 8px 6px;

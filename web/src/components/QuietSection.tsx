@@ -153,6 +153,15 @@ export function QuietSection({
             total={rows.length}
           />
         </button>
+        {!rows.length ? (
+          <span
+            className="ah-rail-empty"
+            role="status"
+            data-testid="rail-quiet-empty"
+          >
+            {t.empty}
+          </span>
+        ) : null}
         {!folded && rows.length ? (
           <SectionFilterMenu
             testId="rail-quiet"
@@ -194,9 +203,7 @@ export function QuietSection({
           choice={choice}
         />
       ) : null}
-      {!rows.length ? (
-        <p className="ah-now-empty">{t.empty}</p>
-      ) : folded ? (
+      {!rows.length ? null : folded ? (
         <>
           {view.open ? <ul>{row(view.open)}</ul> : null}
           <ul className="ah-quiet-pills" aria-label={t.pills}>

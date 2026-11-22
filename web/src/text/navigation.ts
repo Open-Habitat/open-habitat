@@ -54,8 +54,8 @@ const fi = {
   conversationName: "Keskustelun nimi",
   yourTurn: "Sinun vuorosi",
   running: "Käynnissä",
-  nothingWaits: "Mikään ei odota sinua.",
-  nothingRuns: "Mikään ei ole käynnissä.",
+  nothingWaits: "ei mitään",
+  nothingRuns: "ei mitään",
   railLabel: "Työtilat ja keskustelut",
   // The crowded rail's edge chips (rail-scroll-region): the conversation
   // sections with rows out of sight past one edge of their region.
@@ -161,8 +161,8 @@ export const navigationText = catalog(fi, {
   conversationName: "Conversation name",
   yourTurn: "Your turn",
   running: "Running",
-  nothingWaits: "Nothing is waiting for you.",
-  nothingRuns: "Nothing is running.",
+  nothingWaits: "none",
+  nothingRuns: "none",
   railLabel: "Workspaces and conversations",
   beyond: { above: "Further up", below: "Further down" },
   beyondJump: (section, n, edge) =>

@@ -55,6 +55,29 @@ describe("sectionView", () => {
 });
 
 describe("NowSections workspace filter", () => {
+  it("puts truly empty states in their headings and removes them when populated", () => {
+    const rows = [row("a", "ws_beta")];
+    const view = render(
+      <MemoryRouter>
+        <NowSections yours={[]} running={[]} />
+      </MemoryRouter>,
+    );
+    for (const id of ["rail-yours", "rail-running"]) {
+      const section = view.getByTestId(id);
+      expect(
+        section
+          .querySelector("h2")
+          ?.contains(section.querySelector('[role="status"]')),
+      ).toBe(true);
+      expect(section.querySelector("ul")).toBeNull();
+    }
+    view.rerender(
+      <MemoryRouter>
+        <NowSections yours={rows} running={rows} />
+      </MemoryRouter>,
+    );
+    expect(view.queryAllByRole("status")).toHaveLength(0);
+  });
   const yours = [
     row("y1", "ws_alpha"),
     row("y2", "ws_beta"),
