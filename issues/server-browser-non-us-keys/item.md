@@ -2,13 +2,16 @@
 created: 2026-11-22
 updated: 2026-11-22
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: real-runtime lab during server-browser-control-clipboard-impl
 source_ref: taskfleet:01m812bqrqz6a8y0gyx613k596/lab:non-us-keys
 originating_run: 01m812bqrqz6a8y0gyx613k596
 originating_run_kind: spinoff
+lane: server-browser-control
+lane_seq: 3
+preparation: ready
 ---
 
 # Server browser: characters outside the US layout typed on the picture never arrive
@@ -50,3 +53,9 @@ and dispatch keydown/keyup with `key: "ä", code: "Quote"` on the canvas
   so the keysyms already exist when Chrome starts.
 - Make Chrome pick up keymap changes (check whether its X11/XKB layout engine
   refreshes on XkbNewKeyboardNotify that Xvnc could trigger).
+
+## Decisions
+
+### 2026-11-22T08:17:21Z · @conductor
+
+Conductor 22.11.2026: laned as a defect in accepted behaviour (typing on the server browser must work for a Finnish user; ä/ö in passwords and ordinary fields). Fix directly; Jari is told.
