@@ -1,0 +1,145 @@
+/* Review chrome above the production shell, as in round 1. */
+html, body { margin: 0; background: var(--ah-bg); }
+html[data-framed] body { background: color-mix(in srgb, var(--ah-ink) 8%, var(--ah-bg)); }
+.rsp-bar {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 50;
+  display: grid; gap: 4px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: var(--ah-size-meta)/1.4 var(--ah-font);
+}
+.rsp-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
+.rsp-bar strong { font-weight: 600; }
+.rsp-bar select { font: inherit; }
+.rsp-heights { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.rsp-heights input[type="range"] { width: 160px; }
+.rsp-heights output { min-width: 7.5em; font-variant-numeric: tabular-nums; }
+.rsp-preset {
+  min-height: 24px; padding: 0 8px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-sm);
+  background: var(--ah-surface); color: var(--ah-ink); font: inherit; font-variant-numeric: tabular-nums; cursor: pointer;
+}
+.rsp-preset[aria-pressed="true"] { border-color: var(--ah-accent); color: var(--ah-accent-ink); font-weight: 600; }
+.rsp-lines { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; color: var(--ah-ink-2); }
+.rsp-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.rsp-count { color: var(--ah-accent-ink); font-weight: 600; white-space: nowrap; }
+.rsp-recommend, .rsp-rule { margin: 0; }
+.rsp-recommend { color: var(--ah-accent-ink); }
+.rsp-rule { color: var(--ah-ink); }
+.rsp-iconset summary { cursor: pointer; color: var(--ah-ink-2); }
+.rsp-iconset ul { position: absolute; z-index: 5; margin: 4px 0 0; padding: 8px 12px; list-style: none; display: grid; gap: 4px;
+  background: var(--ah-surface); border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); box-shadow: var(--ah-shadow-menu); }
+.rsp-iconset li { display: flex; align-items: center; gap: 8px; }
+/* The step bands along the height scale, with the current height marked. */
+.rsp-breaks { position: relative; height: 20px; margin: 2px 0; border-radius: var(--ah-r-sm); background: var(--ah-sunken); }
+.rsp-break-band {
+  position: absolute; top: 0; bottom: 0; display: grid; place-items: center; overflow: hidden;
+  border-inline-start: 1px solid var(--ah-line-strong); color: var(--ah-muted); font-size: 11px; white-space: nowrap;
+}
+.rsp-break-band:first-child { border-inline-start: 0; }
+.rsp-break-band[data-current] { background: var(--ah-accent-soft); color: var(--ah-accent-ink); font-weight: 600; }
+.rsp-break-now { position: absolute; top: -2px; bottom: -2px; width: 2px; margin-left: -1px; background: var(--ah-accent); }
+@media (max-width: 1100px) {
+  .rsp-lines li:not([aria-current]) { display: none; }
+}
+
+/* The production shell under the bar, at the chosen height: a 1280 × 900
+   frame is that many CSS px, whatever the reviewer's screen. bare
+   (check.mjs) drops the bar and the picker and fills the viewport. */
+.rsp-stage .ah-app-shell:has(.ah-rail) {
+  top: var(--review-h, 0px);
+  height: var(--frame-h, calc(100dvh - var(--review-h, 0px) - 60px));
+  width: var(--frame-w, auto);
+  right: auto;
+  min-width: 0;
+  outline: 1px solid var(--ah-line);
+}
+html:not([data-framed]) .rsp-stage .ah-app-shell:has(.ah-rail) { right: 0; }
+html[data-framed] .rsp-stage .ah-app-shell:has(.ah-rail) { position: absolute; }
+html[data-framed] body { min-height: calc(var(--review-h, 0px) + var(--frame-h) + 60px); min-width: var(--frame-w); }
+html[data-bare] .proto-picker { display: none; }
+html[data-bare] .rsp-stage .ah-app-shell:has(.ah-rail) { top: 0; height: 100dvh; outline: 0; }
+.rsp-main { display: flex; min-height: 0; height: 100%; position: relative; }
+.rsp-main > .ah-conversation-frame { flex: 1 1 auto; min-width: 0; min-height: 0; }
+
+/* ---------- The adaptive directions ----------
+   Production's Etusivu row gives way to the head, which carries Etusivu in
+   every step; refresh moves to the Työtilat heading and the filter shows
+   only past 12 workspaces (round 1, A). */
+.rsp-shell:not([data-direction="3"]) .ah-rail-head > .ah-rail-home-row { display: none; }
+.rsp-shell:not([data-direction="3"]) .ah-rail-refresh { display: none; }
+.rsp-shell[data-filter="hidden"] .ah-rail-filter { display: none; }
+/* Työtilat's floor, from the direction's rule (production: 11rem). */
+.rsp-shell:not([data-direction="3"]) .ah-rail-workspaces { min-height: var(--rsp-ws-floor, 11rem); }
+.rsp-shell .ah-rail-head { position: relative; }
+.rsp-measure {
+  position: absolute; inset-inline: 10px; top: 0; visibility: hidden; pointer-events: none;
+  display: grid; gap: 0;
+}
+.rsp-measure > .rsp-head { position: absolute; inset-inline: 0; top: 0; }
+
+.rsp-head-tools { display: inline-flex; align-items: center; gap: 2px; margin-inline-start: auto; order: 1; }
+.ah-rail-workspaces > .ah-rail-section-head:has(.rsp-head-tools) > [data-testid="workspace-create"] { order: 2; }
+.rsp-refresh [data-ah-primitive="button"] { min-height: 26px; min-width: 26px; padding: 0; border-color: transparent; background: transparent; }
+
+/* One treatment for every destination in each step: none of them is a card
+   of its own. Oma selain carries its state in its slot (a dot; in tiles a
+   short line, in rows a word), never by colour alone. */
+.rsp-head { display: grid; gap: 8px; }
+.rsp-head-icons { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+.rsp-icon-item, .rsp-tile, .rsp-row {
+  position: relative; box-sizing: border-box; min-width: 0; margin: 0;
+  border-radius: var(--ah-r-md); color: var(--ah-ink-2); font: inherit; cursor: pointer;
+}
+.rsp-icon-item {
+  display: grid; place-items: center; height: 34px; padding: 0;
+  border: 1px solid var(--ah-line-soft); background: var(--ah-surface);
+}
+.rsp-icon-item[data-testid="rsp-dest-search"] { color: var(--ah-muted); }
+.rsp-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.rsp-tile {
+  display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 4px 8px;
+  border: 1px solid var(--ah-line-soft); background: var(--ah-surface);
+  font-size: 12.5px; text-align: start;
+}
+.rsp-rows { display: grid; gap: 2px; }
+.rsp-row {
+  display: flex; align-items: center; gap: var(--ah-s3); min-height: 32px; padding: 4px var(--ah-s3);
+  border: 0; background: transparent; color: var(--ah-ink); font-weight: 600; text-align: start;
+}
+:is(.rsp-icon-item, .rsp-tile, .rsp-row):hover { background: var(--ah-surface-hover); color: var(--ah-ink); }
+:is(.rsp-icon-item, .rsp-tile, .rsp-row):focus-visible { outline: 2px solid var(--ah-focus, var(--ah-accent)); outline-offset: -2px; }
+.rsp-mark { position: relative; display: grid; place-items: center; flex: none; color: var(--ah-ink-2); }
+.rsp-label { display: grid; flex: 1; min-width: 0; }
+.rsp-label b { overflow: hidden; font-weight: 600; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+.rsp-tile .rsp-label b { color: var(--ah-ink); white-space: normal; overflow-wrap: anywhere; line-height: 1.15; }
+.rsp-label small, .rsp-state { overflow: hidden; color: var(--ah-muted); font-size: 11px; font-weight: 400; text-overflow: ellipsis; white-space: nowrap; }
+.rsp-state { flex: none; max-width: 45%; }
+[data-state="agent"] :is(.rsp-label small, .rsp-state), .rsp-state[data-state="agent"] { color: var(--ah-ok); }
+/* Waiting for you takes the your-turn colour, as Sinun vuorosi does. */
+[data-state="ask"] :is(.rsp-label small, .rsp-state) { color: var(--ah-turn); font-weight: 600; }
+[data-state="ask"] > .rsp-mark, .rsp-icon-item[data-state="ask"] { color: var(--ah-turn); }
+.rsp-badge {
+  position: absolute; top: 3px; right: calc(50% - 20px);
+  min-width: 15px; height: 15px; padding: 0 4px; box-sizing: border-box;
+  border-radius: 999px; background: var(--ah-accent); color: var(--ah-on-accent, var(--ah-bg));
+  font: 600 10px/15px var(--ah-font); text-align: center;
+}
+.rsp-badge-inline { position: static; flex: none; }
+.rsp-dot {
+  position: absolute; width: 8px; height: 8px; border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--ah-surface); background: var(--ah-ok);
+}
+.rsp-icon-item .rsp-dot { bottom: 5px; right: calc(50% - 14px); }
+.rsp-mark .rsp-dot { bottom: -2px; right: -3px; }
+.rsp-row .rsp-dot { box-shadow: 0 0 0 2px var(--ah-rail); }
+.rsp-dot[data-state="ask"] { background: var(--ah-turn); }
+@media (prefers-reduced-motion: no-preference) {
+  .rsp-dot[data-state="agent"] { animation: rsp-pulse 1.6s ease-in-out infinite; }
+}
+@keyframes rsp-pulse { 50% { opacity: 0.35; } }
+
+/* Where a press would lead. */
+.rsp-toast {
+  position: fixed; left: 50%; bottom: 72px; z-index: 60; transform: translateX(-50%);
+  padding: 6px 12px; border-radius: var(--ah-r-md); background: var(--ah-ink); color: var(--ah-bg);
+  font: var(--ah-size-meta)/1.4 var(--ah-font);
+}
