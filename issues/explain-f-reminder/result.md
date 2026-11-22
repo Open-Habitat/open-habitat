@@ -134,3 +134,139 @@ state, like the theme, and never reaches the host snapshot.
    last pointed part and open the report? It would be a mouse route that
    does not need F.
 4. Is three cards the right number for B?
+
+# Kierros 2: where in the bar the F hint sits
+
+## Saatesanat
+
+Valitsit A:n, joten kortissa ei ole F-vihjettä koskaan. Tällä kierroksella
+vaihtelee vain se, missä kohtaa selitystilan palkkia vihje on ja miltä se
+näyttää. A:ssa vihje on painike heti *Selitystila*-otsikon jäljessä. B:ssä
+se on *Lopeta Esc* -painikkeen vieressä. C:ssä se on keskellä palkkia
+hiljaisena lauseena, jonka F-osa on linkki.
+
+Vihjeen napsautus ei kaikissa kolmessa koske viimeksi osoitettua kohtaa.
+Se avaa vihjeen alle paneelin *Palaute Habitatista*. Paneelissa voit
+kirjoittaa palautetta Habitatista yleensä, ja se kertoo, että kohdan
+virheestä ilmoitetaan osoittamalla kohtaa ja painamalla F. Kortti päästää
+irti, eikä paneelissa mainita mitään kohtaa. Kokeile napsauttaa vihjettä
+heti jonkin yläpalkin kohdan osoittamisen jälkeen.
+
+Suosittelen A:ta. Otsikon jälkeen silmä lukee palkin ensimmäiseksi, joten
+vihje tulee luetuksi samalla kun huomaat olevasi selitystilassa. Palkin
+alku on sivupalkin päällä, jossa selitettäviä kohtia osoitetaan
+harvemmin. Palkin loppu taas on keskustelun yläpalkin päällä, ja siellä
+osoitin on jatkuvasti, kun selität sen kohtia. Kapeassa ikkunassa A
+säilyy ennallaan otsikon vieressä. B on tuttu näppäinriviltä, mutta se on
+juuri siellä, missä osoitin liikkuu eniten, ja Lopeta on sen vieressä.
+C on rauhallisin, mutta kun vihje on lauseen keskellä, sitä on vaikeampi
+huomata, ja kapeassa ikkunassa lauseesta jää jäljelle vain F-osa.
+
+## Built page
+
+`design-system/prototypes/dist/explain-f-reminder-2/offline.html` (fonts
+embedded) and `index.html` (without fonts), built with
+`node design-system/prototypes/rounds/2026-11-22-explain-f-reminder-2/build.mjs`.
+A copy that outlives the worktree:
+`/var/tmp/agent-keep/explain-f-reminder-2/offline.html`; the check's
+screenshots are in `/var/tmp/agent-keep/explain-f-reminder-2/check/`. The
+round's `NOTES.md` lists the sources, the URL parameters (`?v=1|2|3`,
+`?theme=dark`, `?lang=en`, `?motion=less`) and the commands.
+
+`check.mjs` passed 362 checks with a clean console. At 1440 px, in Päivä
+and Yö and in every direction, it checks that:
+
+- the card follows, lets the pointer through, has no report button and
+  never shows the F row, not even after a rest; the hidden screen-reader
+  line is in its live region;
+- the hint is a button inside the bar with the F keycap, in the
+  direction's place (A right after the title and before the
+  instructions, B just before Stop, C centred as part of the sentence),
+  and does not reach Stop;
+- pointing at the hint makes no new card;
+- clicking it opens the general feedback panel under the hint: the part's
+  card lets go, there is no part report field, the panel does not name
+  the last pointed part, its field has focus, and pointing explains
+  nothing while it is open;
+- Esc closes the panel, returns focus to the hint and keeps the mode; a
+  press outside with typed text only nudges and keeps the text; sending
+  shows the sent state, and a press outside then closes it;
+- a click on a part acts and opens no report; F pins and focuses the
+  field; the hint leaves while pinned; Esc unpins; a second Esc ends the
+  mode.
+
+Once per direction it checks the keyboard (Tab reaches the hint, its name
+says it reports a mistake, its description says that a click opens
+general feedback, Enter opens the panel, Esc returns to the hint, and a
+focused part still explains itself) and a 700 px window with a mouse (the
+hint keeps its keycap, is not clipped, sits between the title and Stop,
+and the page does not scroll sideways). Once each: reduced motion, English,
+and 390 px with touch in Päivä and Yö (no hint, the report is a button on
+the sheet, no sideways scroll).
+
+## Axis and directions
+
+Axis: **where in the bar the hint sits and how it reads.** The card, the
+keys, the panel and what a click does are the same in every direction.
+
+| | A By the title | B At the end | C Centred |
+|---|---|---|---|
+| Place | Right after "Selitystila", a hairline, then the instructions | Beside Stop Esc | Middle of the bar, replacing the instructions on the left |
+| Reads as | A labelled outline button: part of the mode's name | A row of keys: F and Esc | A quiet sentence; only "[F] ilmoittaa virheestä" is a link |
+| What is under it | The rail's top (server name, home) | The conversation's top bar (context, model, ?, ⋯), where the pointer goes often | The conversation's title |
+| Narrow window (< 800 px) | Unchanged beside the title | Unchanged before Stop | Only the F link, centred |
+| Mistaken for | Little: it is the first thing after the title | A second exit control, next to Stop | Status text, not a control |
+
+## Accessibility and touch
+
+- **Keyboard:** the hint is a real button in the bar's tab order (in A,
+  the bar's first). Enter opens the panel with focus in its field, and Esc
+  returns focus to the hint. F works as before from anywhere except while
+  the panel is open.
+- **Screen reader:** the hint's name is its visible text ("F Ilmoita
+  virheestä", in C "F ilmoittaa virheestä"). Its description says that F
+  reports a mistake in the pointed part's explanation and a click opens
+  general feedback about Habitat. The button has `aria-haspopup="dialog"`
+  and `aria-expanded`; the panel is a labelled non-modal dialog. The card
+  keeps round 1's hidden line at its end.
+- **Touch:** no F key, so there is no hint; the sheet keeps its real
+  **Ilmoita virheestä** button.
+
+## What the view assumes from the host
+
+Nothing. The general report would open a GitHub issue in a new tab with
+only the person's text, the Open Habitat version and the language, like
+the card's report without the card. It never reaches the host.
+
+## Decisions for later review
+
+- **A click on the hint opens a panel, not GitHub straight away.**
+  Alternatives: open a blank GitHub issue at once; or make the hint plain
+  text with no click. Chosen because the panel can say, at the moment of
+  the click, that a part's mistake is reported with F, and it keeps the
+  same "what is sent" text as the card's report.
+- **The hint's text still says "Ilmoita virheestä"** although a click
+  opens general feedback. The panel's first line bridges the two.
+  Alternative: label it "Palaute" and put F's meaning only in the
+  description. Kept because F and reporting a mistake are what the hint
+  is there to teach (see question 2).
+- **The card lets go when the panel opens, and pointing explains nothing
+  while it is open.** So nothing on screen suggests that the panel is
+  about the last part.
+- **No general feedback on touch.** A phone's bar names only the state
+  (round 9), and the sheet already has a report button for a part.
+  Alternative: a small "Palaute" button in the phone bar.
+- **C replaces production's instructions with its sentence** instead of
+  adding a third text to the bar, which would not fit at 1440 px beside
+  the instructions.
+
+## Questions for Jari
+
+1. A, B or C?
+2. Should the hint say "Palaute" (what a click does) or "Ilmoita
+   virheestä" (what F does)? Now it says what F does, and the panel
+   explains the difference.
+3. Should general feedback be reachable on a phone too, for example from
+   the bar?
+4. Should general feedback also be available outside Explain mode (for
+   example in the account menu), or is the mode its natural home?
