@@ -134,13 +134,14 @@ describe("rail Nyt groups", () => {
       }
       // The person's reply removes last_reply from the host's snapshot;
       // a retained seen marker must not keep the old reply waiting.
-      expect(
-        section(
-          run([{ ...row, last_reply: undefined }], {
-            attention: [[id, "seen"]],
-          }),
-        ),
-      ).not.toBe("yours");
+      const withoutReply = section(
+        run([{ ...row, last_reply: undefined }], {
+          attention: [[id, "seen"]],
+        }),
+      );
+      // An idle worker independently needs the person's review.
+      if ("spinoffs_idle" in extra) expect(withoutReply).toBe("yours");
+      else expect(withoutReply).not.toBe("yours");
 
       // A new turn wins over the old reply before the snapshot catches up;
       // opening it during work is neutral too. Settling hands it back.
@@ -637,11 +638,10 @@ describe("rail Nyt groups", () => {
         spinoffs_idle: 1,
       }),
     ]);
-    expect(ids(now.running)).toEqual(["worker-idle", "worker-mixed"]);
-    expect(now.running[0].activityLabel).toBe("Worker odottaa sinua");
-    expect(now.running[0].spinoffWorking).toBe(false);
-    expect(now.running[1].activityLabel).toBe("Worker työskentelee");
-    expect(now.running[1].spinoffWorking).toBe(true);
+    expect(ids(now.yours)).toEqual(["worker-idle"]);
+    expect(ids(now.running)).toEqual(["worker-mixed"]);
+    expect(now.yours[0].spinoffWorking).toBe(false);
+    expect(now.running[0].spinoffWorking).toBe(true);
   });
 
   it("carries the host's last change and keeps a crashed Pi in sight as failed", () => {
@@ -759,20 +759,68 @@ describe("rail Nyt groups", () => {
       ],
       { attention: [["replied", "new"]] },
     );
-    expect(ids(now.yours)).toEqual(["replied"]);
-    expect(now.yours[0].failed).toBe(true);
-    expect(now.yours[0].detail).toContain("Vuoro päättyi virheeseen");
-    expect(ids(now.running)).toEqual(["worker-failed", "retrying"]);
+    expect(ids(now.yours)).toEqual(["worker-failed", "replied"]);
+    expect(now.yours.every((row) => row.failed)).toBe(true);
+    expect(ids(now.running)).toEqual(["retrying"]);
     expect(ids(now.quiet)).toEqual(["error-turn"]);
     expect(now.quiet[0].failed).toBe(true);
-    expect(now.running[0].failed).toBe(true);
-    expect(now.running[1].failed).toBeUndefined();
-    // Failed rows are not live work in the hint; the working one is.
+    expect(now.running[0].failed).toBeUndefined();
+    // Both failures needing the person contribute attention, not live work.
     expect(now.hints.get("ws_example00")).toMatchObject({
       kind: "attention",
-      count: 1,
+      count: 2,
     });
   });
+
+  it.each(["running", "quiet"] as const)(
+    "a stopped worker needs the person despite the agent's %s choice",
+    (section) => {
+      for (const stopped of [
+        { failure: "worker_failed" as const },
+        { spinoffs_idle: 1 },
+      ]) {
+        const row = agent("stopped", {
+          process: "not_observed",
+          run_active: false,
+          agent_section: { section, at: "2026-11-22T10:00:00Z" },
+          ...stopped,
+        });
+        expect(ids(run([row]).yours)).toEqual(["stopped"]);
+        expect(run([row]).running).toEqual([]);
+        // Preserved work needs action, but the person's dismissal still wins.
+        const dismissed = run([
+          {
+            ...row,
+            turn_mark: { state: "not_now", at: "2026-11-22T10:01:00Z" },
+          },
+        ]);
+        expect(ids(dismissed.quiet)).toEqual(["stopped"]);
+        expect(dismissed.running).toEqual([]);
+        // Another worker genuinely working must not be hidden by a failure.
+        expect(ids(run([{ ...row, spinoffs_working: 1 }]).running)).toEqual([
+          "stopped",
+        ]);
+      }
+    },
+  );
+
+  it.each(["crash", "restart"] as const)(
+    "an idle worker does not hide its parent's %s interruption",
+    (cause) => {
+      const now = run([
+        agent("parent-down", {
+          process: "not_observed",
+          spinoffs_idle: 1,
+          rest: { cause, at: "2026-11-22T10:00:00Z" },
+          interrupted_turn: true,
+        }),
+      ]);
+      expect(now.yours).toEqual([]);
+      expect(now.running).toMatchObject([
+        { agentId: "parent-down", failed: true },
+      ]);
+    },
+  );
 
   it("keeps the rows through a lost connection without claiming they work", () => {
     const now = run([agent("working", { run_active: true })], {

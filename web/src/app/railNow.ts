@@ -151,8 +151,7 @@ export function railNow({
       (observed.running &&
         observed.activity !== "closed" &&
         observed.activity !== "waiting") ||
-      workerBusy ||
-      workerIdle;
+      workerBusy;
     // The agent's own choice for its settled turn (agent section update):
     // quiet keeps its reply from claiming the person's turn, and so does
     // running while Habitat sees its work going on (a worker waiting for a
@@ -206,11 +205,23 @@ export function railNow({
       !facts.pendingQuestion &&
       !a.failure &&
       !(a.rest?.cause === "crash" && !a.rest.awake);
+    // A surviving worker does not erase the parent's interrupted work.
+    // Keep the existing crash/cut handling unless a reply or personal mark
+    // already claims the turn.
+    const parentDown =
+      !!a.rest &&
+      !a.rest.awake &&
+      (a.rest.cause === "crash" ||
+        (a.rest.cause !== "person" && !!a.interrupted_turn));
     const turn =
       (attention && !dismissed) ||
       read ||
       raised ||
       unanswered ||
+      (!live &&
+        !dismissed &&
+        !parentDown &&
+        (workerIdle || a.failure === "worker_failed")) ||
       (facts.pendingQuestion && observed.running);
     // Pi ended unasked: the conversation rests until the person writes, and
     // stays in Käynnissä as failed so it is not silently gone. The snapshot's
@@ -230,16 +241,13 @@ export function railNow({
       a.rest.cause !== "person" &&
       !!a.interrupted_turn;
     // A settled failed turn is not running work. Keep its failure marker
-    // in the quiet list; a failed worker or interrupted process still needs
-    // attention in the running list. A new turn supersedes the old failure.
+    // in the quiet list; a failed worker needs the person's turn, not a
+    // running-work slot. A new turn supersedes the old failure.
     const failure = observed.activity === "working" ? undefined : a.failure;
     const failed = crashed || cut || failure !== undefined;
     // Hiljaiset lists every other conversation, finished worktree
     // conversations included (Jari 1.11.2026).
-    const isQuiet =
-      !turn &&
-      !live &&
-      (!failed || (!crashed && !cut && failure === "turn_error"));
+    const isQuiet = !turn && !live && !crashed && !cut;
     const name = w.display_name ?? w.name;
     const state =
       failure === "turn_error"
