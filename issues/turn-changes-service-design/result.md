@@ -1,3 +1,75 @@
+# Result: the recorder, built as the upstream pull request
+
+**Built (22.11.2026):** the turn-snapshot recorder as a better-pi-rewind
+contribution, on branch `turn-snapshots`, commit `17dfa79` on top of upstream
+`e42fa9c` (v0.4.0). Nothing was pushed and no pull request was opened; the
+text for it is in [upstream-pr.md](upstream-pr.md). Habitat's runtime pin is
+unchanged: Habitat does not install better-pi-rewind at all today, it embeds a
+derivative (`internal/daemon/rewind-extension.mjs`).
+
+- **Where it is:** the clone is `/var/tmp/agent-scratch/bpr-recorder.ccXl/repo`
+  (marked `.keep`). The durable copy is the bundle
+  `/var/tmp/agent-keep/turn-changes-service-design/better-pi-rewind-turn-snapshots.bundle`
+  (prerequisite: the public upstream commit `e42fa9c`). The two raw review outputs are beside it.
+  No GitHub fork of `raine/better-pi-rewind` exists under our accounts.
+- **What it is:** `extensions/snapshots.ts` (second extension entry, no UI),
+  `src/turn-snapshots/` (store, read/compare/restore, retention), exported as
+  `better-pi-rewind/snapshots`; README and CHANGELOG sections. Format and store
+  layout as in `design.md`, with the differences listed below.
+- **Checks:** upstream's `npm run check` (tsc + `node:test`) green, 61 tests,
+  29 new, four consecutive runs. Upstream has no separate lint. On a scratch
+  clone of this repository (5 000 files): 27 ms first snapshot, 14 ms unchanged,
+  26 ms after `sed -i` on 50 files, 7 ms for the run's `stat`.
+- **Review:** independent `/llm-review` (finder GPT-6 Astra, then a focused
+  false-negative probe by Claude Fable 5.2 on restore and retention after the
+  first round of fixes) and `/assess-findings`: 8 defects confirmed and fixed,
+  each with a regression test. Among them: restore could delete a file that
+  had been ignored at the snapshot, retention could remove a store a fork still
+  names, CRLF files came back normalized, a racy-clean index entry was recorded
+  stale. 4 were dropped as documented trade-offs or outside the threat model.
+- **Follow-up:** Habitat's reader migration is filed via intake as
+  `turn-snapshot-reader-migration` (unlaned).
+
+## Decisions for later review
+
+1. **Habitat has no better-pi-rewind pin to read.** The brief asked how the
+   runtime pins it; it does not, it embeds an adapted copy. The branch is
+   based on upstream `main` (`e42fa9c`), which is also the commit the
+   embedded copy credits.
+2. **Local clone instead of a GitHub fork.** No fork existed; creating one
+   is a public act on Jari's GitHub account, left for when he opens the PR.
+3. **`/rewind` does not read snapshots in this PR.** The recorder, format and
+   module can be judged on their own; wiring the selector and restore to
+   `pathsChangedSince` is offered in the PR text as the next step. Alternative:
+   one larger PR. Chosen because the maintainer's response is the gate, and a
+   small first PR is easier to accept.
+4. **Entry details beyond the design draft:** a top-level `reason` for
+   `tree: null`; `skipped` as `{count, paths: [{path, reason}], truncated}`;
+   `timestamp` means when the snapshot *began*, which restore uses to refuse
+   removing files older than the snapshot.
+5. **Plain folders get `tree: null` (`not-a-repository`).** Earlier design's
+   question 4: phase 1 covers Git workspaces only; the per-file backups stay
+   the mechanism elsewhere.
+6. **No recording without a session file** (in-memory sessions): nothing
+   would keep the entries, and no sweep could find the store.
+7. **Repositories with filter drivers, sparse checkout or a split index are
+   not recorded** (`unsupported-repository`), as the design said, until
+   measured. Built-in eol/encoding conversions are supported and restored
+   byte for byte.
+8. **OMP settle hook:** `agent_end` without `willContinue`, with OMP detected
+   by its extension API carrying `logger` and `typebox`; OMP forks register
+   through `session_switch`. Checked against OMP's source, not run. Listed as
+   an open point in the PR.
+9. **Retention safety additions:** a store written within the hour is never
+   removed whole or collected; a store young enough that its session file
+   may not exist yet is kept; forks register themselves as referrers.
+10. **Git refreshes the mtime of existing loose objects in the workspace**
+    through alternates. Accepted and documented. The alternative, no
+    alternates, costs roughly ten times the time and storage per the earlier
+    design's measurements.
+
+---
+
 # Result: design for one shared record of turn changes
 
 No implementation. `design.md` is the deliverable; the issue stays open
