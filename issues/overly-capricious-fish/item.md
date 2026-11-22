@@ -2,7 +2,7 @@
 created: 2026-11-22
 updated: 2026-11-22
 type: improvement
-status: untriaged
+status: done
 priority: normal
 provenance: ai-review
 source_ref: taskfleet:01m801jsmhdecx7jfytgacejpc/review-finding:sha1:e4bfb013049b41f1f805ed5cdebfa9106060793b
@@ -17,6 +17,7 @@ assessment_outcome: SPIN_OFF
 review_confidence: high
 review_severity: must-fix
 review_target: 913ba09b
+closed: 2026-11-22
 ---
 
 # Upgrade work census cannot see daemon work behind an idle controller state
@@ -53,3 +54,9 @@ Expose the daemon's own work census (the same `classify` used by workspace fence
 ### 2026-11-22T04:54:11Z · @agent
 
 Implemented by upgrade-preview-background-work (agent work show; upgrade reads it, list only for a predecessor CLI without it). Can be closed at triage.
+
+## Resolution
+
+### 2026-11-22T04:54:56Z · @issuectl
+
+Implemented by run 01m80r593bm1mgb5a24djqkm0f (upgrade-preview-background-work): daemon work census.
