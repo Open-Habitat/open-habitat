@@ -2,15 +2,20 @@
 created: 2026-11-22
 updated: 2026-11-22
 type: bug
-status: untriaged
+status: fixed
 priority: normal
 provenance: other
 source_ref: taskfleet:01m824zkytj3q68kszkkqaskfs/observed:picker-after-rename
 originating_run: 01m824zkytj3q68kszkkqaskfs
 originating_run_kind: spinoff
+closed: 2026-11-22
 ---
 
 # Workspace sound picker browser journey intermittently fails after rename
+
+## Acceptance Criteria
+
+- [x] Wait for the confirmed rename route before opening the picker; the full spec passes 15 repetitions (see result.md).
 
 ## Description
 

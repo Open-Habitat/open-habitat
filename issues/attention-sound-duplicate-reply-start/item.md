@@ -2,15 +2,20 @@
 created: 2026-11-22
 updated: 2026-11-22
 type: bug
-status: untriaged
+status: fixed
 priority: normal
 provenance: other
 source_ref: taskfleet:01m824zkytj3q68kszkkqaskfs/observed:duplicate-reply-start
 originating_run: 01m824zkytj3q68kszkkqaskfs
 originating_run_kind: spinoff
+closed: 2026-11-22
 ---
 
 # Same-workspace browser journey intermittently starts the reply sound twice
+
+## Acceptance Criteria
+
+- [x] Remove the artificial completion-time clock gap while keeping exact playback assertions; the full spec passes 15 repetitions (see result.md).
 
 ## Description
 
