@@ -9,7 +9,7 @@ provenance: chat
 source_ref: habitat:pi-current/2026-11-22-upgrade-announced-to-agents
 lane: upgrade-notice
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Upgrades proceed on schedule with advance notice to running agents
