@@ -3,7 +3,7 @@ created: 2026-11-22
 updated: 2026-11-22
 type: improvement
 reporter: jari
-status: testing
+status: open
 priority: normal
 provenance: chat
 source_ref: habitat:pi-current/2026-11-22-rail-space
@@ -28,3 +28,9 @@ Next action: a prototype round (one view: the rail at laptop height, e.g.
 1440×800 and 1280×720 CSS px) showing distinct directions for relocating or
 compacting the rail's fixed items so conversations and workspaces get the room.
 Jari picks a direction; implementation waits for that.
+
+## Decisions
+
+### 2026-11-22T07:26:30Z · @jari
+
+Jari 22.11.2026 on round 1: A Tiivis is the best, but better still if the rail adapts to the screen size. Small screen: the compact icon row of A. More room: the compact buttons first gain their labels as tiles (like C's tiles), and with ample room each gets its own row. On large screens Työtilat should also get more than its 3-row minimum when there is room. Round 2 prototypes this responsive rail.
