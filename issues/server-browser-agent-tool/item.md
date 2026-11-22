@@ -3,11 +3,15 @@ created: 2026-11-22
 updated: 2026-11-22
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: server-browser-settings
 lane_seq: 2
 preparation: ready
+closed: 2026-11-22
+commits:
+- hash: ab3a7429c7978e9a8d15057afc8bfeb73a04ccf7
+  summary: Native browser commands and experimental feature gate
 ---
 
 # Server browser: a working agent tool, downloads, guidance in running conversations, ask-first rule
@@ -30,3 +34,10 @@ A ready tool available whenever the switch is on (e.g. `open-habitat agent brows
 ### 2026-11-22T04:55:34Z · @jari
 
 Second testing agent (22.11.) confirmed the Node gap and added: separate socket_path/ws_path in status; proper load waiting in the CLI; the skill's Playwright example mixes require with top-level await and leaves CDP unexplained; open windows are a useful hint; explain the agent field.
+
+## Acceptance Criteria
+
+- [x] Built-in browser commands need no Node or external CDP client; synthetic sandboxed Chrome exercises the command implementation.
+- [x] Original downloads, default download path and separate CDP endpoint fields are discoverable.
+- [x] Running conversations can print the browser skill, including the PDF pitfall and ask-first rule.
+- [x] Focused checks, independent review and finding assessment are recorded in result.md.
