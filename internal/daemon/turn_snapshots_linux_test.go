@@ -164,3 +164,71 @@ func TestTurnSnapshotRecorderFollowsTheRewindSwitch(t *testing.T) {
 		t.Fatalf("recorder with the switch on: %v", args)
 	}
 }
+
+// A run that is still open, or that Pi never settled, reaches the files as
+// they are now: the preview names what it changed and removed, as the
+// extension's restore will put them back.
+func TestRewindPreviewCoversAnOpenRun(t *testing.T) {
+	if _, err := os.Stat("/usr/bin/git"); err != nil {
+		t.Skip("git not installed")
+	}
+	home := t.TempDir()
+	ws := filepath.Join(home, "w")
+	store := filepath.Join(home, ".pi", "agent", "file-history", "s1", "tree.git")
+	for _, d := range []string{ws, store} {
+		if err := os.MkdirAll(d, 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	git := func(args ...string) string {
+		t.Helper()
+		cmd := exec.Command("/usr/bin/git", args...)
+		cmd.Env = []string{"HOME=" + home, "PATH=/usr/bin:/bin", "GIT_CONFIG_NOSYSTEM=1"}
+		out, err := cmd.Output()
+		if err != nil {
+			t.Fatalf("git %v: %v", args, err)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	for name, text := range map[string]string{"a.txt": "one\n", "b.txt": "keep\n", "gone.txt": "x\n"} {
+		if err := os.WriteFile(filepath.Join(ws, name), []byte(text), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	git("init", "--quiet", "--bare", store)
+	git("--git-dir="+store, "--work-tree="+ws, "add", "-A")
+	tree := git("--git-dir="+store, "write-tree")
+	// The open run: a.txt changed by a script, gone.txt removed.
+	if err := os.WriteFile(filepath.Join(ws, "a.txt"), []byte("one\ntwo\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(ws, "gone.txt")); err != nil {
+		t.Fatal(err)
+	}
+	start, _ := json.Marshal(map[string]any{"type": "custom", "customType": "turn-snapshot", "id": "s1e", "parentId": "u1", "data": map[string]any{"version": 1, "userEntryId": "u1", "phase": "start", "tree": tree, "reason": nil, "store": "s1", "root": ws, "cwd": ws, "timestamp": "2026-11-22T10:00:00Z", "skipped": map[string]any{"count": 0, "paths": []any{}, "truncated": false}}})
+	lines := []string{
+		`{"type":"session","version":3,"id":"33333333-3333-4333-8333-333333333333","timestamp":"2026-11-22T10:00:00Z","cwd":"` + ws + `"}`,
+		`{"type":"message","id":"u1","parentId":null,"timestamp":"2026-11-22T10:00:00Z","message":{"role":"user","content":"run"}}`,
+		string(start),
+	}
+	path := filepath.Join(home, "s.jsonl")
+	if err := os.WriteFile(path, []byte(strings.Join(lines, "\n")+"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	s, ok := readRewindSession(path, os.Geteuid())
+	if !ok {
+		t.Fatal("session unreadable")
+	}
+	p, ok := s.preview(home, "u1")
+	got := map[string]string{}
+	for _, f := range p.Files {
+		got[f.Path] = f.Change
+	}
+	if !ok || !p.Checkpoint || len(got) != 2 || got["a.txt"] != "modified" || got["gone.txt"] != "deleted" {
+		t.Fatalf("preview of an open run: %+v", p)
+	}
+	// Git only read: the store's index is as it was.
+	if status := git("--git-dir="+store, "--work-tree="+ws, "diff", "--cached", "--name-only", tree); status != "" {
+		t.Fatalf("store index changed: %q", status)
+	}
+}

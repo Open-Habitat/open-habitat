@@ -185,17 +185,18 @@ export function useNear() {
   return [near, setPlace] as const;
 }
 
-/** The turn's snapshot comparison, or none when it has no snapshots or the
- * read failed: the tool calls then answer alone, as before snapshots. */
+/** The turn's snapshot comparison; none when it has no snapshots, and
+ * "failed" when it could not be read: the tool calls then answer alone for
+ * now and the read is tried again. */
 async function readSnapshot(
   agentId: string,
   entry: string,
-): Promise<TurnSnapshotChanges | undefined> {
+): Promise<TurnSnapshotChanges | undefined | "failed"> {
   try {
     const value = await readTurnChanges(agentId, entry);
     return value.snapshot ? value : undefined;
   } catch {
-    return undefined;
+    return "failed";
   }
 }
 
@@ -276,13 +277,19 @@ export function TurnChangesSource({
     files?: FileChange[];
     unrecorded?: string[];
     unrecordedMore?: number;
+    filesMore?: number;
+    /** The snapshot read failed: the tool calls stand in until it works. */
+    partial?: boolean;
   }>();
   const [attempt, setAttempt] = useState(0);
   const latest = useRef({ calls, root, asked, userKey });
   latest.current = { calls, root, asked, userKey };
   // A read that failed is tried again with the next revision or on request;
   // one that succeeded is not repeated.
-  const retry = read?.key === key && read.files ? "" : `${revision}/${attempt}`;
+  const retry =
+    read?.key === key && read.files && !read.partial
+      ? ""
+      : `${revision}/${attempt}`;
   useEffect(() => {
     if (!near || !agentId || !key || retry === "") return;
     let current = true;
@@ -294,14 +301,25 @@ export function TurnChangesSource({
       .then(([steps, snapshot]) => {
         if (!current) return;
         const files = turnChanges(steps, root);
+        // A snapshot result already shown stays when a later read fails.
+        if (snapshot === "failed")
+          return setRead((was) =>
+            was?.key === key && was.files && !was.partial
+              ? was
+              : { key, files, partial: true },
+          );
         if (!snapshot || !userKey) return setRead({ key, files });
         setRead({
           key,
-          files: withSnapshot(files, snapshot.files, (path) =>
-            readTurnDiff(agentId, userKey, path),
+          files: withSnapshot(
+            files,
+            snapshot.files,
+            (path) => readTurnDiff(agentId, userKey, path),
+            snapshot.files_more === 0,
           ),
           unrecorded: snapshot.skipped,
           unrecordedMore: snapshot.skipped_more,
+          filesMore: snapshot.files_more,
         });
       })
       // A turn whose calls cannot be read shows no card rather than a wrong
@@ -334,6 +352,7 @@ export function TurnChangesSource({
       }
       unrecorded={read.unrecorded}
       unrecordedMore={read.unrecordedMore}
+      filesMore={read.filesMore}
     />
   );
 }

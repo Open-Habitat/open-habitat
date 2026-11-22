@@ -49,6 +49,11 @@ embedded in the Go binary) adapts the checkpoint capture, tracked-path rules
 and restore of better-pi-rewind (raine, MIT, commit e42fa9c). Nothing is
 installed from npm; the extension carries the upstream copyright and
 permission notice in its header, and the Go preview's line count names it.
+The turn-snapshot recorder beside it (`internal/daemon/turn-snapshots/`,
+embedded in the Go binary and loaded only while Palaa tähän is on) is
+better-pi-rewind's code at e42fa9c with Habitat's own contribution to it
+(`extensions/snapshots.ts`, `src/turn-snapshots/`), kept as the upstream pull
+request will carry it; its `LICENSE` is upstream's MIT notice.
 
 CodeMirror 6 and its Lezer parser/highlighter packages are MIT-licensed upstream
 modules from the maintained CodeMirror project. They run as bundled browser

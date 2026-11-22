@@ -319,22 +319,37 @@ const rootRelative = (root, files) => files.map((f) => relative(root, f).split(s
 // have no other copy. `covered` is every path the snapshots answer for, so
 // the per-file copies leave them alone; without an undo point they answer
 // for none and the copies restore what they track.
-async function restoreSnapshot(dir, ctx, storeId, target, pathsOrFind) {
+export async function restoreSnapshot(dir, ctx, storeId, target, pathsOrFind) {
   // A store the retention sweep removed, or a tree Git cannot read: the
   // snapshots answer for nothing and the per-file copies do what they can.
   try { return await restoreFromSnapshot(dir, ctx, storeId, target, typeof pathsOrFind === 'function' ? await pathsOrFind() : pathsOrFind); } catch (e) {
     return { covered: new Set(), changed: [], errors: [{ path: target.root, error: message(e) }], undo: null };
   }
 }
-async function restoreFromSnapshot(dir, ctx, storeId, target, paths) {
+// A path a snapshot left out (too large, unreadable): it, or anything under
+// a skipped directory.
+const skippedBy = (summary) => {
+  const skipped = (summary?.paths ?? []).map((p) => p.path);
+  return (path) => skipped.some((s) => path === s || path.startsWith(`${s}/`));
+};
+async function restoreFromSnapshot(dir, ctx, storeId, target, all) {
   const m = await snapshotsModule();
-  const covered = absoluteUnder(target.root, paths);
-  if (!paths.length) return { covered, changed: [], errors: [], undo: null };
+  // A path the target snapshot skipped has no content there: the per-file
+  // copies answer for it.
+  const inTarget = skippedBy(target.skipped);
+  let paths = all.filter((p) => !inTarget(p));
+  if (!paths.length) return { covered: new Set(), changed: [], errors: [], undo: null };
   const now = await m.snapshotNow({ agentDir: dir, storeId, cwd: target.cwd, sessionFile: ctx.sessionManager.getSessionFile?.() ?? null, labelPrefix: 'oh-rewind' });
-  if (!now.tree || now.root !== target.root) return { covered: new Set(), changed: [], errors: paths.map((p) => ({ path: p, error: `no undo point (${now.reason ?? 'different repository'})` })), undo: null };
+  // Every file the restore overwrites must be in the undo point: one the
+  // undo snapshot skipped (or a skip list too long to name them all) is left
+  // to the per-file copies.
+  if (!now.tree || now.root !== target.root || now.skipped?.truncated) return { covered: new Set(), changed: [], errors: paths.map((p) => ({ path: p, error: `no undo point (${now.reason ?? (now.skipped?.truncated ? 'too many skipped files' : 'different repository')})` })), undo: null };
+  const inUndo = skippedBy(now.skipped);
+  const unsaved = paths.filter((p) => inUndo(p));
+  paths = paths.filter((p) => !inUndo(p));
   const result = await m.restorePaths(dir, target, paths);
   const changed = rootRelative(target.root, result.changedFiles);
-  return { covered, changed, errors: result.errors, undo: { store: storeId, tree: now.tree, root: now.root, cwd: target.cwd, timestamp: now.startedAt, skipped: now.skipped, paths: changed } };
+  return { covered: absoluteUnder(target.root, paths), changed, errors: [...result.errors, ...unsaved.map((p) => ({ path: p, error: 'not in the undo point' }))], undo: { store: storeId, tree: now.tree, root: now.root, cwd: target.cwd, timestamp: now.startedAt, skipped: now.skipped, paths: changed } };
 }
 // The paths the agent's runs changed from the first run in `records` on.
 async function changedSince(dir, records, userEntryId) {

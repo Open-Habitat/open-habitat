@@ -100,3 +100,35 @@ test('a path a checkpoint could not copy has no version there, not the first cop
   assert.equal(h.version(h.get('u2'), 'a'), undefined);
   assert.equal(h.version(h.get('u1'), 'a').backupFileName, null);
 });
+
+test('a snapshot restore never overwrites a file its undo point could not keep', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const { takeSnapshot } = await import('../turn-snapshots/src/turn-snapshots/store.ts');
+  const { restoreSnapshot } = await import('../rewind-extension.mjs');
+  const root = await mkdtemp(join(tmpdir(), 'oh-rewind-snap-'));
+  try {
+    const ws = join(root, 'ws'), agent = join(root, 'agent');
+    await mkdir(ws); await mkdir(join(agent, 'sessions'), { recursive: true });
+    const session = join(agent, 'sessions', 's.jsonl');
+    await writeFile(session, '');
+    const git = (...a) => execFileSync('git', ['-C', ws, ...a], { env: { PATH: '/usr/bin:/bin', HOME: root, GIT_CONFIG_NOSYSTEM: '1' } });
+    git('init', '-q', '-b', 'main');
+    await writeFile(join(ws, 'small.txt'), 'before\n');
+    await writeFile(join(ws, 'big.bin'), 'small at first\n');
+    git('add', '.'); git('-c', 'user.name=t', '-c', 'user.email=t@example.invalid', 'commit', '-qm', 'i');
+    const start = await takeSnapshot({ agentDir: agent, storeId: 's1', cwd: ws, sessionFile: session, label: 'u-start' });
+    const target = { version: 1, userEntryId: 'u', phase: 'start', tree: start.tree, reason: null, store: 's1', root: start.root, cwd: ws, timestamp: start.startedAt, skipped: start.skipped };
+    // The run changes both; big.bin grows past the snapshot's per-file limit.
+    await writeFile(join(ws, 'small.txt'), 'after\n');
+    const big = Buffer.alloc(21 * 1024 * 1024, 7);
+    await writeFile(join(ws, 'big.bin'), big);
+    const ctx = { sessionManager: { getSessionFile: () => session } };
+    const result = await restoreSnapshot(agent, ctx, 's1', target, ['big.bin', 'small.txt']);
+    assert.equal(await readFile(join(ws, 'small.txt'), 'utf8'), 'before\n');
+    assert.ok((await readFile(join(ws, 'big.bin'))).equals(big), 'a file the undo point skipped is left as it is');
+    assert.deepEqual(result.changed, ['small.txt']);
+    assert.deepEqual(result.undo.paths, ['small.txt']);
+    assert.ok(result.errors.some((e) => e.path === 'big.bin'));
+    assert.ok(!result.covered.has(join(ws, 'big.bin')), 'the per-file copies still answer for it');
+  } finally { await rm(root, { recursive: true, force: true }); }
+});

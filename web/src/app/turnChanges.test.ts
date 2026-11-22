@@ -236,7 +236,7 @@ describe("withSnapshot", () => {
     expect(totalCounts(merged)).toEqual({ add: 4, del: 1 });
   });
 
-  it("keeps a fully known edit's own diff and an edit the snapshot cannot see", () => {
+  it("reads an edited file's diff from the snapshot, as a later formatter may have changed it, and keeps an edit the snapshot cannot see", () => {
     const files = turnChanges(
       [
         step("read", { path: "src/a.ts" }, { output: "x\ny\n" }),
@@ -244,6 +244,8 @@ describe("withSnapshot", () => {
           path: "src/a.ts",
           edits: [{ oldText: "y\n", newText: "z\n" }],
         }),
+        // A command the parser cannot read changes src/a.ts again.
+        step("bash", { command: "npx prettier --write src" }),
         // An ignored file: the snapshot never lists it.
         step("write", { path: ".env.local", content: "KEY=1\n" }),
       ],
@@ -251,17 +253,29 @@ describe("withSnapshot", () => {
     );
     const merged = withSnapshot(
       files,
-      [{ path: "src/a.ts", change: "modified", additions: 1, deletions: 1 }],
+      [{ path: "src/a.ts", change: "modified", additions: 2, deletions: 1 }],
       diff,
     );
     expect(merged.map((f) => f.path)).toEqual(["src/a.ts", ".env.local"]);
     expect(merged[0]).toMatchObject({
       byCommand: false,
-      before: "x\ny\n",
-      after: "x\nz\n",
+      counts: { add: 2, del: 1 },
     });
-    expect(merged[0].snapshotDiff).toBeUndefined();
+    // The edit's own before/after would show y→z, not the formatter's result.
+    expect(merged[0].after).toBeUndefined();
+    expect(merged[0].snapshotDiff).toBeDefined();
     expect(merged[1].byCommand).toBeUndefined();
+  });
+
+  it("keeps a command's file a cut snapshot list does not reach", () => {
+    const files = turnChanges(
+      [step("bash", { command: "touch stamp.txt" })],
+      root,
+    );
+    expect(withSnapshot(files, [], diff, true)).toEqual([]);
+    expect(withSnapshot(files, [], diff, false).map((f) => f.path)).toEqual([
+      "stamp.txt",
+    ]);
   });
 
   it("gives a binary file no counts and no diff read, and a rename its earlier path", () => {

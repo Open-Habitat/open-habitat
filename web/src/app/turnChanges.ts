@@ -548,17 +548,18 @@ export type SnapshotFile = {
 
 /**
  * The turn's files as its snapshots record them, in their order. A file the
- * tool calls also name keeps its events for the timeline, and its diff when
- * the calls give the whole text before and after with no command between;
- * the rest read their diff from the snapshots. Edits the snapshots cannot
+ * tool calls also name keeps its events for the timeline; its diff is read
+ * from the snapshots, since a command the parser cannot read (a formatter, a
+ * script) may have changed it after the last edit. Edits the snapshots cannot
  * see (ignored files, files outside the repository) stay as the tool calls
- * show them; a file a command only seemed to name and the snapshots do not
- * list did not change.
+ * show them. A file a command only seemed to name and a complete snapshot
+ * list does not have did not change; with a cut list it may have.
  */
 export function withSnapshot(
   files: FileChange[],
   snapshot: SnapshotFile[],
   loadDiff?: (path: string) => Promise<{ diff: string; truncated: boolean }>,
+  complete = true,
 ): FileChange[] {
   const byPath = new Map(files.map((f) => [f.path, f]));
   const listed = new Set<string>();
@@ -567,9 +568,6 @@ export function withSnapshot(
     if (s.old_path) listed.add(s.old_path);
     const f = byPath.get(s.path);
     const edited = !!f?.events.some((e) => e.tool !== "bash");
-    const commanded = !f || f.events.some((e) => e.tool === "bash");
-    const local =
-      !!f && !commanded && f.before !== undefined && f.after !== undefined;
     return {
       path: s.path,
       inWorkspace: !s.path.startsWith("/") && !s.path.startsWith("~"),
@@ -584,21 +582,20 @@ export function withSnapshot(
       events: f?.events ?? [],
       command: f?.command,
       byCommand: !edited,
-      before: local ? f.before : undefined,
-      after: local ? f.after : undefined,
       counts:
         s.additions !== undefined && s.deletions !== undefined
           ? { add: s.additions, del: s.deletions }
           : undefined,
-      firstLine: local ? f.firstLine : undefined,
       binary: s.binary,
       oldPath: s.old_path,
-      snapshotDiff:
-        local || s.binary || !loadDiff ? undefined : () => loadDiff(s.path),
+      snapshotDiff: s.binary || !loadDiff ? undefined : () => loadDiff(s.path),
     };
   });
   for (const f of files)
-    if (!listed.has(f.path) && f.events.some((e) => e.tool !== "bash"))
+    if (
+      !listed.has(f.path) &&
+      (!complete || f.events.some((e) => e.tool !== "bash"))
+    )
       out.push(f);
   return out;
 }

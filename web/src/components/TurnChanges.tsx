@@ -36,6 +36,8 @@ export type TurnChangesProps = {
    * more there were. */
   unrecorded?: string[];
   unrecordedMore?: number;
+  /** Changed files the snapshot list was cut before. */
+  filesMore?: number;
 };
 
 function CountsText({ c }: { c?: Counts }) {
@@ -449,6 +451,7 @@ export function TurnChanges({
   onOpen,
   unrecorded = [],
   unrecordedMore = 0,
+  filesMore = 0,
 }: TurnChangesProps) {
   const [open, setOpen] = useState(false);
   const [timeline, setTimeline] = useState(false);
@@ -547,6 +550,11 @@ export function TurnChanges({
               })}
             </ul>
           )}
+          {filesMore ? (
+            <div data-testid="turn-changes-more">
+              <Note icon="file">{txt.filesMore(filesMore)}</Note>
+            </div>
+          ) : null}
           {unrecorded.length || unrecordedMore ? (
             <div data-testid="turn-changes-unrecorded">
               <Note icon="file">

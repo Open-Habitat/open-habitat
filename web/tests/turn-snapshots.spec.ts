@@ -66,9 +66,9 @@ test("@lab a script's changes are listed from the turn's snapshots and Palaa tä
       .getByTestId("send")
       .and(page.locator('[data-mode="send"]'))
       .click();
-    await expect(page.getByText(`Selvä. Kysyit: "${text}".`).last()).toBeVisible(
-      { timeout: 20000 },
-    );
+    await expect(
+      page.getByText(`Selvä. Kysyit: "${text}".`).last(),
+    ).toBeVisible({ timeout: 20000 });
     // The commands ran in the workspace.
     expect(await file("data.csv")).toBe(`${original}4,2\n`);
     expect(await file("analyysi.py")).toBe("synteettinen analyysi\n");
@@ -81,9 +81,7 @@ test("@lab a script's changes are listed from the turn's snapshots and Palaa tä
     await expect(rows).toHaveCount(3, { timeout: 10000 });
     for (const path of ["data.csv", "analyysi.py", "vanha-raportti.txt"])
       await expect(
-        card
-          .locator(`li[data-path="${path}"]`)
-          .locator('[data-tag="command"]'),
+        card.locator(`li[data-path="${path}"]`).locator('[data-tag="command"]'),
       ).toHaveCount(1);
     await expect(
       card

@@ -48,6 +48,8 @@ const fi = {
       ? "Tätä tiedostoa ei tallennettu vuoron tilannekuvaan:"
       : "Näitä tiedostoja ei tallennettu vuoron tilannekuvaan:",
   more: (n: number) => `ja ${n} muuta`,
+  filesMore: (n: number): string =>
+    `Lisäksi ${n} ${n === 1 ? "tiedosto" : "tiedostoa"} muuttui; niitä ei näytetä tässä.`,
 };
 
 export const turnChangesText = catalog(fi, {
@@ -94,4 +96,6 @@ export const turnChangesText = catalog(fi, {
       ? "This file was not recorded in the turn's snapshot:"
       : "These files were not recorded in the turn's snapshot:",
   more: (n) => `and ${n} more`,
+  filesMore: (n) =>
+    `${n} more ${plural("en", n, { one: "file", other: "files" })} changed; they are not shown here.`,
 });

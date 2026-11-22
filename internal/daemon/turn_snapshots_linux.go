@@ -427,7 +427,23 @@ func snapshotPathsSince(ctx context.Context, home string, uid int, records []*tu
 	start = turns[first].start
 	set := map[string]bool{}
 	complete = true
-	for _, t := range turns[first:] {
+	for i, t := range turns[first:] {
+		if t.end == nil && i == len(turns[first:])-1 && t.start.tree() != "" && *t.start.Root == *start.Root {
+			// The last run is still open (running, or Pi stopped before it
+			// settled): its window reaches the files as they are now.
+			if store, ok := snapshotStore(home, uid, t.start.Store); ok {
+				if changed, err := snapshotChangedNow(ctx, store, *t.start.Root, t.start.tree()); err == nil {
+					for _, p := range changed {
+						set[p] = true
+					}
+					// Files created in it that no snapshot has seen are not
+					// listed (Git cannot name them without the workspace's
+					// exclude rules); the restore removes them.
+					complete = false
+					continue
+				}
+			}
+		}
 		if !t.comparable() || *t.start.Root != *start.Root {
 			complete = false
 			continue
@@ -603,4 +619,17 @@ func blobSize(ctx context.Context, store, object string) (int64, error) {
 		return 0, err
 	}
 	return strconv.ParseInt(strings.TrimSpace(string(out)), 10, 64)
+}
+
+// snapshotChangedNow names the root-relative paths that differ between a
+// recorded tree and the files now, as far as the store's index knows them:
+// changed and removed files, and files a later snapshot added. Git only reads
+// here: the index is used as its stat cache and, with optional locks off,
+// never refreshed.
+func snapshotChangedNow(ctx context.Context, store, root, tree string) ([]string, error) {
+	out, err := storeGit(ctx, store, "", "--work-tree="+root, "diff-index", "-z", "--name-only", "--no-renames", "--ignore-submodules=all", tree, "--")
+	if err != nil {
+		return nil, err
+	}
+	return splitNUL(out), nil
 }
