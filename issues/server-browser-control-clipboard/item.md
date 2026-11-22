@@ -7,7 +7,8 @@ status: open
 priority: normal
 lane: server-browser-control
 lane_seq: 1
-preparation: ready
+preparation: reviewing
+review_status: requested
 ---
 
 # Prototype: server browser control by clicking the canvas, and clipboard both ways
