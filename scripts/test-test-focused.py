@@ -133,6 +133,16 @@ sys.exit(int(os.environ.get('FOCUSED_EXIT', '0')))
                     self.assertEqual(result.returncode, code, result.stderr)
                     self.assert_scratch_removed(prefix)
 
+    def test_go_command_package_and_unsafe_selectors(self):
+        result = self.run_area('go', '--go-package', './cmd/runtime-release')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(self.log.read_text()),
+                         ['test', '-count=1', './cmd/runtime-release'])
+        self.assert_scratch_removed('ohf')
+        for package in ('./cmd/../internal/host', './cmd/...', '-exec=bad', './other/pkg'):
+            result = self.run_area('go', '--go-package', package)
+            self.assertEqual(result.returncode, 2, result.stderr)
+
     def test_go_area_gets_the_validator_python(self):
         result = self.run_area('go', '--go-package', './internal/daemon')
         self.assertEqual(result.returncode, 0, result.stderr)

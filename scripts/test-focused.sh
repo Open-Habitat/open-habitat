@@ -8,7 +8,7 @@ cd "$repo"
 unset $(git rev-parse --local-env-vars)
 area='' tag='' package=''
 browser_args=()
-usage(){ echo 'usage: scripts/test-focused.sh --area web|browser|go|contracts [--spec <spec>]... [--tag <grep>] [--lab] [--go-package ./internal/<name>]' >&2; exit 2; }
+usage(){ echo 'usage: scripts/test-focused.sh --area web|browser|go|contracts [--spec <spec>]... [--tag <grep>] [--lab] [--go-package ./internal/<name>|./cmd/<name>]' >&2; exit 2; }
 while (($#)); do
   case "$1" in
     --lab) browser_args+=("$1"); shift;;
@@ -23,7 +23,7 @@ case "$area" in web|browser|go|contracts) ;; *) usage;; esac
 if ((${#browser_args[@]})) && [[ $area != browser ]]; then usage; fi
 if [[ -n $package && $area != go ]]; then usage; fi
 if [[ -n $tag && $tag == -* ]]; then usage; fi
-if [[ -n $package && ! $package =~ ^\./internal/[a-zA-Z0-9_-]+(/[a-zA-Z0-9_-]+)*$ ]]; then usage; fi
+if [[ -n $package && ! $package =~ ^\./(internal|cmd)/[a-zA-Z0-9_-]+(/[a-zA-Z0-9_-]+)*$ ]]; then usage; fi
 umask 077
 # Test children get a private disk-backed TMPDIR that leaves with this run,
 # short enough for Go tests' sockets; scratch.sh says where. The browser area

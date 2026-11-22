@@ -31,12 +31,16 @@ var (
 // Authentication binds archive bytes and Ubuntu minimum requirements; it does not
 // establish that their closure works, is licensed, or has passed mapped-UID tests.
 type ReleaseManifest struct {
-	SchemaVersion int               `json:"schema_version"`
-	Version       string            `json:"version"`
-	Commit        string            `json:"commit"`
-	Platform      string            `json:"platform"`
-	Artifacts     []ReleaseArtifact `json:"artifacts"`
-	Upgrade       *ReleaseUpgrade   `json:"upgrade,omitempty"`
+	// VerificationContract is the writer's verification semantics, not an
+	// authorization or a substitute for this verifier's checks. Older manifests
+	// omit it; unfamiliar identifiers still receive full verification.
+	VerificationContract string            `json:"verification_contract,omitempty"`
+	SchemaVersion        int               `json:"schema_version"`
+	Version              string            `json:"version"`
+	Commit               string            `json:"commit"`
+	Platform             string            `json:"platform"`
+	Artifacts            []ReleaseArtifact `json:"artifacts"`
+	Upgrade              *ReleaseUpgrade   `json:"upgrade,omitempty"`
 }
 
 // ReleaseUpgrade authenticates the exact supported transition and all product
@@ -135,6 +139,9 @@ var packageVersionRE = regexp.MustCompile(`^[0-9][a-zA-Z0-9.+:~_-]{0,199}$`)
 
 func validRelease(m ReleaseManifest) bool {
 	if m.SchemaVersion != 2 || !versionRE.MatchString(m.Version) || !commitRE.MatchString(m.Commit) || platformArchitecture(m.Platform) == "" || len(m.Artifacts) == 0 || len(m.Artifacts) > 64 {
+		return false
+	}
+	if m.VerificationContract != "" && !siteIDRE.MatchString(m.VerificationContract) {
 		return false
 	}
 	if m.Upgrade != nil && !validUpgrade(m.Upgrade, m.Version) {
@@ -306,6 +313,13 @@ func exactReleaseFields(b []byte) bool {
 	var raw map[string]json.RawMessage
 	if json.Unmarshal(b, &raw) != nil {
 		return false
+	}
+	if contract, present := raw["verification_contract"]; present {
+		allowed = append(allowed, "verification_contract")
+		var id string
+		if json.Unmarshal(contract, &id) != nil || !siteIDRE.MatchString(id) {
+			return false
+		}
 	}
 	if _, present := raw["upgrade"]; present {
 		allowed = append(allowed, "upgrade")

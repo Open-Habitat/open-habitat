@@ -74,8 +74,8 @@ against GitHub's stated digest too before running it as root; its own checksums
 are integrity, not authenticity.
 
 The product package includes `bin/runtime-release`, which checks a runtime
-release unprivileged before installation and always emits JSON (it takes no
-`--json` flag):
+release unprivileged before installation and always emits JSON (`--json` is
+optional; omit it for older binaries):
 
 ```sh
 /path/to/product/bin/runtime-release verify \

@@ -31,10 +31,14 @@ func main() {
 }
 func run() error {
 	if len(os.Args) < 2 {
-		return errors.New("expected manifest|verify|stage|install; use COMMAND --help")
+		return errors.New("expected manifest|verify|stage|install|contract show; use COMMAND --help")
 	}
 	command := os.Args[1]
+	if command == "contract" {
+		return showContract(os.Args[2:])
+	}
 	fs := flag.NewFlagSet(command, flag.ContinueOnError)
+	fs.Bool("json", false, "emit JSON (also the default)")
 	dir := fs.String("directory", "", "release directory (required)")
 	version := fs.String("version", "", "exact approved release version")
 	commit := fs.String("commit", "", "full source commit (manifest only)")
@@ -98,7 +102,7 @@ func run() error {
 		if e != nil {
 			return e
 		}
-		m := host.ReleaseManifest{SchemaVersion: 2, Version: *version, Commit: *commit, Platform: *platform, Artifacts: artifacts}
+		m := host.ReleaseManifest{VerificationContract: host.RuntimeVerificationContract, SchemaVersion: 2, Version: *version, Commit: *commit, Platform: *platform, Artifacts: artifacts}
 		if *upgradeFile != "" {
 			b, e := readInput(*upgradeFile, host.MaxReleaseManifestBytes)
 			if e != nil {
@@ -136,7 +140,7 @@ func run() error {
 		if e = writeNew(filepath.Join(*dir, "release.json"), manifest, 0644); e != nil {
 			return e
 		}
-		fmt.Printf("{\"schema_version\":1,\"data\":{\"manifest_sha256\":\"%x\",\"status\":\"written\"},\"warnings\":[]}\n", sum)
+		fmt.Printf("{\"schema_version\":1,\"data\":{\"manifest_sha256\":\"%x\",\"status\":\"written\",\"verification_contract\":%q},\"warnings\":[]}\n", sum, host.RuntimeVerificationContract)
 		return nil
 	}
 	if command != "verify" && command != "stage" {
@@ -185,9 +189,35 @@ func run() error {
 		fmt.Println(string(b))
 		return nil
 	}
-	fmt.Println(`{"schema_version":1,"data":{"status":"verified"},"warnings":[]}`)
+	result, _ := json.Marshal(map[string]any{"schema_version": 1, "data": map[string]string{
+		"status": "verified", "verification_contract": host.RuntimeVerificationContract,
+		"manifest_verification_contract": manifest.VerificationContract, "manifest_sha256": *digest,
+	}, "warnings": []string{}})
+	fmt.Println(string(result))
 	return nil
 }
+
+// This query identifies code already trusted by the caller. It reads no bundle
+// and proves neither a successful verification nor the authenticity of a binary.
+func showContract(args []string) error {
+	if len(args) == 0 || args[0] != "show" {
+		return errors.New("expected contract show [--json]")
+	}
+	fs := flag.NewFlagSet("contract show", flag.ContinueOnError)
+	fs.Bool("json", false, "emit JSON (also the default)")
+	if err := fs.Parse(args[1:]); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return nil
+		}
+		return errors.New("invalid contract show arguments")
+	}
+	if fs.NArg() != 0 {
+		return errors.New("contract show accepts no positional arguments")
+	}
+	fmt.Printf("{\"schema_version\":1,\"data\":{\"verification_contract\":%q},\"warnings\":[]}\n", host.RuntimeVerificationContract)
+	return nil
+}
+
 func opener(dir string) func(string) (io.ReadCloser, error) {
 	return func(name string) (io.ReadCloser, error) { return openInput(filepath.Join(dir, name)) }
 }

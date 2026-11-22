@@ -669,10 +669,21 @@ gh api repos/Open-Habitat/open-habitat/releases/tags/<tag> \
   --manifest-sha256 <64-hex digest after "sha256:">
 ```
 
-It always emits JSON and takes no `--json` flag. The directory must contain
+It always emits JSON (`--json` is optional; older binaries reject that flag).
+The directory must contain
 `release.json` and **every** archive named by the manifest. The version is the
 **runtime** version, which may differ from the product version when a newer
-product reuses unchanged runtime bytes. Exit 0 with `data.status=verified`
+product reuses unchanged runtime bytes. `runtime-release contract show --json`
+reports the running verifier's `data.verification_contract` without reading or
+verifying a release. Successful `verify` output reports that same identifier,
+plus `data.manifest_verification_contract` (empty for older manifests) and
+`data.manifest_sha256`. The manifest writer binds `verification_contract` into
+`release.json`, so changing it changes the independently approved digest.
+These identifiers describe checks, not binary authenticity or installation
+readiness. Trust the verifier through the existing release-delivery process;
+an absent, unfamiliar or differing contract must not authorize reuse of an old
+verification result. The product always verifies fully, regardless of the field.
+Exit 0 with `data.status=verified`
 means the manifest hashes to the given digest and the complete archive closure
 matches it; it is not installed-host qualification.
 
