@@ -135,9 +135,15 @@ function Shell({
         tallest = 0;
       }
       tallest = Math.max(tallest, viewport.height);
+      const keyboard = tallest - viewport.height > 150;
       element.style.setProperty("--ah-visible-height", `${viewport.height}px`);
-      element.style.setProperty("--ah-visible-top", `${viewport.offsetTop}px`);
-      element.toggleAttribute("data-keyboard", tallest - viewport.height > 150);
+      // Outside keyboard use, viewport scroll can be elastic overscroll.
+      // Following that offset makes a swipe on inert chrome move the frame.
+      element.style.setProperty(
+        "--ah-visible-top",
+        `${keyboard ? Math.max(0, viewport.offsetTop) : 0}px`,
+      );
+      element.toggleAttribute("data-keyboard", keyboard);
     };
     update();
     viewport.addEventListener("resize", update);

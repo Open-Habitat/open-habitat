@@ -1,3 +1,5 @@
+import { mkdir, writeFile } from "node:fs/promises";
+import { devices, type Locator } from "@playwright/test";
 import { hostOrigin } from "../test-ports.mjs";
 import { expect, test } from "./worker-host";
 
@@ -35,23 +37,143 @@ for (const phone of [
     name: "iOS Safari",
     pan: 45,
     zoomsSmallText: true,
-    userAgent:
-      "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1",
+    device: devices["iPhone 13"],
   },
   {
     name: "Android Chrome",
     pan: 0,
     zoomsSmallText: false,
-    userAgent:
-      "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 Chrome/130.0.0.0 Mobile Safari/537.36",
+    device: devices["Pixel 7"],
   },
 ]) {
   test.describe(`phone keyboard (${phone.name})`, () => {
     test.use({
+      userAgent: phone.device.userAgent,
+      deviceScaleFactor: phone.device.deviceScaleFactor,
+      isMobile: phone.device.isMobile,
+      hasTouch: phone.device.hasTouch,
       viewport: { width: 390, height: 844 },
-      isMobile: true,
-      hasTouch: true,
-      userAgent: phone.userAgent,
+    });
+    test("swipes stay in their scroll region and viewport bounce does not move chrome", async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 1280, height: 844 });
+      await open(page);
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+      await page.getByTestId("message-input").fill("scroll baseline");
+      await page
+        .getByTestId("send")
+        .and(page.locator('[data-mode="send"]'))
+        .click();
+      await expectNativeContent(page, 'Selvä. Kysyit: "scroll baseline".', {
+        exact: true,
+      });
+      await page.getByTestId("message-input").blur();
+      const shell = page.locator(".ah-app-shell");
+      const stream = page.locator(".ah-conversation-stream");
+      const header = page.locator(".ah-agent-header");
+      const composer = page.locator(".ah-composer");
+      const tops = async () =>
+        Promise.all(
+          [header, composer].map((el) =>
+            el.evaluate((node) => node.getBoundingClientRect().top),
+          ),
+        );
+      const initialTops = await tops();
+      const cdp = await page.context().newCDPSession(page);
+      const stationary = async () => {
+        expect(
+          await page.evaluate(() => [
+            window.scrollY,
+            document.scrollingElement?.scrollTop,
+          ]),
+        ).toEqual([0, 0]);
+        expect(
+          await shell.evaluate((el) => el.getBoundingClientRect().top),
+        ).toBe(0);
+        expect(await tops()).toEqual(initialTops);
+      };
+      const swipe = async (target: Locator, direction: number) => {
+        const box = await target.boundingBox();
+        if (!box) throw new Error("missing swipe target");
+        const x = box.x + box.width / 2;
+        const y = box.y + box.height / 2;
+        await cdp.send("Input.dispatchTouchEvent", {
+          type: "touchStart",
+          touchPoints: [{ x, y }],
+        });
+        for (let dy = 10; dy <= 100; dy += 10) {
+          await cdp.send("Input.dispatchTouchEvent", {
+            type: "touchMove",
+            touchPoints: [{ x, y: y + direction * dy }],
+          });
+          await page.evaluate(() => new Promise(requestAnimationFrame));
+          await stationary();
+        }
+        await cdp.send("Input.dispatchTouchEvent", {
+          type: "touchEnd",
+          touchPoints: [],
+        });
+        await stationary();
+      };
+      // A short transcript, header and composer have no content to scroll.
+      for (const target of [
+        page.locator(".ah-agent-header"),
+        page.locator(".ah-composer"),
+        stream,
+      ]) {
+        await swipe(target, -1);
+        await swipe(target, 1);
+      }
+      if (process.env.OH_PHONE_SCROLL_CAPTURE) {
+        const base = `${process.env.OH_PHONE_SCROLL_CAPTURE}/${phone.name.replaceAll(" ", "-")}`;
+        await mkdir(process.env.OH_PHONE_SCROLL_CAPTURE, { recursive: true });
+        await page.screenshot({ path: `${base}.png` });
+        await writeFile(`${base}.html`, await page.content());
+      }
+      await page.getByTestId("navigation-open").click();
+      await swipe(page.locator(".ah-rail-foot"), -1);
+      await swipe(page.locator(".ah-rail-foot"), 1);
+      await page
+        .getByTestId("close-navigation")
+        .filter({ visible: true })
+        .click();
+      // The lock must not disable the transcript's native touch scrolling.
+      await page.addStyleTag({
+        content: ".ah-timeline { min-height: 3000px; }",
+      });
+      await expect
+        .poll(() => stream.evaluate((el) => el.scrollHeight - el.clientHeight))
+        .toBeGreaterThan(1000);
+      await stream.evaluate((el) => {
+        el.scrollTop = 500;
+      });
+      await swipe(stream, -1);
+      await expect
+        .poll(() => stream.evaluate((el) => el.scrollTop))
+        .toBeGreaterThan(520);
+      await cdp.detach();
+      // Desktop mobile emulation cannot produce Safari's elastic viewport.
+      // Inject that event separately; it must not be mistaken for keyboard pan.
+      await page.evaluate(() => {
+        const viewport = window.visualViewport;
+        if (!viewport) throw new Error("missing visual viewport");
+        Object.defineProperty(viewport, "offsetTop", {
+          configurable: true,
+          value: 45,
+        });
+        viewport.dispatchEvent(new Event("scroll"));
+      });
+      await stationary();
+      await page.evaluate(() => {
+        Object.defineProperty(window.visualViewport, "offsetTop", {
+          configurable: true,
+          value: -45,
+        });
+        window.visualViewport?.dispatchEvent(new Event("scroll"));
+      });
+      await stationary();
     });
     test("late overview and keyboard leave the editor and latest turn in view", async ({
       page,
