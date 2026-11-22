@@ -30,3 +30,9 @@ C Leveämpi with B's conversations-first logic), behind an experimental feature.
 ### 2026-11-22T15:55:28Z · @issuectl
 
 Landed behind the adaptive-rail experimental switch; result.md lists the decisions for later review.
+
+## Decisions
+
+### 2026-11-22T18:00:39Z · @jari
+
+Jari 22.11.2026: graduate the adaptive rail from experimental to the default (remove the adaptive-rail switch; the adaptive rail is the rail).
