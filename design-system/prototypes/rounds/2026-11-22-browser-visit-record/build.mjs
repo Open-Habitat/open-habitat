@@ -1,5 +1,5 @@
-// Run in a disposable checkout with web/node_modules from the committed lock.
-// No production entrypoint or shared prototype library is changed.
+// node build.mjs [out-dir]: offline.html (fonts embedded) and index.html (no fonts, for
+// sandboxed hosts). Production components from web/src, web/node_modules from the lock.
 import {createRequire} from 'node:module';
 import {readFileSync,writeFileSync,mkdirSync,readdirSync} from 'node:fs';
 import {dirname,resolve,join} from 'node:path';
@@ -7,7 +7,7 @@ import {fileURLToPath} from 'node:url';
 const here=dirname(fileURLToPath(import.meta.url)),root=resolve(here,'../../../..');
 const require=createRequire(join(root,'web/package.json'));
 const {build}=require('esbuild');
-const out=resolve(process.argv[2]||join(root,'design-system/prototypes/dist/server-browser-visit-log'));
+const out=resolve(process.argv[2]||join(root,'design-system/prototypes/dist/2026-11-22-browser-visit-record'));
 mkdirSync(out,{recursive:true});
 // Load the shared standalone wiring unchanged, rather than maintaining a React copy.
 const rawPicker={name:'raw-picker',setup(b){
@@ -33,7 +33,7 @@ const exactCase={name:'exact-case',setup(b){
 const result=await build({plugins:[rawPicker,viteUrl,exactCase],entryPoints:[join(here,'round.tsx')],bundle:true,write:false,outfile:'prototype.js',platform:'browser',format:'iife',jsx:'automatic',nodePaths:[join(root,'web/node_modules')],loader:{'.module.css':'local-css','.woff2':'dataurl','.woff':'dataurl','.svg':'dataurl','.avif':'dataurl','.png':'dataurl','.webp':'dataurl'},define:{'process.env.NODE_ENV':'"production"','import.meta.env.VITE_SYNTHETIC_DEMO':'"false"'},minify:true,metafile:true});
 const js=result.outputFiles.find(f=>f.path.endsWith('.js')).text;
 const css=result.outputFiles.find(f=>f.path.endsWith('.css')).text;
-const html=styles=>`<!doctype html><html lang="fi"><head><meta charset="utf-8"><meta name="prototype-round" content="2026-11-22-server-browser-visit-log"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Agentin selauskäynnit · Browser visit record</title><style>${styles}</style></head><body><div id="root"></div><script>${js.replace(/<\/script/gi,'<\\/script')}</script></body></html>`;
+const html=styles=>`<!doctype html><html lang="fi"><head><meta charset="utf-8"><meta name="prototype-round" content="2026-11-22-browser-visit-record"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Selainkäynti keskustelussa</title><style>${styles}</style></head><body><div id="root"></div><script>${js.replace(/<\/script/gi,'<\\/script')}</script></body></html>`;
 writeFileSync(join(out,'offline.html'),html(css));
 // Glasspad's null-origin sandbox blocks data fonts. Keep production fallback stacks.
 writeFileSync(join(out,'index.html'),html(css.replace(/@font-face\s*\{[^}]*\}/g,'')));

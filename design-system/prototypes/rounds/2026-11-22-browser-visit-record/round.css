@@ -1,0 +1,124 @@
+/* Review chrome above the production shell, as in round 1. */
+html, body { margin: 0; background: var(--ah-bg); }
+.ra-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: grid; gap: 4px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: var(--ah-size-meta)/1.4 var(--ah-font);
+}
+.ra-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
+.ra-bar strong { font-weight: 600; }
+.ra-bar select { font: inherit; }
+.ra-hint { color: var(--ah-ink-2); }
+.ra-event {
+  font: inherit; padding: 2px 10px; cursor: pointer;
+  color: var(--ah-ink); background: var(--ah-surface);
+  border: 1px solid var(--ah-line-strong, var(--ah-line)); border-radius: var(--ah-r-md);
+}
+.ra-lines { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; color: var(--ah-ink-2); }
+.ra-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.ra-recommend { margin: 0; color: var(--ah-accent-ink); }
+@media (max-width: 600px) {
+  .ra-bar { padding: 6px 10px; }
+  .ra-controls > strong, .ra-hint { display: none; }
+  .ra-lines, .ra-recommend { line-height: 1.3; }
+  .ra-lines li:not([aria-current]), .ra-recommend { display: none; }
+}
+.ra-stage .ah-app-shell {
+  top: var(--review-h, 0px);
+  height: calc(100dvh - var(--review-h, 0px) - 60px);
+}
+.ra-stage .ah-rail { top: var(--review-h, 0px); }
+@media (max-width: 800px) {
+  .ra-stage .ah-shell-body.ah-mobile-open > .ah-rail-slot { top: var(--review-h, 0px); bottom: 60px; }
+}
+.mp-main { height: 100%; min-width: 0; }
+.ra-event:disabled { opacity: .5; cursor: default; }
+.vr-main { height: 100%; min-width: 0; }
+.ra-seg { display: inline-flex; gap: 0; }
+.ra-seg .ra-event:first-child { border-radius: var(--ah-r-md) 0 0 var(--ah-r-md); }
+.ra-seg .ra-event:last-child { border-radius: 0 var(--ah-r-md) var(--ah-r-md) 0; border-left: 0; }
+.ra-event[aria-pressed="true"] { background: var(--ah-accent-soft, var(--ah-sunken)); color: var(--ah-accent-ink, var(--ah-ink)); font-weight: 600; }
+@media (max-width: 600px) { .ra-hint { display: none; } }
+
+/* ---------- The record, shared ---------- */
+.vr-counts { color: var(--ah-ink-2); }
+.vr-sites { display: inline-flex; flex-wrap: wrap; gap: 0 6px; }
+.vr-sites code, .vr-detail code { font-family: var(--ah-mono); font-size: 0.92em; overflow-wrap: anywhere; }
+.vr-link {
+  min-height: 24px; padding: 0 2px; border: 0; background: none; cursor: pointer;
+  color: var(--ah-ink-2); font: inherit; text-decoration: underline; text-underline-offset: 2px;
+}
+.vr-link:hover { color: var(--ah-ink); }
+.vr-link:focus-visible, .vr-card .ah-tc-toggle:focus-visible { outline: var(--ah-focus-width) solid var(--ah-focus); outline-offset: 2px; }
+.vr-detail {
+  display: grid; gap: var(--ah-s3); min-width: 0;
+  font: var(--ah-size-meta)/1.45 var(--ah-font); color: var(--ah-ink-2);
+}
+.vr-detail section { display: grid; gap: 6px; min-width: 0; }
+.vr-detail h4 {
+  display: flex; align-items: center; gap: 6px; margin: 0;
+  color: var(--ah-ink); font-size: var(--ah-size-meta); font-weight: 600;
+}
+.vr-detail h4 svg { width: 14px; height: 14px; }
+.vr-n { color: var(--ah-muted); font-weight: 400; }
+.vr-origin { display: grid; gap: 2px; min-width: 0; }
+.vr-origin-head { margin: 0; }
+.vr-origin-head code { color: var(--ah-ink); }
+.vr-pages {
+  margin: 0; padding: 0; list-style: none; min-width: 0;
+  display: grid; grid-template-columns: 3.2em minmax(0, max-content) minmax(0, 1fr); gap: 1px var(--ah-s2);
+  align-items: baseline;
+}
+.vr-pages li { display: contents; }
+.vr-pages time { color: var(--ah-muted); font-variant-numeric: tabular-nums; }
+.vr-page-title { color: var(--ah-ink); overflow-wrap: anywhere; }
+.vr-path { color: var(--ah-muted); overflow-wrap: anywhere; }
+.vr-on { grid-column: 2 / -1; }
+.vr-saved { margin: 0; }
+.vr-files {
+  margin: 0; padding: 0; list-style: none; display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5em, 1fr)); gap: 2px var(--ah-s3);
+}
+.vr-files li { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.vr-files svg { width: 12px; height: 12px; flex: none; color: var(--ah-muted); }
+.vr-coverage { margin: 0; color: var(--ah-muted); max-width: 60ch; }
+.vr-tab { display: inline-flex; align-items: center; gap: 4px; color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.vr-tab[data-open] { color: var(--ah-accent-ink, var(--ah-ink)); }
+.vr-tab svg { width: 14px; height: 14px; }
+.vr-flash { outline: 2px solid var(--ah-focus); outline-offset: 3px; border-radius: var(--ah-r-md); }
+@media (prefers-reduced-motion: no-preference) { .vr-flash { transition: outline-color .3s; } }
+@media (max-width: 600px) {
+  .vr-pages { grid-template-columns: 3em minmax(0, 1fr); }
+  .vr-pages .vr-path { grid-column: 2; }
+}
+
+/* ---------- 1 Rivi ---------- */
+.vr-line-wrap { display: grid; gap: var(--ah-s2); min-width: 0; }
+.vr-line { flex-wrap: wrap; margin: 4px 0; }
+.vr-line-text { flex: 1 1 18rem; min-width: 0; }
+.vr-line-text strong { color: var(--ah-ink); font-weight: 600; }
+.vr-line-actions { display: inline-flex; gap: var(--ah-s2); }
+.vr-line-wrap .vr-detail { margin-left: 16px; padding: var(--ah-s2) var(--ah-s3); border-left: 2px solid var(--ah-line); }
+
+/* ---------- 2 Kortti ---------- */
+.vr-card { margin-top: var(--ah-s2); }
+.vr-card-meta { display: inline-flex; flex-wrap: wrap; gap: 0 var(--ah-s2); }
+.vr-when { color: var(--ah-muted); font-variant-numeric: tabular-nums; }
+.vr-card-body { display: grid; gap: var(--ah-s2); padding: var(--ah-s3); }
+.vr-card[data-live] { border-color: var(--ah-accent-line, var(--ah-line-strong)); }
+.vr-turn > .vr-card { margin-left: calc(18px + var(--ah-turn-column-gap)); }
+
+/* ---------- 3 Työ ---------- */
+.vr-work .vr-detail { padding: var(--ah-s2) 0; }
+.vr-work-cmds { display: grid; gap: 2px; margin-top: var(--ah-s2); }
+.vr-stage-mark svg { width: 12px; height: 12px; vertical-align: -1px; margin-right: 3px; }
+
+/* ---------- The window list ---------- */
+.sb-win figcaption:has(.vr-tabcount) { flex-wrap: wrap; row-gap: 0; }
+.vr-tabcount { flex: 1 0 100%; color: var(--ah-accent-ink, var(--ah-ink)); font-size: 12px; font-weight: 600; }
+.vr-strip-note {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--ah-s2); margin: 0;
+  color: var(--ah-muted); font-size: var(--ah-size-meta);
+}
+.vr-strip-note svg { width: 14px; height: 14px; }
