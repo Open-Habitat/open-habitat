@@ -254,11 +254,18 @@ func TestAgentBrowserRoutesGiveTheAddressAndRespectTheSwitch(t *testing.T) {
 	}
 	w := call(AgentBrowserPath, "GET", "")
 	var st struct {
-		State       string `json:"state"`
-		CDPEndpoint string `json:"cdp_endpoint"`
+		State        string `json:"state"`
+		CDPEndpoint  string `json:"cdp_endpoint"`
+		SocketPath   string `json:"socket_path"`
+		WSPath       string `json:"ws_path"`
+		SkillCommand string `json:"skill_command"`
+		Downloads    string `json:"default_download_directory"`
 	}
 	if json.Unmarshal(w.Body.Bytes(), &st) != nil || st.State != "running" || st.CDPEndpoint != "ws+unix://"+filepath.Join(dir, "cdp.sock")+":/devtools/browser" {
 		t.Fatalf("agent status %s", w.Body)
+	}
+	if st.SocketPath != filepath.Join(dir, "cdp.sock") || st.WSPath != "/devtools/browser" || st.SkillCommand != "open-habitat skill print browser" || st.Downloads != filepath.Join(h.cfg.Home, ".local/share/open-habitat/browser/profile/Downloads") {
+		t.Fatalf("agent tool discovery %s", w.Body)
 	}
 	h.feature = func() bool { return false }
 	if w := call(AgentBrowserStartPath, "POST", ""); w.Code != 409 || !strings.Contains(w.Body.String(), "browser_feature_off") {

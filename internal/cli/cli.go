@@ -62,7 +62,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	if rest[0] == "--version" {
 		rest[0] = "version"
 	}
-	if !opts.json && len(rest) == 3 && rest[0] == "skill" && rest[1] == "print" && (rest[2] == "operator" || rest[2] == "agent") {
+	if !opts.json && len(rest) == 3 && rest[0] == "skill" && rest[1] == "print" && (rest[2] == "operator" || rest[2] == "agent" || rest[2] == "browser") {
 		fmt.Fprint(stdout, skillContent(rest[2]))
 		return 0
 	}
@@ -216,7 +216,7 @@ func versionOutput(args []string) (any, error) {
 		return nil, e
 	}
 	commit, prov := buildProvenance()
-	return envelope(map[string]any{"version": version, "commit": commit, "schema_version": schemaVersion, "supported_schemas": []int{1}, "build_provenance": prov, "skills": []any{map[string]any{"name": "operator", "cli_version": version, "schema_version": 1}, map[string]any{"name": "agent", "cli_version": version, "schema_version": 1}}}), nil
+	return envelope(map[string]any{"version": version, "commit": commit, "schema_version": schemaVersion, "supported_schemas": []int{1}, "build_provenance": prov, "skills": []any{map[string]any{"name": "operator", "cli_version": version, "schema_version": 1}, map[string]any{"name": "agent", "cli_version": version, "schema_version": 1}, map[string]any{"name": "browser", "cli_version": version, "schema_version": 1}}}), nil
 }
 func buildProvenance() (any, map[string]any) {
 	if len(buildCommit) == 40 {
@@ -515,13 +515,17 @@ func skillCommand(args []string) (any, error) {
 					map[string]string{"agent": "codex", "path": ".codex/skills/<name>/...", "form": "agent-skill-tree"},
 				},
 			},
-			"skills": []any{map[string]any{"name": "operator", "description": "Operate and diagnose Open Habitat"}, map[string]any{"name": "agent", "description": "Read your own native agent environment and launch context"}},
+			"skills": []any{map[string]any{"name": "operator", "description": "Operate and diagnose Open Habitat"}, map[string]any{"name": "agent", "description": "Read your own native agent environment and launch context"}, map[string]any{"name": "browser", "description": "Use the person's signed-in server browser"}},
 		}), nil
 	case "print":
-		if len(args) != 2 || (args[1] != "operator" && args[1] != "agent") {
-			return nil, usage("expected skill print operator|agent")
+		if len(args) != 2 || (args[1] != "operator" && args[1] != "agent" && args[1] != "browser") {
+			return nil, usage("expected skill print operator|agent|browser")
 		}
-		return envelope(map[string]any{"name": args[1], "cli_version": version, "schema_version_skill": 1, "content": skillContent(args[1]), "path_in_repo": "internal/cli/" + args[1] + "/SKILL.md"}), nil
+		path := "internal/cli/" + args[1] + "/SKILL.md"
+		if args[1] == "browser" {
+			path = "internal/daemon/browser-skill/SKILL.md"
+		}
+		return envelope(map[string]any{"name": args[1], "cli_version": version, "schema_version_skill": 1, "content": skillContent(args[1]), "path_in_repo": path}), nil
 	case "install":
 		return skillInstall(args[1:])
 	default:
@@ -529,8 +533,8 @@ func skillCommand(args []string) (any, error) {
 	}
 }
 func skillInstall(args []string) (any, error) {
-	if len(args) < 1 || (args[0] != "operator" && args[0] != "agent") {
-		return nil, usage("expected skill install operator|agent --agent claude|pi|codex|all [--target PATH] [--dry-run] [--force]")
+	if len(args) < 1 || (args[0] != "operator" && args[0] != "agent" && args[0] != "browser") {
+		return nil, usage("expected skill install operator|agent|browser --agent claude|pi|codex|all [--target PATH] [--dry-run] [--force]")
 	}
 	agent := "all"
 	target := "."

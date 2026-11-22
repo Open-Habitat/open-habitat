@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/open-habitat/open-habitat/internal/daemon"
 	"github.com/open-habitat/open-habitat/internal/udssecure"
 )
 
@@ -22,6 +23,9 @@ var operatorSkill string
 var agentSkill string
 
 func skillContent(name string) string {
+	if name == "browser" {
+		return strings.Replace(daemon.BrowserSkill(), "0.0.0-dev", version, 1)
+	}
 	if name == "agent" {
 		return strings.Replace(agentSkill, "0.0.0-dev", version, 1)
 	}

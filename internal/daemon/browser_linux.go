@@ -71,6 +71,9 @@ const (
 //go:embed browser-skill/SKILL.md
 var browserSkill []byte
 
+// BrowserSkill is the bundled guidance, also readable in already-running conversations.
+func BrowserSkill() string { return string(browserSkill) }
+
 var errBrowserUnavailable = errors.New("browser unavailable")
 
 // BrowserUnavailableHint is what the agent tells the person when this server
@@ -663,13 +666,17 @@ func (h *browserHost) serveView(w http.ResponseWriter, r *http.Request) {
 func (h *browserHost) agentRoutes() map[string]http.Handler {
 	status := func(w http.ResponseWriter, r *http.Request) {
 		v := h.view(r.Context())
-		out := map[string]any{"schema_version": 1, "state": v.State, "agent_connected": v.AgentConnected, "windows": v.Windows}
+		out := map[string]any{"schema_version": 1, "state": v.State, "agent_connected": v.AgentConnected, "windows": v.Windows,
+			"skill_command":              "open-habitat skill print browser",
+			"default_download_directory": browserhost.DefaultDownloadDirectory(filepath.Join(h.cfg.Home, ".local", "share", "open-habitat", "browser", "profile"))}
 		if v.State == "unavailable" {
 			out["reason"] = "runtime_not_installed"
 			out["hint"] = BrowserUnavailableHint
 		}
 		if v.State == "running" {
 			out["control"] = v.Control
+			out["socket_path"] = filepath.Join(h.dir(), browserhost.CDPSocket)
+			out["ws_path"] = "/devtools/browser"
 			out["cdp_endpoint"] = "ws+unix://" + filepath.Join(h.dir(), browserhost.CDPSocket) + ":/devtools/browser"
 			if v.Request != nil {
 				out["request"] = v.Request
@@ -747,7 +754,7 @@ func (h *browserHost) installSkill(dir string) (string, bool) {
 	if h == nil || !h.available() || !h.feature() {
 		return "", false
 	}
-	path := filepath.Join(dir, "open-habitat-browser", "SKILL.md")
+	path := filepath.Join(dir, "browser", "SKILL.md")
 	if os.MkdirAll(filepath.Dir(path), 0o700) != nil || os.WriteFile(path, browserSkill, 0o600) != nil {
 		return "", false
 	}

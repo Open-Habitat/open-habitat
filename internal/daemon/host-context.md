@@ -145,6 +145,14 @@ this parent conversation's spinoffs. To receive completion, start a native
 notifications; do not block or poll. The wait's completion wakes you even when
 the child works in another repository.
 
+## Signed-in server browser
+
+For a task needing a signed-in website, read `open-habitat skill print browser`
+and `open-habitat agent browser status --json`. The experimental server browser
+has built-in commands; no Node or external browser client is needed. It is
+separate from this Habitat UI. Ask the person first before purchases,
+cancellations, bookings, messages, account-setting changes or irreversible acts.
+
 ## Editor and shell
 
 The browser has a workspace editor powered by code-server and a shell backed

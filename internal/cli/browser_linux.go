@@ -84,6 +84,9 @@ func browserHostCommand(args []string, stderr io.Writer) (any, error) {
 // its state and DevTools address, starting it, and asking the person to
 // handle one window.
 func agentBrowserCommand(args []string) (any, error) {
+	if len(args) > 0 && isBrowserAction(args[0]) {
+		return agentBrowserAction(args)
+	}
 	method, path, body, err := agentBrowserRequest(args)
 	if err != nil {
 		return nil, err
@@ -134,5 +137,5 @@ func agentBrowserRequest(args []string) (method, path string, body []byte, err e
 		body, _ := json.Marshal(req)
 		return "POST", daemon.AgentBrowserRequestPath, body, nil
 	}
-	return "", "", nil, usage("expected agent browser status, start, request --text TEXT [--window ID] or request --clear")
+	return "", "", nil, usage("unknown or malformed browser command; see open-habitat agent browser --help")
 }
