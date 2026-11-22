@@ -28,7 +28,7 @@ func TestWindowListDoesNotHidePopupsAfterManyTabs(t *testing.T) {
 }
 
 func TestCloseWindowUsesFreshPageInventory(t *testing.T) {
-	for _, mode := range []string{"close", "last", "missing", "unreadable", "refused"} {
+	for _, mode := range []string{"close", "last", "create-failed", "last-refused", "missing", "unreadable", "refused"} {
 		t.Run(mode, func(t *testing.T) {
 			c := newFakeChrome(t)
 			main, popup := strings.Repeat("A", 32), strings.Repeat("B", 32)
@@ -42,7 +42,8 @@ func TestCloseWindowUsesFreshPageInventory(t *testing.T) {
 				t.Fatalf("first command %v", query)
 			}
 			pages := []map[string]any{{"targetId": popup, "type": "page"}}
-			if mode != "last" {
+			last := mode == "last" || mode == "create-failed" || mode == "last-refused"
+			if !last {
 				pages = append(pages, map[string]any{"targetId": main, "type": "page"})
 			}
 			if mode == "missing" {
@@ -59,14 +60,38 @@ func TestCloseWindowUsesFreshPageInventory(t *testing.T) {
 			if mode == "unreadable" {
 				want = 503
 			}
-			if mode == "close" || mode == "refused" {
+			if last {
+				create := c.next()
+				if create["method"] != "Target.createTarget" || create["params"].(map[string]any)["url"] != "about:blank" {
+					t.Fatalf("replacement command %v", create)
+				}
+				if mode == "create-failed" {
+					c.send(map[string]any{"id": create["id"], "error": map[string]any{"code": -1, "message": "failed"}})
+					want = 503
+				} else {
+					c.send(map[string]any{"id": create["id"], "result": map[string]any{"targetId": main}})
+				}
+			}
+			if mode == "close" || mode == "refused" || mode == "last" || mode == "last-refused" {
 				close := c.next()
 				if close["method"] != "Target.closeTarget" || close["params"].(map[string]any)["targetId"] != popup {
 					t.Fatalf("close command %v", close)
 				}
-				c.send(map[string]any{"id": close["id"], "result": map[string]any{"success": mode == "close"}})
+				c.send(map[string]any{"id": close["id"], "result": map[string]any{"success": mode == "close" || mode == "last"}})
 				want = 503
-				if mode == "close" {
+				if mode == "close" || mode == "last" {
+					if last {
+						for _, method := range []string{"Browser.getWindowForTarget", "Browser.setWindowBounds", "Browser.setWindowBounds", "Target.activateTarget"} {
+							cmd := c.next()
+							if cmd["method"] != method {
+								t.Fatalf("activation command %v", cmd)
+							}
+							if method == "Target.activateTarget" && cmd["params"].(map[string]any)["targetId"] != main {
+								t.Fatal("activated something other than replacement")
+							}
+							c.send(map[string]any{"id": cmd["id"], "result": map[string]any{"windowId": 7}})
+						}
+					}
 					query = c.next()
 					if query["method"] != "Target.getTargets" {
 						t.Fatalf("refresh %v", query)
@@ -91,7 +116,7 @@ func TestCloseWindowUsesFreshPageInventory(t *testing.T) {
 			c.mux.mu.Lock()
 			person := c.mux.person
 			c.mux.mu.Unlock()
-			if person != (mode == "close" || mode == "refused") {
+			if person != (mode == "close" || mode == "refused" || last) {
 				t.Fatal("control changed on refusal or was not taken for close")
 			}
 		})

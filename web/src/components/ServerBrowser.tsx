@@ -554,7 +554,7 @@ export function BrowserWindows({
             presentation="icon"
             data-testid="browser-window-close"
             aria-label={txt.closeWindow(w.title || w.origin || txt.ownBrowser)}
-            isDisabled={busy || windows.length < 2}
+            isDisabled={busy}
             onPress={() => onClose(w.id)}
           >
             <Icon name="cross" />

@@ -3,15 +3,22 @@ created: 2026-11-22
 updated: 2026-11-22
 type: bug
 reporter: jari
-status: in-progress
+status: fixed
 priority: normal
 provenance: chat
 source_ref: kokeiltavaa:2026-11-22/server-browser-popup-close-noop
 lane: unlaned
 preparation: ready
+closed: 2026-11-22
 ---
 
 # Server browser: the popup's × in the window list does nothing
+
+## Acceptance Criteria
+
+- [x] Closing a sole popup through the viewer leaves a fresh blank page with keyboard focus; verified with real Chrome and Xvnc in a disposable synthetic host.
+- [x] Normal popup close and self-close leave the opener usable.
+- [x] Investigate opener navigation, renderer crash, noopener and session restore; record evidence and unresolved limits in result.md.
 
 ## Description
 

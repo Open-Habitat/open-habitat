@@ -370,12 +370,26 @@ func (h *host) controlHandler() http.Handler {
 				controlJSON(w, 503, map[string]string{"error": "window_list_failed"})
 				return
 			}
-			if !hasWindow(windows, body.Window) || len(windows) < 2 {
+			if !hasWindow(windows, body.Window) {
 				controlJSON(w, 409, map[string]string{"error": "window_unavailable"})
 				return
 			}
 			// Refused preconditions change nothing; an accepted close takes control.
 			h.mux.setControl(true)
+			var replacement string
+			if len(windows) == 1 {
+				// Create first: closing Chrome's last page can terminate the browser.
+				res, err := h.mux.call(r.Context(), "Target.createTarget", map[string]any{"url": "about:blank"}, "")
+				var created struct {
+					TargetID string `json:"targetId"`
+				}
+				if err != nil || json.Unmarshal(res, &created) != nil || !TargetPattern.MatchString(created.TargetID) {
+					controlJSON(w, 503, map[string]string{"error": "window_close_failed"})
+					return
+				}
+				replacement = created.TargetID
+				h.invalidateWindows()
+			}
 			res, err := h.mux.call(r.Context(), "Target.closeTarget", map[string]string{"targetId": body.Window}, "")
 			var closed struct {
 				Success bool `json:"success"`
@@ -385,6 +399,12 @@ func (h *host) controlHandler() http.Handler {
 				return
 			}
 			h.invalidateWindows()
+			if replacement != "" {
+				if err := h.activateWindow(r.Context(), replacement); err != nil {
+					controlJSON(w, 503, map[string]string{"error": "window_activate_failed"})
+					return
+				}
+			}
 			controlJSON(w, 200, h.status(r.Context()))
 		case r.URL.Path == ControlPath && r.Method == http.MethodPost:
 			var body struct {

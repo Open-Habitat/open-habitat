@@ -81,7 +81,7 @@
       ]
     },
     "closeWindowRequest": {
-      "description": "POST /api/v1/browser/window: take person control and close exactly one page target, including a popup. The last page is protected; stop closes the browser. Replies with status.",
+      "description": "POST /api/v1/browser/window: take person control and close exactly one page target, including a popup. Closing the last page replaces it with a blank page; stop closes the browser. Replies with status.",
       "type": "object",
       "additionalProperties": false,
       "required": ["window"],

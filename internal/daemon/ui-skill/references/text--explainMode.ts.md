@@ -1367,8 +1367,7 @@ const fi = {
     B13: {
       name: "Sulje ikkuna",
       lead: "Sulkee vain tämän ikkunan tai välilehden ja antaa ohjauksen sinulle.",
-      know: "Muut ikkunat jäävät auki. Sivun tallentamattomat tiedot voivat kadota.",
-      grey: "Viimeisen ikkunan voit sulkea Sulje selain -painikkeesta.",
+      know: "Muut ikkunat jäävät auki. Viimeisen tilalle avautuu tyhjä ikkuna. Sivun tallentamattomat tiedot voivat kadota.",
     },
     H01: {
       name: "Keskustelun avustaja",
@@ -3418,8 +3417,7 @@ export const explainModeText = catalog(fi, {
     B13: {
       name: "Close window",
       lead: "Closes only this window or tab and gives you control.",
-      know: "Other windows stay open. Unsaved page data may be lost.",
-      grey: "Use Close browser to close the last window.",
+      know: "Other windows stay open. Closing the last window opens a blank one in its place. Unsaved page data may be lost.",
     },
     H01: {
       name: "Conversation's helper",

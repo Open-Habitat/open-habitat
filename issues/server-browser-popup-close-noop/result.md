@@ -1,94 +1,52 @@
-# Result: reproduction coverage added; reported failure remains unresolved
+# Result: × closes the last page and leaves a usable blank page
 
-No production fix is claimed. The existing real-browser popup test passed on
-unchanged production code. An extended regression also passes for a feature
-popup at `about:blank#popup`: the status inventory includes both the opener and
-the popup, the popup's × closes it, the original opener keeps its identity, and
-keyboard input reaches that opener without selecting it again.
+Adopted regression/investigation commit `6fca321b4` as `6d12b66b1` and implemented the conductor's decision: the viewer's × is enabled for a singleton inventory. The host creates a fresh `about:blank` target before closing the selected last target, so Chrome does not exit, then sizes and activates the replacement. Existing multi-page close behavior stays unchanged. No new switch or authorization is introduced.
 
-The work is preserved without merging because the reported missing opener has
-not been reproduced or explained. The issue remains open work, not fixed or
-classified as an invalid report.
+The original reason for the missing opener remains unproven; the singleton inventory itself no longer makes × a dead control.
 
-## Findings
+## Evidence and investigation
 
-- `internal/browserhost/control_linux.go` already closes through
-  `Target.closeTarget`. Before sending it, the handler fetches fresh page
-  targets from Chrome and refuses a missing target or fewer than two pages.
-- `BrowserWindowList` in `web/src/components/ServerBrowser.tsx` disables × when
-  the inventory has fewer than two windows. A singleton inventory therefore
-  explains why × would not act; it does not explain why the opener was absent.
-- The browser-host inventory includes every valid page target returned by
-  Chrome. The daemon's `fromHost` conversion is shared by browser and agent
-  status and has no window-count cutoff. No production change was justified
-  from the available evidence.
-- A temporary real-Xvnc restart experiment observed both main and popup before
-  and after shutdown/restart. Its subsequent keyboard assertion failed, so it
-  does **not** establish complete post-restart interaction. The temporary test
-  modifications were removed; the observation is retained in `restart.log`.
-- A separate disposable headless Chrome probe opened the blank popup from the
-  initial New Tab page. Both pages appeared before and after graceful restart.
-  This is a direct Chrome observation, not installed-server evidence.
+The inherited native test covered normal popups, OAuth-style self-close and a blank feature popup with both target identities retained. The extension explicitly removes the opener, observes only the blank popup, closes it through ×, requires one new blank target, and navigates it through real X input without selecting it. This distinguishes a fresh, activated replacement from navigating the old page or merely updating the list.
 
-## Changes
+A separate disposable native Chrome probe checked:
 
-Extended `web/tests/server-browser-popup-native.spec.ts` with a blank feature
-popup opened by `window.open`, an exact two-target status assertion, a close
-through the actual viewer list, stable opener identity, and real keyboard input
-to the remaining opener. Existing normal-popup and self-close coverage remains.
+- `window.open` with `popup,noopener`: both page targets remained listed;
+- opener navigation: both remained listed, with the opener's identity unchanged;
+- opener renderer crash: `Inspector.targetCrashed` was observed (the `Page.crash` command itself timed out), and both page targets remained listed;
+- graceful Chrome shutdown and restart with native `restore_on_startup: 1`: both the navigated opener and blank popup were restored under new target IDs.
 
-## Verification
+No missing-opener reproduction was found. This probe reads Chrome directly and is not daemon-restart or installed-server evidence. The earlier worker's restart observations remain in the external evidence directory; its failed post-restart keyboard assertion was not promoted to a passing interaction check.
 
-Base revision: `18c67cfad`. Production code remains unchanged from that base.
-Final test code was checked with:
+## Checks
 
-- `./scripts/test-focused.sh --area go --go-package ./internal/browserhost`:
-  passed.
-- `OH_BROWSER_ACTION_CHROME=/usr/bin/google-chrome ./scripts/test-focused.sh
-  --area go --go-package ./internal/cli`: passed, with the native CDP fixture
-  enabled (including its existing popup/tab close checks).
-- `BROWSER_HOST_REAL_BROWSER=/usr/bin/Xtigervnc:/usr/bin/google-chrome
-  OH_BROWSER_WORKERS=1 OH_PORT_BASE=17400 ./scripts/test-focused.sh --area browser
-  --spec server-browser-popup-native.spec.ts`: three separate final runs passed.
-  Runs used the focused runner's reply jitter, private scratch lease, umask 077
-  and outer 180-second timeout. This was three invocations, not an accepted
-  `--repeat-each` option: the shell wrapper rejects that flag.
-- From `web/`, `node_modules/.bin/biome check --error-on-warnings
-  tests/server-browser-popup-native.spec.ts`: passed.
-- `issuectl doctor --json`, `python3 scripts/validate-project-view.py`, and
-  `git diff --check`: passed.
+Final production/test diff based on `6d12b66b1` (including regenerated embedded schema descriptions) passed:
 
-Initial setup attempts lacked web/Pi fixture dependencies; these were installed
-before successful tests. One browser attempt found an occupied port; the final
-runs used a different port base. No whole browser suite, clean gate, live
-installation check, or claim of a repaired deployment is included.
+- `./scripts/test-focused.sh --area go --go-package ./internal/browserhost`;
+- `OH_BROWSER_ACTION_CHROME=/usr/bin/google-chrome ./scripts/test-focused.sh --area go --go-package ./internal/cli` (native CDP fixture enabled);
+- `./scripts/test-focused.sh --area web`: 255 files, 2156 tests plus static/component checks;
+- `BROWSER_HOST_REAL_BROWSER=/usr/bin/Xtigervnc:/usr/bin/google-chrome OH_BROWSER_WORKERS=1 OH_PORT_BASE=18400 ./scripts/test-focused.sh --area browser --spec server-browser-popup-native.spec.ts`: three final separate invocations, all passed;
+- `OH_BROWSER_WORKERS=2 OH_PORT_BASE=18400 ./scripts/test-focused.sh --area browser --spec server-browser.spec.ts`: all 11 passed;
+- `./scripts/test-focused.sh --area contracts`, `python3 scripts/generate-ui-reference.py --check`, project-view validation, `issuectl doctor --json`, and `git diff --check`.
 
-External evidence: `/var/tmp/agent-keep/server-browser-popup-close-noop/`:
-`baseline.log`, `go.log`, `cli.log`, `final-native-1.log` through
-`final-native-3.log`, `restart.log`, and `restart-probe.log`. All experiments
-used disposable profiles and synthetic pages. No captured HTML or images enter
-git.
+Commands used umask 077, scratch lease and outer timeouts. Go scratch came from the focused wrapper. Initial native test expected `about:blank` in the origin field; the contract intentionally strips non-HTTP origins. Corrected the assertion to native page title, then reran successfully. The first contracts check detected the changed description in embedded schemas; regenerated both copies and reran successfully.
+
+The existing Explain-mode cases captured B13 in Finnish/English at 1440/390 px. All four images were inspected: the card fits, names the selected close control, explains blank replacement and unsaved-data loss, and still blocks the destructive press while explaining. English UK inherits the same text. No screenshot or captured HTML is committed.
+
+No whole browser suite, clean gate, installed-server verification or deployment was performed. These are disposable-profile native interaction and synthetic-host checks, not distinct-UID or real-provider evidence.
+
+External evidence: `/var/tmp/agent-keep/server-browser-popup-close-noop/` contains `final-{web,go,cli,browser}.log`, `harvest-final-native-{1,2,3}.log`, `harvest-contracts.log`, `harvest-probe.cjs`, `harvest-probe.log`, `harvest-cards/` (paired PNG/HTML), and raw independent review outputs. Earlier evidence remains there too.
 
 ## Review
 
-Focused self-review: test-only change, no authority, contract, daemon state,
-CDP multiplexing or control-handover change. The added assertion checks a real
-inventory boundary and verifies input reaches the surviving original page;
-it does not merely check the supplied popup title. An independent model review
-was not required and was not run.
+Focused self-review plus independent `/llm-review` and `/assess-findings`: this changes explicit browser page destruction/lifecycle, so a second provider reviewed it even though identity and wire shape do not change. Finder `claude-fable-5-2`, verifier `gpt-6-astra`: two calls. Fixed stale generated UI references and the old last-page contract description (including generated schema copies). Dropped the proposed background activation after an uncertain close: failure is already explicit, status refreshes and selection remains available; successful close requires activation. No surviving actionable finding or new issue.
 
 ## Decisions for later review
 
-- **Do not invent a replacement opener or remove last-page protection.** Those
-  could make a singleton popup closable, but would hide rather than explain the
-  lost original page. The alternative was an automatic new blank window on
-  last-page close; there is no evidence that this repairs the reported failure.
-- **Do not classify the report as cannot-reproduce/closed.** Synthetic passing
-  tests do not disprove the observed failure. Preserve the regression and the
-  unresolved inventory question for a later reproduction with the exact
-  sequence of native window actions and any intervening restart.
-- **No user-visible release note.** There is no production change to try, so
-  adding a success claim to a private test checklist would be misleading.
-- **No merge.** The requested fix and live confirmation are not established.
-  Return an unsuccessful terminal report with these limitations rather than
-  merge test coverage as though it fixed the bug.
+- **Create before close, not after.** Closing first can terminate Chrome. The replacement is created only for a fresh singleton inventory, not for every close.
+- **Preserve explicit uncertainty on partial failure.** Do not automatically retry close or delete the replacement when a reply is lost; either could lose the remaining usable page. The person can inspect and select the resulting windows.
+- **Keep CLI last-tab protection unchanged.** The approved decision concerns the viewer's ×. The CLI has its separate refusal behavior; no CLI interface or agent action semantics were broadened.
+- **Close the inert-× defect without claiming an opener-loss fix.** Navigation, crash, noopener and session restore did not reproduce missing inventory. No speculative inventory repair was added.
+
+## Live check
+
+After deployment, open Oma selain and create a normal or blank popup. Its × must close that popup while the opener remains usable. Then leave only the popup (explicitly close its opener), press its ×, and verify one empty page remains. Type an address immediately: the new page must receive input without a selection click. Closing the browser itself remains the separate stop action. This installed-server check is still pending deployment.

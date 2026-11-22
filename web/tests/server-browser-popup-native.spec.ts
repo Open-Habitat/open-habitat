@@ -133,7 +133,33 @@ test("feature popups can be switched, closed and close themselves", async ({
     await expect(main).toHaveAttribute("data-window", mainID);
     await page.keyboard.press("m");
     await expect.poll(() => events.filter((e) => e === "main").length).toBe(4);
-    await expect(main.getByTestId("browser-window-close")).toBeDisabled();
+    // Reproduce the reported singleton inventory without assuming how the
+    // opener disappeared: close it explicitly, leaving only its blank popup.
+    await page.keyboard.press("b");
+    await expect(blank).toBeVisible();
+    await main.getByTestId("browser-window-close").click();
+    await expect(main).toHaveCount(0);
+    await expect(list.locator(".sb-window-chip")).toHaveCount(1);
+    const solePopupID = await blank.getAttribute("data-window");
+    await blank.getByTestId("browser-window-close").click();
+    await expect(blank).toHaveCount(0);
+    await expect(list.locator(".sb-window-chip")).toHaveCount(1);
+    await expect
+      .poll(async () => {
+        const status = await (await page.request.get("/api/v1/browser")).json();
+        return (
+          status.windows.length === 1 &&
+          status.windows[0].id !== solePopupID &&
+          status.windows[0].title === "about:blank"
+        );
+      })
+      .toBe(true);
+    // No selection click: the replacement must already receive X input.
+    await page.keyboard.press("Control+l");
+    await page.keyboard.type(`http://127.0.0.1:${addr.port}/`);
+    await page.keyboard.press("Enter");
+    await expect.poll(() => events.filter((e) => e === "ready").length).toBe(2);
+    await expect(main).toBeVisible();
     await page.getByTestId("browser-stop").click();
   } finally {
     await new Promise<void>((resolve, reject) =>
