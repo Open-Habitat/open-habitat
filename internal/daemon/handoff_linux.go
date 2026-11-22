@@ -89,6 +89,9 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 
 	mux.Handle(RepoPublishPath, RepoPublishHandler(cfg, server.TrustedPeer))
 	mux.Handle(RepoDisconnectPath, RepoDisconnectHandler(cfg, server.TrustedPeer, adapter))
+	if err := cleanupLegacyRecapDirs("/var/tmp", os.Geteuid()); err != nil {
+		diagnostic.New(os.Stderr, "daemon").Warn("recap_cleanup", "outcome", "failed", "reason", "temporary_cleanup_failed")
+	}
 	journal := newEventJournal()
 	controller := newConversationController(ctx, cfg, runtime, server.TrustedPeer, piStatus)
 	controller.journal = journal

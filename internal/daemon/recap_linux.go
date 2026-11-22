@@ -48,8 +48,8 @@ func (c *ConversationController) piArgs() ([]string, error) {
 		args = append(args, "--extension", processes)
 	}
 	args = append(args, taskfleetSkillsExtension(agentRelease(), filepath.Dir(filepath.Dir(c.runtime.Node)))...)
-	// The tmpfiles service can remove a stale /var/tmp directory during a
-	// long-lived daemon. Recreate the bridge before launching the next child.
+	// Temporary storage may be cleared while the daemon is running. Recreate
+	// the bridge before launching the next child.
 	if c.recapPath != "" {
 		if info, err := os.Lstat(c.recapPath); err == nil && info.Mode().IsRegular() {
 			if err := installBackgroundModel(filepath.Dir(c.recapPath)); err != nil {
@@ -82,17 +82,17 @@ func (c *ConversationController) piArgs() ([]string, error) {
 			return args, nil
 		}
 	}
-	dir, err := os.MkdirTemp("/var/tmp", "oh-recap-")
+	// One bounded, disposable directory per person survives daemon crashes.
+	// No per-launch directory needs an exit handler to avoid accumulating.
+	dir, err := recapDirectory(c.recapRoot)
 	if err != nil {
 		return nil, err
 	}
 	path := filepath.Join(dir, "recap-extension.mjs")
 	if err := installBackgroundModel(dir); err != nil {
-		_ = os.RemoveAll(dir)
 		return nil, err
 	}
 	if err := os.WriteFile(path, recapExtension, 0600); err != nil {
-		_ = os.RemoveAll(dir)
 		return nil, err
 	}
 	c.recapPath = path

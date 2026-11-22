@@ -74,6 +74,7 @@ type ConversationController struct {
 	// each other's temporary flock as an external writer. Never hold mu across I/O.
 	proofGate      chan struct{}
 	recapPath      string
+	recapRoot      string                                           // empty uses /var/tmp; tests supply private scratch
 	recapIdleDelay time.Duration                                    // test seam; zero uses the person's recap setting
 	promptTimeout  time.Duration                                    // test seam; zero sizes it to the prompt (promptRequestTimeout)
 	recapGenerator func(*conversation, string, uint64) recapOutcome // synthetic test seam
@@ -405,9 +406,6 @@ func (c *ConversationController) shutdown() {
 	for _, s := range list {
 		_ = s.rpc.close()
 		_ = s.owner.release()
-	}
-	if c.recapPath != "" {
-		_ = os.RemoveAll(filepath.Dir(c.recapPath))
 	}
 }
 

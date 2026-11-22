@@ -3,12 +3,13 @@ created: 2026-11-22
 updated: 2026-11-22
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: kokeiltavaa:2026-11-22/recap-temp-dirs-not-cleaned
 lane: unlaned
 preparation: ready
+closed: 2026-11-22
 ---
 
 # About 50 oh-recap-* directories accumulate in /var/tmp
