@@ -6,6 +6,8 @@
   "oneOf": [
     { "$ref": "#/$defs/preview" },
     { "$ref": "#/$defs/branch" },
+    { "$ref": "#/$defs/turnChanges" },
+    { "$ref": "#/$defs/turnDiff" },
     { "$ref": "#/$defs/request" },
     { "$ref": "#/$defs/result" }
   ],
@@ -13,7 +15,7 @@
     "entryKey": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,128}$" },
     "count": { "type": "integer", "minimum": 0, "maximum": 1000000 },
     "preview": {
-      "description": "GET /api/v1/conversations/{id}/rewind?entry={entry_key}: what going back before one of the person's messages leaves behind, and what a file restore would change compared with the files as they are now. checkpoint is false when no copies were made for that message (the feature was off); the conversation can still go back.",
+      "description": "GET /api/v1/conversations/{id}/rewind?entry={entry_key}: what going back before one of the person's messages leaves behind, and what a file restore would change compared with the files as they are now: every file under the repository that the agent's runs changed from that message on when the message has a turn snapshot, and the files the agent's edit and write tools copied otherwise. checkpoint is false when neither was recorded for that message (the feature was off); the conversation can still go back.",
       "type": "object",
       "additionalProperties": false,
       "required": ["schema_version", "agent_id", "entry_key", "own", "replies", "checkpoint", "files", "files_more", "file_errors", "commands", "commands_more"],
@@ -62,6 +64,53 @@
         "marker_key": { "$ref": "#/$defs/entryKey" },
         "entries": { "type": "array", "maxItems": 200, "items": { "$ref": "history.schema.json#/$defs/entry" } },
         "complete": { "type": "boolean" }
+      }
+    },
+    "turnChanges": {
+      "description": "GET /api/v1/conversations/{id}/rewind?turn={entry_key}: the files the agent's run for one of the person's messages changed, from the turn snapshots recorded at the run's start and end (or the next run's start when it was steered or never settled: settled is false). snapshot is false when the turn has none to compare (recorded before the recorder, with Palaa tähän off, outside a Git repository, or a store the retention sweep removed); the browser then reads the turn's tool calls. skipped names paths the snapshots could not record.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "agent_id", "entry_key", "snapshot", "settled", "files", "files_more", "skipped", "skipped_more"],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion" },
+        "agent_id": { "$ref": "common.schema.json#/$defs/agentId" },
+        "entry_key": { "$ref": "#/$defs/entryKey" },
+        "snapshot": { "type": "boolean" },
+        "settled": { "type": "boolean" },
+        "files": {
+          "type": "array",
+          "maxItems": 300,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "change"],
+            "properties": {
+              "path": { "description": "Relative to the workspace, ~/ for the rest of the home, absolute elsewhere.", "type": "string", "minLength": 1, "maxLength": 4096 },
+              "old_path": { "description": "A renamed or copied file's earlier path.", "type": "string", "minLength": 1, "maxLength": 4096 },
+              "change": { "enum": ["added", "modified", "deleted", "renamed", "copied", "type_changed"] },
+              "additions": { "$ref": "#/$defs/count" },
+              "deletions": { "$ref": "#/$defs/count" },
+              "binary": { "description": "No line counts or diff: Git treats the file as binary.", "const": true }
+            }
+          }
+        },
+        "files_more": { "$ref": "#/$defs/count" },
+        "skipped": { "type": "array", "maxItems": 50, "items": { "type": "string", "minLength": 1, "maxLength": 4096 } },
+        "skipped_more": { "$ref": "#/$defs/count" }
+      }
+    },
+    "turnDiff": {
+      "description": "GET /api/v1/conversations/{id}/rewind?turn={entry_key}&path={path}: one listed file's unified diff between the run's two snapshots, as Git writes it, cut at 256 KiB (truncated). 404 when the turn has no snapshot or the file is not in its list.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "agent_id", "entry_key", "path", "diff", "truncated"],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion" },
+        "agent_id": { "$ref": "common.schema.json#/$defs/agentId" },
+        "entry_key": { "$ref": "#/$defs/entryKey" },
+        "path": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "diff": { "type": "string", "maxLength": 262144 },
+        "truncated": { "type": "boolean" }
       }
     },
     "request": {

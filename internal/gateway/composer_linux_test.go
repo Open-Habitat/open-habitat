@@ -118,6 +118,8 @@ func TestRewindRouteRelaysExactShapes(t *testing.T) {
 	for _, ok := range []struct{ method, target string }{
 		{"GET", rewind + "?entry=a1b2c3d4"},
 		{"GET", rewind + "?branch=a1b2c3d4"},
+		{"GET", rewind + "?turn=a1b2c3d4"},
+		{"GET", rewind + "?turn=a1b2c3d4&path=src%2Fa.py"},
 		{"POST", rewind},
 	} {
 		if code := call(ok.method, ok.target, true); code != 200 {
@@ -128,6 +130,8 @@ func TestRewindRouteRelaysExactShapes(t *testing.T) {
 		{"GET", rewind},
 		{"GET", rewind + "?entry=a&branch=b"},
 		{"GET", rewind + "?path=x"},
+		{"GET", rewind + "?entry=a1b2c3d4&path=x"},
+		{"GET", rewind + "?turn=a1b2c3d4&path="},
 		{"POST", rewind + "?entry=a1b2c3d4"},
 	} {
 		if code := call(bad.method, bad.target, true); code != 400 {
@@ -137,7 +141,7 @@ func TestRewindRouteRelaysExactShapes(t *testing.T) {
 	if code := call("POST", rewind, false); code != 403 {
 		t.Fatalf("rewind without CSRF: %d", code)
 	}
-	if forwarded != 3 {
+	if forwarded != 5 {
 		t.Fatalf("forwarded %d", forwarded)
 	}
 }

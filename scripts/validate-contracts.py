@@ -140,6 +140,8 @@ checks = {
     "rewind-preview.json": "rewind.schema.json",
     "rewind-request.json": "rewind.schema.json",
     "rewind-result.json": "rewind.schema.json",
+    "rewind-turn-changes.json": "rewind.schema.json",
+    "rewind-turn-diff.json": "rewind.schema.json",
     "context-detail.json": "context-detail.schema.json",
     "compaction-request.json": "compaction.schema.json",
     "compaction-result.json": "compaction.schema.json",
@@ -700,6 +702,8 @@ else:
 rewind_request = json.loads((BASE / "examples" / "rewind-request.json").read_text())
 must_reject("rewind.schema.json", {**rewind_request, "conversation": False, "files": False})
 must_reject("rewind.schema.json", {**rewind_request, "entry_key": "../x"})
+rewind_turn = json.loads((BASE / "examples" / "rewind-turn-changes.json").read_text())
+must_reject("rewind.schema.json", {**rewind_turn, "files": [{"path": "a", "change": "edited"}]})
 must_reject("compaction.schema.json", {"instructions": "x" * 2001})
 must_reject("compaction.schema.json", {"instructions": "x", "keep_recent_tokens": 1})
 experimental = json.loads((BASE / "examples" / "experimental-features.json").read_text())

@@ -76,6 +76,7 @@ func (c *ConversationController) piArgs() ([]string, error) {
 				return nil, err
 			}
 			args = append(args, "--extension", c.recapPath, "--extension", companion, "--extension", rewind, "--extension", permission, "--skill", skill, "--skill", ui)
+			args = append(args, turnSnapshotArgs(c.home, filepath.Dir(c.recapPath))...)
 			if browser, ok := c.browser.installSkill(filepath.Dir(c.recapPath)); ok {
 				args = append(args, "--skill", browser)
 			}
@@ -117,6 +118,7 @@ func (c *ConversationController) piArgs() ([]string, error) {
 		return nil, err
 	}
 	args = append(args, "--extension", path, "--extension", companion, "--extension", rewind, "--extension", permission, "--skill", skill, "--skill", ui)
+	args = append(args, turnSnapshotArgs(c.home, dir)...)
 	if browser, ok := c.browser.installSkill(dir); ok {
 		args = append(args, "--skill", browser)
 	}

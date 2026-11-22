@@ -32,6 +32,14 @@
 //   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //   SOFTWARE.
 //
+// Turn snapshots (turn-snapshots/, the recorder Habitat carries as its
+// better-pi-rewind contribution) are the first source when a message has
+// them: every file under the repository that the agent's runs changed from
+// that message on goes back, whatever tool changed it, and a snapshot taken
+// just before is the undo point. The per-file copies below then cover only
+// what the snapshots do not (ignored files, files outside the repository),
+// and are the whole mechanism for messages recorded before.
+//
 // What differs from better-pi-rewind: the daemon asks through one command
 // instead of a terminal selector; copies are named by their content, so an
 // unchanged file is one copy however many turns track it; a restore first
@@ -285,10 +293,68 @@ function trackedSince(branch, after) {
   return versions;
 }
 
+// ---------- Turn snapshots ----------
+
+// The recorder's module is TypeScript; it is loaded the first time a
+// restore needs it, so a Pi start does not pay for it.
+let snapshotModule;
+const snapshotsModule = () => (snapshotModule ??= import('./turn-snapshots/src/turn-snapshots/index.ts'));
+export const SNAPSHOT = 'turn-snapshot';
+const OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
+// The message's start snapshot on a path of entries, without loading the module.
+export const startSnapshot = (entries, userEntryId) => entries.find((e) => e?.type === 'custom' && e.customType === SNAPSHOT && e.data?.version === 1 && e.data.phase === 'start' && e.data.userEntryId === userEntryId && typeof e.data.tree === 'string' && OBJECT_ID.test(e.data.tree))?.data;
+
+// A marker's undo point: the snapshot taken just before a restore and the
+// root-relative paths that restore changed.
+function validUndoPoint(u) {
+  return u && typeof u === 'object' && safe(u.store) && typeof u.tree === 'string' && OBJECT_ID.test(u.tree) && typeof u.root === 'string' && isAbsolute(u.root) && typeof u.cwd === 'string' && isAbsolute(u.cwd) && typeof u.timestamp === 'string' && Array.isArray(u.paths) && u.paths.length <= 100000 && u.paths.every((p) => typeof p === 'string' && p !== '');
+}
+const undoRecord = (u) => ({ version: 1, userEntryId: 'oh-rewind', phase: 'start', tree: u.tree, reason: null, store: u.store, root: u.root, cwd: u.cwd, timestamp: u.timestamp, skipped: u.skipped ?? { count: 0, paths: [], truncated: false } });
+const absoluteUnder = (root, paths) => new Set(paths.map((p) => resolve(root, ...p.split('/'))));
+const rootRelative = (root, files) => files.map((f) => relative(root, f).split(sep).join('/'));
+
+// Puts the paths back to `target`'s tree after taking a snapshot of the
+// files as they are (the undo point). Without an undo point nothing is
+// restored from the snapshot: the person's later work in those files would
+// have no other copy. `covered` is every path the snapshots answer for, so
+// the per-file copies leave them alone; without an undo point they answer
+// for none and the copies restore what they track.
+async function restoreSnapshot(dir, ctx, storeId, target, pathsOrFind) {
+  // A store the retention sweep removed, or a tree Git cannot read: the
+  // snapshots answer for nothing and the per-file copies do what they can.
+  try { return await restoreFromSnapshot(dir, ctx, storeId, target, typeof pathsOrFind === 'function' ? await pathsOrFind() : pathsOrFind); } catch (e) {
+    return { covered: new Set(), changed: [], errors: [{ path: target.root, error: message(e) }], undo: null };
+  }
+}
+async function restoreFromSnapshot(dir, ctx, storeId, target, paths) {
+  const m = await snapshotsModule();
+  const covered = absoluteUnder(target.root, paths);
+  if (!paths.length) return { covered, changed: [], errors: [], undo: null };
+  const now = await m.snapshotNow({ agentDir: dir, storeId, cwd: target.cwd, sessionFile: ctx.sessionManager.getSessionFile?.() ?? null, labelPrefix: 'oh-rewind' });
+  if (!now.tree || now.root !== target.root) return { covered: new Set(), changed: [], errors: paths.map((p) => ({ path: p, error: `no undo point (${now.reason ?? 'different repository'})` })), undo: null };
+  const result = await m.restorePaths(dir, target, paths);
+  const changed = rootRelative(target.root, result.changedFiles);
+  return { covered, changed, errors: result.errors, undo: { store: storeId, tree: now.tree, root: now.root, cwd: target.cwd, timestamp: now.startedAt, skipped: now.skipped, paths: changed } };
+}
+// The paths the agent's runs changed from the first run in `records` on.
+async function changedSince(dir, records, userEntryId) {
+  const m = await snapshotsModule();
+  return (await m.pathsChangedSince(dir, records, userEntryId)).paths;
+}
+const snapshotRecords = async (entries) => (await snapshotsModule()).turnSnapshotsFromEntries(entries);
+// Back to the undo point for what a restore changed, best effort.
+async function returnTo(dir, undo) {
+  if (!undo?.paths.length) return;
+  const m = await snapshotsModule();
+  await m.restorePaths(dir, undoRecord(undo), undo.paths).catch(() => {});
+}
+
 const report = (ctx, outcome, extra = {}) => {
   try { ctx.ui.notify(OUTCOME + JSON.stringify({ outcome, ...extra }), outcome === 'done' ? 'info' : 'error'); } catch { /* No UI: the daemon reports an unknown outcome. */ }
 };
-const restoredFiles = (result) => ({ restored: result.changed.length, errors: result.errors.length, paths: result.changed });
+// paths are the per-file copies' tracking paths a restore changed; what it
+// changed from a snapshot is in the marker's undo point.
+const restoredFiles = (result, snap) => ({ restored: result.changed.length + (snap?.changed.length ?? 0), errors: result.errors.length + (snap?.errors.length ?? 0), paths: result.changed });
 const filesNote = (n) => `The person restored ${n === 1 ? 'one file' : `${n} files`} you changed to how ${n === 1 ? 'it was' : 'they were'} earlier in this conversation. Your later edits to ${n === 1 ? 'it are' : 'them are'} gone; read a file again before relying on its content.`;
 const undoNote = (n) => `The person undid the earlier file restore: ${n === 1 ? 'the file is' : `${n} files are`} again as you left ${n === 1 ? 'it' : 'them'}.`;
 
@@ -345,19 +411,25 @@ export default function (pi) {
     const branch = sm.getBranch();
     if (!isUser(entry) || !branch.some((e) => e.id === entry.id)) return report(ctx, 'not_found');
     const checkpoint = s.history.get(entry.id);
-    if (args.files && !checkpoint) return report(ctx, 'no_checkpoint');
+    const start = startSnapshot(branch, entry.id);
+    if (args.files && !checkpoint && !start) return report(ctx, 'no_checkpoint');
     const leaf = sm.getLeafId();
     const later = branch.slice(branch.findIndex((e) => e.id === entry.id));
-    let before, restore;
+    let before, restore, snap;
     if (args.files) {
+      // Every file the agent's runs changed from this message on, back to
+      // the message's start snapshot, with an undo point.
+      if (start) snap = await restoreSnapshot(dir, ctx, s.storeId, start, async () => changedSince(dir, await snapshotRecords(branch), entry.id));
       // The files as the agent left them, so this continuation can be
       // returned to with its files, or a files-only restore undone.
       // A file that cannot be copied now is left as it is.
-      before = await captureAll(s.history.paths(), checkpoint.cwd, dir, s.storeId);
-      restore = await restoreVersions(checkpointVersions(s.history, checkpoint).filter(([p]) => before.files[p]), checkpoint.cwd, dir);
+      const cwd = checkpoint?.cwd ?? ctx.cwd;
+      const tracked = checkpoint ? s.history.paths().filter((p) => !snap?.covered.has(resolveTracking(cwd, p))) : [];
+      before = await captureAll(tracked, cwd, dir, s.storeId);
+      restore = checkpoint ? await restoreVersions(checkpointVersions(s.history, checkpoint).filter(([p]) => before.files[p]), cwd, dir) : { changed: [], errors: [] };
       restore.errors.push(...before.errors);
     }
-    const data = { version: VERSION, action: args.conversation ? 'rewind' : 'files', at: entry.id, ...counts(later), cwd: checkpoint?.cwd ?? ctx.cwd, files: restore ? restoredFiles(restore) : null, ...(before ? { before: before.files } : {}) };
+    const data = { version: VERSION, action: args.conversation ? 'rewind' : 'files', at: entry.id, ...counts(later), cwd: checkpoint?.cwd ?? ctx.cwd, files: restore ? restoredFiles(restore, snap) : null, ...(before ? { before: before.files } : {}), ...(snap?.undo ? { snapshot: snap.undo } : {}) };
     if (args.conversation) {
       // Pi's navigation puts a person's message or a custom message back in
       // the field instead of landing on it, so such a leaf (an unanswered
@@ -367,17 +439,18 @@ export default function (pi) {
       const left = sm.getLeafId();
       const result = await ctx.navigateTree(entry.id);
       if (result.cancelled) {
-        if (before) await restoreVersions(Object.entries(before.files), checkpoint.cwd, dir);
+        if (before) await restoreVersions(Object.entries(before.files), data.cwd, dir);
+        await returnTo(dir, snap?.undo);
         return report(ctx, 'cancelled');
       }
       data.left = left;
       pi.appendEntry(MARKER, data);
     } else {
       pi.appendEntry(MARKER, data);
-      if (restore.changed.length) pi.sendMessage({ customType: NOTE, content: filesNote(restore.changed.length), display: false }, { triggerTurn: false });
+      if (data.files.restored) pi.sendMessage({ customType: NOTE, content: filesNote(data.files.restored), display: false }, { triggerTurn: false });
     }
     rebuild(ctx);
-    report(ctx, 'done', { restored: restore?.changed.length ?? 0, errors: restore?.errors.length ?? 0 });
+    report(ctx, 'done', { restored: data.files?.restored ?? 0, errors: data.files?.errors ?? 0 });
   }
 
   // Back to the continuation a rewind replaced, which is a leaf of its own
@@ -392,28 +465,42 @@ export default function (pi) {
     // landing on it; such a leaf cannot be continued as it was.
     if (!target || target.type === 'custom_message' || isUser(target)) return report(ctx, 'not_switchable');
     if (args.files && !validFiles(marker.data.before)) return report(ctx, 'no_checkpoint');
+    const point = validUndoPoint(marker.data.snapshot) ? marker.data.snapshot : null;
     if (!continuation(sm, sm.getLeafId(), sm.getBranch(target.id)).length) return report(ctx, 'not_switchable');
     const leafEntry = sm.getEntry(sm.getLeafId());
     if (isUser(leafEntry) || leafEntry?.type === 'custom_message') pi.appendEntry(ANCHOR, {});
     const leaf = sm.getLeafId();
     const left = continuation(sm, leaf, sm.getBranch(target.id));
     const cwd = typeof marker.data.cwd === 'string' && isAbsolute(marker.data.cwd) ? marker.data.cwd : ctx.cwd;
-    let before, restore;
+    let before, restore, snap;
     if (args.files) {
-      const paths = [...new Set([...Object.keys(marker.data.before), ...trackedSince(branch, marker.id).keys()])];
+      if (point) {
+        // Back to the files as the replaced continuation left them: what the
+        // rewind changed, and what this branch's runs have changed since.
+        snap = await restoreSnapshot(dir, ctx, s.storeId, undoRecord(point), async () => {
+          const after = await snapshotRecords(branch.slice(branch.findIndex((e) => e.id === marker.id) + 1));
+          const first = after.find((r) => r.phase === 'start');
+          const since = first ? await changedSince(dir, after, first.userEntryId) : [];
+          return [...new Set([...point.paths, ...since])].sort();
+        });
+      }
+      const keep = (p) => !snap?.covered.has(resolveTracking(cwd, p));
+      const paths = [...new Set([...Object.keys(marker.data.before), ...trackedSince(branch, marker.id).keys()])].filter(keep);
       before = await captureAll(paths, cwd, dir, s.storeId);
       const versions = new Map([...trackedSince(branch, marker.id), ...Object.entries(marker.data.before)]);
-      restore = await restoreVersions([...versions].filter(([p]) => before.files[p]), cwd, dir);
+      restore = await restoreVersions([...versions].filter(([p]) => keep(p) && before.files[p]), cwd, dir);
       restore.errors.push(...before.errors);
     }
     const result = await ctx.navigateTree(target.id);
     if (result.cancelled) {
       if (before) await restoreVersions(Object.entries(before.files), cwd, dir);
+      await returnTo(dir, snap?.undo);
       return report(ctx, 'cancelled');
     }
-    pi.appendEntry(MARKER, { version: VERSION, action: 'switch', at: left[0].id, left: leaf, ...counts(left), cwd, files: restore ? restoredFiles(restore) : null, ...(before ? { before: before.files } : {}) });
+    const files = restore ? restoredFiles(restore, snap) : null;
+    pi.appendEntry(MARKER, { version: VERSION, action: 'switch', at: left[0].id, left: leaf, ...counts(left), cwd, files, ...(before ? { before: before.files } : {}), ...(snap?.undo ? { snapshot: snap.undo } : {}) });
     rebuild(ctx);
-    report(ctx, 'done', { restored: restore?.changed.length ?? 0, errors: restore?.errors.length ?? 0 });
+    report(ctx, 'done', { restored: files?.restored ?? 0, errors: files?.errors ?? 0 });
   }
 
   // Undo a files-only restore: the files go back to how the agent left them.
@@ -428,15 +515,20 @@ export default function (pi) {
     // the agent created since, is not this restore's to undo.
     const changed = new Set(Array.isArray(marker.data.files?.paths) ? marker.data.files.paths : []);
     const versions = Object.entries(marker.data.before).filter(([p]) => changed.has(p));
-    // The files as they are now: a hand edit or a later turn's work since the
-    // restore has no other copy.
+    // What the restore changed from a snapshot goes back to its undo point,
+    // after a new one: a hand edit or a later turn's work since the restore
+    // has no other copy.
+    const point = validUndoPoint(marker.data.snapshot) ? marker.data.snapshot : null;
+    const snap = point ? await restoreSnapshot(dir, ctx, s.storeId, undoRecord(point), point.paths) : null;
+    // The files as they are now, for the same reason.
     const before = await captureAll(versions.map(([p]) => p), cwd, dir, s.storeId);
     const restore = await restoreVersions(versions.filter(([p]) => before.files[p]), cwd, dir);
     restore.errors.push(...before.errors);
-    pi.appendEntry(MARKER, { version: VERSION, action: 'undo', of: marker.id, cwd, files: restoredFiles(restore), before: before.files });
-    if (restore.changed.length) pi.sendMessage({ customType: NOTE, content: undoNote(restore.changed.length), display: false }, { triggerTurn: false });
+    const files = restoredFiles(restore, snap);
+    pi.appendEntry(MARKER, { version: VERSION, action: 'undo', of: marker.id, cwd, files, before: before.files, ...(snap?.undo ? { snapshot: snap.undo } : {}) });
+    if (files.restored) pi.sendMessage({ customType: NOTE, content: undoNote(files.restored), display: false }, { triggerTurn: false });
     rebuild(ctx);
-    report(ctx, 'done', { restored: restore.changed.length, errors: restore.errors.length });
+    report(ctx, 'done', { restored: files.restored, errors: files.errors });
   }
 
   pi.registerCommand('oh-rewind', {

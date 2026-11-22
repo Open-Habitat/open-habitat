@@ -7,11 +7,12 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
-	_ "embed"
+	"embed"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -38,7 +39,60 @@ var rewindExtension []byte
 
 func installRewindExtension(dir string) (string, error) {
 	path := filepath.Join(dir, "rewind-extension.mjs")
-	return path, os.WriteFile(path, rewindExtension, 0600)
+	if err := os.WriteFile(path, rewindExtension, 0600); err != nil {
+		return path, err
+	}
+	// The extension restores from turn snapshots through the recorder's
+	// module beside it.
+	_, err := installTurnSnapshots(dir)
+	return path, err
+}
+
+// The turn-snapshot recorder (turn-snapshots/), ported from Habitat's
+// better-pi-rewind contribution and kept as that code is written so the
+// upstream pull request stays the same code: a Pi extension that snapshots
+// the working tree at the start and settle of every run into the
+// conversation's private Git store under ~/.pi/agent/file-history/<session>/
+// tree.git and records a turn-snapshot entry in the session. Its tests stay
+// out of the binary.
+//
+//go:embed turn-snapshots/LICENSE turn-snapshots/extensions turn-snapshots/src
+var turnSnapshotsTree embed.FS
+
+// RewindFeature is the person's experimental switch for Palaa tähän. Turn
+// snapshots belong to it (Jari 21.11.2026: no switch of their own).
+const RewindFeature = "rewind-conversation"
+
+// installTurnSnapshots writes the recorder's sources under dir and returns
+// its extension entry.
+func installTurnSnapshots(dir string) (string, error) {
+	err := fs.WalkDir(turnSnapshotsTree, "turn-snapshots", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		target := filepath.Join(dir, filepath.FromSlash(path))
+		if d.IsDir() {
+			return os.MkdirAll(target, 0700)
+		}
+		data, err := turnSnapshotsTree.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(target, data, 0600)
+	})
+	return filepath.Join(dir, "turn-snapshots", "extensions", "snapshots.ts"), err
+}
+
+// turnSnapshotArgs loads the recorder into the daemon's Pi child while the
+// person's switch is on. Pi's arguments are fixed when the child starts, so
+// the switch takes effect when a conversation's Pi next starts. A second
+// copy (the person installed the package themselves) stays passive: the
+// recorder claims a process-wide slot.
+func turnSnapshotArgs(home, dir string) []string {
+	if p, err := readPreferences(home); err != nil || !p.Experimental[RewindFeature] {
+		return nil
+	}
+	return []string{"--extension", filepath.Join(dir, "turn-snapshots", "extensions", "snapshots.ts")}
 }
 
 const (
@@ -178,11 +232,13 @@ type rewindLine struct {
 	at                           time.Time // Pi's timestamp of the entry
 	record                       *rewindRecord
 	marker                       *rewindMarkerData
+	snapshot                     *turnSnapshotRecord
 	offset                       int64
 }
 
 type rewindSession struct {
 	path, cwd string
+	uid       int
 	lines     []rewindLine
 	index     map[string]int
 	leaf      string
@@ -214,7 +270,7 @@ func readRewindSession(path string, uid int) (*rewindSession, bool) {
 	if header.id == "" {
 		return nil, false
 	}
-	s := &rewindSession{path: path, cwd: header.cwd, index: map[string]int{}}
+	s := &rewindSession{path: path, cwd: header.cwd, uid: uid, index: map[string]int{}}
 	// What follows the last newline is a record Pi is still writing; it is
 	// not part of the tree yet.
 	var offset int64
@@ -280,6 +336,9 @@ func readRewindSession(path string, uid int) (*rewindSession, bool) {
 							l.record = &r
 						}
 					}
+				}
+				if e.Type == "custom" && e.CustomType == turnSnapshotType {
+					l.snapshot = decodeTurnSnapshot(e.Data)
 				}
 				if e.Type == "custom" && e.CustomType == rewindMarkerType {
 					var d rewindMarkerData
@@ -472,11 +531,16 @@ func (s *rewindSession) preview(home, entry string) (rewindPreview, bool) {
 	since := branch[at].at
 	checkpoints, first := s.checkpoints()
 	checkpoint := checkpoints[entry]
+	ctx, cancel := context.WithTimeout(context.Background(), rewindGitLimit+turnSnapshotLimit)
+	defer cancel()
+	// Turn snapshots first: every file under the repository the agent's
+	// runs changed from this message on, whatever tool changed it. The
+	// per-file copies then cover only what the snapshots do not (ignored
+	// files, files outside the repository), as the extension restores.
+	covered := s.snapshotPreview(ctx, home, entry, since, &out)
 	if checkpoint == nil {
 		return out, true
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), rewindGitLimit)
-	defer cancel()
 	out.Checkpoint = true
 	paths := make([]string, 0, len(first))
 	for p := range first {
@@ -498,6 +562,9 @@ func (s *rewindSession) preview(home, entry string) (rewindPreview, bool) {
 		if !filepath.IsAbs(file) {
 			file = filepath.Join(checkpoint.cwd, p)
 		}
+		if covered[filepath.Clean(file)] {
+			continue
+		}
 		change, added, deleted, err := rewindCompare(file, v, store)
 		if err != nil {
 			out.FileErrors++
@@ -513,6 +580,59 @@ func (s *rewindSession) preview(home, entry string) (rewindPreview, bool) {
 		out.Files = append(out.Files, rewindFile{Path: rewindDisplayPath(home, checkpoint.cwd, p), Change: change, Additions: added, Deletions: deleted, Committed: rewindCommitted(ctx, home, file, since)})
 	}
 	return out, true
+}
+
+// snapshotPreview adds to out the files a restore from the message's start
+// snapshot would change, and returns the absolute paths it answered for.
+func (s *rewindSession) snapshotPreview(ctx context.Context, home, entry string, since time.Time, out *rewindPreview) map[string]bool {
+	covered := map[string]bool{}
+	branch, ok := s.branch(s.leaf)
+	if !ok {
+		return covered
+	}
+	var records []*turnSnapshotRecord
+	for _, l := range branch {
+		if l.snapshot != nil {
+			records = append(records, l.snapshot)
+		}
+	}
+	start, paths, _, ok := snapshotPathsSince(ctx, home, s.uid, records, entry)
+	if !ok {
+		return covered
+	}
+	store, ok := snapshotStore(home, s.uid, start.Store)
+	if !ok {
+		return covered
+	}
+	tree := start.tree()
+	entries, err := lsSnapshotTree(ctx, store, tree, paths)
+	if err != nil {
+		return covered
+	}
+	out.Checkpoint = true
+	root := *start.Root
+	for _, p := range paths {
+		file := filepath.Join(root, filepath.FromSlash(p))
+		covered[filepath.Clean(file)] = true
+		var e *snapshotEntry
+		if found, ok := entries[p]; ok {
+			e = &found
+		}
+		change, added, deleted, err := compareSnapshotFile(ctx, store, file, e, len(tree) == 64)
+		if err != nil {
+			out.FileErrors++
+			continue
+		}
+		if change == "" {
+			continue
+		}
+		if len(out.Files) >= maxRewindFiles {
+			out.FilesMore++
+			continue
+		}
+		out.Files = append(out.Files, rewindFile{Path: snapshotDisplayPath(home, root, start.Cwd, p), Change: change, Additions: added, Deletions: deleted, Committed: rewindCommitted(ctx, home, file, since)})
+	}
+	return covered
 }
 
 // rewindCommitted says whether a commit on HEAD since the message changed
@@ -788,10 +908,11 @@ func readReplacedEntries(s *rewindSession, uid int, lines []rewindLine) ([]histo
 	return entries, complete, true
 }
 
-func (c *ConversationController) rewindSource(id string) (*rewindSession, bool) {
+// rewindSessionPath is the native file of one readable conversation.
+func (c *ConversationController) rewindSessionPath(id string) (string, bool) {
 	sessions, err := nativeSessions(c.nativeCfg())
 	if err != nil {
-		return nil, false
+		return "", false
 	}
 	var selected *nativeSession
 	for i := range sessions {
@@ -799,17 +920,25 @@ func (c *ConversationController) rewindSource(id string) (*rewindSession, bool) 
 			continue
 		}
 		if selected != nil || sessions[i].state != "readable" {
-			return nil, false
+			return "", false
 		}
 		selected = &sessions[i]
 	}
 	if selected == nil {
+		return "", false
+	}
+	return selected.path, true
+}
+
+func (c *ConversationController) rewindSource(id string) (*rewindSession, bool) {
+	path, ok := c.rewindSessionPath(id)
+	if !ok {
 		return nil, false
 	}
-	s, ok := readRewindSession(selected.path, c.cfg.UID)
+	s, ok := readRewindSession(path, c.cfg.UID)
 	if !ok {
 		// Pi can append between the stat and the read; one retry.
-		s, ok = readRewindSession(selected.path, c.cfg.UID)
+		s, ok = readRewindSession(path, c.cfg.UID)
 	}
 	return s, ok
 }
@@ -819,8 +948,17 @@ func (c *ConversationController) rewindSource(id string) (*rewindSession, bool) 
 // Pi or writes anything.
 func (c *ConversationController) rewindRead(w http.ResponseWriter, r *http.Request, id string) {
 	q := r.URL.Query()
-	if r.ContentLength > 0 || len(r.TransferEncoding) != 0 || len(q) != 1 {
+	if r.ContentLength > 0 || len(r.TransferEncoding) != 0 || !rewindQuery(q) {
 		snapshotError(w, 400, "invalid_request")
+		return
+	}
+	if turn := q.Get("turn"); turn != "" {
+		path, ok := c.rewindSessionPath(id)
+		if !ok {
+			snapshotError(w, 404, "resource_not_found")
+			return
+		}
+		c.turnChanges(w, path, id, turn, q.Get("path"))
 		return
 	}
 	s, ok := c.rewindSource(id)
@@ -1013,13 +1151,17 @@ func hasExtensionCommand(commands []piCommand, name string) bool {
 	return false
 }
 
-// rewindQuery is the reads' exact query grammar: one entry or one branch key.
+// rewindQuery is the reads' exact query grammar: one entry or one branch
+// key, or a turn's key alone or with one of its files (turn changes from
+// snapshots).
 func rewindQuery(q map[string][]string) bool {
-	if len(q) != 1 {
-		return false
-	}
-	for key, values := range q {
-		return (key == "entry" || key == "branch") && len(values) == 1 && entryIDPattern.MatchString(values[0])
+	one := func(key string) bool { return len(q[key]) == 1 && entryIDPattern.MatchString(q[key][0]) }
+	switch len(q) {
+	case 1:
+		return one("entry") || one("branch") || one("turn")
+	case 2:
+		p := q["path"]
+		return one("turn") && len(p) == 1 && p[0] != "" && len(p[0]) <= 4096 && utf8.ValidString(p[0]) && !strings.ContainsRune(p[0], 0)
 	}
 	return false
 }
