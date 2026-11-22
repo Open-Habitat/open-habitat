@@ -1,6 +1,6 @@
 ---
 created: 2026-11-21
-updated: 2026-11-21
+updated: 2026-11-22
 type: feature
 reporter: jari
 status: open
@@ -27,6 +27,10 @@ Jari 21.11.2026: the card footer is probably right, but test it for real: the ca
 ### 2026-11-21T18:43:07Z · @jari
 
 Jari 21.11.2026 on round 2: A Kulkureitti. Rethink the feedback content: no positive feedback (we do not want such messages in GitHub); merge 'Väärin' with the note — the person must write something, and it must reach us very easily, directly. Riff again.
+
+### 2026-11-22T04:27:19Z · @jari
+
+Jari 22.11.2026: round 3 direction A — Avaa GitHubissa opens a prefilled public GitHub issue with the text and the card id; nothing stored on the server. Implement.
 
 ## Agent Runs
 
