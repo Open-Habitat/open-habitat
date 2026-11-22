@@ -210,6 +210,7 @@ export function Segmented<T extends string>({
 }
 export function LinkRow({
   href,
+  onNavigate,
   children,
   current,
   kind = "nav",
@@ -217,6 +218,8 @@ export function LinkRow({
   ...props
 }: {
   href: string;
+  /** Override ordinary navigation without changing modified-click link behavior. */
+  onNavigate?: (href: string) => void;
   children: ReactNode;
   current?: boolean;
   kind?:
@@ -235,7 +238,7 @@ export function LinkRow({
 }) {
   const navigate = useNavigate();
   return (
-    <RouterProvider navigate={navigate}>
+    <RouterProvider navigate={onNavigate ?? navigate}>
       <AriaLink
         {...props}
         href={href}

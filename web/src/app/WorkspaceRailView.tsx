@@ -33,6 +33,7 @@ import {
   useConversationMetadata,
 } from "./conversationStore";
 import type { AccountProfile } from "./pi";
+import { usePlaceNavigation } from "./placeNavigation";
 import {
   quietFolded as foldedBy,
   setQuietFolded,
@@ -220,6 +221,7 @@ export function WorkspaceRailView({
   clones?: CloneJobs;
 }) {
   const resourcesText = useText(agentResourcesText);
+  const navigatePlace = usePlaceNavigation();
   const searchText = useText(switcherText);
   const cloneView = useCloneView(clones);
   const queued = cloneView.queue.filter((q) => q.state !== "present");
@@ -289,6 +291,7 @@ export function WorkspaceRailView({
           <div className="ah-rail-home-row">
             <LinkRow
               href="/resources"
+              onNavigate={navigatePlace}
               data-testid="rail-resources"
               kind="home"
               current={pathname === "/resources"}

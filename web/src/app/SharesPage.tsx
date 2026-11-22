@@ -5,7 +5,7 @@ import {
   Modal,
   ModalOverlay,
 } from "react-aria-components";
-import { useSearchParams } from "react-router";
+import { useLocation, useSearchParams } from "react-router";
 import {
   ControlButton,
   LinkRow,
@@ -29,6 +29,7 @@ import {
   useFileOffer,
   useFileOffers,
 } from "./fileOffers";
+import { usePlaceNavigation } from "./placeNavigation";
 import {
   groupShares,
   outputCreated,
@@ -75,6 +76,7 @@ export function SharesRail({
 }) {
   const t = useText(sharesText);
   const links = useViewLinks();
+  const navigatePlace = usePlaceNavigation();
   const unknown = useViewLinksUnknown();
   const count =
     links && typeof links === "object" && links.maxDays > 0 && !unknown
@@ -84,6 +86,7 @@ export function SharesRail({
     <div className="ah-rail-home-row">
       <LinkRow
         href="/shares"
+        onNavigate={navigatePlace}
         data-testid="rail-shares"
         kind="home"
         current={current}
@@ -109,7 +112,10 @@ export function SharesPage({
 }) {
   const t = useText(sharesText);
   const links = useViewLinks();
-  const [params, setParams] = useSearchParams();
+  const [params, updateParams] = useSearchParams();
+  const location = useLocation();
+  const setParams = (next: Parameters<typeof updateParams>[0]) =>
+    updateParams(next, { replace: true, state: location.state });
   const [narrow, setNarrow] = useState(
     () => window.matchMedia("(max-width: 760px)").matches,
   );

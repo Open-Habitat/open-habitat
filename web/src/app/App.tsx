@@ -155,6 +155,7 @@ import {
   piStatus,
   sessionCSRF,
 } from "./pi";
+import { isPlace, placeBackground, usePlaceEscape } from "./placeNavigation";
 import { reconnectDiagnostic, reconnectFetch } from "./reconnectDiagnostic";
 import { interactionBlocksReload, watchReloadInput } from "./reloadSafety";
 import {
@@ -305,9 +306,12 @@ export function App() {
   // navigation lands. Settings lies over the view without changing it, so a
   // pending archive result still belongs to the view under it.
   const currentView = () => {
+    const visible = outside.current;
     const under = isSettingsRoute(window.location.pathname)
-      ? outside.current
-      : undefined;
+      ? ((visible && placeBackground(visible)) ?? visible)
+      : isPlace(window.location.pathname)
+        ? ((visible && placeBackground(visible)) ?? visible)
+        : undefined;
     return under
       ? `${under.pathname}${under.search}`
       : `${window.location.pathname}${window.location.search}`;
@@ -346,7 +350,12 @@ export function App() {
     !landing.show
       ? outside.current
       : undefined;
-  const location = settingsOver ?? route;
+  const visibleRoute = settingsOver ?? route;
+  const placeOver = placeBackground(visibleRoute);
+  const location = placeOver ?? visibleRoute;
+  usePlaceEscape(
+    !settingsOver && (phase === "authenticated" || phase === "stale"),
+  );
   const [refreshKey, setRefreshKey] = useState(0);
   const [piCheckFailed, setPiCheckFailed] = useState(false);
   const [landingFailure, setLandingFailure] =
@@ -3352,7 +3361,8 @@ export function App() {
   // A conversation's top bar carries the bell; elsewhere, and while Settings
   // lies over the conversation, the rail or the phone's toolbar does. One
   // bell per screen.
-  const conversationBell = editorRoute && !settingsLayer;
+  const conversationBell =
+    editorRoute && !settingsLayer && !isPlace(visibleRoute.pathname);
   const editorWorkspaceId = selectedAgentId
     ? agentWorkspace &&
       (selectedAgent?.worktree_id ?? agentWorkspace.workspace_id)
@@ -3412,6 +3422,11 @@ export function App() {
               navigationBadge={now.yours.length}
               className={landing.entering ? "ah-landing-enter" : undefined}
               mobileTitle={
+                (visibleRoute.pathname === "/shares"
+                  ? sharesText[language].title
+                  : visibleRoute.pathname === "/resources"
+                    ? resourcesTitle.title
+                    : undefined) ??
                 (selectedAgent && agentTitle(selectedAgent.title)) ??
                 (selected
                   ? (selected.display_name ?? selected.name)
@@ -3500,7 +3515,7 @@ export function App() {
                       shares={
                         <>
                           <SharesRail
-                            current={location.pathname === "/shares"}
+                            current={visibleRoute.pathname === "/shares"}
                             collapsed={railCompact && !mobileLayout}
                           />
                           {railCompact && !mobileLayout ? null : (
@@ -3576,7 +3591,7 @@ export function App() {
                       onAdministration={() =>
                         navigate(settingsHref("palvelin"))
                       }
-                      pathname={location.pathname}
+                      pathname={visibleRoute.pathname}
                       clones={cloneJobs}
                       archiveConversation={railArchive}
                       renameConversation={railRename}
@@ -3638,7 +3653,35 @@ export function App() {
                       <div className="ah-state">{settingsView}</div>
                     </div>
                   ) : null}
-                  {/* The view keeps its own location under Settings, also for the
+                  {placeOver &&
+                  (phase === "authenticated" || phase === "stale") ? (
+                    <Routes location={visibleRoute}>
+                      <Route
+                        path="*"
+                        element={
+                          <div
+                            className="ah-place-layer"
+                            inert={settingsLayer}
+                            data-under-settings={settingsLayer || undefined}
+                          >
+                            {visibleRoute.pathname === "/shares" && snapshot ? (
+                              <SharesPage
+                                key={identity}
+                                snapshot={snapshot}
+                                csrf={csrf}
+                              />
+                            ) : (
+                              <AgentResourcesPage
+                                key={identity}
+                                github={snapshot?.auth?.native_github}
+                              />
+                            )}
+                          </div>
+                        }
+                      />
+                    </Routes>
+                  ) : null}
+                  {/* The view keeps its own location under Settings and places, also for the
                   components that read it themselves. */}
                   <Routes location={location}>
                     <Route
@@ -3650,8 +3693,9 @@ export function App() {
                               ? "ah-login-view"
                               : "ah-state"
                           }
-                          inert={settingsLayer}
+                          inert={settingsLayer || !!placeOver}
                           data-under-settings={settingsLayer || undefined}
+                          data-under-place={!!placeOver || undefined}
                         >
                           {railStartError ? (
                             <PageNotice

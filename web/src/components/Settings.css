@@ -854,11 +854,12 @@
 }
 /* Opened from inside the app, Settings lies over the view it came from,
    which stays as it was under it (App.tsx). */
-.ah-shell-body > main:has(> .ah-settings-layer) {
+.ah-shell-body > main:has(> .ah-settings-layer, > .ah-place-layer) {
   position: relative;
   overflow: hidden;
 }
-.ah-settings-layer {
+.ah-settings-layer,
+.ah-place-layer {
   position: absolute;
   inset: 0;
   z-index: 3;
@@ -866,11 +867,16 @@
   background: var(--ah-bg);
   padding: clamp(var(--ah-s7), 4vw, 64px);
 }
-[data-under-settings] {
+.ah-place-layer {
+  z-index: 2;
+}
+[data-under-settings],
+[data-under-place] {
   visibility: hidden;
 }
 @media (max-width: 800px) {
-  .ah-settings-layer {
+  .ah-settings-layer,
+  .ah-place-layer {
     padding: var(--ah-s6);
   }
 }
