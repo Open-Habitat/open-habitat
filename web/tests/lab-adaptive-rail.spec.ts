@@ -4,7 +4,7 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "./lab-host";
 import { rewrite, type World } from "./rail-worlds";
 
-// The adaptive rail (adaptive-rail, experimental; rail-space round 3, Jari
+// The default rail (rail-space round 3, Jari
 // 22.11.2026: C Leveämpi with B's logic). The rule itself is tested in
 // railAllocation.test.ts; here the real rail at the round's laptop heights
 // in its worlds: ordinary (4 waiting, 2 running, 12 quiet, 18 workspaces),
@@ -17,31 +17,17 @@ const CROWDED: World = { yours: 6, running: 4, quiet: 30, workspaces: 40 };
 const rail = (page: Page) =>
   page.getByRole("navigation").and(page.getByTestId("workspace-navigation"));
 
-async function choose(page: Page, adaptive: boolean) {
-  const session = await (await page.request.get("/auth/session")).json();
-  const put = await page.request.put("/api/v1/account/preferences", {
-    headers: {
-      Origin: new URL(page.url()).origin,
-      "X-Agent-Host-CSRF": session.csrf,
-    },
-    data: { experimental: { "adaptive-rail": adaptive } },
-  });
-  expect(put.status()).toBe(200);
-}
-
 const selected = (page: Page) =>
   rail(page).locator(
     'li[data-testid^="agent-item-"]:has([aria-current="page"])',
   );
 
-/** Signs in to the lab in the world, with the feature on or off, and opens
- * the first waiting conversation from its row. */
-async function open(page: Page, w: World, adaptive = true) {
+/** Signs in to the lab world and opens its first waiting conversation. */
+async function open(page: Page, w: World) {
   await page.goto("/workspaces");
   await page.getByTestId("github-sign-in").click();
   await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await expect(rail(page)).toBeVisible();
-  await choose(page, adaptive);
   let first = "";
   await page.route("**/api/v1/snapshot", async (route) => {
     const response = await route.fetch();
@@ -59,16 +45,8 @@ async function open(page: Page, w: World, adaptive = true) {
     .first()
     .click();
   await expect(selected(page)).toHaveCount(1);
-  if (adaptive) await settled(page);
+  await settled(page);
   return first;
-}
-
-/** Turns the feature on or off in the open page. */
-async function toggle(page: Page, adaptive: boolean) {
-  await choose(page, adaptive);
-  await page.reload();
-  await expect(selected(page)).toHaveCount(1);
-  if (adaptive) await settled(page);
 }
 
 /** The rule measures after layout; wait until its result holds still. */
@@ -119,9 +97,10 @@ const seen = (page: Page) =>
 const capture = process.env.OH_VISUAL_CAPTURE === "1";
 async function shoot(page: Page, name: string) {
   if (!capture) return;
-  const dir = "/var/tmp/agent-keep/rail-adaptive-impl";
+  const dir = "/var/tmp/agent-keep/rail-adaptive-graduate";
   await mkdir(dir, { recursive: true });
   await page.screenshot({ path: `${dir}/${name}.png` });
+  await writeFile(`${dir}/${name}.html`, await page.content());
 }
 
 test.use({ reducedMotion: "reduce" });
@@ -132,10 +111,7 @@ for (const height of [720, 900, 1080]) {
     test(`@adaptive-rail shares the height out by the rule at ${height}`, async ({
       page,
     }) => {
-      await open(page, ORDINARY, false);
-      const fixed = await seen(page);
-      await shoot(page, `ordinary-${height}-off`);
-      await toggle(page, true);
+      await open(page, ORDINARY);
       const box = await rail(page).boundingBox();
       if (!box) throw new Error("no rail");
       // Wider in a window that leaves the conversation its room.
@@ -167,7 +143,6 @@ for (const height of [720, 900, 1080]) {
       // sit under an edge chip) and Työtilat its floor.
       expect(now.conv).toBeGreaterThanOrEqual(6);
       expect(now.ws).toBeGreaterThanOrEqual(3);
-      expect(now.conv + now.ws).toBeGreaterThan(fixed.conv + fixed.ws + 2);
       // Hiljaiset stays open; past a dozen workspaces the filter sits on
       // Työtilat's heading row.
       await expect(rail(page).getByTestId("rail-quiet-fold")).toHaveAttribute(
@@ -184,9 +159,10 @@ for (const height of [720, 900, 1080]) {
       expect(
         Math.abs(filter.y + filter.height / 2 - (create.y + create.height / 2)),
       ).toBeLessThan(6);
-      // A conversation row names its workspace.
+      // A resting row names its workspace (the selected row's focused
+      // actions temporarily replace that name).
       await expect(
-        rail(page).getByTestId("rail-row-workspace").first(),
+        rail(page).getByTestId("rail-row-workspace").nth(1),
       ).toBeVisible();
       // Työtilat's lower edge says how many lie below, and pages the list.
       const below = rail(page).getByTestId("rail-ws-below");
@@ -281,117 +257,100 @@ test.describe("narrower window 1100 × 900", () => {
   test("@adaptive-rail narrows back before the conversation gives way", async ({
     page,
   }) => {
-    await open(page, ORDINARY, false);
-    const fixed = await rail(page).boundingBox();
-    await toggle(page, true);
-    const box = await rail(page).boundingBox();
-    expect(box?.width).toBe(fixed?.width);
+    await open(page, ORDINARY);
+    const narrow = await rail(page).boundingBox();
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await settled(page);
+    const wide = await rail(page).boundingBox();
+    if (!narrow || !wide) throw new Error("missing rail");
+    expect(wide.width).toBeGreaterThan(narrow.width);
+    await page.setViewportSize({ width: 1000, height: 900 });
+    await settled(page);
+    expect((await rail(page).boundingBox())?.width).toBe(narrow.width);
   });
 });
 
-test.describe("off", () => {
-  test.use({ viewport: { width: 1280, height: 900 } });
-  test("@adaptive-rail off, the rail is the fixed one", async ({ page }) => {
-    await open(page, ORDINARY, false);
-    await expect(rail(page)).not.toHaveClass(/ah-rail-adaptive/);
-    await expect(rail(page).getByTestId("rail-places")).toHaveCount(0);
-    await expect(rail(page).getByTestId("rail-ws-below")).toHaveCount(0);
-    await expect(
-      rail(page).locator(".ah-rail-home-row").getByTestId("home-link"),
-    ).toBeVisible();
-    await expect(
-      rail(page).locator(".ah-rail-content").getByTestId("search-door"),
-    ).toBeVisible();
-  });
-});
-
-for (const adaptive of [false, true]) {
-  test(`place count stays at the row end (adaptive=${adaptive})`, async ({
-    page,
-  }) => {
-    await page.setViewportSize({ width: 1280, height: 1080 });
-    await page.route("**/api/v1/view-addresses", (route) =>
-      route.fulfill({
-        json: {
-          schema_version: 1,
-          max_days: 30,
-          addresses: [
-            {
-              address_id: `a${"a".repeat(26)}`,
-              view_id: `v${"a".repeat(26)}`,
-              title: "Synthetic output",
-              url: `${new URL(route.request().url()).origin}/n/${"a".repeat(43)}`,
-              content_url: `https://example.test/${"a".repeat(43)}/`,
-              state: "public",
-              created_at: "2026-01-01T00:00:00Z",
-              public_until: "2099-01-01T00:00:00Z",
-            },
-          ],
-        },
-      }),
-    );
-    await open(page, LITTLE, adaptive);
-    const shares = rail(page).getByTestId("rail-shares");
-    await shares.click();
-    await expect(page.getByTestId("shares-page")).toBeVisible();
-    const rowCount = shares.locator(".ah-rail-place-count");
-    const checkRow = async (name: string) => {
-      await expect(rowCount).toBeVisible();
-      await expect
-        .poll(async () =>
-          shares.evaluate((el) => {
-            const count = el.querySelector(".ah-rail-place-count");
-            const label = el.querySelector(".ah-rail-home-label");
-            if (!count || !label) return false;
-            const edge = el.getBoundingClientRect().right;
-            const box = count.getBoundingClientRect();
-            return (
-              box.left > label.getBoundingClientRect().right &&
-              Math.abs(
-                edge -
-                  box.right -
-                  Number.parseFloat(getComputedStyle(el).paddingRight),
-              ) < 2
-            );
-          }),
-        )
-        .toBe(true);
-      if (capture) {
-        const dir = "/var/tmp/agent-keep/rail-outputs-count-at-row-end";
-        await mkdir(dir, { recursive: true });
-        await page.screenshot({ path: `${dir}/${name}.png` });
-        await writeFile(`${dir}/${name}.html`, await page.content());
-      }
-    };
-    await checkRow(`desktop-${adaptive}`);
-    if (adaptive) {
-      const steps = new Set<string>();
-      for (let height = 1080; height >= 600; height -= 20) {
-        await page.setViewportSize({ width: 1280, height });
-        await settled(page);
-        const step = await rail(page).getAttribute("data-step");
-        if (!step) throw new Error("missing rail step");
-        steps.add(step);
-        if (step === "2") continue;
-        const badge = shares.locator(".ah-place-count");
-        await expect(badge).toBeVisible();
-        const badgeBox = await badge.boundingBox();
-        const placeBox = await shares.boundingBox();
-        if (!badgeBox || !placeBox) throw new Error("missing place badge");
-        expect(badgeBox.x).toBeGreaterThanOrEqual(placeBox.x);
-        expect(badgeBox.x + badgeBox.width).toBeLessThanOrEqual(
-          placeBox.x + placeBox.width,
-        );
-        await expect(shares).toHaveAttribute("aria-label", /\S/);
-        if (steps.size === 3) break;
-      }
-      expect([...steps].sort()).toEqual(["0", "1", "2"]);
+test("place count stays at the row end", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 1080 });
+  await page.route("**/api/v1/view-addresses", (route) =>
+    route.fulfill({
+      json: {
+        schema_version: 1,
+        max_days: 30,
+        addresses: [
+          {
+            address_id: `a${"a".repeat(26)}`,
+            view_id: `v${"a".repeat(26)}`,
+            title: "Synthetic output",
+            url: `${new URL(route.request().url()).origin}/n/${"a".repeat(43)}`,
+            content_url: `https://example.test/${"a".repeat(43)}/`,
+            state: "public",
+            created_at: "2026-01-01T00:00:00Z",
+            public_until: "2099-01-01T00:00:00Z",
+          },
+        ],
+      },
+    }),
+  );
+  await open(page, LITTLE);
+  const shares = rail(page).getByTestId("rail-shares");
+  await shares.click();
+  await expect(page.getByTestId("shares-page")).toBeVisible();
+  const rowCount = shares.locator(".ah-rail-place-count");
+  const checkRow = async (name: string) => {
+    await expect(rowCount).toBeVisible();
+    await expect
+      .poll(async () =>
+        shares.evaluate((el) => {
+          const count = el.querySelector(".ah-rail-place-count");
+          const label = el.querySelector(".ah-rail-home-label");
+          if (!count || !label) return false;
+          const edge = el.getBoundingClientRect().right;
+          const box = count.getBoundingClientRect();
+          return (
+            box.left > label.getBoundingClientRect().right &&
+            Math.abs(
+              edge -
+                box.right -
+                Number.parseFloat(getComputedStyle(el).paddingRight),
+            ) < 2
+          );
+        }),
+      )
+      .toBe(true);
+    if (capture) {
+      const dir = "/var/tmp/agent-keep/rail-outputs-count-at-row-end";
+      await mkdir(dir, { recursive: true });
+      await page.screenshot({ path: `${dir}/${name}.png` });
+      await writeFile(`${dir}/${name}.html`, await page.content());
     }
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.getByTestId("navigation-open").click();
-    await checkRow(`phone-${adaptive}`);
-  });
-}
+  };
+  await checkRow("desktop");
+  const steps = new Set<string>();
+  for (let height = 1080; height >= 600; height -= 20) {
+    await page.setViewportSize({ width: 1280, height });
+    await settled(page);
+    const step = await rail(page).getAttribute("data-step");
+    if (!step) throw new Error("missing rail step");
+    steps.add(step);
+    if (step === "2") continue;
+    const badge = shares.locator(".ah-place-count");
+    await expect(badge).toBeVisible();
+    const badgeBox = await badge.boundingBox();
+    const placeBox = await shares.boundingBox();
+    if (!badgeBox || !placeBox) throw new Error("missing place badge");
+    expect(badgeBox.x).toBeGreaterThanOrEqual(placeBox.x);
+    expect(badgeBox.x + badgeBox.width).toBeLessThanOrEqual(
+      placeBox.x + placeBox.width,
+    );
+    await expect(shares).toHaveAttribute("aria-label", /\S/);
+    if (steps.size === 3) break;
+  }
+  expect([...steps].sort()).toEqual(["0", "1", "2"]);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByTestId("navigation-open").click();
+  await checkRow("phone");
+});
 
 test.describe("phone drawer", () => {
   test.use({
@@ -407,15 +366,6 @@ test.describe("phone drawer", () => {
       .and(page.locator('a[href*="code=42"]'))
       .click();
     await expect(page.getByTestId("navigation-open")).toBeVisible();
-    const session = await (await page.request.get("/auth/session")).json();
-    await page.request.put("/api/v1/account/preferences", {
-      headers: {
-        Origin: new URL(page.url()).origin,
-        "X-Agent-Host-CSRF": session.csrf,
-      },
-      data: { experimental: { "adaptive-rail": true } },
-    });
-    await page.reload();
     await page.getByTestId("navigation-open").click();
     await expect(rail(page)).toBeVisible();
     await expect(rail(page)).not.toHaveClass(/ah-rail-adaptive/);

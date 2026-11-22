@@ -63,10 +63,9 @@ const titlesOf = (rows: Locator) =>
 // hours before now, so the rows read as a working day.
 async function quietWorld(page: Page) {
   const ids: { first?: string; second?: string } = {};
-  // Nine quiet rows crowd the rail, and a crowded rail folds Hiljaiset by
-  // itself until the person chooses on this device (rail-scroll-region,
-  // covered by lab-rail-scroll-region.spec.ts). These cases are about the
-  // open list, so this device has opened it; a later fold is still kept.
+  // The crowded phone drawer folds Hiljaiset until the person chooses
+  // otherwise (lab-rail-scroll-region.spec.ts). These cases need the open
+  // list on both layouts, so this device has opened it.
   await page.context().addInitScript(() => {
     try {
       if (localStorage.getItem("nah:rail-quiet-folded") === null)
@@ -159,12 +158,14 @@ test("@rail-quiet every other conversation as one flat list, in every layout", a
     await expect(quiet.getByTestId("workspace-icon-button")).toHaveCount(
       await rows.count(),
     );
-    await expect(open.getByTestId("rail-row-workspace")).toHaveCount(0);
     for (const phone of [false, true]) {
       await page.setViewportSize(
         phone ? { width: 390, height: 844 } : { width: 1280, height: 900 },
       );
       if (phone) await page.getByTestId("navigation-open").click();
+      await expect(open.getByTestId("rail-row-workspace")).toHaveCount(
+        phone ? 0 : 1,
+      );
       for (const theme of ["light", "dark"] as const) {
         await page.emulateMedia({ colorScheme: theme });
         await expect(page.locator("html")).toHaveAttribute("data-theme", theme);

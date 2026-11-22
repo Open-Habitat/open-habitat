@@ -1,4 +1,4 @@
-// The adaptive rail's allocation rule (adaptive-rail, experimental; the
+// The adaptive rail's allocation rule (the
 // rail-space round 3 rule, Jari 22.11.2026: C Leveämpi with B's logic). Pure
 // and free of the DOM: AdaptiveRail.tsx measures the rail into Consts and
 // sets the result as the regions' heights.

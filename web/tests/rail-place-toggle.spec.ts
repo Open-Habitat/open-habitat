@@ -181,7 +181,9 @@ test("workspace scroll survives a place; Home is not a toggle; deep links close 
   await expect(page.getByTestId("shares-page")).toBeVisible();
   await page.getByTestId("rail-shares").click();
   await expect(page).toHaveURL(/\/workspaces$/);
-  const home = page.locator('.ah-rail-home[href="/workspaces"]');
+  const home = page
+    .getByTestId("workspace-navigation")
+    .getByTestId("home-link");
   await home.click();
   await home.click();
   await expect(page).toHaveURL(/\/workspaces$/);

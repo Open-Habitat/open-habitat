@@ -161,11 +161,14 @@ test("@lab long rail, workspace actions, drawer and four visual states", async (
   const account = page
     .getByRole("button")
     .and(page.getByTestId("account-menu-trigger"));
-  const list = page.locator(".ah-rail-content");
+  const list = page.getByTestId("rail-workspace-scroll");
   await list.evaluate((element) => {
-    const row = element.querySelector(".ah-workspace");
-    if (!row) throw new Error("Fixture has no workspace");
-    for (let n = 0; n < 45; n++) element.append(row.cloneNode(true));
+    const rows = element.querySelector(".ah-workspace-list");
+    const row = rows?.querySelector(".ah-workspace");
+    if (!rows || !row) throw new Error("Fixture has no workspace");
+    // Grow the actual list, not the rail's fixed region siblings: the
+    // adaptive allocator measures those siblings as non-scrolling overhead.
+    for (let n = 0; n < 45; n++) rows.append(row.cloneNode(true));
     element.scrollTop = element.scrollHeight;
   });
   const positions = await page.evaluate(() => {

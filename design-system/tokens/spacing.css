@@ -24,7 +24,7 @@
   --ah-app-max: 960px;
   --ah-rail-fixed-width: 296px;
   --ah-rail-width: var(--ah-rail-fixed-width);
-  /* The adaptive rail (adaptive-rail, experimental) is 20 % wider while the
+  /* The adaptive rail is 20 % wider while the
      window still leaves the conversation the room the fixed rail leaves it
      at about 1170 px; in a narrower window it narrows back to the fixed
      width before the conversation gives anything up. */

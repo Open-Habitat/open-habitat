@@ -681,22 +681,6 @@ export const settingsSections = [
         ],
         desc: "Kutsu toinen tämän palvelimen käyttäjä mukaan keskusteluusi agentin kanssa.",
       },
-      {
-        id: "adaptive-rail",
-        label: "Mukautuva sivupalkki",
-        kw: [
-          "sivupalkki",
-          "sidebar",
-          "rail",
-          "pieni näyttö",
-          "small screen",
-          "läppäri",
-          "laptop",
-          "korkeus",
-          "height",
-        ],
-        desc: "Sivupalkki jakaa korkeutensa keskusteluille, työtiloille ja paikoille sen mukaan, mistä on eniten hyötyä.",
-      },
     ],
   },
   {

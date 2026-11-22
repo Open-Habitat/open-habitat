@@ -110,79 +110,72 @@ async function sectionWorld(page: Page) {
 for (const locale of ["fi-FI", "en-US"]) {
   test.describe(`empty headings ${locale}`, () => {
     test.use({ locale, reducedMotion: "reduce" });
-    for (const adaptive of [false, true]) {
-      test(`@rail-section-filter empty sections occupy aligned header rows (adaptive=${adaptive})`, async ({
-        page,
-      }) => {
-        await page.route("**/api/v1/snapshot", async (route) => {
-          const response = await route.fetch();
-          const body = await response.json();
-          body.agents = [];
-          await route.fulfill({ response, json: body });
-        });
-        await login(page);
-        await put(page, { experimental: { "adaptive-rail": adaptive } });
-        await page.reload();
-        const nav = page.getByTestId("workspace-navigation");
-        for (const phone of [false, true]) {
-          await page.setViewportSize(
-            phone ? { width: 390, height: 844 } : { width: 1280, height: 900 },
-          );
-          if (phone) await page.getByTestId("navigation-open").click();
-          await expect(nav).toBeVisible();
-          if (adaptive && !phone)
-            await expect(nav).toHaveClass(/ah-rail-adaptive/);
-          const starts: number[] = [];
-          for (const id of ["rail-yours", "rail-running", "rail-quiet"]) {
-            const section = nav.getByTestId(id);
-            const status = section.getByRole("status");
-            await expect(status).toBeVisible();
-            const head = await section.getByRole("heading").boundingBox();
-            const empty = await status.boundingBox();
-            const box = await section.boundingBox();
-            if (!head || !empty || !box)
-              throw new Error("Missing section geometry");
-            expect(empty.y).toBeGreaterThanOrEqual(head.y);
-            expect(empty.y + empty.height).toBeLessThanOrEqual(
-              head.y + head.height + 1,
-            );
-            expect(empty.x + empty.width).toBeLessThanOrEqual(
-              head.x + head.width + 1,
-            );
-            expect(box.height).toBeLessThanOrEqual(head.height + 1);
-            const title = await section
-              .locator(
-                `[id="${await section.getAttribute("aria-labelledby")}"]`,
-              )
-              .boundingBox();
-            if (!title) throw new Error("Missing heading title geometry");
-            starts.push(title.x);
-          }
-          expect(Math.max(...starts) - Math.min(...starts)).toBeLessThanOrEqual(
-            1,
-          );
-          await expect(nav.getByTestId("rail-quiet-fold")).toHaveCount(0);
-          await expect(
-            nav.getByTestId("rail-quiet").getByRole("button"),
-          ).toHaveCount(0);
-          await expect(nav.getByTestId("rail-quiet-empty")).toBeVisible();
-          const audit = await new AxeBuilder({ page })
-            .include('[data-testid="workspace-navigation"]')
-            .analyze();
-          expect(audit.violations).toEqual([]);
-          if (process.env.OH_EMPTY_CAPTURE) {
-            await page.screenshot({
-              path: `${process.env.OH_EMPTY_CAPTURE}/${locale}-${adaptive}-${phone}.png`,
-            });
-            const { writeFile } = await import("node:fs/promises");
-            await writeFile(
-              `${process.env.OH_EMPTY_CAPTURE}/${locale}-${adaptive}-${phone}.html`,
-              await page.content(),
-            );
-          }
-        }
+    test("@rail-section-filter empty sections occupy aligned header rows", async ({
+      page,
+    }) => {
+      await page.route("**/api/v1/snapshot", async (route) => {
+        const response = await route.fetch();
+        const body = await response.json();
+        body.agents = [];
+        await route.fulfill({ response, json: body });
       });
-    }
+      await login(page);
+      const nav = page.getByTestId("workspace-navigation");
+      for (const phone of [false, true]) {
+        await page.setViewportSize(
+          phone ? { width: 390, height: 844 } : { width: 1280, height: 900 },
+        );
+        if (phone) await page.getByTestId("navigation-open").click();
+        await expect(nav).toBeVisible();
+        if (!phone) await expect(nav).toHaveClass(/ah-rail-adaptive/);
+        const starts: number[] = [];
+        for (const id of ["rail-yours", "rail-running", "rail-quiet"]) {
+          const section = nav.getByTestId(id);
+          const status = section.getByRole("status");
+          await expect(status).toBeVisible();
+          const head = await section.getByRole("heading").boundingBox();
+          const empty = await status.boundingBox();
+          const box = await section.boundingBox();
+          if (!head || !empty || !box)
+            throw new Error("Missing section geometry");
+          expect(empty.y).toBeGreaterThanOrEqual(head.y);
+          expect(empty.y + empty.height).toBeLessThanOrEqual(
+            head.y + head.height + 1,
+          );
+          expect(empty.x + empty.width).toBeLessThanOrEqual(
+            head.x + head.width + 1,
+          );
+          expect(box.height).toBeLessThanOrEqual(head.height + 1);
+          const title = await section
+            .locator(`[id="${await section.getAttribute("aria-labelledby")}"]`)
+            .boundingBox();
+          if (!title) throw new Error("Missing heading title geometry");
+          starts.push(title.x);
+        }
+        expect(Math.max(...starts) - Math.min(...starts)).toBeLessThanOrEqual(
+          1,
+        );
+        await expect(nav.getByTestId("rail-quiet-fold")).toHaveCount(0);
+        await expect(
+          nav.getByTestId("rail-quiet").getByRole("button"),
+        ).toHaveCount(0);
+        await expect(nav.getByTestId("rail-quiet-empty")).toBeVisible();
+        const audit = await new AxeBuilder({ page })
+          .include('[data-testid="workspace-navigation"]')
+          .analyze();
+        expect(audit.violations).toEqual([]);
+        if (process.env.OH_EMPTY_CAPTURE) {
+          await page.screenshot({
+            path: `${process.env.OH_EMPTY_CAPTURE}/${locale}-${phone}.png`,
+          });
+          const { writeFile } = await import("node:fs/promises");
+          await writeFile(
+            `${process.env.OH_EMPTY_CAPTURE}/${locale}-${phone}.html`,
+            await page.content(),
+          );
+        }
+      }
+    });
   });
 }
 

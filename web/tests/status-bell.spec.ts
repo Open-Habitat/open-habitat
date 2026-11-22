@@ -231,7 +231,7 @@ test("@status-bell one workspace keeps the rail's bell, and the toolbar's on a p
   await page.locator('a[href*="code=42"]').click();
   await expect(page.getByTestId("rail-only-workspace")).toBeVisible();
   await expect(
-    page.locator('.ah-rail-home-row [data-testid="status-bell"]'),
+    page.getByTestId("workspace-navigation").getByTestId("status-bell"),
   ).toBeVisible();
   await expect(bell(page)).toHaveCount(1);
   await openAndClose(page, "one-workspace");

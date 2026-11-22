@@ -30,6 +30,15 @@ function Example({
           mobileTitle="Keskustelu"
           rail={
             <WorkspaceRail
+              adaptive={{
+                places: [],
+                search: {
+                  label: "Search",
+                  keyHint: "⌘K",
+                  onOpen: () => undefined,
+                },
+                filter: false,
+              }}
               collapsed={false}
               serverLabel="esimerkki.test"
               connectionLabel="Yhdistetty"

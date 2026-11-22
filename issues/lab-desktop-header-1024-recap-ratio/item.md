@@ -40,3 +40,9 @@ Reproduce from the product root:
 OH_BROWSER_WORKERS=2 ./scripts/test-focused.sh --area browser --spec lab-desktop-header.spec.ts
 ```
 (repeat a few times; seed above.)
+
+## Comments
+
+### 2026-11-22T19:41:22Z · @agent
+
+Reproduced during taskfleet run 01m829wf5hz4sv5cm6b1h8vbj3: the untouched 1024px case failed on the rail-graduation branch, then failed identically in all three repeats from a disposable source archive of main at 18b58065955793314ad4f419bc119ef6f4d6a0c1. Seed OH_REPLY_SEED=1e2524bc1e09040c, OH_REPLY_DELAY_MS=60, OH_BROWSER_WORKERS=1; npx playwright test --config playwright.lab.config.ts tests/lab-desktop-header.spec.ts --grep "at 1024px" --repeat-each 3. Failure remains conversation-recap viewport ratio 0 at expectOneRow line 206. Synthetic baseline log: /var/tmp/agent-keep/rail-adaptive-graduate/baseline-header.log. No header code or test changed in this run.

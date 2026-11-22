@@ -187,9 +187,16 @@ polku, uuden keskustelun aloitus ja keskustelut. Sivupalkin voi kaventaa
 kaistaksi, jossa keskeiset toiminnot säilyvät saatavilla. Puhelimessa sama
 navigaatiosisältö avautuu valikkolaatikkoon keskustelun päälle.
 
-Tilipainike on kiinteästi sivupalkin alareunassa, ja vain työtilojen lista
-vierii sen yläpuolella. Painikkeessa näkyvät etunimi ja profiilikuva tai sen
-varaesitys. Se avaa ylöspäin valikon: koko nimi ja sähköposti, Asetukset,
+Leveän näkymän sivupalkki mukautuu ikkunan korkeuteen (Jari 22.11.2026):
+keskustelut ja työtilat saavat ensin tilansa, sitten yläosan paikat kasvavat
+kuvakerivistä ruuduiksi ja omiksi riveikseen. Keskustelut ja työtilat vierivät
+omissa alueissaan; reunapainikkeet kertovat, mitä jää näkymän ulkopuolelle.
+Hiljaiset taittuu vain käyttäjän valinnasta. Sivupalkki levenee, kun ikkuna
+antaa myöten, mutta kapenee ennen kuin keskustelun tila pienenee.
+Puhelimen valikkolaatikko ja kavennettu kaista säilyvät erillisinä asetteluina.
+
+Tilipainike on kiinteästi sivupalkin alareunassa. Painikkeessa näkyvät etunimi
+ja profiilikuva tai sen varaesitys. Se avaa ylöspäin valikon: koko nimi ja sähköposti, Asetukset,
 Palvelimen ylläpito vain ylläpitäjälle, teeman valinta (Järjestelmä, Päivä,
 Yö, Korkea kontrasti) ja Kirjaudu ulos. Palvelimen ylläpidolla ei ole muuta linkkiä
 sivupalkissa. Työtilat-otsikon vieressä on Uusi työtila, ja työtilarivin

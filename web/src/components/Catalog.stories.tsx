@@ -243,6 +243,11 @@ function NavigationFixture() {
   const [filter, setFilter] = useState("");
   const rail = (
     <WorkspaceRail
+      adaptive={{
+        places: [],
+        search: { label: "Search", keyHint: "⌘K", onOpen: () => undefined },
+        filter: true,
+      }}
       collapsed={false}
       serverLabel="server.example — Open Habitat"
       connectionLabel="Yhteys toimii"

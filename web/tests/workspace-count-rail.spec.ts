@@ -132,7 +132,7 @@ test("@workspace-count two workspaces keep the list, and the rail follows the co
   await expect(only(page)).toHaveCount(0);
   await expect(list(page)).toBeVisible();
   await expect(page.getByTestId("workspace-summary")).toHaveText("2");
-  await expect(page.getByTestId("workspace-filter")).toBeVisible();
+  await expect(page.getByTestId("workspace-filter")).toHaveCount(0);
   await expect(
     list(page).getByRole("button").and(page.getByTestId("workspace-create")),
   ).toBeVisible();

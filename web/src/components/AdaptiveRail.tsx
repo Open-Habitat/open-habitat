@@ -22,7 +22,7 @@ import { RAIL_BEYOND_CUE } from "./railRegions";
 import { SearchDoor } from "./Switcher";
 import "./AdaptiveRail.css";
 
-// The adaptive rail (adaptive-rail, experimental; rail-space round 3, Jari
+// The adaptive rail (rail-space round 3, Jari
 // 22.11.2026: C Leveämpi with B's logic). The places at the top grow from an
 // icon row to one row of tiles to a row each as the rail gets taller, and
 // the conversations and Työtilat get the heights railAllocation.ts gives
@@ -44,8 +44,7 @@ export const PLACE_ICONS: Record<RailPlaceId | "search", IconName> = {
 /** One place at the top of the adaptive rail, as the app knows it now. */
 export type RailPlace = {
   id: RailPlaceId;
-  /** The test id the place has in the fixed rail, kept so the rest of the
-   * product finds it in either. */
+  /** The same test id in the desktop places and the phone drawer. */
   testId: string;
   label: string;
   /** A page of its own: the place is a link. */
@@ -346,8 +345,18 @@ export function measureRail(
     const rows = [...ws.querySelectorAll<HTMLElement>(WS_ROW)];
     const ss = getComputedStyle(scroll);
     const pitch = pitchOf(rows, 2);
+    // Empty/loading/error copy is a paragraph rather than a row. Its
+    // margins need room too, or a rowless list clips the status message.
     const inside =
-      sum([...scroll.children]) +
+      [...scroll.children].reduce((height, child) => {
+        const style = getComputedStyle(child);
+        return (
+          height +
+          (child as HTMLElement).offsetHeight +
+          px(style.marginTop) +
+          px(style.marginBottom)
+        );
+      }, 0) +
       px(ss.paddingTop) +
       px(ss.paddingBottom) +
       Math.max(0, scroll.children.length - 1) * px(ss.rowGap);

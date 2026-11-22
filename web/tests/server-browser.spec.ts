@@ -725,8 +725,7 @@ test("@server-browser the agent's request: the Selain card, the conversation row
   await rail.click();
   await expect(page.getByTestId("browser-sheet")).toBeVisible();
   await button(page, "browser-sheet-close").click();
-  const railState = page.getByTestId("browser-rail-state");
-  await expect(railState).toHaveText("3 ikkunaa");
+  await expect(rail).toHaveAttribute("data-state", "idle");
   // Oma selain is a plain row with its own window icon, not Tuotokset's.
   await expect(rail.locator("circle")).toHaveCount(0);
 
@@ -744,7 +743,7 @@ test("@server-browser the agent's request: the Selain card, the conversation row
   await fixture(page, `request=${encodeURIComponent(words)}&window=0`);
   await expect(card).toHaveAttribute("data-state", "ask");
   await expect(card.getByTestId("browser-card-request")).toHaveText(words);
-  await expect(railState).toHaveText("odottaa sinua");
+  await expect(rail).toHaveAttribute("data-state", "ask");
   const mark = page.getByRole("navigation").getByTestId("row-browser");
   await expect(mark).toHaveAttribute("data-state", "ask");
   await expect(mark).toHaveText("selain");
@@ -765,7 +764,7 @@ test("@server-browser the agent's request: the Selain card, the conversation row
   await button(page, "browser-sheet-close").click();
   // Closing the look keeps control with the person until they give it back.
   await expect(card).toHaveAttribute("data-state", "control");
-  await expect(railState).toHaveText("sinä ohjaat");
+  await expect(rail).toHaveAttribute("data-state", "person");
   await expect(mark).toHaveAttribute("data-state", "control");
   await button(page, "browser-card-give-back").click();
 
@@ -776,7 +775,7 @@ test("@server-browser the agent's request: the Selain card, the conversation row
     "Annoit selaimen takaisin",
   );
   await expect(mark).toHaveCount(0);
-  await expect(railState).toHaveText("3 ikkunaa");
+  await expect(rail).toHaveAttribute("data-state", "idle");
   await button(page, "browser-card-toggle").click();
   const detail = card.getByTestId("browser-card-detail");
   await expect(detail).toContainText("Kustannuspaikat");
@@ -795,5 +794,5 @@ test("@server-browser the agent's request: the Selain card, the conversation row
   await converse(page, "toinen asia");
   await expect(page.getByTestId("browser-card")).toHaveCount(0);
   await expect(mark).toHaveAttribute("data-state", "ask");
-  await expect(railState).toHaveText("odottaa sinua");
+  await expect(rail).toHaveAttribute("data-state", "ask");
 });

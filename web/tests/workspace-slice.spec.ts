@@ -108,11 +108,6 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
       .locator("main h1")
       .evaluate((el) => parseFloat(getComputedStyle(el).fontSize)),
   ).toBeLessThanOrEqual(32);
-  expect(
-    await page
-      .locator(".ah-shell-body")
-      .evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(" ")[0]),
-  ).toBe("296px");
   await expect(page.locator(".ah-workspace-page-title code")).toContainText(
     "/src/git-project",
   );
@@ -154,12 +149,16 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
   await expect(page.locator(".ah-workspace-page-title code")).toContainText(
     "/src/without-metadata",
   );
+  // A short desktop list needs no filter; the phone drawer keeps it.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByTestId("navigation-open").click();
   await page
     .getByRole("textbox")
     .and(page.getByTestId("workspace-filter"))
     .fill("not-found");
   await expect(page.getByTestId("filter-empty")).toBeVisible();
   await page.getByRole("button").and(page.getByTestId("clear-filter")).click();
+  await page.setViewportSize({ width: 1280, height: 900 });
   await page
     .getByRole("button")
     .and(page.getByTestId("snapshot-refresh"))
@@ -167,7 +166,10 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
   await expect(
     page.getByRole("link").and(page.getByTestId("workspace-ordinary-dir")),
   ).toBeVisible();
-  await page.getByRole("link").and(page.getByTestId("home-link")).click();
+  await page
+    .getByTestId("workspace-navigation")
+    .getByTestId("home-link")
+    .click();
   await expect(page.getByTestId("workspace-create").first()).toBeVisible();
   // The create control also exists on workspace pages. Wait for home navigation
   // to commit its entry focus before exercising the skip link's own focus.
@@ -400,6 +402,23 @@ test("@workspace-slice @a11y built host: zoom, accessible states, no serious axe
       (v) => v.impact === "serious" || v.impact === "critical",
     );
     expect(violations, value).toEqual([]);
+    // A rowless rail must allocate room for its status copy, including
+    // paragraph margins, rather than clipping it in an empty list region.
+    for (const message of await page.locator(".ah-rail-ws-scroll > p").all()) {
+      await expect
+        .poll(() =>
+          message.evaluate((el) => {
+            const box = el.getBoundingClientRect();
+            const region = el.parentElement?.getBoundingClientRect();
+            return (
+              !!region &&
+              box.top >= region.top - 1 &&
+              box.bottom <= region.bottom + 1
+            );
+          }),
+        )
+        .toBe(true);
+    }
   }
   await scenario(page, "ready");
   await page.goto("/workspaces");

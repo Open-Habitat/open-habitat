@@ -69,7 +69,7 @@ const fi = {
     `Vieritä osioon ${section}: ${n} ${plural("fi", n, { one: "keskustelu", other: "keskustelua" })} ${edge === "below" ? "alempana" : "ylempänä"}`,
   keyboardHint: (step: string, waiting: string) =>
     `${step}: edellinen/seuraava näkyvä keskustelu. ${waiting}: sinua odottavat.`,
-  // The adaptive rail (adaptive-rail, experimental): its places at the top
+  // The adaptive rail: its places at the top
   // and Työtilat's edge chips, which say how many workspaces lie past an
   // edge of the list and page it.
   places: "Paikat",

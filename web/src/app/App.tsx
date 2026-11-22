@@ -1552,11 +1552,6 @@ export function App() {
   );
   const browserTitle = (id: string) =>
     snapshot?.agents.find((a) => a.agent_id === id)?.title.display || undefined;
-  // The adaptive rail (adaptive-rail, experimental); the phone keeps its
-  // drawer as it is.
-  const adaptiveRail =
-    useExperimentalFeature("adaptive-rail", { identity, csrf }) &&
-    !mobileLayout;
   // One sound when a conversation becomes the person's turn.
   useAttentionSound({
     identity,
@@ -3524,7 +3519,7 @@ export function App() {
                     running={browserRunning}
                   >
                     <AdaptiveRailPlaces
-                      on={adaptiveRail && !railCompact}
+                      on={!mobileLayout && !railCompact}
                       identity={identity}
                       csrf={csrf}
                       titleOf={browserTitle}
@@ -3534,6 +3529,7 @@ export function App() {
                       {(places) => (
                         <WorkspaceRailView
                           onPlaceNavigate={navigatePlace}
+                          phoneLayout={mobileLayout}
                           places={places}
                           shares={
                             <>

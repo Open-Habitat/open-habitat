@@ -170,11 +170,12 @@ export function WorkspaceRailView({
   shares,
   browser,
   places,
+  phoneLayout,
   onPlaceNavigate,
 }: {
   onPlaceNavigate?: (href: string) => void;
-  /** The adaptive rail's Tuotokset and Oma selain (adaptive-rail,
-   * experimental); absent, the rail is the fixed one. */
+  phoneLayout: boolean;
+  /** Desktop places; the phone drawer and collapsed rail use their own rows. */
   places?: readonly RailPlace[];
   shares?: ReactNode;
   /** The person's server browser's row (remote-browser, experimental). */
@@ -232,15 +233,14 @@ export function WorkspaceRailView({
   const resourcesText = useText(agentResourcesText);
   const searchText = useText(switcherText);
   const navText = useText(navigationText);
-  const adaptive = places && !collapsed;
+  const adaptive = !phoneLayout && !collapsed;
   const cloneView = useCloneView(clones);
   const queued = cloneView.queue.filter((q) => q.state !== "present");
   const server = useServer(pathname);
-  // Hiljaiset folds itself while the rail is crowded, until the person
-  // folds or opens it on this device (rail-scroll-region).
+  // The phone drawer still folds Hiljaiset when crowded, unless the person
+  // chose otherwise on this device. Desktop allocates room instead and
+  // folds only by the person's hand.
   const [crowded, setCrowded] = useState(false);
-  // The adaptive rail gives the conversations their room by its rule, and
-  // Hiljaiset folds only by the person's hand there.
   const quietFolded = foldedBy(useQuietFoldChoice(), !adaptive && crowded);
   const { search } = useLocation();
   const listed = snapshot.workspaces
@@ -275,6 +275,7 @@ export function WorkspaceRailView({
   return (
     <WorkspaceRail
       bell={bell}
+      phoneLayout={phoneLayout}
       collapsed={collapsed}
       serverLabel={serverLabel(server)}
       connectionLabel={connectionStatus(phase, source).label}
@@ -296,38 +297,34 @@ export function WorkspaceRailView({
         />
       }
       homeCurrent={pathname === "/workspaces"}
-      adaptive={
-        adaptive
-          ? {
-              places: [
-                {
-                  id: "home",
-                  testId: "home-link",
-                  label: navText.home,
-                  href: "/workspaces",
-                  current: pathname === "/workspaces",
-                },
-                ...places,
-                {
-                  id: "resources",
-                  testId: "rail-resources",
-                  label: resourcesText.railLabel,
-                  href: "/resources",
-                  onNavigate: onPlaceNavigate,
-                  current: pathname === "/resources",
-                },
-              ],
-              search: {
-                label: searchText.door,
-                keyHint: switcherKey,
-                onOpen: openSwitcher,
-              },
-              // Round 1's A: the filter shows past a dozen workspaces, and
-              // while it holds a word.
-              filter: listed.length > FILTER_FROM || !!filter,
-            }
-          : undefined
-      }
+      adaptive={{
+        places: [
+          {
+            id: "home",
+            testId: "home-link",
+            label: navText.home,
+            href: "/workspaces",
+            current: pathname === "/workspaces",
+          },
+          ...(places ?? []),
+          {
+            id: "resources",
+            testId: "rail-resources",
+            label: resourcesText.railLabel,
+            href: "/resources",
+            onNavigate: onPlaceNavigate,
+            current: pathname === "/resources",
+          },
+        ],
+        search: {
+          label: searchText.door,
+          keyHint: switcherKey,
+          onOpen: openSwitcher,
+        },
+        // Round 1's A: the filter shows past a dozen workspaces, and
+        // while it holds a word.
+        filter: listed.length > FILTER_FROM || !!filter,
+      }}
       pages={
         adaptive ? (
           shares

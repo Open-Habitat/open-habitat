@@ -1,4 +1,4 @@
-/* The adaptive rail (adaptive-rail, experimental; rail-space round 3, Jari
+/* The adaptive rail (rail-space round 3, Jari
    22.11.2026: C Leveämpi with B's logic). AdaptiveRail.tsx sets the two
    lists' regions to the heights railAllocation.ts gives them; what the rule
    leaves over stays empty below Työtilat. */

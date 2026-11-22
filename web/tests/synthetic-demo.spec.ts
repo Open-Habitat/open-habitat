@@ -31,9 +31,6 @@ for (const scenario of [
         )
         .click();
       await expect(page.locator("main h1")).toHaveText("git-project");
-      await page.getByTestId("workspace-filter").fill("nonsense");
-      await expect(page.locator('[data-testid="filter-empty"]')).toBeVisible();
-      await page.getByTestId("clear-filter").click();
       await page.getByTestId("skip-content").focus();
       await page.keyboard.press("Enter");
       await expect(page.locator("main")).toBeFocused();

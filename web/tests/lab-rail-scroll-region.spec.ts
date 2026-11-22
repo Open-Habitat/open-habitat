@@ -8,8 +8,8 @@ import { rewrite, type World } from "./rail-worlds";
 // the top and Työtilat's list scrolls in its own, so browsing the
 // workspaces never moves a conversation. When the conversations do not fit
 // either, their region scrolls and its edges name the sections out of
-// sight. Hiljaiset folds itself while the rail is crowded, until the person
-// folds or opens it. The lab's snapshot is rewritten on the wire into the
+// sight. Desktop Hiljaiset stays open until the person folds it.
+// The lab's snapshot is rewritten on the wire into the
 // prototype's two worlds: crowded (6 waiting, 5 running, 30 quiet, 40
 // workspaces) and ordinary (2 / 1 / 5, 24 workspaces).
 
@@ -104,33 +104,23 @@ async function shoot(page: Page, name: string) {
 
 test.use({ reducedMotion: "reduce" });
 
-// Outputs and Resources now occupy two permanent navigation rows. Give
-// this fixture enough room for its eleven active rows; the 700px case below
-// separately proves conversation overflow and its edge controls.
 test.describe("crowded 1440 × 1000", () => {
   test.use({ viewport: { width: 1440, height: 1000 } });
-  test("@rail-scroll-region only Työtilat scrolls and Hiljaiset folds itself", async ({
+  test("@rail-scroll-region workspace scrolling leaves conversations still", async ({
     page,
   }) => {
     await open(page, CROWDED);
     await railStill(page);
-    // Crowded and not chosen on this device: Hiljaiset folded itself, and
-    // that is not stored as the person's choice.
+    // Crowding does not change or persist the person's fold choice.
     await expect(rail(page).getByTestId("rail-quiet-fold")).toHaveAttribute(
       "aria-expanded",
-      "false",
+      "true",
     );
     expect(
       await page.evaluate(() => localStorage.getItem("nah:rail-quiet-folded")),
     ).toBeNull();
-    // Folded, every waiting and running row fits: nothing to name.
-    const rows = region(page).locator(
-      '[data-testid="rail-yours"] li[data-testid^="agent-item-"], [data-testid="rail-running"] li[data-testid^="agent-item-"]',
-    );
-    await expect(rows).toHaveCount(CROWDED.yours + CROWDED.running);
-    for (const row of await rows.all())
-      expect(await inSight(row, region(page))).toBe(true);
-    await expect(region(page).getByTestId("rail-beyond-below")).toHaveCount(0);
+    expect((await scrolling(region(page))).scrolls).toBe(true);
+    await expect(region(page).getByTestId("rail-beyond-below")).toBeVisible();
     await expect(region(page).getByTestId("rail-beyond-above")).toHaveCount(0);
     // Työtilat's heading, its new-workspace button and filter stay; its
     // list is the region that scrolls.
@@ -170,7 +160,7 @@ for (const [locale, scheme] of [
       await railStill(page);
       expect((await scrolling(region(page))).scrolls).toBe(true);
       await expect(region(page)).toHaveAttribute("data-scrolls", "");
-      // At the top: rows below, Hiljaiset (folded, out of sight) with all
+      // At the top: rows below, Hiljaiset (open, out of sight) with all
       // its conversations.
       const below = region(page).getByTestId("rail-beyond-below");
       await expect(below).toBeVisible();
@@ -220,8 +210,9 @@ test.describe("keyboard at 700", () => {
   }) => {
     test.setTimeout(180000);
     await open(page, CROWDED);
-    // The person opens Hiljaiset: their choice, kept, and every quiet row
-    // becomes a keyboard destination.
+    // A manual fold and reopen is kept; every quiet row is a keyboard
+    // destination again.
+    await rail(page).getByTestId("rail-quiet-fold").click();
     await rail(page).getByTestId("rail-quiet-fold").click();
     await expect(rail(page).getByTestId("rail-quiet-fold")).toHaveAttribute(
       "aria-expanded",
@@ -291,6 +282,15 @@ test.describe("phone drawer", () => {
   test("@rail-scroll-region the drawer keeps the regions", async ({ page }) => {
     await open(page, CROWDED, { phone: true });
     await railStill(page);
+    // Unlike desktop, the crowded drawer still folds automatically, without
+    // storing that as the person's explicit choice.
+    await expect(rail(page).getByTestId("rail-quiet-fold")).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    expect(
+      await page.evaluate(() => localStorage.getItem("nah:rail-quiet-folded")),
+    ).toBeNull();
     await expect(rail(page).getByTestId("workspace-create")).toBeInViewport();
     expect((await scrolling(list(page))).scrolls).toBe(true);
     await expect(selected(page)).toBeInViewport({ ratio: 1 });

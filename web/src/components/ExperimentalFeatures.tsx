@@ -42,8 +42,7 @@ function Picture({ id, on }: { id: string; on: boolean }) {
   let body: ReactNode;
   if (
     id === "rewind-conversation" ||
-    id === "multiplayer" ||
-    id === "adaptive-rail"
+    id === "multiplayer"
   )
     body = (
       <>

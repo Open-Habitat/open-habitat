@@ -74,6 +74,15 @@ function Example({
           }
           rail={
             <WorkspaceRail
+              adaptive={{
+                places: [],
+                search: {
+                  label: "Search",
+                  keyHint: "⌘K",
+                  onOpen: () => undefined,
+                },
+                filter: false,
+              }}
               collapsed={collapsed}
               serverLabel="esimerkki.test"
               connectionLabel="Yhdistetty"

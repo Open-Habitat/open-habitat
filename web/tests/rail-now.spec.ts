@@ -37,7 +37,10 @@ test("@rail-now @a11y workspaces stay alphabetical, the filter finds archived on
   );
   expect(names).toEqual(["ordinary-dir", "zeta-project"]);
 
-  // The filter narrows the list and opens the archived group on a match.
+  // The phone drawer keeps the filter even for this short list; it narrows
+  // the list and opens the archived group on a match.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByTestId("navigation-open").click();
   const toggle = nav.getByTestId("toggle-archived");
   await expect(toggle).toHaveAttribute("aria-expanded", "false");
   await nav.getByTestId("workspace-filter").fill("metadata");
@@ -50,6 +53,7 @@ test("@rail-now @a11y workspaces stay alphabetical, the filter finds archived on
   ).toBeVisible();
   await expect(nav.getByTestId("filter-empty")).toHaveCount(0);
   await nav.getByTestId("clear-filter").click();
+  await page.setViewportSize({ width: 1280, height: 900 });
 
   // A conversation at work is live work: it shows in Käynnissä, not under
   // its workspace, and stays reachable from the narrow rail. The slow turn
@@ -78,7 +82,9 @@ test("@rail-now @a11y workspaces stay alphabetical, the filter finds archived on
     ).violations,
   ).toEqual([]);
 
-  await nav.getByTestId("close-navigation").click();
+  await nav.getByTestId("close-navigation").focus();
+  await page.keyboard.press("Enter");
+  await expect(nav.getByTestId("navigation-open")).toBeFocused();
   const dot = nav.getByTestId("rail-running").locator(`a[href="${href}"]`);
   await expect(dot).toBeVisible();
   await expect(nav.getByTestId("workspace-filter")).toHaveCount(0);

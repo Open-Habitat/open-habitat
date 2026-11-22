@@ -97,6 +97,11 @@ function CatalogContents({
   );
   const rail = (
     <WorkspaceRail
+      adaptive={{
+        places: [],
+        search: { label: "Search", keyHint: "⌘K", onOpen: () => undefined },
+        filter: true,
+      }}
       collapsed={false}
       serverLabel="server.example"
       connectionLabel={

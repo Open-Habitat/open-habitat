@@ -11,11 +11,11 @@ const features = [
   "rewind-conversation",
   "remote-browser",
   "multiplayer",
-  "adaptive-rail",
 ];
 const retired = [
   "agent-instructions",
   "attention-sound",
+  "adaptive-rail",
   "terminal-copy-on-select",
   "terminal-open-urls",
   "storage-breakdown",
@@ -59,11 +59,15 @@ test("@settings-experimental only remaining experiments have switches; saved ret
         Origin: new URL(page.url()).origin,
         "X-Agent-Host-CSRF": session.csrf,
       },
-      data: { experimental: { [id]: true } },
+      data: { experimental: { [id]: id !== "adaptive-rail" } },
     });
     expect(response.ok()).toBe(true);
   }
   await page.goto("/settings/experimental");
+  // A saved off choice for the graduated feature cannot restore the old rail.
+  await expect(page.getByTestId("workspace-navigation")).toHaveClass(
+    /ah-rail-adaptive/,
+  );
   for (const id of features) {
     await expect(card(page, id)).toBeVisible();
     await expect(segment(page, id, "off")).toHaveAttribute(

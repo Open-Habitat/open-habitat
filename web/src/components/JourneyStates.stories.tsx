@@ -54,6 +54,15 @@ function Journey({
         }
         rail={
           <WorkspaceRail
+            adaptive={{
+              places: [],
+              search: {
+                label: "Search",
+                keyHint: "⌘K",
+                onOpen: () => undefined,
+              },
+              filter: true,
+            }}
             collapsed={collapsed}
             serverLabel="Esimerkkipalvelin"
             connectionLabel={

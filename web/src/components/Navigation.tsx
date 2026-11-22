@@ -1491,6 +1491,7 @@ export function NowSections({
   );
 }
 export function WorkspaceRail({
+  phoneLayout = false,
   bell,
   collapsed,
   serverLabel,
@@ -1532,10 +1533,10 @@ export function WorkspaceRail({
   /** Rows under Etusivu that lead to pages of their own (Agentin käytössä).
    * In the adaptive rail, what stays under its places (Jaettu kanssasi). */
   pages?: ReactNode;
-  /** The adaptive rail (adaptive-rail, experimental): its places and search
-   * at the top, in the step the height allows, and whether Työtilat shows
-   * its filter. Absent: the fixed rail. The narrow rail is never adaptive. */
-  adaptive?: {
+  /** The phone drawer keeps full rows; desktop shares the available height. */
+  phoneLayout?: boolean;
+  /** Desktop places, search and workspace filter visibility. */
+  adaptive: {
     places: readonly RailPlace[];
     search: RailSearch;
     filter: boolean;
@@ -1569,7 +1570,7 @@ export function WorkspaceRail({
   const region = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLDivElement>(null);
   const nav = useRef<HTMLElement>(null);
-  const fit = adaptive && !collapsed ? adaptive : undefined;
+  const fit = !phoneLayout && !collapsed ? adaptive : undefined;
   const alloc = useAdaptiveRail(nav, !!fit);
   const filterInput = (
     <>
