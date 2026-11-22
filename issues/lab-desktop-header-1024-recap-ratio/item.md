@@ -2,13 +2,15 @@
 created: 2026-11-22
 updated: 2026-11-22
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: v0.1.5 release gate
 source_ref: taskfleet:01m8203anaw519dvyrq9ag3jdv/gate-flake:lab-desktop-header-1024
 originating_run: 01m8203anaw519dvyrq9ag3jdv
 originating_run_kind: spinoff
+lane: unlaned
+preparation: ready
 ---
 
 # Desktop header recap button out of viewport at 1024px (lab-desktop-header flake)
