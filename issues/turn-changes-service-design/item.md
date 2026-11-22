@@ -1,6 +1,6 @@
 ---
 created: 2026-11-15
-updated: 2026-11-21
+updated: 2026-11-22
 type: task
 reporter: jari
 status: open
@@ -31,3 +31,7 @@ Jari 21.11.2026: Raine is responsive when the work is done properly — build th
 ### 2026-11-21T07:51:25Z · @jari
 
 Jari 21.11.2026: no new switch — snapshot recording belongs to the same experimental feature as the turn changes / rewind work being built here.
+
+### 2026-11-22T17:31:09Z · @jari
+
+Jari 22.11.2026: build the git-based turn-snapshot recorder into Habitat's own code (Habitat's embedded better-pi-rewind derivative) rather than waiting for upstream; after a couple of weeks of real use, offer it to the upstream maintainer as a PR with that experience. The upstream-shaped branch from run 01m8231bnf8pqh3n9z7skcdp20 is the source to port.

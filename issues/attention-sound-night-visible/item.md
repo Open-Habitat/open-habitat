@@ -23,3 +23,7 @@ Jari (22.11.2026): sounds were silent because night quiet follows the device's d
 ### 2026-11-22T16:43:58Z · @jari
 
 Jari 22.11.2026 on round 1: C (A's status line at the top of Sounds, night defined by a clock window, default 22–7) — 'really good'. No one-night 'Soita silti' override: the action in the status line changes the setting permanently (turns night quiet off / edits the window). Showing 'Tämä laite on mykistetty' and 'Äänet ovat pois kaikilta laitteilta' on the same top status line: riff in round 2. Not answered, so C's default: the device dark mode is no longer a meaning of night. Implementation: attention-sound-night-clock-impl.
+
+### 2026-11-22T17:31:09Z · @jari
+
+Jari 22.11.2026 on round 2: B Kaikki syyt — the top status line lists every active reason (all devices off, this device muted, night) each with its own permanent fix; drop 'Kuuntelu toimii silti' from the off line. Account menu wording: pending (question re-explained). Implementation: attention-sound-status-all-reasons.
