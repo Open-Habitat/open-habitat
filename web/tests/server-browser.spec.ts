@@ -343,7 +343,13 @@ test("@server-browser the clipboard: paste in by shortcut, field and keystrokes,
   // Typing as keystrokes never uses the remote clipboard; a line break is
   // sent as Enter only after a second press.
   const cutsBefore = (await input(page)).cuts.length;
-  await field.fill("ä€\nx");
+  await field.fill("ä");
+  mark = (await input(page)).keysyms.length;
+  await button(page, "browser-type-send").click();
+  await expect(field).toHaveValue("ä");
+  await expect(toast).not.toBeEmpty();
+  expect((await input(page)).keysyms.length).toBe(mark);
+  await field.fill("A~\nx");
   mark = (await input(page)).keysyms.length;
   await button(page, "browser-type-send").click();
   await expect(pop.getByRole("alert")).toBeVisible();
@@ -352,7 +358,7 @@ test("@server-browser the clipboard: paste in by shortcut, field and keystrokes,
   await button(page, "browser-type-send").click();
   await expect
     .poll(async () => (await input(page)).keysyms.slice(mark))
-    .toEqual([0xe4, 0x10020ac, XK_Return, 0x78]);
+    .toEqual([0x41, 0x7e, XK_Return, 0x78]);
   expect((await input(page)).cuts.length).toBe(cutsBefore);
   await expect(field).toHaveValue("");
   await page.keyboard.press("Escape");

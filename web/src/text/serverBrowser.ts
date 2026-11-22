@@ -86,7 +86,7 @@ const fi = {
     type: "Kirjoita näppäilyinä",
     hide: "Piilota teksti",
     keysNote:
-      "Näppäilyinä toimii sivuilla, jotka estävät liittämisen, eikä käy leikepöydän kautta. Teksti lähtee vain sivulle, ja kenttä tyhjenee lähetyksen jälkeen.",
+      "Näppäilyinä toimii sivuilla, jotka estävät liittämisen, eikä käy leikepöydän kautta, mutta vain kirjaimilla a–z, numeroilla ja tavallisilla välimerkeillä. Teksti lähtee vain sivulle, ja kenttä tyhjenee lähetyksen jälkeen.",
     enterWarn: (n: number) =>
       `Tekstissä on ${n === 1 ? "rivinvaihto" : `${n} rivinvaihtoa`}. Ne lähtevät Enter-painalluksina, mikä voi lähettää lomakkeen. Paina uudelleen, jos haluat sen.`,
     copySelection: "Kopioi valinta",
@@ -106,7 +106,8 @@ const fi = {
     pasteBlocked:
       "Selain ei antanut liittää suoraan kuvaan. Liitä tekstikenttään ja lähetä.",
     tooLong: "Teksti on liian pitkä lähetettäväksi.",
-    unsupported: "Tekstissä on merkkejä, joita ei voi kirjoittaa näppäilyinä.",
+    unsupported:
+      "Näppäilyinä voi kirjoittaa vain kirjaimet a–z, numerot ja tavalliset välimerkit. Käytä Liitä sivulle.",
     empty: "Kirjoita tai liitä ensin teksti.",
     copiedLocal: "Kopioitu etäsivulta koneellesi.",
     copyBlocked:
@@ -210,7 +211,7 @@ export const serverBrowserText = catalog(fi, {
     type: "Type as keystrokes",
     hide: "Hide text",
     keysNote:
-      "Keystrokes work on sites that block pasting and do not use the clipboard. The text goes only to the page, and this field clears after sending.",
+      "Keystrokes work on sites that block pasting and do not use the clipboard, but only for letters a–z, digits and common punctuation. The text goes only to the page, and this field clears after sending.",
     enterWarn: (n: number) =>
       `The text has ${n === 1 ? "a line break" : `${n} line breaks`}. They are sent as Enter, which may submit a form. Press again if you want that.`,
     copySelection: "Copy selection",
@@ -230,7 +231,8 @@ export const serverBrowserText = catalog(fi, {
     pasteBlocked:
       "Your browser did not allow pasting straight into the picture. Paste into the text field and send.",
     tooLong: "The text is too long to send.",
-    unsupported: "The text has characters that cannot be typed as keystrokes.",
+    unsupported:
+      "Only letters a–z, digits and common punctuation can be typed as keystrokes. Use Paste into page.",
     empty: "Type or paste some text first.",
     copiedLocal: "Copied from the remote page to your computer.",
     copyBlocked:

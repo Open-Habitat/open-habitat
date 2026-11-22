@@ -35,12 +35,15 @@ describe("keysyms", () => {
   });
 
   it("type text with newlines as Enter, counting them, within the limit", () => {
-    const r = keystrokes("pä\r\nss");
+    const r = keystrokes("pA\r\ns~\t");
     expect(r).toEqual({
       ok: true,
-      keysyms: [0x70, 0xe4, XK.Return, 0x73, 0x73],
+      keysyms: [0x70, 0x41, XK.Return, 0x73, 0x7e, XK.Tab],
       enters: 1,
     });
+    // Only the remote US keyboard's characters arrive as keystrokes.
+    expect(keystrokes("pä")).toEqual({ ok: false, why: "unsupported" });
+    expect(keystrokes("€")).toEqual({ ok: false, why: "unsupported" });
     expect(keystrokes("")).toEqual({ ok: false, why: "empty" });
     expect(keystrokes("x".repeat(typeLimit + 1))).toEqual({
       ok: false,

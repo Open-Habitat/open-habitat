@@ -65,7 +65,12 @@ export const typeLimit = 1000;
 export const pasteLimit = 64 * 1024;
 
 /** The keysyms that type `text`, or why it cannot be typed. Carriage
- * returns are dropped so a pasted Windows line ending is one Enter. */
+ * returns are dropped so a pasted Windows line ending is one Enter.
+ *
+ * Only what the remote US keyboard has can be typed: printable ASCII, Enter
+ * and Tab. Xvnc maps any other keysym to a spare key on demand, but Chrome
+ * keeps the keyboard map it started with, so on a real host the character
+ * never arrives. Such text goes by paste instead. */
 export function keystrokes(
   text: string,
 ):
@@ -78,7 +83,8 @@ export function keystrokes(
   let enters = 0;
   for (const ch of chars) {
     const k = keysymOfChar(ch);
-    if (k === undefined) return { ok: false, why: "unsupported" };
+    if (k === undefined || (k > 0x7e && k !== XK.Return && k !== XK.Tab))
+      return { ok: false, why: "unsupported" };
     if (k === XK.Return) enters++;
     keysyms.push(k);
   }
