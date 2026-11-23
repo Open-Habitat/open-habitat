@@ -1,0 +1,32 @@
+/* role-frank: the DuckDB answer and the R figures. */
+
+/* The query view: the SQL as written, then the result as a table with each dye's colour. */
+[data-block="role-frank"] .fq { background: var(--ah-surface); border-radius: var(--ah-r-md); box-shadow: 0 1px 3px rgba(16, 24, 40, .1); overflow: hidden; }
+[data-block="role-frank"] .fq-sql { margin: 0; padding: 12px 14px; background: #f4f6f2; border-bottom: 1px solid var(--ah-line-soft); font: 400 11.5px/1.55 var(--ah-mono); color: var(--ah-ink-2); white-space: pre; overflow-x: auto; }
+[data-block="role-frank"] .fq-k { color: #2f4f73; font-weight: 600; }
+[data-block="role-frank"] .fq-s { color: #8a5a12; }
+[data-block="role-frank"] .fq-t { width: 100%; border-collapse: collapse; font: 400 12.5px var(--ah-font); color: var(--ah-ink); }
+[data-block="role-frank"] .fq-t th { text-align: left; padding: 8px 10px 6px; font: 500 10.5px var(--ah-mono); letter-spacing: .02em; color: var(--ah-muted); border-bottom: 1px solid var(--ah-line); }
+[data-block="role-frank"] .fq-t td { padding: 7px 10px; border-bottom: 1px solid var(--ah-line-soft); font-variant-numeric: tabular-nums; white-space: nowrap; }
+[data-block="role-frank"] .fq-t tr:last-child td { border-bottom: 0; }
+[data-block="role-frank"] .fq-t .n { text-align: right; }
+[data-block="role-frank"] .fq-t tr.on td { font-weight: 600; background: #eef3fa; }
+[data-block="role-frank"] .fq-sw { display: inline-block; width: 10px; height: 10px; margin-right: 7px; border-radius: 3px; background: var(--c); vertical-align: -1px; }
+[data-block="role-frank"] .fq-barh { width: 34%; }
+[data-block="role-frank"] .fq-bar i { display: block; height: 8px; width: var(--w); border-radius: 4px; background: var(--c); opacity: .75; }
+[data-block="role-frank"] .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+[data-block="role-frank"] .fq-n, [data-block="role-frank"] .ff-n { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; margin: 0; padding: 8px 12px 10px; font: 400 11px var(--ah-mono); color: var(--ah-muted); }
+
+/* The R figures: white like a page from the lab report. */
+[data-block="role-frank"] .ff { background: #fff; border-radius: var(--ah-r-md); box-shadow: 0 1px 3px rgba(16, 24, 40, .1); overflow: hidden; }
+[data-block="role-frank"] .ff .tg { margin: 10px 10px 0 !important; }
+[data-block="role-frank"] .ff .m-img { border-radius: 0; background: #fff; }
+[data-block="role-frank"] .ff[data-state="wash"] .ff-light, [data-block="role-frank"] .ff[data-state="light"] .ff-wash { display: none; }
+[data-block="role-frank"] .ff-n { border-top: 1px solid var(--ah-line-soft); }
+
+@media (max-width: 560px) {
+  [data-block="role-frank"] .fq-sql { font-size: 10.5px; padding: 10px; }
+  [data-block="role-frank"] .fq-t td, [data-block="role-frank"] .fq-t th { padding-left: 6px; padding-right: 6px; }
+  [data-block="role-frank"] .fq-barh, [data-block="role-frank"] .fq-bar { display: none; }
+}
+[data-block="role-frank"] .ff picture { display: block; }
