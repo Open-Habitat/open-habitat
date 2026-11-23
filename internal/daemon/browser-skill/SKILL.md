@@ -23,8 +23,8 @@ not hidden from you; leave them out of commands and output for the same reason.
 ## Whether it is there
 
 `open-habitat agent browser status --json` says. The browser is an experiment
-the person switches on (`feature_enabled`); while it is off the commands
-refuse, even if a browser was left running. `start` starts a stopped one. If
+the person switches on (`feature_enabled`); while it is off page actions and
+`start` refuse, even if a browser was left running. `start` starts a stopped one. If
 it is unavailable, tell the person: the point is their signed-in session, and
 nothing you could install has it. `open-habitat skill print browser` prints
 this guidance in a conversation that began before the skill was there.
@@ -32,8 +32,8 @@ this guidance in a conversation that began before the skill was there.
 In the status, `windows` shows what the person has open, which is a good
 starting point for a vague request. `agent: true` marks the last tab an agent
 acted in, as the person sees it in their window list; it is not ownership.
-`control` is `agent` or `person`, and while it is `person` your commands
-refuse. `agent_connected` means another operation may still hold the one
+While running, `control` is `agent` or `person`; while it is `person`, page
+actions refuse. `agent_connected` means another operation may still hold the one
 agent connection the browser allows.
 
 ## Working in it
@@ -46,32 +46,32 @@ normal CLI envelope under `data.result`. Let that JSON reach your tool output
 as it is: Habitat builds the turn's record of browser visits from it.
 
 `goto` opens a tab of your own in the signed-in context and returns its `tab`
-id, which every later command takes explicitly; `goto --tab` navigates an
+id, which later page actions take explicitly; `goto --tab` navigates an
 existing tab instead, so the person's tabs change only when you name them.
 Close your tabs when done, except one you mean to leave for the person. The
 last tab cannot be closed, because that could stop Chrome. `tabs` and `status`
 show origins, not full URLs; `text` or `eval` on the tab gives the URL.
 
-Commands wait for the document's load event, and `click` also for a
-navigation it sets off at once. Neither knows about an application's own
+Page reads, input and `goto` wait for document load, and `click` also for a
+navigation it sets off at once. These waits know nothing about an application's own
 later work, a timer-driven redirect or a list still filling, so look at the
 page you got, and wait for something specific with a Promise in `eval`.
 A command that times out or loses its reply may still have acted. Look at the
-page before repeating anything that writes. A failed `goto` names its tab in
-the error so it can be inspected or closed.
+page before repeating anything that writes. If a failed `goto` names its tab in
+the error, inspect or close it; otherwise check `tabs` for a tab left open.
 
 A selector has to match exactly one element. `type` replaces the field's
 value and does not submit. It takes the text from a file or stdin verbatim,
 trailing newline included, so prepare a one-line value with `printf`. It
 refuses password and file inputs, and values the field would alter. `text`
-and `links` are bounded and say `truncated` when they cut.
+and `links` flag cut text or link counts as `truncated`, not shortened link labels.
 
 ## Getting a file
 
 `download <url> --tab <id> --name <file>` fetches the site's original file
-through Chrome with that tab's cookies. Give it the site's own HTTP(S) URL,
+through Chrome in that tab's frame context. Give it the site's own HTTP(S) URL,
 not the address of Chrome's PDF viewer, and a tab that is on the signed-in
-service: from an unrelated tab the request goes out without the right cookies.
+service: from an unrelated tab, cookie rules may leave out needed cookies.
 A sign-in redirect can come back as HTML with status 200, so check that the
 saved file is what it should be; the result's `url` and `title` describe the
 tab, not the file. Printing the page to PDF is not a substitute, since it can
@@ -101,16 +101,16 @@ open-habitat agent browser request --window <id> --text "The service asks for a 
 Tell them in the conversation too. They take control in the viewer, do their
 part and hand control back, which clears the request; `request --clear`
 withdraws one that is no longer needed. They type a secret with the viewer's
-**Type as keystrokes** (Kirjoita näppäilyinä), which uses a masked field and
+**Password as keystrokes** (Salasana näppäilyinä), which uses a masked field and
 bypasses the remote clipboard, or paste it into the page. The clipboard is
 theirs, not something to read or use, and it is cleared when control returns.
 Their password manager stays on their own device.
 
 The person can also take control in the middle of your work by clicking the
-picture. Commands then refuse with `browser_person_control`, and one already
-under way fails with `browser_person_took_control` once control returns,
-without having been carried out. The page may have changed under you, so read
-it again before going on.
+picture. New page actions refuse with `browser_person_control`; a CDP call
+held during their turn fails with `browser_person_took_control` on return.
+Earlier calls in the same action may already have acted. The page may have
+changed under you, so read it again before going on.
 
 ## An external CDP client
 
