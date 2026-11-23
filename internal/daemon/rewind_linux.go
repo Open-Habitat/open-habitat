@@ -137,6 +137,9 @@ type rewindRecord struct {
 	Files       map[string]rewindVersion `json:"files"`
 	// Paths this checkpoint could not copy: no version there.
 	Unavailable []string `json:"unavailable"`
+	// Paths an edit or write named in the turn. A turn checkpoint written
+	// before turns named their edits has none (nil, not empty).
+	Edited *[]string `json:"edited"`
 }
 
 // rewindMarkerData is the extension's own record of one Palaa tähän.
@@ -331,6 +334,9 @@ func readRewindSession(path string, uid int) (*rewindSession, bool) {
 							if path == "" || strings.ContainsRune(path, 0) || !v.valid() {
 								valid = false
 							}
+						}
+						if r.Edited != nil && len(*r.Edited) > 10000 {
+							valid = false
 						}
 						if valid {
 							l.record = &r
@@ -542,13 +548,30 @@ func (s *rewindSession) preview(home, entry string) (rewindPreview, bool) {
 		return out, true
 	}
 	out.Checkpoint = true
+	// Only what the agent's edits and writes named from this message on goes
+	// back, and nothing Git ignores, as the extension's fallbackScope decides.
+	edited, legacy := rewindEditedOn(branch[at:])
 	paths := make([]string, 0, len(first))
 	for p := range first {
-		paths = append(paths, p)
+		if legacy || edited[p] {
+			paths = append(paths, p)
+		}
 	}
 	sort.Strings(paths)
+	files := make([]string, 0, len(paths))
+	for _, p := range paths {
+		files = append(files, rewindTrackedFile(checkpoint.cwd, p))
+	}
+	ignored, unknown := rewindIgnored(ctx, home, files)
 	store := filepath.Join(home, ".pi", "agent", "file-history")
 	for _, p := range paths {
+		if file := rewindTrackedFile(checkpoint.cwd, p); ignored[file] {
+			continue
+		} else if unknown[file] && !covered[file] {
+			// Git could not say whether it is ignored: a restore leaves it.
+			out.FileErrors++
+			continue
+		}
 		v, ok := checkpoint.files[p]
 		if !ok && checkpoint.unavailable[p] {
 			// Not copied then: a restore leaves it, so it is no change.
@@ -604,6 +627,21 @@ func (s *rewindSession) snapshotPreview(ctx context.Context, home, entry string,
 	if !ok {
 		return covered
 	}
+	// A path the message's snapshot skipped has no content there: the
+	// per-file copies answer for it, as in the extension's restore.
+	kept := paths[:0:0]
+	for _, p := range paths {
+		skipped := false
+		for _, sk := range start.Skipped.Paths {
+			if sk.Path != "" && (p == sk.Path || strings.HasPrefix(p, sk.Path+"/")) {
+				skipped = true
+			}
+		}
+		if !skipped {
+			kept = append(kept, p)
+		}
+	}
+	paths = kept
 	tree := start.tree()
 	entries, err := lsSnapshotTree(ctx, store, tree, paths)
 	if err != nil {
@@ -633,6 +671,113 @@ func (s *rewindSession) snapshotPreview(ctx context.Context, home, entry string,
 		out.Files = append(out.Files, rewindFile{Path: snapshotDisplayPath(home, root, start.Cwd, p), Change: change, Additions: added, Deletions: deleted, Committed: rewindCommitted(ctx, home, file, since)})
 	}
 	return covered
+}
+
+// rewindEditedOn is the extension's editedOn: the tracking paths the agent's
+// edits and writes named on lines that start at a person's message, and
+// whether a turn among them was recorded before turns named their edits (for
+// such a turn every tracked path counts).
+func rewindEditedOn(lines []rewindLine) (map[string]bool, bool) {
+	edited, legacy := map[string]bool{}, false
+	for _, l := range lines {
+		r := l.record
+		if r == nil {
+			continue
+		}
+		if r.Kind == "snapshot" && r.Edited == nil {
+			legacy = true
+		}
+		if r.Kind == "update" {
+			for p := range r.Files {
+				edited[p] = true
+			}
+			for _, p := range r.Unavailable {
+				edited[p] = true
+			}
+		}
+		if r.Edited != nil {
+			for _, p := range *r.Edited {
+				edited[p] = true
+			}
+		}
+	}
+	return edited, legacy
+}
+
+// rewindTrackedFile is the absolute, clean file a tracking path names.
+func rewindTrackedFile(cwd, p string) string {
+	if filepath.IsAbs(p) {
+		return filepath.Clean(p)
+	}
+	return filepath.Join(cwd, p)
+}
+
+// rewindIgnored says which files Git ignores now, asked as the person from
+// each file's nearest existing folder, as the extension's ignoredFiles does:
+// a file in no repository is not ignored, and one Git could not answer for is
+// unknown.
+func rewindIgnored(ctx context.Context, home string, files []string) (ignored, unknown map[string]bool) {
+	ignored, unknown = map[string]bool{}, map[string]bool{}
+	groups := map[string][]string{}
+	var folders []string
+	for _, file := range files {
+		dir := filepath.Dir(file)
+		for {
+			if info, err := os.Stat(dir); err == nil && info.IsDir() {
+				break
+			}
+			if parent := filepath.Dir(dir); parent != dir {
+				dir = parent
+			} else {
+				dir = ""
+				break
+			}
+		}
+		if dir == "" {
+			unknown[file] = true
+			continue
+		}
+		if _, ok := groups[dir]; !ok {
+			folders = append(folders, dir)
+		}
+		groups[dir] = append(groups[dir], file)
+	}
+	for _, dir := range folders {
+		group := groups[dir]
+		names := make([]string, len(group))
+		var input strings.Builder
+		for i, f := range group {
+			names[i], _ = filepath.Rel(dir, f)
+			input.WriteString(names[i] + "\x00")
+		}
+		out, err := nativeCommandInput(ctx, rewindGitLimit, io.Discard, input.String(), "/usr/bin/git", home, "",
+			"-c", "core.fsmonitor=false", "-C", dir, "check-ignore", "-z", "--stdin")
+		var exit *nativeCommandExit
+		switch {
+		case err == nil:
+			listed := map[string]bool{}
+			for _, n := range splitNUL(out) {
+				listed[n] = true
+			}
+			for i, f := range group {
+				if listed[names[i]] {
+					ignored[f] = true
+				}
+			}
+		case errors.As(err, &exit) && exit.Code == 1:
+			// None of them is ignored.
+		default:
+			// Outside every repository nothing is ignored; any other failure
+			// is no answer.
+			_, probe := nativeCommand(ctx, rewindGitLimit, io.Discard, "/usr/bin/git", home, "", "-C", dir, "rev-parse", "--is-inside-work-tree")
+			if !errors.As(probe, &exit) || exit.Code != 128 {
+				for _, f := range group {
+					unknown[f] = true
+				}
+			}
+		}
+	}
+	return ignored, unknown
 }
 
 // rewindCommitted says whether a commit on HEAD since the message changed

@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -496,5 +497,90 @@ func TestRewindPreviewNamesCommittedFiles(t *testing.T) {
 	body, _ := json.Marshal(p.Files)
 	if strings.Count(string(body), `"committed":true`) != 3 || strings.Contains(string(body), `"committed":false`) {
 		t.Fatalf("wire form: %s", body)
+	}
+}
+
+// The preview names what the extension's restore writes: a path the agent's
+// edits and writes named from the message on and Git does not ignore. A file
+// an earlier turn tracked and only the person changed since, and an ignored
+// file the agent wrote, are not named; a file outside the repository the
+// agent wrote is. A turn recorded before edits were named still names every
+// tracked path.
+func TestRewindPreviewScopesCopiesToTheAgentsEdits(t *testing.T) {
+	if _, err := os.Stat("/usr/bin/git"); err != nil {
+		t.Skip("git not installed")
+	}
+	home := t.TempDir()
+	cwd := filepath.Join(home, "w")
+	outside := filepath.Join(home, "notes")
+	store := filepath.Join(home, ".pi", "agent", "file-history", "s")
+	for _, d := range []string{cwd, outside, store} {
+		if err := os.MkdirAll(d, 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write := func(path, text string) {
+		t.Helper()
+		if err := os.WriteFile(path, []byte(text), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cmd := exec.Command("/usr/bin/git", "-C", cwd, "init", "-q")
+	cmd.Env = append(os.Environ(), "HOME="+home, "GIT_CONFIG_NOSYSTEM=1")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v %s", err, out)
+	}
+	write(filepath.Join(cwd, ".gitignore"), "ignored.txt\n")
+	write(filepath.Join(store, "was"), "was\n")
+	// As they are now: each differs from its copy.
+	write(filepath.Join(cwd, "a.txt"), "person\n")
+	write(filepath.Join(cwd, "b.txt"), "agent\n")
+	write(filepath.Join(cwd, "ignored.txt"), "agent\n")
+	write(filepath.Join(outside, "out.txt"), "agent\n")
+	out := filepath.Join(outside, "out.txt")
+	was := `{"backupFileName":"was","storeId":"s"}`
+	tracked := `{"a.txt":` + was + `,"b.txt":` + was + `,"ignored.txt":` + was + `,"` + out + `":` + was + `}`
+	session := func(edited string) *rewindSession {
+		t.Helper()
+		lines := []string{
+			`{"type":"session","version":3,"id":"11111111-1111-4111-8111-111111111111","timestamp":"2026-06-01T08:30:00Z","cwd":"` + cwd + `"}`,
+			`{"type":"message","id":"u1","parentId":null,"message":{"role":"user","content":"one"}}`,
+			`{"type":"custom","customType":"oh-rewind-checkpoint","id":"c1","parentId":"u1","data":{"version":1,"kind":"snapshot","userEntryId":"u1","cwd":"` + cwd + `","timestamp":"t","files":{},"edited":[]}}`,
+			`{"type":"custom","customType":"oh-rewind-checkpoint","id":"c2","parentId":"c1","data":{"version":1,"kind":"update","userEntryId":"u1","files":` + tracked + `,"edited":["a.txt","b.txt","ignored.txt","` + out + `"]}}`,
+			`{"type":"message","id":"a1","parentId":"c2","message":{"role":"assistant","content":[{"type":"text","text":"ok"}]}}`,
+			`{"type":"message","id":"u2","parentId":"a1","message":{"role":"user","content":"two"}}`,
+			`{"type":"custom","customType":"oh-rewind-checkpoint","id":"c3","parentId":"u2","data":{"version":1,"kind":"snapshot","userEntryId":"u2","cwd":"` + cwd + `","timestamp":"t","files":` + tracked + edited + `}}`,
+			`{"type":"custom","customType":"oh-rewind-checkpoint","id":"c4","parentId":"c3","data":{"version":1,"kind":"update","userEntryId":"u2","files":{},"edited":["b.txt","ignored.txt","` + out + `"]}}`,
+			`{"type":"message","id":"a2","parentId":"c4","message":{"role":"assistant","content":[{"type":"text","text":"ok"}]}}`,
+		}
+		path := filepath.Join(home, "s.jsonl")
+		write(path, strings.Join(lines, "\n")+"\n")
+		s, ok := readRewindSession(path, os.Geteuid())
+		if !ok {
+			t.Fatal("session unreadable")
+		}
+		return s
+	}
+	named := func(p rewindPreview) string {
+		names := []string{}
+		for _, f := range p.Files {
+			names = append(names, f.Path)
+		}
+		sort.Strings(names)
+		return strings.Join(names, " ")
+	}
+	p, ok := session(`,"edited":[]`).preview(home, "u2")
+	if want := "b.txt ~/notes/out.txt"; !ok || named(p) != want || p.FileErrors != 0 {
+		t.Fatalf("preview from u2: %q (%+v), want %q", named(p), p, want)
+	}
+	p, _ = session(`,"edited":[]`).preview(home, "u1")
+	if want := "a.txt b.txt ~/notes/out.txt"; named(p) != want {
+		t.Fatalf("preview from u1: %q, want %q", named(p), want)
+	}
+	// u2's checkpoint as an older extension wrote it: every tracked path
+	// that Git does not ignore.
+	p, _ = session(``).preview(home, "u2")
+	if want := "a.txt b.txt ~/notes/out.txt"; named(p) != want {
+		t.Fatalf("legacy preview from u2: %q, want %q", named(p), want)
 	}
 }

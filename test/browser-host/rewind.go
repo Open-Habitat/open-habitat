@@ -30,11 +30,11 @@ func (s *fakeSession) rewindCheckpoint(prompt string) {
 		return
 	}
 	user := s.lastMessage
-	s.append(map[string]any{"type": "custom", "customType": "oh-rewind-checkpoint", "data": map[string]any{"version": 1, "kind": "snapshot", "userEntryId": user, "cwd": s.cwd, "timestamp": "2026-11-06T09:20:00Z", "files": map[string]any{}}})
+	s.append(map[string]any{"type": "custom", "customType": "oh-rewind-checkpoint", "data": map[string]any{"version": 1, "kind": "snapshot", "userEntryId": user, "cwd": s.cwd, "timestamp": "2026-11-06T09:20:00Z", "files": map[string]any{}, "edited": []string{}}})
 	if !strings.Contains(prompt, "tiedosto") {
 		return
 	}
-	s.append(map[string]any{"type": "custom", "customType": "oh-rewind-checkpoint", "data": map[string]any{"version": 1, "kind": "update", "userEntryId": user, "files": map[string]any{rewindDemoFile: map[string]any{"backupFileName": nil, "storeId": s.id}}}})
+	s.append(map[string]any{"type": "custom", "customType": "oh-rewind-checkpoint", "data": map[string]any{"version": 1, "kind": "update", "userEntryId": user, "files": map[string]any{rewindDemoFile: map[string]any{"backupFileName": nil, "storeId": s.id}}, "edited": []string{rewindDemoFile}}})
 	_ = os.WriteFile(filepath.Join(s.cwd, rewindDemoFile), []byte("agentin kirjoittama\n"), 0600)
 }
 

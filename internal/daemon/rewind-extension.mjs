@@ -37,8 +37,11 @@
 // them: every file under the repository that the agent's runs changed from
 // that message on goes back, whatever tool changed it, and a snapshot taken
 // just before is the undo point. The per-file copies below then cover only
-// what the snapshots do not (ignored files, files outside the repository),
-// and are the whole mechanism for messages recorded before.
+// what the snapshots do not (files outside the repository, files a snapshot
+// skipped, a store that is gone), and are the whole mechanism for messages
+// recorded before. Either way only what the agent changed from that message
+// on goes back, and nothing Git ignores (Jari 21.11.2026): a file only the
+// person changed since, or a build output the agent wrote, stays as it is.
 //
 // What differs from better-pi-rewind: the daemon asks through one command
 // instead of a terminal selector; copies are named by their content, so an
@@ -47,6 +50,7 @@
 // to with its files and a files-only restore can be undone; a restore never
 // writes through a symlink; there is no Git reset.
 import { createHash, randomUUID } from 'node:crypto';
+import { spawn } from 'node:child_process';
 import { createReadStream, readFileSync } from 'node:fs';
 import { chmod, copyFile, lstat, mkdir, rename, stat, unlink } from 'node:fs/promises';
 import { homedir } from 'node:os';
@@ -133,12 +137,14 @@ function validFiles(files) {
 }
 const validUnavailable = (u) => u === undefined || (Array.isArray(u) && u.length <= 10000 && u.every((p) => typeof p === 'string' && p !== ''));
 export function isCheckpoint(data) {
-  return data?.version === VERSION && validUnavailable(data.unavailable) && (data.kind === 'snapshot' || data.kind === 'update') && ID.test(data.userEntryId ?? '') && validFiles(data.files) && (data.kind === 'update' || typeof data.cwd === 'string' && isAbsolute(data.cwd));
+  return data?.version === VERSION && validUnavailable(data.unavailable) && validUnavailable(data.edited) && (data.kind === 'snapshot' || data.kind === 'update') && ID.test(data.userEntryId ?? '') && validFiles(data.files) && (data.kind === 'update' || typeof data.cwd === 'string' && isAbsolute(data.cwd));
 }
 
 // better-pi-rewind's CheckpointHistory: one checkpoint per person's message,
-// the files it had copied, and every path ever tracked in the session with
-// its first copy (the state before anything here touched it).
+// the files it had copied, the paths its turn's edits and writes named, and
+// every path ever tracked in the session with its first copy (the state
+// before anything here touched it). A checkpoint written before turns named
+// their edits has no such list (edited is null).
 export class History {
   constructor(entries = []) {
     this.checkpoints = new Map();
@@ -150,12 +156,13 @@ export class History {
   apply(record) {
     if (record.kind === 'snapshot') {
       if (!this.checkpoints.has(record.userEntryId)) this.order.push(record.userEntryId);
-      this.checkpoints.set(record.userEntryId, { userEntryId: record.userEntryId, cwd: record.cwd, files: { ...record.files }, unavailable: new Set(record.unavailable ?? []) });
+      this.checkpoints.set(record.userEntryId, { userEntryId: record.userEntryId, cwd: record.cwd, files: { ...record.files }, unavailable: new Set(record.unavailable ?? []), edited: Array.isArray(record.edited) ? new Set(record.edited) : null });
     } else {
       const checkpoint = this.checkpoints.get(record.userEntryId);
       if (!checkpoint) return;
       Object.assign(checkpoint.files, record.files);
       for (const p of record.unavailable ?? []) if (!record.files[p]) checkpoint.unavailable.add(p);
+      for (const p of record.edited ?? []) checkpoint.edited?.add(p);
     }
     for (const [path, version] of Object.entries(record.files)) {
       this.tracked.add(path);
@@ -293,6 +300,95 @@ function trackedSince(branch, after) {
   return versions;
 }
 
+// What the agent's edits and writes named on a path of entries that starts
+// at a person's message: the turns from that message on. A turn recorded
+// before checkpoints named their edits (legacy) may have edited any path it
+// tracked, so for it every tracked path counts, as it always did.
+export function editedOn(entries) {
+  const paths = new Set();
+  let legacy = false;
+  for (const e of entries) {
+    if (e?.type !== 'custom' || e.customType !== CHECKPOINT || !isCheckpoint(e.data)) continue;
+    if (e.data.kind === 'snapshot' && !Array.isArray(e.data.edited)) legacy = true;
+    // An update is written only when an edit or write names a path.
+    if (e.data.kind === 'update') for (const p of [...Object.keys(e.data.files), ...(e.data.unavailable ?? [])]) paths.add(p);
+    for (const p of e.data.edited ?? []) paths.add(p);
+  }
+  return { paths, legacy };
+}
+
+// Git run as the person on their own workspace, read-only: the recorder's
+// rules for which configuration to trust do not apply to a question Git
+// answers from the workspace's own ignore files. Stopped after `ms`.
+function workspaceGit(args, cwd, input, ms = 5000) {
+  return new Promise((done) => {
+    const env = {};
+    for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('GIT_')) env[k] = v;
+    Object.assign(env, { GIT_TERMINAL_PROMPT: '0', GIT_CONFIG_NOSYSTEM: '1', GIT_OPTIONAL_LOCKS: '0', LC_ALL: 'C' });
+    let out = Buffer.alloc(0), settled = false;
+    const finish = (code) => { if (!settled) { settled = true; clearTimeout(timer); done({ code, stdout: out }); } };
+    let child;
+    try { child = spawn('git', ['-c', 'core.fsmonitor=false', '-C', cwd, ...args], { cwd, env, stdio: ['pipe', 'pipe', 'ignore'] }); } catch { return finish(null); }
+    const timer = setTimeout(() => { child.kill('SIGKILL'); finish(null); }, ms);
+    child.on('error', (e) => finish(e?.code === 'ENOENT' ? 'unavailable' : null));
+    child.stdout.on('data', (c) => { if (out.length < 4 << 20) out = Buffer.concat([out, c]); });
+    child.on('close', (code) => finish(code));
+    child.stdin.on('error', () => {});
+    child.stdin.end(input ?? '');
+  });
+}
+async function nearestFolder(file) {
+  for (let d = dirname(file); ; d = dirname(d)) {
+    try { if ((await stat(d)).isDirectory()) return d; } catch { /* Not there (any more): its parent. */ }
+    if (dirname(d) === d) return undefined;
+  }
+}
+// The files (absolute) Git ignores now, asked from each file's nearest
+// existing folder, so a file in another or a nested repository is asked
+// there and one in no repository is not ignored. A file Git could not
+// answer for is unknown; the caller leaves it alone.
+export async function ignoredFiles(files) {
+  const ignored = new Set(), unknown = new Set(), groups = new Map();
+  for (const file of files) {
+    const folder = await nearestFolder(file);
+    if (!folder) { unknown.add(file); continue; }
+    if (!groups.has(folder)) groups.set(folder, []);
+    groups.get(folder).push(file);
+  }
+  for (const [folder, group] of groups) {
+    const names = group.map((f) => relative(folder, f));
+    const r = await workspaceGit(['check-ignore', '-z', '--stdin'], folder, names.join('\0') + '\0');
+    if (r.code === 0) {
+      const listed = new Set(r.stdout.toString('utf8').split('\0').filter(Boolean));
+      for (const [i, f] of group.entries()) if (listed.has(names[i])) ignored.add(f);
+    } else if (r.code !== 1) {
+      // Outside every repository nothing is ignored; any other failure
+      // (a timeout, a folder Git refuses) is no answer.
+      const inside = r.code === 'unavailable' ? { code: 'unavailable' } : await workspaceGit(['rev-parse', '--is-inside-work-tree'], folder);
+      if (inside.code !== 128 && inside.code !== 'unavailable') for (const f of group) unknown.add(f);
+    }
+  }
+  return { ignored, unknown };
+}
+
+// Which of the per-file copies' paths a restore may write: one an edit or a
+// write named in `entries` (see editedOn) that Git does not ignore. The rest
+// were changed, if at all, by somebody else, or are ignored files that are
+// never touched (Jari 21.11.2026). A path whose ignore status Git could not
+// tell is left as it is and counted as an error.
+export async function fallbackScope(paths, cwd, entries) {
+  const { paths: edited, legacy } = editedOn(entries);
+  const named = paths.filter((p) => legacy || edited.has(p));
+  const { ignored, unknown } = await ignoredFiles(named.map((p) => resolveTracking(cwd, p)));
+  const scope = new Set(), errors = [];
+  for (const p of named) {
+    const file = resolveTracking(cwd, p);
+    if (unknown.has(file)) errors.push({ path: p, error: 'Git could not tell whether the file is ignored' });
+    else if (!ignored.has(file)) scope.add(p);
+  }
+  return { scope, errors };
+}
+
 // ---------- Turn snapshots ----------
 
 // The recorder's module is TypeScript; it is loaded the first time a
@@ -401,23 +497,26 @@ export default function (pi) {
     if (!rewindEnabled()) { s.current = undefined; return; }
     const captured = await captureAll(s.history.paths(), ctx.cwd, dir, s.storeId);
     const unavailable = captured.errors.map((e) => e.path);
-    append({ version: VERSION, kind: 'snapshot', userEntryId: entry.id, cwd: ctx.cwd, timestamp: new Date().toISOString(), files: captured.files, ...(unavailable.length ? { unavailable } : {}) });
+    append({ version: VERSION, kind: 'snapshot', userEntryId: entry.id, cwd: ctx.cwd, timestamp: new Date().toISOString(), files: captured.files, edited: [], ...(unavailable.length ? { unavailable } : {}) });
     s.current = entry.id;
   });
-  // Before an edit or write first touches a file in a turn, copy it.
+  // Before an edit or write first touches a file in a turn, copy it, and
+  // name it as edited in this turn: that is what a restore may give back.
   pi.on('tool_call', async (event, ctx) => {
     if (event.toolName !== 'edit' && event.toolName !== 'write') return;
     const s = current(ctx);
     const checkpoint = s.current ? s.history.get(s.current) : undefined;
     if (!checkpoint) return;
-    const files = {}, unavailable = [];
+    const files = {}, unavailable = [], edited = [];
     for (const input of toolInputPaths(event.toolName, event.input)) {
       const absolute = toolPath(input, ctx.cwd);
       const path = trackingPath(checkpoint.cwd, absolute);
-      if (checkpoint.files[path] || checkpoint.unavailable.has(path) || files[path]) continue;
+      if (edited.includes(path) || checkpoint.edited?.has(path)) continue;
+      edited.push(path);
+      if (checkpoint.files[path] || checkpoint.unavailable.has(path)) continue;
       try { files[path] = await captureFile(absolute, dir, s.storeId); } catch { unavailable.push(path); }
     }
-    if (Object.keys(files).length || unavailable.length) append({ version: VERSION, kind: 'update', userEntryId: checkpoint.userEntryId, files, ...(unavailable.length ? { unavailable } : {}) });
+    if (edited.length) append({ version: VERSION, kind: 'update', userEntryId: checkpoint.userEntryId, files, edited, ...(unavailable.length ? { unavailable } : {}) });
   });
 
   async function rewind(args, ctx, s) {
@@ -438,11 +537,15 @@ export default function (pi) {
       // The files as the agent left them, so this continuation can be
       // returned to with its files, or a files-only restore undone.
       // A file that cannot be copied now is left as it is.
+      // Every tracked path is copied (a switch back needs them), but only
+      // what the agent's edits and writes named from this message on, and
+      // Git does not ignore, is restored.
       const cwd = checkpoint?.cwd ?? ctx.cwd;
       const tracked = checkpoint ? s.history.paths().filter((p) => !snap?.covered.has(resolveTracking(cwd, p))) : [];
       before = await captureAll(tracked, cwd, dir, s.storeId);
-      restore = checkpoint ? await restoreVersions(checkpointVersions(s.history, checkpoint).filter(([p]) => before.files[p]), cwd, dir) : { changed: [], errors: [] };
-      restore.errors.push(...before.errors);
+      const { scope, errors } = await fallbackScope(tracked, cwd, later);
+      restore = checkpoint ? await restoreVersions(checkpointVersions(s.history, checkpoint).filter(([p]) => scope.has(p) && before.files[p]), cwd, dir) : { changed: [], errors: [] };
+      restore.errors.push(...before.errors.filter((e) => scope.has(e.path)), ...errors);
     }
     const data = { version: VERSION, action: args.conversation ? 'rewind' : 'files', at: entry.id, ...counts(later), cwd: checkpoint?.cwd ?? ctx.cwd, files: restore ? restoredFiles(restore, snap) : null, ...(before ? { before: before.files } : {}), ...(snap?.undo ? { snapshot: snap.undo } : {}) };
     if (args.conversation) {
@@ -503,8 +606,15 @@ export default function (pi) {
       const paths = [...new Set([...Object.keys(marker.data.before), ...trackedSince(branch, marker.id).keys()])].filter(keep);
       before = await captureAll(paths, cwd, dir, s.storeId);
       const versions = new Map([...trackedSince(branch, marker.id), ...Object.entries(marker.data.before)]);
-      restore = await restoreVersions([...versions].filter(([p]) => keep(p) && before.files[p]), cwd, dir);
-      restore.errors.push(...before.errors);
+      // What goes back: what the rewind's copies changed (its own writes,
+      // ignored or not), and what this branch's edits and writes named since
+      // and Git does not ignore. A file the person changed since and neither
+      // touched stays.
+      const own = Array.isArray(marker.data.files?.paths) ? marker.data.files.paths.filter((p) => typeof p === 'string') : [];
+      const { scope, errors } = await fallbackScope(paths, cwd, branch.slice(branch.findIndex((e) => e.id === marker.id) + 1));
+      for (const p of own) if (keep(p)) scope.add(p);
+      restore = await restoreVersions([...versions].filter(([p]) => scope.has(p) && keep(p) && before.files[p]), cwd, dir);
+      restore.errors.push(...before.errors.filter((e) => scope.has(e.path)), ...errors.filter((e) => !scope.has(e.path)));
     }
     const result = await ctx.navigateTree(target.id);
     if (result.cancelled) {
