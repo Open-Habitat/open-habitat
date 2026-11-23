@@ -3,7 +3,7 @@ created: 2026-11-23
 updated: 2026-11-23
 type: feature
 reporter: jari
-status: open
+status: testing
 priority: normal
 lane: web-search-key
 lane_seq: 2
@@ -37,3 +37,9 @@ key on Asetukset › Tiedot agenteille, both working like the Soniox speech key.
   references regenerated.
 - Focused Go/web checks, touched and new browser specs; independent review (gateway key
   storage and copies cross an authority boundary).
+
+## Comments
+
+### 2026-11-23T19:44:56Z · @agent
+
+Built as round 3 direction A (Brave only). A live check with a real Brave key on the test server remains; result.md says what to try.
