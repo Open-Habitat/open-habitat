@@ -32,7 +32,7 @@ add('/etc/open-habitat/fixture-ca.crt', (run/'tls.crt').read_bytes())
 # reads. This is NOT the pinned Pi CLI and must not count as controller proof.
 pi_root='/opt/open-habitat/fixture-pi'
 pi_pkg=pi_root+'/node_modules/@earendil-works/pi-coding-agent'
-add(pi_root+'/bin/node', '#!/bin/sh\nif [ "$1" = "--version" ]; then echo v22.21.1; else echo \'{"type":"status","state":"usable"}\'; fi\n', '0755')
+add(pi_root+'/bin/node', '#!/bin/sh\nif [ "$1" = "--version" ]; then echo v22.23.5; else echo \'{"type":"status","state":"usable"}\'; fi\n', '0755')
 add(pi_pkg+'/package.json', json.dumps({'name':'@earendil-works/pi-coding-agent','version':'1.5.2','exports':{'.':{'import':'./dist/index.js'}},'bin':{'pi':'dist/bundle/cli.js'}}))
 add(pi_pkg+'/dist/index.js', '// routing fixture; never runs a prompt\n')
 add(pi_pkg+'/dist/bundle/cli.js', '// routing fixture; never runs a prompt\n')

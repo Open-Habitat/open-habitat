@@ -133,7 +133,7 @@ func (p *PiDevice) validateRuntime() error {
 	if err != nil {
 		return errors.New("Node runtime unavailable")
 	}
-	if strings.TrimSpace(string(output)) != "v22.21.1" {
+	if strings.TrimSpace(string(output)) != "v22.23.5" {
 		return fmt.Errorf("%w: Node", errRuntimeUnsupported)
 	}
 	return nil

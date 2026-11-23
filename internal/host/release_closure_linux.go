@@ -161,7 +161,7 @@ func validCoreRuntime(a ReleaseArtifact) bool {
 	for _, c := range a.Closure.Components {
 		components[c.Name] = c
 	}
-	if components["node"].Version != "22.21.1" || files["runtime/bin/node"].Component != "node" {
+	if components["node"].Version != "22.23.5" || files["runtime/bin/node"].Component != "node" {
 		return false
 	}
 	for name, version := range map[string]string{"@earendil-works/pi-coding-agent": "1.5.2", "@aliou/pi-processes": "0.10.9", "@open-habitat/pi-web-search": "0.2.0", "@open-habitat/pi-page-reader": "0.1.0", "pi-claude-bridge": "0.12.0", "@anthropic-ai/claude-agent-sdk": "0.3.321", "@aliou/sh": "0.3.4", "playwright-core": "1.58.0", "@mozilla/readability": "0.6.0", "turndown": "7.2.0"} {

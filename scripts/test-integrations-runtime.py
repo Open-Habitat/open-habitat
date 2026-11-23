@@ -109,7 +109,7 @@ with tempfile.TemporaryDirectory(prefix='oh-ms-package-', dir=os.environ.get('TM
     subprocess.run([pi, 'mcp', 'logout', 'fixture'], env=tool_env, check=True, capture_output=True, timeout=30)
     assert 'mcp__fixture|http://127.0.0.1:1/mcp' not in json.loads(auth.read_text())
     env = {'HOME': str(root / 'home'), 'PATH': '/usr/bin:/bin', 'LANG': 'C.UTF-8', 'MS365_MCP_USE_KEYTAR': 'false', 'MS365_MCP_TOKEN_CACHE_PATH': str(root / 'home/cache'), 'MS365_MCP_SELECTED_ACCOUNT_PATH': str(root / 'home/selected')}
-    assert subprocess.check_output([runtime / 'bin/node', '--version'], env=env, text=True).strip() == 'v22.21.1'
+    assert subprocess.check_output([runtime / 'bin/node', '--version'], env=env, text=True).strip() == 'v22.23.5'
     result = subprocess.run([runtime / 'bin/microsoft-native'], input='{}', text=True, env=env, capture_output=True, timeout=30)
     assert result.returncode == 1 and json.loads(result.stdout) == {'success': False, 'reason': 'native_failed'}
     accounts = subprocess.check_output([runtime / 'bin/ms-365-mcp-server', '--list-accounts'], env=env, text=True, stderr=subprocess.DEVNULL, timeout=30)

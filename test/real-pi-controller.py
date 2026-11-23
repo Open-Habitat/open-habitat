@@ -174,7 +174,7 @@ try:
     with open('/etc/group','a') as f:f.write('open-habitat-gateway:x:21003:\n')
     RUNTIME.mkdir(parents=True)
     with tarfile.open('/fixture/node.tar.xz') as archive:
-        node = archive.extractfile('node-v22.21.1-linux-x64/bin/node')
+        node = archive.extractfile('node-v22.23.5-linux-x64/bin/node')
         (RUNTIME/'bin').mkdir()
         with (RUNTIME/'bin/node').open('wb') as f:shutil.copyfileobj(node,f)
     (RUNTIME/'bin/node').chmod(0o755)
@@ -184,7 +184,7 @@ try:
         if path.is_symlink(): continue
         mode = path.stat().st_mode
         path.chmod(0o755 if path.is_dir() or mode & 0o111 else 0o644)
-    check(subprocess.check_output([str(RUNTIME/'bin/node'),'--version']).strip()==b'v22.21.1', 'node pin')
+    check(subprocess.check_output([str(RUNTIME/'bin/node'),'--version']).strip()==b'v22.23.5', 'node pin')
     check(json.loads((PKG/'package.json').read_text())['version']=='0.85.1','Pi pin')
     check(all(p.lstat().st_uid==0 and (p.is_symlink() or not p.stat().st_mode & 0o022) for p in [RUNTIME,*RUNTIME.rglob('*')]),'immutable root-owned runtime')
     put('/opt/open-habitat/pi-runtime.json',{'node':str(RUNTIME/'bin/node'),'entry':str(PKG/'dist/index.js'),'manifest':str(PKG/'package.json')})
@@ -456,7 +456,7 @@ try:
     for name in NAMES:
         home=pathlib.Path('/home')/name
         check(subprocess.run(['/usr/bin/python3','-c',"import pathlib,sys;sys.exit(not any(pathlib.Path.home().joinpath('.pi/agent/sessions').rglob('*.jsonl')))"] ,preexec_fn=drop(UIDS[NAMES.index(name)]),env={'HOME':str(home),'PATH':'/usr/bin:/bin'}).returncode==0,'native Pi JSONL '+name)
-    print(json.dumps({'status':'passed','scope':'rootless-real-pi-controller','uids':[21001,21002,21003],'native_pi':'0.85.1','node':'22.21.1','provider_calls':len(Model.calls),'oauth':'loopback TLS synthetic','broker':'static canonical protocol fixture','daemon_restart':'explicit_continuation_with_lock_and_history_proof','systemd':False,'browser_chromium':False}))
+    print(json.dumps({'status':'passed','scope':'rootless-real-pi-controller','uids':[21001,21002,21003],'native_pi':'0.85.1','node':'22.23.5','provider_calls':len(Model.calls),'oauth':'loopback TLS synthetic','broker':'static canonical protocol fixture','daemon_restart':'explicit_continuation_with_lock_and_history_proof','systemd':False,'browser_chromium':False}))
 except Exception as e:
     import traceback
     print(json.dumps({'status':'failed','reason':str(e)[:220], 'line':traceback.extract_tb(e.__traceback__)[-1].lineno}),file=sys.stderr)

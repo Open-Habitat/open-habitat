@@ -3,7 +3,7 @@ created: 2026-11-13
 updated: 2026-11-23
 type: chore
 reporter: runtime-pin-watch
-status: open
+status: done
 priority: normal
 labels:
 - runtime-pin
@@ -14,6 +14,7 @@ source_ref: runtime-pin:node@22.23.5
 lane: runtime-pins
 lane_seq: 6
 preparation: ready
+closed: 2026-11-23
 ---
 
 # Runtime pin: node 22.23.5 is available (pinned 22.21.1)

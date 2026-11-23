@@ -71,7 +71,7 @@ def build(work, out, release_target, inputs=Path('/inputs')):
     node = work / node_pin['prefix']
     put(node / 'bin/node', 'runtime/bin/node', 'node')
     put(node / 'LICENSE', 'licenses/node.txt', 'node')
-    components.append(dict(name='node', version='22.21.1', kind='node', license_files=['licenses/node.txt']))
+    components.append(dict(name='node', version='22.23.5', kind='node', license_files=['licenses/node.txt']))
     lock = json.loads((work / 'npm/package-lock.json').read_text())
     patch_bridge(work / 'npm/node_modules', inputs)
     installed = {}

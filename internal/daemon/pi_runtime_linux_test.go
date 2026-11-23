@@ -33,7 +33,7 @@ func TestTrustedPiRuntime(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	write(p.Node, "#!/bin/sh\nprintf 'v22.21.1\\n'\n", 0755)
+	write(p.Node, "#!/bin/sh\nprintf 'v22.23.5\\n'\n", 0755)
 	write(p.Entry, "export const ModelRuntime = {};\n", 0644)
 	good := `{"name":"@earendil-works/pi-coding-agent","version":"1.5.2","bin":{"pi":"dist/bundle/cli.js"},"exports":{".":{"import":"./dist/index.js"}}}`
 	write(p.Manifest, good, 0644)
@@ -75,7 +75,7 @@ func TestTrustedPiRuntime(t *testing.T) {
 	} {
 		// Restore each fixture before the next substitution.
 		write(p.Manifest, good, 0644)
-		write(p.Node, "#!/bin/sh\necho v22.21.1\n", 0755)
+		write(p.Node, "#!/bin/sh\necho v22.23.5\n", 0755)
 		os.Chmod(filepath.Join(root, "bin"), 0755)
 		os.Remove(filepath.Join(pkg, "dist", "imported.js"))
 		os.Remove(filepath.Join(pkg, "external"))
