@@ -42,3 +42,7 @@ Material for a design discussion with Jari, not an implementation plan.
 ### 2026-11-23T18:53:42Z · @jari
 
 Jari 23.11.2026: approved the recommended bounded trial (approach 1: existing Mac tools over Omat koneet, synthetic data). Questions 1–3 not answered; trial defaults: the Mac awake and logged in is enough, Notes read + new plain notes, existing Omat koneet trust with per-app consent. Next action (approved): the trial on Jari's desktop Mac.
+
+### 2026-11-23T18:54:22Z · @jari
+
+Jari 23.11.2026 answered the research questions: (1) working while the chosen Mac is awake and logged in is enough; (2) Notes: reading selected notes and creating new plain notes is enough to start; (3) the existing Omat koneet account-wide trust with per-app consent is acceptable.
