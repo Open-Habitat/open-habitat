@@ -1,6 +1,6 @@
 ---
 created: 2026-11-22
-updated: 2026-11-22
+updated: 2026-11-23
 type: improvement
 reporter: jari
 status: testing
@@ -32,3 +32,7 @@ show their icon choice for it.
 ### 2026-11-22T12:34:18Z · @jari
 
 Jari 22.11.2026: the icons get their own prototype round: Tuotokset vs Oma selain (both globes today; rounds proposed opposite fixes), and the Agentin käytössä shield with an exclamation mark is odd too. Cover the rail's place icons and their state badges.
+
+### 2026-11-23T05:43:12Z · @jari
+
+Jari 23.11.2026: Etusivu (home) uses A Esineet's icon; the other places (Tuotokset, Oma selain, Agentin käytössä, Selitä) use B Merkitykset's icons. No duotone (C) now; all icons get a duotone review together later. Next action: implement directly (no experimental switch).
