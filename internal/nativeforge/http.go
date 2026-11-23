@@ -144,13 +144,32 @@ func (c HTTP) Probe(ctx context.Context, b Base, path string, header http.Header
 
 const probeRefusal = 512
 
+// Delete performs one DELETE of base+path and answers its status only. It
+// exists for one write: a person's removal revoking their own GitLab token
+// with that token (ADR 0037); no other request may use it.
+func (c HTTP) Delete(ctx context.Context, b Base, path string, header http.Header) (int, error) {
+	ctx, cancel := context.WithTimeout(ctx, requestTimeout)
+	defer cancel()
+	resp, err := c.send(ctx, http.MethodDelete, b, path, header)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, probeRefusal))
+	return resp.StatusCode, nil
+}
+
 // do sends one GET of base+path to the base's own address. A redirect is
 // ErrRedirect; the caller closes the body of any other answer.
 func (c HTTP) do(ctx context.Context, b Base, path string, header http.Header) (*http.Response, error) {
+	return c.send(ctx, http.MethodGet, b, path, header)
+}
+
+func (c HTTP) send(ctx context.Context, method string, b Base, path string, header http.Header) (*http.Response, error) {
 	if !b.Valid() {
 		return nil, ErrInvalidAddress
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, b.String()+path, nil)
+	req, err := http.NewRequestWithContext(ctx, method, b.String()+path, nil)
 	if err != nil {
 		return nil, ErrInvalidAddress
 	}

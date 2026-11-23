@@ -218,3 +218,26 @@ func (c *Client) Verify(ctx context.Context, b Base, token string) (Account, Tok
 	}
 	return account, info, nil
 }
+
+// RevokeSelf revokes the token it is called with, at GitLab, with that token
+// (personal_access_tokens/self). It is a person's removal's one write to
+// GitLab (ADR 0037). A token GitLab already refuses is ended.
+func (c *Client) RevokeSelf(ctx context.Context, b Base, token string) error {
+	if !b.Valid() {
+		return ErrInvalidAddress
+	}
+	if !nativeforge.ValidToken(token) {
+		return ErrInvalidToken
+	}
+	status, err := nativeforge.HTTP{Resolve: c.resolve, Roots: c.roots}.Delete(ctx, b, "/api/v4/personal_access_tokens/self", http.Header{"Private-Token": {token}})
+	if err != nil {
+		return err
+	}
+	switch status {
+	case http.StatusNoContent, http.StatusOK, http.StatusUnauthorized:
+		return nil
+	case http.StatusForbidden:
+		return ErrScope
+	}
+	return ErrProtocol
+}

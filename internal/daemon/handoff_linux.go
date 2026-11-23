@@ -118,6 +118,7 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	mux.Handle(AccountKeysPath, AccountKeysHandler(cfg, server.TrustedPeer))
 	mux.Handle(StorageBreakdownPath, StorageBreakdownHandler(cfg, server.TrustedPeer))
 	mux.Handle(OwnMachinesPath, OwnMachinesHandler(cfg, server.TrustedPeer))
+	ownMachines := newOwnMachineEnv(cfg)
 	mux.Handle(FirstRoutePath, FirstRouteHandler(cfg, server.TrustedPeer))
 	mux.Handle(AgentInstructionsPath, AgentInstructionsHandler(cfg, server.TrustedPeer))
 	mux.Handle(WorkspaceFilesPath, WorkspaceFilesHandler(cfg, server.TrustedPeer))
@@ -158,6 +159,7 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	for _, path := range []string{integrations.ListPath, integrations.AccountsPath, integrations.LoginPath, integrations.GiteaPath, integrations.GiteaReposPath, integrations.GitLabPath, integrations.GitLabReposPath, integrations.GitLabTokensPath, integrations.FilesPath} {
 		mux.Handle(path, integrationRoutes)
 	}
+	mux.Handle(DisconnectAllPath, DisconnectAllHandler(cfg, server.TrustedPeer, catalog, ownMachines))
 	mux.Handle("/api/v1/conversations", controller)
 	mux.Handle("/api/v1/conversations/", controller)
 	defer controller.shutdown()

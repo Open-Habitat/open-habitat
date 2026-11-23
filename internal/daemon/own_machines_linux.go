@@ -1524,3 +1524,31 @@ func (e ownMachineEnv) actConfig(ctx context.Context, view ownMachinesView, req 
 	}
 	return 0, ""
 }
+
+// logout logs the person's own node out of their tailnet, then disconnects
+// it as the page's disconnect does, before the person's removal (ADR 0037).
+// It answers "" when the person has no node, revoked when tailscaled
+// accepted the logout and the node is gone, failed otherwise.
+func (e ownMachineEnv) logout(ctx context.Context) string {
+	ownMachinesWriter.Lock()
+	defer ownMachinesWriter.Unlock()
+	if !e.unitInstalled() && e.nodeStopped(ctx) {
+		return ""
+	}
+	outcome := "revoked"
+	if e.nodeStopped(ctx) {
+		// A stopped node cannot be logged out; its key goes with its state.
+		outcome = "failed"
+	} else {
+		bounded, cancel := context.WithTimeout(ctx, 15*time.Second)
+		_, err := localAPI{e.socket()}.do(bounded, http.MethodPost, "logout", 4096)
+		cancel()
+		if err != nil {
+			outcome = "failed"
+		}
+	}
+	if e.disconnect(ctx) != nil {
+		return "failed"
+	}
+	return outcome
+}
