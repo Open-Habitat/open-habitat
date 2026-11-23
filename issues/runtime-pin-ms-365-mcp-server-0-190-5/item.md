@@ -3,7 +3,7 @@ created: 2026-11-23
 updated: 2026-11-23
 type: chore
 reporter: runtime-pin-watch
-status: untriaged
+status: open
 priority: normal
 labels:
 - runtime-pin
@@ -11,6 +11,9 @@ labels:
 provenance: other
 provenance_detail: runtime pin watch
 source_ref: runtime-pin:@softeria/ms-365-mcp-server@0.190.5
+lane: runtime-pins
+lane_seq: 15
+preparation: pending
 ---
 
 # Runtime pin: @softeria/ms-365-mcp-server 0.190.5 is available (pinned 0.170.1)

@@ -3,12 +3,15 @@ created: 2026-11-23
 updated: 2026-11-23
 type: chore
 reporter: runtime-pin-watch
-status: untriaged
+status: open
 priority: normal
 labels: [runtime-pin]
 provenance: other
 provenance_detail: runtime pin watch
 source_ref: runtime-pin:@earendil-works/pi-coding-agent@1.6.0
+lane: runtime-pins
+lane_seq: 16
+preparation: ready
 ---
 
 # Runtime pin: @earendil-works/pi-coding-agent 1.6.0 is available (pinned 1.5.2)
