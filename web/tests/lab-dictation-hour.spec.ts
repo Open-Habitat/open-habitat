@@ -78,11 +78,13 @@ for (const width of [1440, 390]) {
         "Synthetic dictated text.",
       );
       await page.clock.fastForward("59:00");
+      await expect(page.getByTestId("dictation-ceiling")).toHaveCount(0);
+      await page.clock.fastForward("01:00:00");
       await expect(page.getByTestId("dictation-ceiling")).toBeVisible();
       await page.setViewportSize({ width, height: 900 });
       const capture = async (name: string) => {
         if (process.env.OH_VISUAL_CAPTURE !== "1") return;
-        const base = `../issues/dictation-hour-chain/evidence/${name}-${width}-${language}`;
+        const base = `/var/tmp/agent-keep/rail-icons-dictation-sounds/dictation-${name}-${width}-${language}`;
         await snapshot(page, base, { labOrigin: new URL(page.url()).origin });
         await writeFile(
           `${base}.html`,

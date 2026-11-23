@@ -41,12 +41,12 @@ export type DictationView = {
 };
 
 /** Dictation-wide limit, separate from each key's ten-minute stream. */
-export const ceilingMs = 3_600_000;
+export const ceilingMs = 7_200_000;
 export const chainAtMs = 570_000;
 export const chainLatestMs = 590_000;
 /** The note above the field appears a minute before the end. */
 export const warnAtMs = ceilingMs - 60_000;
-/** The microphone stops at the hour; final replies may arrive afterwards. */
+/** The microphone stops at two hours; final replies may arrive afterwards. */
 export const stopAtMs = ceilingMs;
 /** A longer pause in speech starts a new paragraph. */
 export const paragraphGapMs = 4_000;

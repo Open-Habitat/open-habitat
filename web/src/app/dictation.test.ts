@@ -5,8 +5,6 @@ import {
   Dictation,
   type DictationDeps,
   type DictationView,
-  stopAtMs,
-  warnAtMs,
 } from "./dictation";
 import { SpeechError, type SpeechSession } from "./speech";
 
@@ -198,13 +196,13 @@ describe("Dictation", () => {
     expect(h.d.view).toMatchObject({ ended: "dropped", final: "Sana" });
   });
 
-  it("stops at the hour and waits for Soniox's last words", async () => {
+  it("stops at two hours and waits for Soniox's last words", async () => {
     const h = harness([session(1)]);
     await h.d.start();
     const ws = h.sockets[0];
     ws?.open();
     ws?.reply({ tokens: [{ text: " Alku", is_final: true }] });
-    h.advance(stopAtMs);
+    h.advance(7_200_000);
     expect(h.d.view.phase).toBe("finishing");
     // The empty text frame ends the stream.
     expect(ws?.texts().at(-1)).toBe("");
@@ -385,14 +383,14 @@ describe("Dictation", () => {
     h.d.cancel();
   });
 
-  it("warns once per threshold across a complete hour of chained streams", async () => {
+  it("warns once per threshold across two hours of chained streams", async () => {
     vi.useFakeTimers();
-    const h = harness(Array.from({ length: 7 }, (_, n) => session(n)));
+    const h = harness(Array.from({ length: 13 }, (_, n) => session(n)));
     await h.d.start();
     h.socket(0).open();
     let at = 0;
-    // Six rollovers, with time for the final reply at every boundary.
-    for (let n = 0; n < 6; n++) {
+    // Twelve rollovers, with time for the final reply at every boundary.
+    for (let n = 0; n < 12; n++) {
       h.advance(chainLatestMs);
       at += chainLatestMs;
       h.socket(n).reply({
@@ -402,12 +400,14 @@ describe("Dictation", () => {
       await vi.advanceTimersByTimeAsync(0);
       h.socket(n + 1).open();
     }
-    expect(at).toBe(warnAtMs);
+    expect(h.d.view.phase).toBe("live");
+    expect(h.d.view.warning).toBeUndefined();
+    h.advance(7_140_000 - at);
     h.advance(50_000);
     h.advance(500);
     h.advance(9500);
     expect(h.d.view.phase).toBe("finishing");
-    h.socket(6).reply({
+    h.socket(12).reply({
       tokens: [{ text: " end", is_final: true }],
       finished: true,
     });
@@ -418,9 +418,9 @@ describe("Dictation", () => {
     expect(transitions).toEqual(["minute", "ten-seconds", "limit"]);
     expect(h.d.view).toMatchObject({
       ended: "ceiling",
-      final: "0 1 2 3 4 5 end",
+      final: "0 1 2 3 4 5 6 7 8 9 10 11 end",
     });
-    expect(h.mintCount()).toBe(7);
+    expect(h.mintCount()).toBe(13);
   });
 
   it("reports a refused key or a stream refused at its start as a failed start", async () => {
