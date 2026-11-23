@@ -63,7 +63,7 @@ async function harness({ repository = true } = {}) {
   // One turn: the person's message, its start snapshot, the agent's writes
   // through the write tool (copied first by the hook), an end snapshot and
   // a reply.
-  const turn = async (id, writes = []) => {
+  const turn = async (id, writes = [], shell = async () => {}) => {
     add({ id, type: 'message', message: { role: 'user', content: [{ type: 'text', text: id }] } });
     await snapshot(id, 'start');
     await hooks.get('message_end')({ message: { role: 'user' } }, ctx);
@@ -72,6 +72,7 @@ async function harness({ repository = true } = {}) {
       await hooks.get('tool_call')({ toolName: 'write', input: { path, content } }, ctx);
       await writeFile(path.startsWith('/') ? path : join(ws, path), content);
     }
+    await shell();
     await snapshot(id, 'end');
     add({ id: `${id}-reply`, type: 'message', message: { role: 'assistant', content: [{ type: 'text', text: 'done' }] } });
   };
@@ -203,5 +204,39 @@ test('a turn recorded before edits were named still restores every path it track
     await writeFile(join(h.ws, 'a.txt'), 'changed in u2, by someone\n');
     assert.equal((await h.command({ action: 'rewind', entry: 'u2', conversation: false, files: true })).restored, 1);
     assert.equal(await h.read('a.txt'), 'initial\n');
+  } finally { await h.close(); }
+});
+
+test('a broken repository configuration is no answer about ignored files, not "no repository"', async () => {
+  const { ignoredFiles } = await import('../rewind-extension.mjs');
+  const h = await harness();
+  try {
+    const plain = join(h.outside, 'out.txt');
+    assert.deepEqual(await ignoredFiles([join(h.ws, 'ignored.txt'), join(h.ws, 'a.txt'), plain]), { ignored: new Set([join(h.ws, 'ignored.txt')]), unknown: new Set() });
+    // Git exits 128 for this as it does outside a repository.
+    await writeFile(join(h.ws, '.git', 'config'), '[core\nbroken');
+    const broken = await ignoredFiles([join(h.ws, 'ignored.txt'), plain]);
+    assert.deepEqual([...broken.unknown], [join(h.ws, 'ignored.txt')]);
+    assert.equal(broken.ignored.size, 0);
+  } finally { await h.close(); }
+});
+
+test('a snapshot never writes a file Git ignores now, which its undo point could not hold', async () => {
+  const h = await harness();
+  try {
+    await writeFile(join(h.ws, 'conf.local'), 'at the message\n');
+    // A command in the turn removes the untracked file and ignores it.
+    await h.turn('u1', [], async () => {
+      await rm(join(h.ws, 'conf.local'));
+      await writeFile(join(h.ws, '.gitignore'), 'ignored.txt\nconf.local\n');
+    });
+    await writeFile(join(h.ws, 'conf.local'), 'written later, ignored now\n');
+    const done = await h.command({ action: 'rewind', entry: 'u1', conversation: false, files: true });
+    assert.equal(done.outcome, 'done');
+    assert.equal(await h.read('conf.local'), 'written later, ignored now\n');
+    assert.equal(await h.read('.gitignore'), 'ignored.txt\n', 'the rest of the turn goes back');
+    const undone = await h.command({ action: 'undo', marker: h.markers().at(-1).id });
+    assert.equal(undone.outcome, 'done');
+    assert.equal(await h.read('conf.local'), 'written later, ignored now\n', 'undo leaves it too');
   } finally { await h.close(); }
 });

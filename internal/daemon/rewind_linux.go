@@ -112,6 +112,9 @@ const (
 	maxRewindBranchEntries = 200
 	// How long one preview may spend asking Git which files were committed.
 	rewindGitLimit = 3 * time.Second
+	// How long one question about ignored files may take, as in the
+	// extension (workspaceGit).
+	rewindIgnoreLimit = 5 * time.Second
 )
 
 // A copy's name and store as the extension writes them (better-pi-rewind's
@@ -560,14 +563,16 @@ func (s *rewindSession) preview(home, entry string) (rewindPreview, bool) {
 	sort.Strings(paths)
 	files := make([]string, 0, len(paths))
 	for _, p := range paths {
-		files = append(files, rewindTrackedFile(checkpoint.cwd, p))
+		if file := rewindTrackedFile(checkpoint.cwd, p); !covered[file] {
+			files = append(files, file)
+		}
 	}
-	ignored, unknown := rewindIgnored(ctx, home, files)
+	ignored, unknown := rewindIgnored(home, files)
 	store := filepath.Join(home, ".pi", "agent", "file-history")
 	for _, p := range paths {
 		if file := rewindTrackedFile(checkpoint.cwd, p); ignored[file] {
 			continue
-		} else if unknown[file] && !covered[file] {
+		} else if unknown[file] {
 			// Git could not say whether it is ignored: a restore leaves it.
 			out.FileErrors++
 			continue
@@ -642,13 +647,27 @@ func (s *rewindSession) snapshotPreview(ctx context.Context, home, entry string,
 		}
 	}
 	paths = kept
+	root := *start.Root
+	// Nor does a restore write a file Git ignores now, or one Git cannot
+	// say about (the extension's checkIgnore on the repository's root).
+	listed, answered := rewindCheckIgnore(home, root, paths)
+	if !answered {
+		out.FileErrors += len(paths)
+		return covered
+	}
+	kept = paths[:0:0]
+	for _, p := range paths {
+		if !listed[p] {
+			kept = append(kept, p)
+		}
+	}
+	paths = kept
 	tree := start.tree()
 	entries, err := lsSnapshotTree(ctx, store, tree, paths)
 	if err != nil {
 		return covered
 	}
 	out.Checkpoint = true
-	root := *start.Root
 	for _, p := range paths {
 		file := filepath.Join(root, filepath.FromSlash(p))
 		covered[filepath.Clean(file)] = true
@@ -716,7 +735,7 @@ func rewindTrackedFile(cwd, p string) string {
 // each file's nearest existing folder, as the extension's ignoredFiles does:
 // a file in no repository is not ignored, and one Git could not answer for is
 // unknown.
-func rewindIgnored(ctx context.Context, home string, files []string) (ignored, unknown map[string]bool) {
+func rewindIgnored(home string, files []string) (ignored, unknown map[string]bool) {
 	ignored, unknown = map[string]bool{}, map[string]bool{}
 	groups := map[string][]string{}
 	var folders []string
@@ -745,39 +764,59 @@ func rewindIgnored(ctx context.Context, home string, files []string) (ignored, u
 	for _, dir := range folders {
 		group := groups[dir]
 		names := make([]string, len(group))
-		var input strings.Builder
 		for i, f := range group {
 			names[i], _ = filepath.Rel(dir, f)
-			input.WriteString(names[i] + "\x00")
 		}
-		out, err := nativeCommandInput(ctx, rewindGitLimit, io.Discard, input.String(), "/usr/bin/git", home, "",
-			"-c", "core.fsmonitor=false", "-C", dir, "check-ignore", "-z", "--stdin")
-		var exit *nativeCommandExit
-		switch {
-		case err == nil:
-			listed := map[string]bool{}
-			for _, n := range splitNUL(out) {
-				listed[n] = true
-			}
-			for i, f := range group {
-				if listed[names[i]] {
-					ignored[f] = true
-				}
-			}
-		case errors.As(err, &exit) && exit.Code == 1:
-			// None of them is ignored.
-		default:
-			// Outside every repository nothing is ignored; any other failure
-			// is no answer.
-			_, probe := nativeCommand(ctx, rewindGitLimit, io.Discard, "/usr/bin/git", home, "", "-C", dir, "rev-parse", "--is-inside-work-tree")
-			if !errors.As(probe, &exit) || exit.Code != 128 {
-				for _, f := range group {
-					unknown[f] = true
-				}
+		listed, answered := rewindCheckIgnore(home, dir, names)
+		for i, f := range group {
+			if !answered {
+				unknown[f] = true
+			} else if listed[names[i]] {
+				ignored[f] = true
 			}
 		}
 	}
 	return ignored, unknown
+}
+
+// rewindCheckIgnore is the extension's checkIgnore: the names (relative to
+// dir) Git ignores, or answered false when it cannot say. Outside every
+// repository, or without Git, nothing is ignored. Each call has its own
+// budget, as the extension's does, so a preview that spent its time on
+// snapshots does not name fewer files than the restore writes.
+func rewindCheckIgnore(home, dir string, names []string) (map[string]bool, bool) {
+	listed := map[string]bool{}
+	if len(names) == 0 {
+		return listed, true
+	}
+	if _, err := os.Stat("/usr/bin/git"); err != nil {
+		return listed, true
+	}
+	var input strings.Builder
+	for _, n := range names {
+		input.WriteString(n + "\x00")
+	}
+	out, err := nativeCommandInput(context.Background(), rewindIgnoreLimit, io.Discard, input.String(), "/usr/bin/git", home, "",
+		"-c", "core.fsmonitor=false", "-C", dir, "check-ignore", "-z", "--stdin")
+	var exit *nativeCommandExit
+	switch {
+	case err == nil:
+		for _, n := range splitNUL(out) {
+			listed[n] = true
+		}
+		return listed, true
+	case errors.As(err, &exit) && exit.Code == 1:
+		return listed, true
+	}
+	// A broken configuration also exits 128: only Git's own message (the C
+	// locale, as the fixed environment has no LANG) says the folder is in no
+	// repository.
+	var stderr bytes.Buffer
+	_, probe := nativeCommand(context.Background(), rewindIgnoreLimit, &stderr, "/usr/bin/git", home, "", "-C", dir, "rev-parse", "--is-inside-work-tree")
+	if errors.As(probe, &exit) && exit.Code == 128 && strings.HasPrefix(stderr.String(), "fatal: not a git repository") {
+		return listed, true
+	}
+	return nil, false
 }
 
 // rewindCommitted says whether a commit on HEAD since the message changed

@@ -584,3 +584,38 @@ func TestRewindPreviewScopesCopiesToTheAgentsEdits(t *testing.T) {
 		t.Fatalf("legacy preview from u2: %q, want %q", named(p), want)
 	}
 }
+
+// Git exits 128 both outside a repository and for a broken configuration;
+// only the first means a file is not ignored.
+func TestRewindIgnoredTellsNoRepositoryFromBrokenConfiguration(t *testing.T) {
+	if _, err := os.Stat("/usr/bin/git"); err != nil {
+		t.Skip("git not installed")
+	}
+	home := t.TempDir()
+	repo, plain := filepath.Join(home, "w"), filepath.Join(home, "plain")
+	for _, d := range []string{repo, plain} {
+		if err := os.MkdirAll(d, 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cmd := exec.Command("/usr/bin/git", "-C", repo, "init", "-q")
+	cmd.Env = append(os.Environ(), "HOME="+home, "GIT_CONFIG_NOSYSTEM=1")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v %s", err, out)
+	}
+	if err := os.WriteFile(filepath.Join(repo, ".gitignore"), []byte("ignored.txt\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	ignoredFile, plainFile := filepath.Join(repo, "ignored.txt"), filepath.Join(plain, "x.txt")
+	ignored, unknown := rewindIgnored(home, []string{ignoredFile, filepath.Join(repo, "a.txt"), plainFile})
+	if len(ignored) != 1 || !ignored[ignoredFile] || len(unknown) != 0 {
+		t.Fatalf("ignored %v unknown %v", ignored, unknown)
+	}
+	if err := os.WriteFile(filepath.Join(repo, ".git", "config"), []byte("[core\nbroken"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	ignored, unknown = rewindIgnored(home, []string{ignoredFile, plainFile})
+	if len(ignored) != 0 || len(unknown) != 1 || !unknown[ignoredFile] {
+		t.Fatalf("with a broken configuration: ignored %v unknown %v", ignored, unknown)
+	}
+}
