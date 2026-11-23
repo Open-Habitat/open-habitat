@@ -13,6 +13,7 @@ document.addEventListener('click', (e) => {
     st.setAttribute('aria-expanded', String(open));
     st.setAttribute('aria-label', open ? st.dataset.hide : st.dataset.show);
     st.parentElement.nextElementSibling.hidden = !open;
+    const pill = st.querySelector('.ah-stage-pill'); if (pill) pill.textContent = open ? 'Hide work' : 'Show work';
     return;
   }
   const disc = e.target.closest('.ah-tool-disclosure');

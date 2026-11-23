@@ -84,7 +84,7 @@ function stage(st, last) {
   const n = (k) => work.filter((w) => w.kind === k).length;
   const sum = st.summary || [n('thinking') && plural(n('thinking'), 'thought', 'thoughts'), n('tool') && plural(n('tool'), 'tool', 'tools')].filter(Boolean).join(' · ') || 'Work';
   const label = `${sum}${st.time ? ` · ${st.time}` : ''}`;
-  const row = work.length ? `<div class="ah-turn-stage"><button type="button" class="ah-stage-toggle" aria-expanded="false" aria-label="Show work: ${esc(label)}" data-show="Show work: ${esc(label)}" data-hide="Hide work: ${esc(label)}"><span aria-hidden="true" class="ah-disclosure-chevron"></span><span class="ah-stage-sum">${esc(sum)}</span>${st.time ? ` · <span class="ah-stage-elapsed">${esc(st.time)}</span>` : ''}</button></div><div class="ah-turn-work" hidden><div class="ah-ordered-blocks">${work.map((w) => w.html).join('')}</div></div>` : '';
+  const row = work.length ? `<div class="ah-turn-stage"><button type="button" class="ah-stage-toggle" aria-expanded="false" aria-label="Show work: ${esc(label)}" data-show="Show work: ${esc(label)}" data-hide="Hide work: ${esc(label)}"><span aria-hidden="true" class="ah-disclosure-chevron"></span><span class="ah-stage-sum">${esc(sum)}</span>${st.time ? ` · <span class="ah-stage-elapsed">${esc(st.time)}</span>` : ''}<span class="ah-stage-pill" aria-hidden="true">Show work</span></button></div><div class="ah-turn-work" hidden><div class="ah-ordered-blocks">${work.map((w) => w.html).join('')}</div></div>` : '';
   const text = st.text ?? st.reply;
   const end = text != null ? `<div class="ah-turn-reply${last ? '' : ' ah-turn-interim'}">${message(last ? 'final' : 'interim', text, st.extra || '')}</div>` : '';
   return row + end;
