@@ -2,13 +2,14 @@
 created: 2026-11-23
 updated: 2026-11-23
 type: bug
-status: untriaged
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: taskfleet worker observation
 source_ref: taskfleet:01m84x3pd5waswstx7r2r8q0f0/speech-input-hour-ceiling-main-failure
 originating_run: 01m84x3pd5waswstx7r2r8q0f0
 originating_run_kind: spinoff
+closed: 2026-11-23
 ---
 
 # speech-input spec: the hour-ceiling cases fail on main
@@ -37,3 +38,9 @@ nor `speech.ts`'s behaviour.
 
 Both cases pass, or the cases are changed to match an intended change in
 how the ceiling is announced.
+
+## Resolution
+
+### 2026-11-23T20:44:51Z · @issuectl
+
+The cases still assumed the one-hour ceiling. They now drive the two-hour one, with handovers kept under the daemon's ten-mints-per-real-minute cap.

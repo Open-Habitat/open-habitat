@@ -12,6 +12,10 @@ import { expect, test } from "./worker-host";
 // it proves routing, the contract and the browser's stream handling, not
 // Soniox itself or UID isolation.
 
+// A dictation runs two hours (Jari, 2026-11-23) and warns a minute before.
+const ceilingMs = 2 * 60 * 60_000;
+const warnAtMs = ceilingMs - 60_000;
+
 test.use({
   baseURL: hostOrigin,
   ignoreHTTPSErrors: true,
@@ -660,16 +664,26 @@ test("@speech the dictation warns at the hour limit and ends with the text", asy
   await say(page, [{ text: "Pitkä sanelu", is_final: true }]);
   const initialMints = (await soniox(page)).minted;
   await expect(page.getByTestId("dictation-final")).toHaveText("Pitkä sanelu");
-  // Compress wall time, not the production key or dictation ceilings.
-  for (let n = 0; n < 6; n++) {
-    await page.clock.fastForward("09:50");
+  // Compress wall time, not the production key or dictation ceilings: hand
+  // each ten-minute key over to the next a few times, then jump to the
+  // warning minute, where the stale stream is handed over once more. The
+  // daemon mints at most ten keys per real minute, which compressed time
+  // would exceed; dictation.test.ts drives every handover of the two hours.
+  const handover = 590_000;
+  const handovers = 6;
+  for (let n = 0; n < handovers; n++) {
+    await page.clock.fastForward(handover);
     await expect
       .poll(async () => (await soniox(page)).minted)
       .toBe(initialMints + n + 1);
     await expect.poll(async () => (await soniox(page)).open).toBe(1);
-    if (n < 5)
-      await expect(page.getByTestId("dictation-ceiling")).toHaveCount(0);
+    await expect(page.getByTestId("dictation-ceiling")).toHaveCount(0);
   }
+  await page.clock.fastForward(warnAtMs - handovers * handover);
+  await expect
+    .poll(async () => (await soniox(page)).minted)
+    .toBe(initialMints + handovers + 1);
+  await expect.poll(async () => (await soniox(page)).open).toBe(1);
   await expect(page.getByTestId("dictation-ceiling")).toBeVisible();
   const announcement = page.getByTestId("dictation-announcement");
   const minute = await announcement.textContent();
@@ -682,7 +696,7 @@ test("@speech the dictation warns at the hour limit and ends with the text", asy
   await expect(notice(page)).toHaveAttribute("data-notice", "ceiling");
   await expect(page.getByTestId("message-input")).toHaveValue("Pitkä sanelu");
   expect(await announcement.textContent()).not.toBe(seconds);
-  await expect.poll(async () => (await soniox(page)).ended).toBe(7);
+  await expect.poll(async () => (await soniox(page)).ended).toBe(handovers + 2);
   expect(
     await page.evaluate(
       () => (window as unknown as { dictationCues: number[] }).dictationCues,
@@ -754,7 +768,7 @@ test("@speech a scripted seam finalizes old tokens before new ones and the hour 
   );
   await expect.poll(() => newAudio).toBeGreaterThan(0);
   // Jump to the overall limit; a ceiling takes priority over another chain.
-  await page.clock.fastForward("50:10");
+  await page.clock.fastForward(ceilingMs - 590_000);
   await expect(notice(page)).toHaveAttribute("data-notice", "ceiling");
   await expect(page.getByTestId("message-input")).toHaveValue(
     "Prefix First word. Next end.",
