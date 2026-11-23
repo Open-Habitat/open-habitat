@@ -3,12 +3,14 @@ created: 2026-11-10
 updated: 2026-11-23
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 related: ['@pi-web-search-capability']
 preparation: pending
 lane: web-search-key
 lane_seq: 1
+closed: 2026-11-23
+closed_by: agent
 ---
 
 # Design and prototype: search key in Settings › AI and the site key
@@ -38,3 +40,13 @@ Next action (approved): prototype round 2 from that logic (administrator's site 
 ### 2026-11-23T14:22:44Z · @jari
 
 Jari 23.11.2026 on round 2: B (administrator: server Integrations; person: Tiedot agenteille). But the search key block is far bigger than the other, smaller rows there and looks odd. Ideas: Brave and Staan each as their own row like the other services, or prototype the whole view together so the search key sits in proportion. Next action (approved): prototype round 3 on the whole views with B.
+
+### 2026-11-23T18:40:13Z · @jari
+
+Jari 23.11.2026 on round 3: A Palvelu kerrallaan (Brave and Staan as their own service rows on server Integraatiot and Tiedot agenteille). One search service at a time (a key for the other service replaces the current one) is the conductor default; Jari did not ask for both at once. Staan stays hidden until its coverage is checked. Next action (approved): implement, split into the search extension backend and the product side.
+
+## Resolution
+
+### 2026-11-23T18:40:13Z · @agent
+
+Prototype rounds finished; Jari chose round 3 direction A. Implementation: web-search-key-extension-backend, web-search-key-product.
