@@ -1,9 +1,9 @@
 ---
 created: 2026-11-13
-updated: 2026-11-14
+updated: 2026-11-23
 type: chore
 reporter: runtime-pin-watch
-status: open
+status: obsolete
 priority: normal
 labels:
 - runtime-pin
@@ -14,6 +14,8 @@ source_ref: runtime-pin:@softeria/ms-365-mcp-server@0.184.2
 lane: runtime-pins
 lane_seq: 4
 preparation: pending
+closed: 2026-11-23
+closed_by: runtime-pin-watch
 ---
 
 # Runtime pin: @softeria/ms-365-mcp-server 0.184.2 is available (pinned 0.170.1)
@@ -37,3 +39,9 @@ else stays here for the conductor.
 ### 2026-11-13T16:19:30Z · @runtime-pin-watch
 
 Research verdict: needs-work; this release stays for the conductor.
+
+## Resolution
+
+### 2026-11-23T11:52:16Z · @runtime-pin-watch
+
+Runtime pin watch: superseded.
