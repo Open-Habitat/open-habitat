@@ -1,0 +1,13 @@
+northside-2027.csv: 71 items, 64 in your catalogue
+unit cost 2026 -> 2027: +4.8 % on average
+margin on shelf price less 25.5 % VAT, minimum 40 %
+
+UNDER 40 %                     2026    2027  margin     was
+Linen tote, natural           12.70   14.72  36.3 %  45.0 %
+Apron, indigo                 21.58   24.38  37.6 %  44.7 %
+Napkins, set of 4, natural    14.94   16.59  38.8 %  44.9 %
+Tea towels, set of 2, Birch   11.18   12.49  39.7 %  46.0 %
+
+close (40-42 %): Linen tote, rust 40.8 %; Napkins, set of 4, rust 41.3 %; Napkins, set of 4, indigo 41.5 %
+
+4 of 64 under 40 % · chart: reports/northside-2027.png

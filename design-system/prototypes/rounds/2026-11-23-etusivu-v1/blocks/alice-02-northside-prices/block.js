@@ -1,6 +1,38 @@
-// Alice · 08:34 · Northside prices. Ported from round 6 (2026-11-22-etusivu-kierros-6), content unchanged.
+// Alice · 08:34 · Northside prices. Last week's margin checker runs on Bob's
+// new supplier list. Everything the screen shows of the run is real:
+// checker/run.txt is the true stdout of `python3 tools/margin_check.py
+// inbox/northside-2027.csv` on the fictional files checker/make_data.py
+// writes, and the chart in the view is the PNG the checker drew (assets.mjs
+// makes both). The reply's figures are read from run.txt, so they cannot drift.
 // The block contract is in ../../BLOCKS.md.
-import { you, tool, turn, drafts, screen } from '../../engine/kit.mjs';
+import { readFileSync } from 'node:fs';
+import { you, tool, turn, screen, view, image, assets } from '../../engine/kit.mjs';
+
+const asset = assets(import.meta.url);
+const RUN = readFileSync(new URL('./checker/run.txt', import.meta.url), 'utf8').trimEnd();
+
+// The first lines of the supplier file as `head -4` prints them (assets.mjs).
+const HEAD = readFileSync(new URL('./checker/head.txt', import.meta.url), 'utf8').trimEnd();
+
+// The flagged rows of the run: name, cost 2026, cost 2027, margin, was.
+const lines = RUN.split('\n');
+const at = lines.findIndex((l) => l.startsWith('UNDER '));
+const under = [];
+for (const l of lines.slice(at + 1)) {
+  const m = l.match(/^(.+?)\s{2,}([\d.]+)\s+([\d.]+)\s+([\d.]+) %\s+([\d.]+) %$/);
+  if (!m) break;
+  under.push({ name: m[1], c26: +m[2], c27: +m[3], margin: m[4], was: m[5] });
+}
+const near = (RUN.match(/^close .*$/m) || [''])[0].split(': ')[1]?.split('; ').length || 0;
+const total = RUN.match(/(\d+) of (\d+) under/);
+const rises = under.map((r) => Math.round((r.c27 / r.c26 - 1) * 100));
+const avg = RUN.match(/\+([\d.]+) % on average/)[1];
+const WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six'];
+const n = WORDS[under.length] || String(under.length);
+
+// 'Napkins, set of 4, natural' -> 'natural napkins (set of 4)'
+const short = (name) => { const [base, ...rest] = name.split(', '); const v = rest.pop(); return `${v} ${base.toLowerCase()}${rest.length ? ` (${rest.join(', ')})` : ''}`; };
+const list = (xs) => xs.length > 1 ? `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}` : xs.join('');
 
 export default {
   id: 'alice-02-northside-prices',
@@ -9,10 +41,18 @@ export default {
   s: 'prices',
   at: '08:34',
   ask: 'Run last week’s margin check on Bob’s new price list.',
-  did: 'Last week Alice and her agent wrote a small program that checks a supplier’s prices against the shop’s own. It is still in her folder, and today it runs on the new list from the tram.',
-  screen: () => screen('Northside prices', you('08:30', 'Run last week’s margin check on Bob’s new price list.') + turn({ tools: [
-        tool('bash', 'git log --oneline -- tools/margin_check.py', '3f2d1aa  12 Nov  Add margin check for supplier price lists'),
-        tool('bash', 'gog gmail attachment "Northside price list 2027"', 'saved inbox/northside-prices-2027.xlsx · 148 rows'),
-        tool('bash', 'python3 tools/margin_check.py inbox/northside-prices-2027.xlsx', '148 products · 144 at 40 % or more\nunder 40 %: 4'),
-      ], time: '4 min 44 s', reply: 'Four products fall under your 40 % margin at Northside’s new prices:\n\n| Product | Cost | Price | Margin |\n|---|---|---|---|\n| Linen tote | €14.20 | €22 | 35 % |\n| Apron, indigo | €24.50 | €39 | 37 % |\n| Tea towels, 2 | €11.80 | €19 | 38 % |\n| Napkins, 4 | €17.10 | €28 | 39 % |' }) + you('09:15', 'Send Bob that table and ask what Northside says.') + turn({ reply: 'Sent from your mailbox.', extra: drafts([['sent', 'Bob', 'Northside 2027: four products under 40 %', 'Hi Bob, the margin check flags four products…']]) })),
+  did: 'Last week Alice and her agent wrote a small checker that holds a supplier’s prices against the shop’s own. It is still in her folder. On the tram she points it at Northside’s 2027 list, and four of 64 products come out under her line.',
+  screen: () => screen('Northside prices', you('08:30', 'Run last week’s margin check on Bob’s new price list.') + turn({
+    thoughts: ['Last week’s checker is tools/margin_check.py; it takes a supplier CSV and reads the catalogue for shelf prices'],
+    tools: [
+      tool('bash', 'git log -1 --format="%h %ad %s" --date=short -- tools/margin_check.py', '3f2d1aa 2026-11-12 Add margin check for supplier price lists'),
+      tool('bash', 'gog gmail attachment "Northside price list 2027" --out inbox/', 'saved inbox/northside-2027.csv'),
+      tool('bash', 'head -4 inbox/northside-2027.csv', HEAD),
+      tool('bash', 'python3 tools/margin_check.py inbox/northside-2027.csv', RUN),
+    ],
+    time: '3 min 52 s',
+    reply: `**${n} of ${total[2]} products** fall under your 40 % margin at Northside’s 2027 prices: ${list(under.map((r) => `${short(r.name)} ${r.margin} %`))}. Their cost rose ${Math.min(...rises)}–${Math.max(...rises)} %; the rest of the list about ${Math.round(+avg)} %.${near ? ` ${WORDS[near] || near} more sit just above the line.` : ''}\n\nShall I send Bob the table and ask what Northside says?`,
+  }), view('reports/northside-2027.png', `<picture><source media="(max-width: 520px)" srcset="${asset('northside-2027-narrow.webp')}" width="704" height="1148">${image(asset('northside-2027.webp'),
+    `Chart from the margin check: the eight lowest margins at Northside’s 2027 cost, each with its 2026 margin. ${under.map((r) => `${r.name} ${r.margin} % (was ${r.was} %)`).join(', ')} fall under the 40 % line; the rest stay above it.`,
+    1056, 790)}</picture>`)),
 };

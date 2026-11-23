@@ -1,0 +1,4 @@
+Item no;Description;Unit;Price 2026 EUR;Price 2027 EUR
+NL-4107;Tote bag linen natural;pcs;12,70;14,72
+NL-4114;Tote bag linen indigo;pcs;12,65;13,29
+NL-4121;Tote bag linen rust;pcs;12,85;13,68
