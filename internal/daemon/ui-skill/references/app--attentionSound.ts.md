@@ -10,13 +10,15 @@ Generated from web/src/app/attentionSound.ts; do not edit.
 // must not silence the computer beside it. Night follows the device's local
 // clock, independently of its theme.
 //
-// Nothing here reaches the host: the decision is made from the rail state
-// the browser already has, and the sounds are rendered from their recipes
-// (soundSynth.ts) on first play.
+// The decision is made from the rail state the browser already has, and the
+// sounds are rendered from their recipes (soundSynth.ts) on first play. Only
+// with the experimental sounds-active-device does a due sound ask the
+// person's daemon whether this tab is the one in use (activeDevice.ts).
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import type { AgentNavModel } from "../components/Navigation";
 import { formatDate } from "../i18n";
 import type { SoundPreferences } from "./accountPreferences";
+import { activeDevicePlays } from "./activeDevice";
 import {
   type RenderedSound,
   renderSound,
@@ -310,7 +312,9 @@ const settleMs = 4000;
  * Plays one sound when a conversation becomes the person's turn: an agent
  * replied or asks. No sound for the conversation in view (unless the person
  * chose otherwise), when the sound is off, this device is muted or it is
- * night; the first rows after loading are the baseline, not news.
+ * night; the first rows after loading are the baseline, not news. With
+ * `activeDevice`, a sound that would play here plays only in the tab the
+ * person is using; those silences come first and are not asked about.
  */
 export function useAttentionSound({
   identity,
@@ -318,6 +322,7 @@ export function useAttentionSound({
   sound,
   loaded,
   stale,
+  activeDevice = false,
 }: {
   identity?: string;
   yours: readonly AgentNavModel[];
@@ -326,6 +331,8 @@ export function useAttentionSound({
   loaded: boolean;
   /** The connection is lost: the rail is the last observation. */
   stale: boolean;
+  /** Experimental sounds-active-device is on. */
+  activeDevice?: boolean;
 }) {
   const seen = useRef<Set<string>>(new Set());
   const settleUntil = useRef(0);
@@ -375,13 +382,20 @@ export function useAttentionSound({
           inView: viewing && !!row.selected,
         }),
     );
-    if (!heard || !claimBurst(at)) return;
-    playSound(
-      heard.workspaceId
-        ? workspaceSound(sound, heard.workspaceId)
-        : sound.default,
-      sound.length,
-    );
+    if (!heard) return;
+    const id = heard.workspaceId
+      ? workspaceSound(sound, heard.workspaceId)
+      : sound.default;
+    const length = sound.length;
+    if (!activeDevice) {
+      if (claimBurst(at)) playSound(id, length);
+      return;
+    }
+    // Another tab of this browser that is not in use must not claim the
+    // burst before the one that is, so the claim waits for the answer.
+    void activeDevicePlays().then((plays) => {
+      if (plays && claimBurst(Date.now())) playSound(id, length);
+    });
   });
 }
 
