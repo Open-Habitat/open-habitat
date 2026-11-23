@@ -98,7 +98,7 @@
         "host_key": {"description": "The host key the machine showed, for the person to compare before it is saved.", "$ref": "#/$defs/fingerprint"}
       }
     },
-    "alias": {"description": "A host of the person's own ~/.ssh/config as ssh matches it (lower-case); the agent reaches it with `ssh <alias>`.", "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,62}$"},
+    "alias": {"description": "A host of the person's own ~/.ssh/config as its Host line writes it (ssh matches case-sensitively); the agent reaches it with `ssh <alias>`.", "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,62}$"},
     "ssh_config_host": {
       "description": "One concrete Host pattern of ~/.ssh/config with the values `ssh <alias>` uses (first value wins over every block it matches; Match blocks are not interpreted).",
       "type": "object",
@@ -112,7 +112,7 @@
         "keys": {
           "description": "The IdentityFiles named for the host, as paths; empty is ssh's default keys. Only whether each file exists is looked at.",
           "type": "array", "maxItems": 8,
-          "items": {"type": "object", "additionalProperties": false, "required": ["path", "present"], "properties": {"path": {"type": "string", "minLength": 1, "maxLength": 255}, "present": {"type": "boolean"}}}
+          "items": {"type": "object", "additionalProperties": false, "required": ["path"], "properties": {"path": {"type": "string", "minLength": 1, "maxLength": 255}, "present": {"description": "Absent when the path keeps a token known only on connecting.", "type": "boolean"}}}
         },
         "proxy_jump": {"type": "string", "minLength": 1, "maxLength": 255},
         "proxy_command": {"description": "A ProxyCommand is set; its text is never shown, as it may hold a token.", "type": "boolean"},
@@ -131,7 +131,7 @@
         "files": {"type": "array", "maxItems": 32, "items": {"type": "string", "minLength": 1, "maxLength": 4096}},
         "hosts": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/ssh_config_host"}},
         "skipped": {
-          "description": "What was read but not listed, and why: wildcard (a pattern, not one host), match (a Match block), git_service (a code host), name (a name the page cannot pass to ssh), unreadable (an Include that cannot be read), limit.",
+          "description": "What was read but not listed, and why (a Match block only by its file and line): wildcard (a pattern, not one host), match (a Match block), git_service (a code host), name (a name the page cannot pass to ssh), unreadable (an Include that cannot be read), limit.",
           "type": "array", "maxItems": 32,
           "items": {"type": "object", "additionalProperties": false, "required": ["what", "why"], "properties": {"what": {"type": "string", "maxLength": 200}, "why": {"enum": ["wildcard", "match", "git_service", "name", "unreadable", "limit"]}}}
         },
@@ -146,7 +146,7 @@
       "required": ["alias", "result"],
       "properties": {
         "alias": {"$ref": "#/$defs/alias"},
-        "result": {"description": "The person's own `ssh <alias> exit 0`: ok; offline: no answer; unresolved: the name does not resolve here; hostkey_unknown: the host key is not in known_hosts (Habitat never accepts one); host_key_changed; key_rejected: no login without a password or passphrase; failed: anything else.", "enum": ["ok", "offline", "unresolved", "hostkey_unknown", "host_key_changed", "key_rejected", "failed"]}
+        "result": {"description": "The person's own `ssh <alias> exit 0`: ok; offline: no answer; unresolved: the name does not resolve here; hostkey_unknown: the host key is not in known_hosts (Habitat never accepts one); host_key_changed; key_rejected: no login without a password or passphrase; route_unsupported: a ProxyCommand of the person's own, several ProxyJump hops or a hop with a route of its own, which a check cannot hold to its no-change options, so nothing ran; failed: anything else.", "enum": ["ok", "offline", "unresolved", "hostkey_unknown", "host_key_changed", "key_rejected", "route_unsupported", "failed"]}
       }
     },
     "request": {

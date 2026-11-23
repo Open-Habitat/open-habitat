@@ -56,6 +56,7 @@ const fi = {
     hostkey_unknown: "Isäntäavain hyväksymättä",
     host_key_changed: "Isäntäavain muuttui",
     key_rejected: "Kirjautuminen ei onnistu",
+    route_unsupported: "Ei tarkistettavissa täältä",
     failed: "Tarkistus ei onnistunut",
   },
   note: {
@@ -117,6 +118,13 @@ const fi = {
           tunnuslausetta. Agentti ei voi kirjoittaa salasanaa.
         </>
       ),
+    route_unsupported: (alias: string): ReactNode => (
+      <>
+        Yhteys kulkee oman välityskomennon tai usean hypyn kautta. Habitat ei
+        voi pitää niitä muuttamatta known_hostsia, joten se ei yhdistänyt.
+        Kokeile päätteessä <code>ssh {alias}</code>.
+      </>
+    ),
     failed: "Yhteyttä ei voitu tarkistaa. Kokeile päätteessä ssh-komennolla.",
   },
   keyMissing: "Avaintiedosto puuttuu",
@@ -199,6 +207,7 @@ export const sshConfigMachinesText = catalog(fi, {
     hostkey_unknown: "Host key not accepted",
     host_key_changed: "Host key changed",
     key_rejected: "Login fails",
+    route_unsupported: "Cannot be checked from here",
     failed: "Check did not work",
   },
   note: {
@@ -260,6 +269,13 @@ export const sshConfigMachinesText = catalog(fi, {
           passphrase. The agent cannot type a password.
         </>
       ),
+    route_unsupported: (alias) => (
+      <>
+        The connection goes through your own proxy command or several hops.
+        Habitat cannot keep those from changing known_hosts, so it did not
+        connect. Try <code>ssh {alias}</code> in a terminal.
+      </>
+    ),
     failed: "The connection could not be checked. Try ssh in a terminal.",
   },
   keyMissing: "Key file missing",

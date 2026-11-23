@@ -1502,8 +1502,15 @@ func (e ownMachineEnv) actConfig(ctx context.Context, view ownMachinesView, req 
 		if !known[req.Alias] || !shown {
 			return 409, "unknown_host"
 		}
-		reply["config_check"] = e.checkConfigHost(ctx, req.Alias)
-		return 0, ""
+		// The file read again, for the host's route as it is now.
+		fresh, parser := parseSSHConfig(e.home, e.username)
+		for _, h := range fresh.Hosts {
+			if h.Alias == req.Alias {
+				reply["config_check"] = e.checkConfigHost(ctx, h, parser)
+				return 0, ""
+			}
+		}
+		return 409, "unknown_host"
 	case "config_show", "config_hide":
 		if !known[req.Alias] {
 			return 409, "unknown_host"

@@ -36,7 +36,7 @@ function daemon() {
     }
     const body = JSON.parse(String(init.body)) as Record<string, string>;
     posts.push(body);
-    const c = current.ssh_config;
+    const c = current.ssh_config as SSHConfig;
     const without = (l: string[]) => l.filter((a) => a !== body.alias);
     if (body.action === "config_show") {
       c.shown = [...without(c.shown), body.alias];

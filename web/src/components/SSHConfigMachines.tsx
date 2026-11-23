@@ -48,6 +48,7 @@ const resultTone: Record<ConfigCheckResult, Tone> = {
   hostkey_unknown: "warning",
   host_key_changed: "danger",
   key_rejected: "danger",
+  route_unsupported: "neutral",
   failed: "warning",
 };
 
@@ -97,7 +98,9 @@ function Facts({ h }: { h: SSHConfigHost }) {
           h.keys.map((k) => (
             <span key={k.path} className="omc-key">
               <span className="om-mono om-wrap">{k.path}</span>
-              {!k.present && <span className="omc-err">{txt.notOnServer}</span>}
+              {k.present === false && (
+                <span className="omc-err">{txt.notOnServer}</span>
+              )}
             </span>
           ))
         ) : (
@@ -140,6 +143,8 @@ function resultNote(h: SSHConfigHost, r: ConfigCheckResult) {
       return txt.note.host_key_changed(h.alias);
     case "key_rejected":
       return txt.note.key_rejected(missingKey(h));
+    case "route_unsupported":
+      return txt.note.route_unsupported(h.alias);
     default:
       return txt.note.failed;
   }

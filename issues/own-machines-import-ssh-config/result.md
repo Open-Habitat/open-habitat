@@ -206,11 +206,24 @@ Todisteet (synteettinen config, Päivä, 1280 ja 390 px):
   `ClearAllForwardings=yes`, `PermitLocalCommand=no`, `ForwardAgent=no`,
   `ControlPersist=no` ja `--` ennen aliasta. Agenttia (`SSH_AUTH_SOCK`) ei
   välitetä: Habitat ei käytä ihmisen ssh-agenttia.
-- **Tuloksiin lisättiin `host_key_changed` ja `failed`.** Prototyypissä oli
+- **Tarkistus ei aja reittejä, joita se ei voi rajata** (katselmointi):
+  OpenSSH käynnistää ProxyJump-hypyn omana ssh:naan ilman annettuja
+  `-o`-asetuksia, joten hyppy voisi kirjoittaa known_hostsiin. Yksi
+  tavallinen hyppy toistetaan ProxyCommandina samoin asetuksin; usea hyppy,
+  hyppy omalla reitillään, IPv6-kohde ja ihmisen oma ProxyCommand antavat
+  tuloksen `route_unsupported` ajamatta ssh:ta. Vaihtoehto: ajaa ne silti
+  ihmisen asetuksin. Peruste: Jarin päätös "ei koskaan known_hostsia".
+  Jäännös: Match-lohkon lisäämää hyppyä jäsennin ei näe.
+- **Lisäksi `CheckHostIP=no` ja `ControlPath=none`** (katselmointi):
+  CheckHostIP voi lisätä IP-rivin known_hostsiin, ja olemassa oleva
+  master-yhteys tekisi tarkistuksesta tyhjän.
+- **Tuloksiin lisättiin `host_key_changed`, `route_unsupported` ja `failed`.** Prototyypissä oli
   viisi; muuttunut isäntäavain on eri asia kuin hyväksymätön, ja tunnistamaton
   virhe ei saa näyttää jonkin muun syyltä.
-- **Aliaksen muoto** `^[a-z0-9][a-z0-9._-]{0,62}$` (ssh pienentää nimen).
-  Muut ohitetaan syyllä `name`. Peruste: alias annetaan ssh:lle yhtenä
+- **Aliaksen muoto** `^[A-Za-z0-9][A-Za-z0-9._-]{0,62}$`; kirjainkoko
+  säilyy, koska ssh vertaa Host-kuvioita kirjainkoko huomioiden. Muut
+  ohitetaan syyllä `name`. Match-lohkosta näytetään vain tiedosto ja rivi,
+  koska `Match exec` voi sisältää tokenin. Peruste: alias annetaan ssh:lle yhtenä
   sanana eikä se saa näyttää optiolta.
 - **Include `Host`-lohkon sisällä** koskee vain sitä lohkoa (OpenSSH:n
   tapa); sen sisäiset `Host`-rivit listataan vain, jos ne osuvat myös

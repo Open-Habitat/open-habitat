@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"golang.org/x/sys/unix"
@@ -49,18 +50,24 @@ const (
 	sshConfigMaxSkipped = 32
 	sshConfigMaxChosen  = 32
 	sshConfigMaxKeys    = 8
+	// sshConfigMaxCandidates bounds the names resolved: more than are
+	// listed, as Git services and duplicates fall out.
+	sshConfigMaxCandidates = 2 * sshConfigMaxHosts
 )
 
-// sshAliasPattern is a host the page can name and pass to ssh as one word.
-// ssh lowercases the name it is given before it matches, and so does this.
-var sshAliasPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,62}$`)
+// sshAliasPattern is a host the page can name and pass to ssh as one word,
+// never one that reads as an option. Host patterns match case-sensitively,
+// as in ssh, so the case is kept.
+var sshAliasPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,62}$`)
 
 // gitServices are code hosts, not machines; the code services settings own them.
 var gitServices = map[string]bool{"github.com": true, "gitlab.com": true, "codeberg.org": true, "bitbucket.org": true, "ssh.dev.azure.com": true}
 
 type sshConfigKey struct {
-	Path    string `json:"path"`
-	Present bool   `json:"present"`
+	Path string `json:"path"`
+	// Present is absent when the path keeps a token known only on
+	// connecting, so whether the file exists is not known.
+	Present *bool `json:"present,omitempty"`
 }
 
 type sshConfigHost struct {
@@ -125,12 +132,18 @@ type sshConfigParser struct {
 	skipped        []sshConfigSkipped
 	match          bool
 	unreadable     bool
+	truncated      bool
 	opened         int
 }
 
 // readSSHConfig parses home/.ssh/config as the person. username is the
 // local user, ssh's default remote user.
 func readSSHConfig(home, username string) sshConfigView {
+	view, _ := parseSSHConfig(home, username)
+	return view
+}
+
+func parseSSHConfig(home, username string) (sshConfigView, *sshConfigParser) {
 	p := &sshConfigParser{home: home, username: username}
 	view := sshConfigView{Files: []string{}, Hosts: []sshConfigHost{}, Skipped: []sshConfigSkipped{}, Shown: []string{}, Hidden: []string{}}
 	exists := p.parseFile(filepath.Join(home, ".ssh", "config"), nil, false, 0)
@@ -140,7 +153,7 @@ func readSSHConfig(home, username string) sshConfigView {
 	}
 	if p.unreadable {
 		view.State = "unreadable"
-		return view
+		return view, p
 	}
 	seen := map[string]bool{}
 	for _, c := range p.candidates {
@@ -152,7 +165,7 @@ func readSSHConfig(home, username string) sshConfigView {
 		if !ok {
 			continue
 		}
-		if gitServices[h.Alias] || gitServices[strings.ToLower(h.HostName)] {
+		if gitServices[strings.ToLower(h.Alias)] || gitServices[strings.ToLower(h.HostName)] {
 			p.skip(h.Alias, "git_service")
 			continue
 		}
@@ -170,7 +183,7 @@ func readSSHConfig(home, username string) sshConfigView {
 	if exists && len(view.Hosts) > 0 {
 		view.State = "ok"
 	}
-	return view
+	return view, p
 }
 
 func (p *sshConfigParser) skip(what, why string) {
@@ -242,7 +255,7 @@ func (p *sshConfigParser) parseFile(path string, conds [][]string, match bool, d
 		}
 		switch key {
 		case "host":
-			own := append(append([][]string{}, conds...), lowerAll(args))
+			own := append(append([][]string{}, conds...), args)
 			cur = &sshBlock{conds: own, match: match}
 			p.blocks = append(p.blocks, cur)
 			if match {
@@ -250,13 +263,21 @@ func (p *sshConfigParser) parseFile(path string, conds [][]string, match bool, d
 			}
 			var patterns []string
 			for _, a := range args {
-				a = strings.ToLower(a)
 				if strings.ContainsAny(a, "*?!") {
 					patterns = append(patterns, a)
 					continue
 				}
 				if !sshAliasPattern.MatchString(a) {
 					p.skip(a, "name")
+					continue
+				}
+				// Resolving costs a pass over every block, so only so many
+				// names are kept; the rest is said once.
+				if len(p.candidates) == sshConfigMaxCandidates {
+					if !p.truncated {
+						p.truncated = true
+						p.skip(a, "limit")
+					}
 					continue
 				}
 				p.candidates = append(p.candidates, sshCandidate{alias: a, file: shown, line: n + 1})
@@ -266,7 +287,8 @@ func (p *sshConfigParser) parseFile(path string, conds [][]string, match bool, d
 			}
 		case "match":
 			p.match = true
-			p.skip("Match "+strings.Join(args, " "), "match")
+			// Only where it is: a Match exec argument may hold a token.
+			p.skip("Match ("+shown+":"+strconv.Itoa(n+1)+")", "match")
 			cur = &sshBlock{conds: conds, match: true}
 			p.blocks = append(p.blocks, cur)
 		case "include":
@@ -301,6 +323,10 @@ func (p *sshConfigParser) include(arg string, at *sshBlock, depth int) {
 		p.skip("Include "+arg, "limit")
 		return
 	}
+	if p.opened >= sshConfigMaxFiles {
+		p.skip("Include "+arg, "limit")
+		return
+	}
 	matches, err := filepath.Glob(path)
 	if err != nil {
 		p.skip("Include "+arg, "unreadable")
@@ -317,9 +343,10 @@ func (p *sshConfigParser) include(arg string, at *sshBlock, depth int) {
 }
 
 // sshConfigLine splits one line as ssh_config(5) reads it: a keyword, then
-// whitespace or one "=", then arguments that double quotes may group. A
-// word beginning with # ends the line. A malformed line is skipped, as
-// this reader only ever shows what it understood.
+// whitespace or one "=", then arguments as OpenSSH's argv_split makes them:
+// single or double quotes group, a backslash escapes a quote, a backslash
+// or a blank, and a word beginning with # ends the line. A malformed line
+// is skipped, as this reader only ever shows what it understood.
 func sshConfigLine(raw string) (string, []string, bool) {
 	line := strings.TrimSpace(strings.TrimRight(raw, "\r"))
 	if line == "" || line[0] == '#' {
@@ -335,29 +362,46 @@ func sshConfigLine(raw string) (string, []string, bool) {
 		rest = strings.TrimLeft(rest[1:], " \t")
 	}
 	var args []string
-	for rest != "" {
-		if rest[0] == '#' {
-			break
-		}
-		var word string
-		if rest[0] == '"' {
-			close := strings.IndexByte(rest[1:], '"')
-			if close < 0 {
-				return "", nil, false
+	var word strings.Builder
+	inWord, quote := false, byte(0)
+	for i := 0; i < len(rest); i++ {
+		c := rest[i]
+		switch {
+		case c == '\\' && i+1 < len(rest) && strings.IndexByte("\\\"' ", rest[i+1]) >= 0:
+			i++
+			word.WriteByte(rest[i])
+			inWord = true
+		case quote != 0:
+			if c == quote {
+				quote = 0
+			} else {
+				word.WriteByte(c)
 			}
-			word, rest = rest[1:close+1], rest[close+2:]
-		} else {
-			stop := strings.IndexAny(rest, " \t")
-			if stop < 0 {
-				stop = len(rest)
+		case c == '"' || c == '\'':
+			quote, inWord = c, true
+		case c == ' ' || c == '\t':
+			if inWord {
+				args = append(args, word.String())
+				word.Reset()
+				inWord = false
 			}
-			word, rest = rest[:stop], rest[stop:]
+		case c == '#' && !inWord:
+			i = len(rest)
+		default:
+			word.WriteByte(c)
+			inWord = true
 		}
-		if strings.ContainsAny(word, "\x00\x1b") {
+	}
+	if quote != 0 {
+		return "", nil, false
+	}
+	if inWord {
+		args = append(args, word.String())
+	}
+	for _, a := range args {
+		if strings.ContainsAny(a, "\x00\x1b") {
 			return "", nil, false
 		}
-		args = append(args, word)
-		rest = strings.TrimLeft(rest, " \t")
 	}
 	if len(args) == 0 {
 		return "", nil, false
@@ -365,31 +409,31 @@ func sshConfigLine(raw string) (string, []string, bool) {
 	return key, args, true
 }
 
-func lowerAll(in []string) []string {
-	out := make([]string, len(in))
-	for i, s := range in {
-		out[i] = strings.ToLower(s)
-	}
-	return out
-}
-
 // sshPatternMatch is ssh's wildcard match: * any run, ? one character.
+// Iterative with one backtrack point, so its work stays linear in practice
+// and quadratic at worst, whatever the pattern.
 func sshPatternMatch(name, pattern string) bool {
-	if pattern == "" {
-		return name == ""
-	}
-	switch pattern[0] {
-	case '*':
-		for i := 0; i <= len(name); i++ {
-			if sshPatternMatch(name[i:], pattern[1:]) {
-				return true
-			}
+	n, p := 0, 0
+	star, mark := -1, 0
+	for n < len(name) {
+		switch {
+		case p < len(pattern) && (pattern[p] == '?' || pattern[p] == name[n]):
+			n++
+			p++
+		case p < len(pattern) && pattern[p] == '*':
+			star, mark = p, n
+			p++
+		case star >= 0:
+			mark++
+			n, p = mark, star+1
+		default:
+			return false
 		}
-		return false
-	case '?':
-		return name != "" && sshPatternMatch(name[1:], pattern[1:])
 	}
-	return name != "" && name[0] == pattern[0] && sshPatternMatch(name[1:], pattern[1:])
+	for p < len(pattern) && pattern[p] == '*' {
+		p++
+	}
+	return p == len(pattern)
 }
 
 // sshPatternList is a Host line: some positive pattern matches and no
@@ -418,6 +462,22 @@ func (b *sshBlock) applies(alias string) bool {
 		}
 	}
 	return true
+}
+
+// routed says ssh would reach name through a ProxyJump or ProxyCommand of
+// its own, Match blocks aside.
+func (p *sshConfigParser) routed(name string) bool {
+	for _, b := range p.blocks {
+		if !b.applies(name) {
+			continue
+		}
+		for _, d := range b.directives {
+			if d.key == "proxyjump" || d.key == "proxycommand" {
+				return !strings.EqualFold(d.args[0], "none")
+			}
+		}
+	}
+	return false
 }
 
 // resolve is what `ssh <alias>` uses, Match blocks aside.
@@ -472,10 +532,6 @@ func (p *sshConfigParser) resolve(c sshCandidate) (sshConfigHost, bool) {
 	if hostName != "" {
 		h.HostName = strings.ReplaceAll(strings.ReplaceAll(hostName, "%h", c.alias), "%%", "%")
 	}
-	h.User = p.username
-	if user != "" {
-		h.User = expandTokens(user, p.home, h.HostName, "", p.username)
-	}
 	h.Port = 22
 	if port != "" {
 		n, err := strconv.Atoi(port)
@@ -484,6 +540,12 @@ func (p *sshConfigParser) resolve(c sshCandidate) (sshConfigHost, bool) {
 		}
 		h.Port = n
 	}
+	t := sshTokens{home: p.home, alias: c.alias, host: h.HostName, port: strconv.Itoa(h.Port), localUser: p.username}
+	h.User = p.username
+	if user != "" {
+		h.User = t.expand(user)
+	}
+	t.remoteUser = h.User
 	if !printable(h.HostName, 255) || !printable(h.User, 64) {
 		return h, false
 	}
@@ -495,13 +557,18 @@ func (p *sshConfigParser) resolve(c sshCandidate) (sshConfigHost, bool) {
 		if len(h.Keys) == sshConfigMaxKeys || strings.EqualFold(k, "none") {
 			continue
 		}
-		path := expandTokens(k, p.home, h.HostName, h.User, p.username)
-		if strings.HasPrefix(path, "~/") {
-			path = filepath.Join(p.home, path[2:])
+		path := t.expand(k)
+		if !filepath.IsAbs(path) {
+			// ssh reads a relative IdentityFile from ~/.ssh.
+			path = filepath.Join(p.home, ".ssh", path)
 		}
-		var st unix.Stat_t
-		present := filepath.IsAbs(path) && unix.Stat(path, &st) == nil && st.Mode&unix.S_IFMT == unix.S_IFREG
-		h.Keys = append(h.Keys, sshConfigKey{Path: clip(p.display(path), 255), Present: present})
+		key := sshConfigKey{Path: clip(p.display(path), 255)}
+		if !strings.Contains(path, "%") {
+			var st unix.Stat_t
+			present := unix.Stat(path, &st) == nil && st.Mode&unix.S_IFMT == unix.S_IFREG
+			key.Present = &present
+		}
+		h.Keys = append(h.Keys, key)
 	}
 	h.Tailscale = strings.HasSuffix(strings.ToLower(h.HostName), ".ts.net")
 	if a, err := netip.ParseAddr(h.HostName); err == nil && a.Is4() && netip.MustParsePrefix("100.64.0.0/10").Contains(a) {
@@ -510,13 +577,18 @@ func (p *sshConfigParser) resolve(c sshCandidate) (sshConfigHost, bool) {
 	return h, true
 }
 
-// expandTokens expands the tokens ssh_config(5) gives IdentityFile and
-// User that are known without connecting: ~, %d, %h, %r, %u and %%. Any
-// other token stays as written.
-func expandTokens(s, home, host, remoteUser, localUser string) string {
+// sshTokens are the ssh_config(5) tokens known without connecting: ~, %d,
+// %h, %n (the alias as given), %p, %r, %u and %%. Any other token stays as
+// written.
+type sshTokens struct {
+	home, alias, host, port, remoteUser, localUser string
+}
+
+func (t sshTokens) expand(s string) string {
 	if s == "~" || strings.HasPrefix(s, "~/") {
-		s = home + s[1:]
+		s = t.home + s[1:]
 	}
+	values := map[byte]string{'d': t.home, 'h': t.host, 'n': t.alias, 'p': t.port, 'r': t.remoteUser, 'u': t.localUser, '%': "%"}
 	var out strings.Builder
 	for i := 0; i < len(s); i++ {
 		if s[i] != '%' || i+1 == len(s) {
@@ -524,22 +596,9 @@ func expandTokens(s, home, host, remoteUser, localUser string) string {
 			continue
 		}
 		i++
-		switch s[i] {
-		case 'd':
-			out.WriteString(home)
-		case 'h':
-			out.WriteString(host)
-		case 'r':
-			if remoteUser == "" {
-				out.WriteString("%r")
-			} else {
-				out.WriteString(remoteUser)
-			}
-		case 'u':
-			out.WriteString(localUser)
-		case '%':
-			out.WriteByte('%')
-		default:
+		if v := values[s[i]]; v != "" {
+			out.WriteString(v)
+		} else {
 			out.WriteByte('%')
 			out.WriteByte(s[i])
 		}
@@ -673,33 +732,90 @@ func (v *sshConfigView) withChoices(m *sshConfigMachines) {
 type sshConfigCheck struct {
 	Alias string `json:"alias"`
 	// Result: ok, offline, unresolved, hostkey_unknown, host_key_changed,
-	// key_rejected, failed.
+	// key_rejected, route_unsupported, failed.
 	Result string `json:"result"`
 }
 
-// checkConfigHost runs the person's own `ssh <alias> exit 0` with their
+// sshJumpPattern is the one ProxyJump hop a check reproduces:
+// [user@]host[:port], each part a plain word.
+var sshJumpPattern = regexp.MustCompile(`^(?:([A-Za-z0-9_][A-Za-z0-9_.-]{0,63})@)?([A-Za-z0-9][A-Za-z0-9._-]{0,252})(?::([0-9]{1,5}))?$`)
+
+// sshPlainHost is a destination a hop can name in its -W without quoting:
+// a name or an IPv4 address (an IPv6 one is not reproduced).
+var sshPlainHost = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,252}$`)
+
+// checkOptions keep a check from changing anything: StrictHostKeyChecking,
+// UpdateHostKeys and CheckHostIP leave known_hosts as it is, no connection
+// is shared, left open or forwarded, no local command runs, and BatchMode
+// never asks for a password.
+var checkOptions = []string{
+	"-T", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "-o", "ConnectionAttempts=1",
+	"-o", "StrictHostKeyChecking=yes", "-o", "UpdateHostKeys=no", "-o", "CheckHostIP=no",
+	"-o", "ControlMaster=no", "-o", "ControlPath=none", "-o", "ControlPersist=no",
+	"-o", "ClearAllForwardings=yes", "-o", "PermitLocalCommand=no", "-o", "ForwardAgent=no",
+}
+
+// checkArgs is the person's own `ssh <alias> exit 0` with their
 // configuration, which is what is being checked (unlike probe, no -F
-// /dev/null). It may not change anything: StrictHostKeyChecking=yes and
-// UpdateHostKeys=no leave known_hosts as it is, no connection is left open
-// or shared, no forwarding or local command runs, and BatchMode never asks
-// for a password.
-func (e ownMachineEnv) checkConfigHost(ctx context.Context, alias string) sshConfigCheck {
-	result := sshConfigCheck{Alias: alias, Result: "failed"}
+// /dev/null), or false when its route cannot be held to checkOptions. ssh
+// starts a ProxyJump hop as a child of its own without the options given
+// here, so one hop is reproduced as a ProxyCommand that carries them; a
+// hop reached through a further jump, several hops, or a ProxyCommand of
+// the person's own are not checked here.
+func (e ownMachineEnv) checkArgs(h sshConfigHost, p *sshConfigParser) ([]string, bool) {
+	args := append([]string{}, checkOptions...)
+	switch {
+	case h.ProxyCommand:
+		return nil, false
+	case h.ProxyJump != "":
+		m := sshJumpPattern.FindStringSubmatch(h.ProxyJump)
+		if m == nil || p.routed(m[2]) || !sshPlainHost.MatchString(h.HostName) {
+			return nil, false
+		}
+		hop := append([]string{e.ssh}, checkOptions...)
+		hop = append(hop, "-o", "ProxyJump=none", "-o", "ProxyCommand=none")
+		if m[1] != "" {
+			hop = append(hop, "-l", m[1])
+		}
+		if m[3] != "" {
+			if n, err := strconv.Atoi(m[3]); err != nil || n < 1 || n > 65535 {
+				return nil, false
+			}
+			hop = append(hop, "-p", m[3])
+		}
+		// Every word is a plain word (the patterns above and fixed
+		// options), so the shell ssh runs a ProxyCommand with sees no
+		// metacharacter.
+		hop = append(hop, "-W", h.HostName+":"+strconv.Itoa(h.Port), "--", m[2])
+		args = append(args, "-o", "ProxyCommand="+strings.Join(hop, " "))
+	}
+	return append(args, "--", h.Alias, "exit 0"), true
+}
+
+func (e ownMachineEnv) checkConfigHost(ctx context.Context, h sshConfigHost, p *sshConfigParser) sshConfigCheck {
+	result := sshConfigCheck{Alias: h.Alias, Result: "route_unsupported"}
+	args, ok := e.checkArgs(h, p)
+	if !ok {
+		return result
+	}
 	run, cancel := context.WithTimeout(ctx, 25*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(run, e.ssh,
-		"-T", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "-o", "ConnectionAttempts=1",
-		"-o", "StrictHostKeyChecking=yes", "-o", "UpdateHostKeys=no",
-		"-o", "ControlMaster=no", "-o", "ControlPersist=no",
-		"-o", "ClearAllForwardings=yes", "-o", "PermitLocalCommand=no", "-o", "ForwardAgent=no",
-		"--", alias, "exit 0")
+	cmd := exec.CommandContext(run, e.ssh, args...)
 	cmd.Dir = e.home
 	cmd.Env = []string{"HOME=" + e.home, "USER=" + e.username, "LOGNAME=" + e.username, "PATH=/usr/bin:/bin", "LANG=C.UTF-8"}
 	cmd.Stdin, cmd.Stdout = nil, io.Discard
+	// A Match exec or hop that outlives ssh would hold stderr open and the
+	// request with it: the whole group goes, and Run waits no longer.
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.Cancel = func() error { return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }
+	cmd.WaitDelay = 2 * time.Second
 	var stderr boundedText
 	stderr.limit = 8192
 	cmd.Stderr = &stderr
 	err := cmd.Run()
+	if cmd.Process != nil {
+		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+	}
 	result.Result = classifyConfigCheck(err, stderr.String())
 	return result
 }

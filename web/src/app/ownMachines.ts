@@ -78,7 +78,9 @@ export type SSHConfigHost = {
   user: string;
   port: number;
   /** IdentityFiles; empty is ssh's default keys. */
-  keys: { path: string; present: boolean }[];
+  /** present is absent when the path keeps a token known only on
+   * connecting. */
+  keys: { path: string; present?: boolean }[];
   proxy_jump?: string;
   proxy_command: boolean;
   tailscale: boolean;
@@ -108,6 +110,7 @@ export type ConfigCheckResult =
   | "hostkey_unknown"
   | "host_key_changed"
   | "key_rejected"
+  | "route_unsupported"
   | "failed";
 export type ConfigCheck = { alias: string; result: ConfigCheckResult };
 export type OwnMachines = {
@@ -389,5 +392,5 @@ export function configGroups(config: SSHConfig) {
 
 /** The first IdentityFile named for the host that is not on the server. */
 export function missingKey(host: SSHConfigHost) {
-  return host.keys.find((k) => !k.present)?.path;
+  return host.keys.find((k) => k.present === false)?.path;
 }
