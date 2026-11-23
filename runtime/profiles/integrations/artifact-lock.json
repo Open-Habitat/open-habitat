@@ -77,15 +77,15 @@
     },
     {
       "target": "linux-amd64",
-      "filename": "glab_1.124.0_linux_amd64.tar.gz",
-      "url": "https://gitlab.com/gitlab-org/cli/-/releases/v1.124.0/downloads/glab_1.124.0_linux_amd64.tar.gz",
-      "sha256": "63df684842b0697e418649dd64374d37ac1da0fbcdcb422d6a5557222f8bb40f"
+      "filename": "glab_1.130.0_linux_amd64.tar.gz",
+      "url": "https://gitlab.com/gitlab-org/cli/-/releases/v1.130.0/downloads/glab_1.130.0_linux_amd64.tar.gz",
+      "sha256": "ce06313b2075af25180cd195ab3496d42bc5857c85a1c12ba996838dfe9d822c"
     },
     {
       "target": "linux-arm64",
-      "filename": "glab_1.124.0_linux_arm64.tar.gz",
-      "url": "https://gitlab.com/gitlab-org/cli/-/releases/v1.124.0/downloads/glab_1.124.0_linux_arm64.tar.gz",
-      "sha256": "0716395a0efeb991fc844b33fe55310645afcbd9b9746e50c725e9d1cd1b8d16"
+      "filename": "glab_1.130.0_linux_arm64.tar.gz",
+      "url": "https://gitlab.com/gitlab-org/cli/-/releases/v1.130.0/downloads/glab_1.130.0_linux_arm64.tar.gz",
+      "sha256": "062d53acb0f2cbcc79a014600df1aa0fb440bb3a08a5d4900d3b49b553b22767"
     },
     {
       "target": "linux-amd64",
@@ -228,12 +228,12 @@
     {
       "target": "linux-amd64",
       "name": "glab",
-      "version": "1.124.0",
+      "version": "1.130.0",
       "license": "MIT",
       "source": "https://gitlab.com/gitlab-org/cli",
-      "archive": "glab_1.124.0_linux_amd64.tar.gz",
+      "archive": "glab_1.130.0_linux_amd64.tar.gz",
       "member": "bin/glab",
-      "sha256": "a2ee2ea59129e39a7f15cf2443085aef8d495d2425f3f8942b43a0ba1f8533a2",
+      "sha256": "70dd1dd931a8de955098c9e27cc26d346275e8b04f8ae314b746f234409becca",
       "license_files": [
         "glab-THIRD-PARTY-NOTICES"
       ],
@@ -242,12 +242,12 @@
     {
       "target": "linux-arm64",
       "name": "glab",
-      "version": "1.124.0",
+      "version": "1.130.0",
       "license": "MIT",
       "source": "https://gitlab.com/gitlab-org/cli",
-      "archive": "glab_1.124.0_linux_arm64.tar.gz",
+      "archive": "glab_1.130.0_linux_arm64.tar.gz",
       "member": "bin/glab",
-      "sha256": "b119eecee632dc1eb8624df6d78ce8bdb64a009658cadc170379c4d33cdeb654",
+      "sha256": "d8f10ad8a716c6df8f2a8e0a58b3d1f20e2382d17369835136eea37c8cbfc680",
       "license_files": [
         "glab-THIRD-PARTY-NOTICES"
       ],
