@@ -1,0 +1,58 @@
+/* caps-paper: the mailbox search and the lease redline. */
+
+/* ---------- mailbox search ---------- */
+[data-block="caps-paper"] .cp-mail { display: flex; flex-direction: column; gap: 8px; font-size: 13px; line-height: 1.45; }
+[data-block="caps-paper"] .cp-q { display: flex; align-items: center; gap: 8px; background: var(--ah-surface); border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); padding: 5px 10px; min-width: 0; }
+[data-block="caps-paper"] .cp-q-k { font: 600 10.5px var(--ah-font); letter-spacing: .08em; text-transform: uppercase; color: var(--ah-muted); flex: none; }
+[data-block="caps-paper"] .cp-q code { font: 500 12px/1.4 var(--ah-mono); color: var(--ah-ink); background: none; padding: 0; overflow-wrap: anywhere; }
+[data-block="caps-paper"] .cp-q-n { margin: -2px 2px 0; font-size: 12px; color: var(--ah-muted); }
+[data-block="caps-paper"] .cp-q-n b { color: var(--ah-ink); font-weight: 600; }
+[data-block="caps-paper"] .cp-hits { list-style: none; margin: 0; padding: 0; background: var(--ah-surface); border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); overflow: hidden; }
+[data-block="caps-paper"] .cp-hits li { padding: 5px 12px 5px; border-top: 1px solid var(--ah-line-soft); }
+[data-block="caps-paper"] .cp-hits li:first-child { border-top: 0; }
+[data-block="caps-paper"] .cp-hits li.is-answer { background: var(--ah-accent-soft); box-shadow: inset 3px 0 0 var(--ah-accent); }
+[data-block="caps-paper"] .cp-hits p { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[data-block="caps-paper"] .cp-hit-h { font-size: 12.5px; color: var(--ah-ink); }
+[data-block="caps-paper"] .cp-hit-h time { font: 500 11px var(--ah-mono); color: var(--ah-muted); margin-right: 8px; }
+[data-block="caps-paper"] .cp-hit-h b { font-weight: 500; color: var(--ah-muted); margin-right: 8px; }
+[data-block="caps-paper"] .cp-hit-h span { font-weight: 600; }
+[data-block="caps-paper"] .cp-hit-a { display: inline-flex; align-items: center; gap: 3px; font: 500 11px var(--ah-mono); color: var(--ah-accent-ink); vertical-align: 1px; }
+[data-block="caps-paper"] .cp-hit-a svg { width: 12px; height: 12px; flex: none; }
+[data-block="caps-paper"] .cp-hit-x { color: var(--ah-ink-2); font-size: 12px; }
+[data-block="caps-paper"] .cp-hit-x mark { background: rgb(255 226 128); color: inherit; border-radius: 2px; padding: 0 1px; }
+[data-block="caps-paper"] .cp-page { margin: 2px 0 0; background: #fff; border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); overflow: hidden; box-shadow: var(--ah-shadow-float); }
+[data-block="caps-paper"] .cp-page img { display: block; width: 100%; height: auto; }
+[data-block="caps-paper"] .cp-page figcaption { padding: 5px 12px 6px; border-top: 1px solid var(--ah-line-soft); font-size: 12px; color: var(--ah-muted); background: var(--ah-surface); }
+[data-block="caps-paper"] .cp-page figcaption b { color: var(--ah-ink-2); font: 500 11.5px var(--ah-mono); }
+
+/* ---------- lease redline ---------- */
+[data-block="caps-paper"] .cp-lease { display: flex; flex-direction: column; gap: 10px; }
+[data-block="caps-paper"] .cp-lease-h { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 12px; margin: 0; font-size: 12.5px; color: var(--ah-muted); }
+[data-block="caps-paper"] .cp-lease-h b { font: 500 12px var(--ah-mono); color: var(--ah-ink); }
+[data-block="caps-paper"] .cp-key { display: inline-flex; gap: 8px; font-size: 12px; }
+[data-block="caps-paper"] .cp-doc { background: #fffdf8; color: #22201c; border: 1px solid var(--ah-line); border-radius: 4px; box-shadow: var(--ah-shadow-float); padding: 18px 22px 16px 38px; font: 13.5px/1.55 Charter, 'Bitstream Charter', 'Iowan Old Style', Georgia, 'DejaVu Serif', serif; }
+[data-block="caps-paper"] .cp-doc-t { margin: 0 0 14px; text-align: center; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; font-size: 15px; }
+[data-block="caps-paper"] .cp-doc-t span { display: block; font-weight: 400; letter-spacing: 0; text-transform: none; font-size: 13px; color: #6a655c; }
+[data-block="caps-paper"] .cp-same { margin: 0 0 10px; font-size: 12.5px; color: #8a847a; display: flex; flex-wrap: wrap; gap: 2px 12px; align-items: baseline; }
+[data-block="caps-paper"] .cp-same.is-date small del, [data-block="caps-paper"] .cp-same.is-date small ins { background: none; padding: 0; font: inherit; }
+[data-block="caps-paper"] .cp-same small { font: 500 10px var(--ah-font); letter-spacing: .08em; text-transform: uppercase; color: #a29c90; }
+[data-block="caps-paper"] .cp-cl { position: relative; margin: 0 0 10px; }
+[data-block="caps-paper"] .cp-cl h5 { margin: 0 0 1px; font: 700 14px/1.4 inherit; font-family: inherit; display: flex; align-items: baseline; gap: 8px; }
+[data-block="caps-paper"] .cp-cl h5 small { font: 600 10px var(--ah-font); letter-spacing: .08em; text-transform: uppercase; color: #8a847a; }
+[data-block="caps-paper"] .cp-cl.is-new h5 small { color: var(--ah-ok); }
+[data-block="caps-paper"] .cp-cl p { margin: 0; }
+[data-block="caps-paper"] .cp-cl.is-date { color: #6a655c; font-size: 13px; }
+[data-block="caps-paper"] .cp-cl.is-date h5 { font-size: 13px; }
+[data-block="caps-paper"] .cp-n { position: absolute; left: -28px; top: 1px; width: 19px; height: 19px; border-radius: 50%; background: var(--ah-accent); color: var(--ah-on-accent); font: 700 11px/19px var(--ah-font); text-align: center; }
+[data-block="caps-paper"] .cp-lease del { color: var(--ah-err); text-decoration: line-through; text-decoration-thickness: 1.5px; background: color-mix(in srgb, var(--ah-err) 9%, transparent); border-radius: 2px; padding: 0 2px; }
+[data-block="caps-paper"] .cp-lease ins { color: var(--ah-ok); text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 2px; background: color-mix(in srgb, var(--ah-ok) 11%, transparent); border-radius: 2px; padding: 0 2px; }
+[data-block="caps-paper"] .cp-cl.is-date del, [data-block="caps-paper"] .cp-cl.is-date ins, [data-block="caps-paper"] .cp-doc-t del, [data-block="caps-paper"] .cp-doc-t ins { background: none; }
+[data-block="caps-paper"] .cp-cl.is-new p ins { text-decoration: none; display: inline; }
+[data-block="caps-paper"] .cp-cl.is-new { padding-left: 10px; border-left: 2px solid var(--ah-ok); }
+[data-block="caps-paper"] .cp-cl.is-new .cp-n { left: -40px; }
+[data-block="caps-paper"] .cp-lease-n { margin: 0; font: 400 11.5px var(--ah-mono); color: var(--ah-muted); }
+
+@container (max-width: 420px) {
+  [data-block="caps-paper"] .cp-doc { padding: 16px 14px 16px 34px; font-size: 13.5px; }
+  [data-block="caps-paper"] .cp-hit-h time { min-width: 0; }
+}
