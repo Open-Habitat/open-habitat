@@ -1,9 +1,9 @@
 ---
 created: 2026-11-14
-updated: 2026-11-21
+updated: 2026-11-23
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-14/revoked-access-keeps-quota
@@ -11,6 +11,11 @@ preparation: ready
 lane: person-removal
 lane_seq: 1
 related: ['@person-removal-broker', '@person-removal-daemon', '@person-removal-gateway', '@person-removal-browser']
+closed: 2026-11-23
+closed_by: agent
+commits:
+- hash: 459c2a439
+  summary: retire ADR 0037
 ---
 
 # Removing a person's access keeps their quota in the disk sum
@@ -40,3 +45,9 @@ Jari 21.11.2026: build a real person removal (option 3). Next actions: an archit
 ### 2026-11-21T10:04:59Z · @jari
 
 Jari 21.11.2026: ADR 0037 questions — grace period 14 days with an immediate option: yes; nothing handed to the administrator; revoke at the providers already at stage 1: yes, definitely; the removal record stays as long as the person can still be restored (i.e. through the grace period; after final deletion the row goes). UI: direction Armonaika; the row shows the date; confirmation stays as built. ADR 0037 accepted; the four implementation issues are laned in order broker → daemon → gateway → browser.
+
+## Resolution
+
+### 2026-11-23T05:10:52Z · @agent
+
+Person removal implemented across broker, daemon, gateway and browser; the Levytila sum counts a person under removal by use. Details in result.md.
