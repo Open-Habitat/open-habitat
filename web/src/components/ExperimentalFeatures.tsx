@@ -43,7 +43,8 @@ function Picture({ id, on }: { id: string; on: boolean }) {
   if (
     id === "rewind-conversation" ||
     id === "multiplayer" ||
-    id === "own-machines-ssh-config"
+    id === "own-machines-ssh-config" ||
+    id === "sounds-active-device"
   )
     body = (
       <>

@@ -97,6 +97,8 @@ export const mutationClasses = {
   "editor.checkStartPage": "confirmed",
   "account.preferences": "confirmed",
   "account.first_route": "confirmed",
+  // Which of the person's tabs they are using; only the sound reads it.
+  "account.active_device": "confirmed",
   // The person's own instructions file: a compare-and-swap the daemon answers.
   "account.agent_instructions": "confirmed",
   "account.keys": "confirmed",

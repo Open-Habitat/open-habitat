@@ -58,6 +58,7 @@ import {
   useConfirmedPreferences,
   useExperimentalFeature,
 } from "./accountPreferences";
+import { useActiveDeviceReports } from "./activeDevice";
 import { agentTitle } from "./agentTitle";
 import { useAttentionSound } from "./attentionSound";
 import { BrowserConversation } from "./BrowserConversation";
@@ -1552,7 +1553,13 @@ export function App() {
   );
   const browserTitle = (id: string) =>
     snapshot?.agents.find((a) => a.agent_id === id)?.title.display || undefined;
-  // One sound when a conversation becomes the person's turn.
+  // One sound when a conversation becomes the person's turn; with the
+  // experiment on, only in the tab the person is using.
+  const activeDevice = useExperimentalFeature("sounds-active-device", {
+    identity,
+    csrf,
+  });
+  useActiveDeviceReports(csrf, activeDevice);
   useAttentionSound({
     identity,
     yours: now.yours,
@@ -1560,6 +1567,7 @@ export function App() {
     loaded:
       confirmedPreferences.loaded && confirmedPreferences.error !== "read",
     stale: phase === "stale",
+    activeDevice,
   });
   const quietChoice = {
     sort: confirmedPreferences.quiet_sort,

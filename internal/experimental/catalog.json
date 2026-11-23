@@ -3,7 +3,8 @@
     { "id": "rewind-conversation", "landed": true },
     { "id": "remote-browser", "landed": true },
     { "id": "multiplayer", "landed": true },
-    { "id": "own-machines-ssh-config", "landed": true }
+    { "id": "own-machines-ssh-config", "landed": true },
+    { "id": "sounds-active-device", "landed": true }
   ],
   "fi": {
     "features": {
@@ -38,6 +39,14 @@
         "shows": "Jokaisesta yhteydestä osoitteen, käyttäjän, portin, avaintiedostot ja onko ne olemassa, ProxyJumpin sekä tiedoston ja rivin. Yhteys tarkistetaan vain, kun painat Tarkista yhteys.",
         "needs": "Habitat lukee tiedoston omana käyttäjänäsi eikä koskaan kirjoita siihen tai known_hostsiin. Jokeririvejä, Match-lohkoja ja Git-palveluita ei näytetä.",
         "caption": "Löytyi ~/.ssh/config:sta"
+      },
+      "sounds-active-device": {
+        "name": "Ääni vain käyttämälläsi laitteella",
+        "desc": "Kun Habitat on auki usealla laitteella, merkkiääni soi vain siinä, jota käytät: sillä, jolla kirjoitit, klikkasit tai kosketit viimeksi.",
+        "where": "Merkkiäänessä, kun keskustelu tulee sinun vuorollesi. Asetukset eivät muutu.",
+        "shows": "Muut avoimet välilehdet ja laitteet ovat hiljaa. Jos mitään laitetta ei ole käytetty viiteen minuuttiin, ääni soi kaikilla kuten ennen.",
+        "needs": "Jokainen avoin välilehti kertoo omalle palvelimellesi, onko se näkyvissä ja milloin sitä viimeksi käytettiin. Tieto on vain muistissa, eikä sitä näe kukaan muu. Välilehti, joka ei saa palvelimeen yhteyttä, soittaa äänen.",
+        "caption": "Vain tällä laitteella"
       }
     },
     "picture": {
@@ -97,6 +106,14 @@
         "shows": "For each connection the address, user, port, key files and whether they exist, the ProxyJump, and the file and line. A connection is checked only when you press Check connection.",
         "needs": "Habitat reads the file as your own user and never writes to it or to known_hosts. Wildcard lines, Match blocks and Git services are not shown.",
         "caption": "Found in ~/.ssh/config"
+      },
+      "sounds-active-device": {
+        "name": "Sound only on the device you use",
+        "desc": "When Habitat is open on several devices, the attention sound plays only on the one you are using: where you last typed, clicked or touched.",
+        "where": "In the attention sound, when a conversation becomes your turn. The settings stay as they are.",
+        "shows": "Your other open tabs and devices stay quiet. If no device has been used for five minutes, the sound plays on all of them as before.",
+        "needs": "Each open tab tells your own server whether it is visible and when it was last used. This is kept in memory only, and nobody else sees it. A tab that cannot reach the server plays the sound.",
+        "caption": "Only on this device"
       }
     },
     "picture": {

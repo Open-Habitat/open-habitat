@@ -12,6 +12,7 @@ const features = [
   "remote-browser",
   "multiplayer",
   "own-machines-ssh-config",
+  "sounds-active-device",
 ];
 const retired = [
   "agent-instructions",

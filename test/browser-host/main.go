@@ -315,6 +315,9 @@ esac
 	var conversationHandlers []*atomic.Value
 	var conversationFactories []func() (http.Handler, context.CancelFunc)
 	var conversationCancels []context.CancelFunc
+	// Each user's tab reports live only in their daemon's memory, so a new
+	// synthetic daemon incarnation starts without them.
+	var activeDeviceResets []func()
 	defer func() {
 		for _, cancel := range conversationCancels {
 			cancel()
@@ -631,6 +634,13 @@ esac
 		// writing only into the disposable home.
 		mux.Handle(daemon.AccountKeysPath, daemon.AccountKeysHandlerWithFixtureTools(fixtureWorkspaceCfg, trusted, "/usr/bin/ssh-keygen", "/usr/bin/age-keygen"))
 		mux.Handle(daemon.FirstRoutePath, daemon.FirstRouteHandler(fixtureWorkspaceCfg, trusted))
+		activeDevice := &atomic.Value{}
+		resetActiveDevice := func() { activeDevice.Store(daemon.ActiveDeviceHandler(fixtureWorkspaceCfg, trusted)) }
+		resetActiveDevice()
+		activeDeviceResets = append(activeDeviceResets, resetActiveDevice)
+		mux.Handle(daemon.ActiveDevicePath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			activeDevice.Load().(http.Handler).ServeHTTP(w, r)
+		}))
 		mux.Handle(daemon.AgentInstructionsPath, daemon.AgentInstructionsHandler(fixtureWorkspaceCfg, trusted))
 		mux.Handle(daemon.StorageBreakdownPath, daemon.StorageBreakdownHandler(fixtureWorkspaceCfg, trusted))
 		if _, own, e := newOwnMachinesHost(tmp, home, m.Username); e != nil {
@@ -988,6 +998,9 @@ esac
 					current.Store(conversations)
 					conversationCancels[i] = cancel
 					previous()
+				}
+				for _, reset := range activeDeviceResets {
+					reset()
 				}
 				w.WriteHeader(204)
 				return

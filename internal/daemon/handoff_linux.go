@@ -120,6 +120,7 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	mux.Handle(OwnMachinesPath, OwnMachinesHandler(cfg, server.TrustedPeer))
 	ownMachines := newOwnMachineEnv(cfg)
 	mux.Handle(FirstRoutePath, FirstRouteHandler(cfg, server.TrustedPeer))
+	mux.Handle(ActiveDevicePath, ActiveDeviceHandler(cfg, server.TrustedPeer))
 	mux.Handle(AgentInstructionsPath, AgentInstructionsHandler(cfg, server.TrustedPeer))
 	mux.Handle(WorkspaceFilesPath, WorkspaceFilesHandler(cfg, server.TrustedPeer))
 	mux.Handle(WorkspaceFilePreviewPath, WorkspaceFilePreviewHandler(cfg, server.TrustedPeer))

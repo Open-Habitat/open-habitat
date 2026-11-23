@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/active-device.schema.json",
+  "title": "Which of the person's open tabs is the one they are using",
+  "description": "PUT /api/v1/account/active-device. Each open tab of the person reports whether it is visible and how long ago it last had keyboard, pointer or touch input; the reply says whether the attention sound plays in that tab. The person's own daemon keeps the reports in memory only, so a tab never learns about another person's tabs. The tab with the freshest input within five minutes plays; when no tab has had input for that long, every tab plays.",
+  "$defs": {
+    "write": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tab",
+        "visible"
+      ],
+      "properties": {
+        "tab": {
+          "description": "A random identifier the tab chose for itself when it opened. It names nothing else.",
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "visible": {
+          "type": "boolean"
+        },
+        "idle_ms": {
+          "description": "Milliseconds since the tab's last input; absent while it has had none. The daemon reads it against its own clock, so the devices' clocks need not agree.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 86400000
+        },
+        "left": {
+          "description": "The tab is closing: it is forgotten at once.",
+          "const": true
+        }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "play"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "play": {
+          "description": "Whether the attention sound plays in the reporting tab now.",
+          "type": "boolean"
+        }
+      }
+    }
+  },
+  "$ref": "#/$defs/result"
+}
