@@ -123,6 +123,129 @@ ja konsoli pysyi puhtaana. Kuvakaappaukset (DPR 2) ovat repositorion
 ulkopuolella hakemistossa `/var/tmp/agent-keep/reply-to-agent-message-2/`
 (`<suunta>-1-oletus-<leveys>-<teema>.png` ja niin edelleen).
 
+## Kierros 3: kulmapainike, pitkä lainaus ja otteen pituus
+
+Kierros: `design-system/prototypes/rounds/2026-11-23-reply-to-message-3/`
+(`NOTES.md` kertoo rakenteen, rakennuskomennon ja tarkistuksen). Jarin päätös
+23.11.: painike on oikeassa yläkulmassa, lainaus kentän sisällä (kierroksen 2
+B) ja vaihtoehto 1 hyväksytty. Kierros riffaa kolmea asiaa, ja sivun
+yläreunassa on kustakin yksi rivi suuntaa kohden ja suositus.
+
+Sivu on yksi vierivä dokumentti, joka toimii Habitat-näkymänä: ei kehyksiä,
+ei siirtymiä, ei verkkoa. Valitsimen suunta vaihtaa elävän keskustelun
+painikkeen ja lainauksen; sen alla osiot näyttävät kaikki muunnelmat
+rinnakkain, joten painikkeen ja lainauksen voi valita eri suunnista. Elävän
+keskustelun vieressä on koko ajan näkyvissä, mitä agentti saisi kustakin
+kolmesta otteesta.
+
+### 1 Kulmapainike
+
+Kaikki kolme ovat kortin `actions`-paikassa kellonajan jälkeen, kuten Palaa
+tähän -valikko. Matriisi näyttää kunkin levossa, osoittimen alla, fokuksessa,
+vastattaessa ja puhelimessa (levossa ja vastattaessa), Päivä- ja Yö-teemassa.
+
+1. **A Kopioin pari**: Kopioi-painikkeen esitystapa sellaisenaan (32 px
+   neliö, ei reunaa eikä sävyä, korostuksen väri), aina näkyvissä.
+   Vastattaessa painettu pinta. Puhelimessa 40 px kuten muut rivin toiminnot.
+2. **B Rajattu ja hiljainen**: pienempi neliö (26 px), ohut erotinviiva,
+   vaimea väri. Työpöydällä se näkyy osoittimen alla tai fokuksessa kuten
+   Palaa tähän, ja vastattavassa viestissä se pysyy näkyvissä. Puhelimessa se
+   on aina näkyvissä (32 px).
+3. **C Sävytetty pilleri**: ↩ ja sana *Vastaa* korostuksen vaaleassa
+   sävyssä, aina näkyvissä. Vastattaessa täysi korostusväri. Puhelimessa vain
+   ↩ samassa sävyssä (32 px pyöreä).
+
+**Suositus: A.** Viestin toiminnot näyttävät yhdeltä perheeltä, kun ↩ on samaa
+kokoa ja väriä kuin Kopioi. Aina näkyvä painike löytyy ilman osoitinta, ja
+kosketus ja näppäimistö toimivat samoin. B on siistein työpöydällä, mutta
+toive tuli henkilöltä, joka ei tiennyt toiminnosta, ja piilossa oleva painike
+on juuri se, mitä hän ei löytäisi. C erottuu parhaiten, mutta joka viestissä
+oleva sävytetty pilleri vetää katsetta pois tekstistä.
+
+### 2 Pitkän viestin lainaus kentässä
+
+Lainattuna on viesti, jossa on kaksi kappaletta, koodilohko ja lista. Lainaus
+on kentän laatikon ensimmäinen rivi, upotettu pinta kuten kierroksen 2 B:ssä.
+Napautus lainauksen tekstiin vie kaikissa suunnissa alkuperäiseen ja
+välähdyttää sen. ✕ poistaa lainauksen, ja luonnos jää kenttään.
+
+1. **A Kaksi riviä**: viestin alku pelkkänä tekstinä kahdella rivillä, ja
+   loppu katkeaa kolmeen pisteeseen. Ei avausta. Kenttä kasvaa aina saman
+   verran.
+2. **B Avattava viesti**: koko viesti muotoiltuna, kolme riviä ja häivytys.
+   *Näytä koko viesti* avaa sen kentän sisään enintään kolmanneksen
+   keskustelun korkeudesta ja vierii siinä.
+3. **C Sama kuin agentille**: lainaus on täsmälleen agentille lähtevä ote
+   (osion 3 valinta, oletuksena c) rakenteineen: koodi tasalevyisenä ja lista
+   listana. Neljä riviä ja häivytys. *Näytä koko ote* avaa loput otteesta, ja
+   koska ote on rajattu, avattukaan lainaus ei vieri.
+
+**Suositus: C.** Kentässä näkyy juuri se, mitä agentin vastaukseen lähtee, eikä
+mitään piilossa olevaa, joten ihminen voi tarkistaa viittauksen ennen
+lähettämistä. Kenttä kasvaa enintään neljä riviä, ja koko viestiin pääsee
+napauttamalla. B näyttää kentässä enemmän kuin agentti saa, joten se antaa
+väärän kuvan. A on kevein, mutta koodilla alkavasta viestistä se näyttää
+litistettyä koodia.
+
+### 3 Otteen pituus
+
+Neljä viestiä (lyhyt, pitkä, alkaa koodilla, lista) ja kolme sääntöä
+rinnakkain: *Agentti saa* on `<reply-to>`-lohko täsmälleen sellaisena kuin se
+lähtee Pi:lle ja jää natiiviin istuntoon, ja *Kentässä* on lainaus, jonka
+ihminen näkee.
+
+1. **a 280 merkkiä**: teksti yhdeksi riviksi (välilyönnit normalisoitu) ja
+   katkaistu sanan kohdalta 280 merkkiin. Kierroksen 2 arkkitehtuurin sääntö.
+2. **b Ensimmäinen virke**: teksti ensimmäiseen pisteeseen, huutomerkkiin tai
+   kysymysmerkkiin, enintään 280 merkkiä.
+3. **c Alku rakenteineen**: viestin oma Markdown kokonaisina riveinä noin 280
+   merkkiin. Viimeinen proosarivi katkaistaan virkkeen (tai sanan) kohdalta,
+   avoin koodilohko suljetaan, ja erillinen `…`-rivi kertoo, että viesti
+   jatkuu.
+
+Mitä ero tekee:
+
+- **Lyhyt** (78 merkkiä): a ja c ovat samat, koko viesti. b antaa vain
+  *Korjaa. …*, koska ensimmäinen virke on yksi sana.
+- **Pitkä** (819 merkkiä): a katkeaa kesken toisen kappaleen (*Korjaus on
+  siirtyä …*). b pysähtyy lyhenteeseen *esim.* keskellä ensimmäistä virkettä.
+  c antaa koko ensimmäisen kappaleen.
+- **Alkaa koodilla**: a ja b litistävät koodin yhdeksi riviksi
+  (```` ```python def test_dst_march(): ts = … ````), ja b:n "virke" on koodi
+  ja selitys yhdessä. c pitää koodilohkon koodina ja sen jälkeen selityksen.
+- **Lista**: a litistää numeroidun listan riviksi. b antaa *Kaksi tapaa: 1.
+  …*, koska johdanto päättyy kaksoispisteeseen ja ensimmäinen piste on
+  numeron jäljessä. c pitää johdannon ja molemmat kohdat listana.
+
+**Suositus: c.** Se on yhtä lyhyt kuin a (enintään noin 280 merkkiä, noin
+60–100 tokenia), mutta lista pysyy listana ja koodi koodina, joten malli ja
+terminaalista lukeva ihminen ymmärtävät otteen. Ote ei myöskään katkea
+lyhenteeseen tai pelkkään johdantoon kuten b. Ote ratkaisee silloin, kun
+alkuperäinen on tiivistetty mallin kontekstista pois, ja juuri silloin
+litistetty koodi tai *Korjaa. …* ei kerro mallille, mihin vastataan.
+Daemonin sääntö muuttuu vaihtoehto 1:n sisällä: välilyöntejä ei
+normalisoida, vaan rivit säilyvät. Lohkon muoto, `</reply-to`-jonon
+poistaminen ja jäsennin pysyvät ennallaan, joten sopimus ei muutu.
+
+### Tarkistus
+
+`check.mjs` tarjoilee sivun gatewayn näkymän hiekkalaatikon CSP:llä
+(läpinäkymätön alkuperä, ei yhteyksiä, ei kehyksiä) ja epäonnistuu, jos sivu
+pyytää mitään muuta kuin itsensä, sisältää kehyksen tai vaihtaa osoitettaan.
+Se kävi kaikki kolme suuntaa Päivä-, Yö- ja Korkea kontrasti -teemassa 1440 ja
+390 px:n leveydellä: rivit, painikkeen paikka kulmassa ja koko (32/26/26 px
+työpöydällä, 40/32/32 px puhelimessa), B:n piilotus levossa vain
+työpöydällä, C:n sana vain työpöydällä, ettei lainauksen vasen reuna ole muita
+leveämpi, oletusnäkymässä näkyvä kulmapainike ja valitsimen pysyminen kentän
+ulkopuolella, avaus ja sen raja, hyppy, ✕ luonnoksen säilyessä, uusi vastaus,
+lähetys ja sivupaneelin lohko, painikematriisin tilat molemmissa teemoissa ja
+otetaulukko (lohkon muoto, pituus, a litistää koodin, c pitää koodin ja
+listan, b pysähtyy lyhenteeseen). 714 tarkistusta meni läpi, ja konsoli pysyi
+puhtaana. Kuvakaappaukset (DPR 2) ovat repositorion ulkopuolella hakemistossa
+`/var/tmp/agent-keep/reply-to-agent-message-3/`
+(`<suunta>-1-oletus-<leveys>-<teema>.png`, `s1-painike-…`, `s2-lainaus-…`,
+`s3-ote-…`).
+
 ## Mitä agentille lähtee
 
 Kaikissa vaihtoehdoissa tämä pysyy sovelluskerroksen ja daemonin asiana: oma
@@ -330,9 +453,31 @@ orpojen rivien käsittely.
   lopullista tekstiä lainattavaksi.
 - **Yksi lainaus kerrallaan**: uusi painallus korvaa edellisen. Monta
   lainausta kerralla olisi raskaampi sekä näkymässä että Pi:lle.
-- **Otteen pituus**: enintään 280 merkkiä, katkaistu sanan kohdalta. Näkymä
-  näyttää kaksi riviä (A, B) tai yhden (C). Pidempi ote kuluttaisi
-  kontekstia, ja ote on vain tunnistamista varten.
+- **Otteen pituus** (kierros 3): suositus on c, Markdown kokonaisina riveinä
+  noin 280 merkkiin, kunnes Jari valitsee. Raja pysyy samana kuin
+  kierroksessa 2. Pidempi ote kuluttaisi kontekstia, ja ote on vain
+  tunnistamista varten.
+- **c:n tarkat säännöt**: tyhjien rivien jonot supistetaan yhteen, avoin
+  koodilohko suljetaan (raja voi ylittyä sulkevan rivin verran), ja
+  keskeneräinen koodirivi jätetään pois eikä katkaista. Vaihtoehtona oli
+  katkaista myös koodi merkin kohdalta, mutta puolikas koodirivi johtaisi
+  mallia harhaan.
+- **Napautus lainaukseen hyppää, avaus on erillinen painike** (kierros 3):
+  briefin "expand on tap" olisi voinut tarkoittaa, että napautus avaa.
+  Hyppy on kuitenkin sama ele kuin lähetetyn viestin lainauksessa ja
+  kierroksissa 1–2, joten avaus sai oman *Näytä koko …* -painikkeen.
+- **Puhelimen painike** (kierros 3): kaikki muunnelmat näkyvät kosketuksella
+  aina, koska puhelimessa ei ole osoitinta. Pitkä painallus viestiin olisi
+  vaihtoehto, mutta sitä ei löydä ilman ohjetta, ja se kilpailee selaimen
+  oman tekstinvalinnan kanssa.
+- **Vastattavan alkuperäisen merkintä** (kierros 3): kierroksen 2 B:n
+  upotettu pinta säilytettiin kaikissa suunnissa, koska kierros ei riffannut
+  sitä.
+- **Kierroksen 3 näkymä**: painikkeen ja lainauksen muunnelmat näkyvät myös
+  irrallisina tuotantokomponentteina matriisissa, koska ilman kehyksiä
+  puhelimen media-ehdot eivät toteudu työpöydällä. Puhelinsarake käyttää
+  kosketuksen sääntöjä suoraan, ja oikean puhelinasettelun näkee samasta
+  sivusta puhelimella.
 - **Ote daemonilta eikä selaimelta**: ote vastaa aina istuntoa, ja selain
   ei voi laittaa agentin suuhun sanoja, joita tämä ei sanonut.
 - **Vaihtoehto 1:n tagi**: `<reply-to entry="…">` ilman kellonaikaa tai roolia.
@@ -354,9 +499,9 @@ orpojen rivien käsittely.
 
 ## Kysymykset Jarille
 
-1. Mikä suunta: A Liite, B Kentän sisällä vai C Jonon rivi? Suositus B.
-2. Kelpaako vaihtoehto 1 eli `<reply-to entry="…">`-lohko käyttäjän viestin
-   alussa natiivissa istunnossa? Vai halutaanko käyttäjän teksti
-   koskemattomana (vaihtoehto 2), vaikka se vaatii companionin ajoituksen ja
-   kaksi kirjoitusta?
-3. Kelpaako 280 merkin ote, vai riittääkö pelkkä viestin ensimmäinen virke?
+1. Kulmapainike: A Kopioin pari, B Rajattu ja hiljainen vai C Sävytetty
+   pilleri? Suositus A.
+2. Pitkä lainaus kentässä: A Kaksi riviä, B Avattava viesti vai C Sama kuin
+   agentille? Suositus C.
+3. Ote: a 280 merkkiä, b ensimmäinen virke vai c alku rakenteineen?
+   Suositus c.

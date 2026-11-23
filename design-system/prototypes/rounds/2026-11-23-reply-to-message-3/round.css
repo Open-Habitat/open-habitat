@@ -1,0 +1,197 @@
+/* Review chrome: one scrolling document (a Habitat view has no frames). */
+html, body { margin: 0; background: var(--ah-bg); color: var(--ah-ink); }
+body { padding-bottom: 96px; font: var(--ah-size-ui)/var(--ah-lh-ui) var(--ah-font); }
+.rp-review { display: grid; gap: var(--ah-s5); padding: 0 var(--ah-s4); }
+.rp-bar {
+  display: grid; gap: var(--ah-s1); margin: 0 calc(-1 * var(--ah-s4));
+  padding: var(--ah-s2) var(--ah-s4); background: var(--ah-surface);
+  border-bottom: 1px solid var(--ah-line); font-size: var(--ah-size-meta); line-height: 1.4;
+}
+.rp-controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s1) var(--ah-s4); }
+.rp-bar strong { font-weight: 600; }
+.rp-bar select, .rp-bar button { font: inherit; }
+.rp-hint { color: var(--ah-muted); }
+.rp-all-toggle { display: none; }
+.rp-studies { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--ah-s4); }
+.rp-all { display: grid; }
+.rp-study h2 { margin: 0 0 2px; font-size: var(--ah-size-meta); font-weight: 600; }
+.rp-lines { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; color: var(--ah-ink-2); }
+.rp-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.rp-recommend { margin: var(--ah-s1) 0 0; color: var(--ah-accent-ink); }
+@media (max-width: 1100px) { .rp-studies { grid-template-columns: minmax(0, 1fr); gap: var(--ah-s2); } }
+@media (max-width: 800px) {
+  .rp-review { padding: 0 var(--ah-s2); }
+  .rp-bar { margin: 0 calc(-1 * var(--ah-s2)); padding: var(--ah-s2); }
+  .rp-hint { display: none; }
+  /* A phone shows the chosen line of each study; the rest on request. */
+  .rp-all-toggle { display: inline; justify-self: start; margin-bottom: var(--ah-s1); }
+  .rp-bar:not([data-all]) :is(.rp-lines li:not([aria-current]), .rp-recommend) { display: none; }
+  .rp-bar:not([data-all]) .rp-study { display: flex; gap: var(--ah-s1); }
+  .rp-bar:not([data-all]) .rp-study h2 { flex: none; }
+  .rp-bar:not([data-all]) .rp-study h2::after { content: ":"; }
+  .rp-studies { gap: var(--ah-s1); }
+}
+
+/* ---------- The live conversation ---------- */
+.rp-live-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 420px); gap: var(--ah-s4); }
+.rp-live {
+  /* Leaves room under it for the picker that floats at the bottom. */
+  height: max(480px, calc(100dvh - var(--rp-bar-h, 300px) - 120px)); min-width: 0;
+  border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); overflow: hidden;
+}
+.rp-side { min-width: 0; display: grid; align-content: start; gap: var(--ah-s2); }
+.rp-side h2 { margin: 0; font-size: var(--ah-size-ui); }
+.rp-side figure, .rp-ex-cell { margin: 0; min-width: 0; }
+.rp-side figcaption { color: var(--ah-muted); font-size: var(--ah-size-meta); margin-bottom: 2px; }
+.rp-side figure[data-chosen] figcaption { color: var(--ah-ink); font-weight: 600; }
+.rp-side pre, .rp-ex-cell pre {
+  margin: 0; padding: var(--ah-s2) var(--ah-s3); max-height: 220px; overflow: auto;
+  white-space: pre-wrap; overflow-wrap: anywhere; font: var(--ah-size-meta)/1.45 var(--ah-mono);
+  color: var(--ah-ink); background: var(--ah-surface); border: 1px solid var(--ah-line); border-radius: var(--ah-r-md);
+}
+.rp-side figure[data-chosen] pre, .rp-ex-cell[data-chosen] pre { border-color: var(--ah-line-strong); }
+@media (max-width: 1100px) { .rp-live-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 800px) {
+  .rp-live { height: calc(100dvh - var(--rp-bar-h, 120px) - 110px); min-height: 460px; margin-inline: calc(-1 * var(--ah-s2)); border-radius: 0; border-inline: 0; }
+}
+.rp-tools { display: grid; gap: var(--ah-s1); }
+.rp-msg[data-role="assistant"] { max-width: min(var(--ah-measure), 100%); }
+
+/* Buttons the round draws itself reset to the text they carry. */
+.rp-q-jump, .rp-sent { font: inherit; color: inherit; text-align: start; cursor: pointer; background: none; border: 0; padding: 0; margin: 0; min-width: 0; }
+:is(.rp-q-jump, .rp-sent):focus-visible { outline: var(--ah-focus-width) solid var(--ah-focus); outline-offset: 2px; }
+.rp-glyph { flex: none; width: var(--b-icon, 16px); height: var(--b-icon, 16px); }
+
+/* The original under a jump: a short accent wash; reduced motion keeps a
+   still focus outline for the same time. */
+[data-flash] .ah-message { animation: rp-flash 1.6s ease-out; }
+@keyframes rp-flash { 0%, 30% { background: var(--ah-accent-soft); } 100% { background: var(--ah-surface); } }
+@media (prefers-reduced-motion: reduce) {
+  [data-flash] .ah-message { animation: none; outline: var(--ah-focus-width) solid var(--ah-focus); outline-offset: 2px; }
+}
+
+/* ---------- 1. The corner control ----------
+   All three sit in the `actions` slot (Rewind.css .ah-message-actions:
+   top-right, after the time). */
+.rp-ctl .rp-glyph { width: var(--b-icon); height: var(--b-icon); }
+/* A Kopioin pari: Kopioi's own presentation (quiet, row, messageIcon). */
+.rp-ctl-a [aria-pressed="true"] { background: var(--ah-surface-press); --i-fg: var(--ah-ink); }
+/* B Rajattu ja hiljainen: inline square with a separator line, muted. */
+.rp-ctl-b button { --i-bg: var(--ah-surface); --i-border: var(--ah-line); --i-fg: var(--ah-muted); --i-hover-fg: var(--ah-ink); }
+.rp-ctl-b [aria-pressed="true"] { background: var(--ah-surface-press); --i-border: var(--ah-line-strong); --i-fg: var(--ah-ink); }
+@media (hover: hover) and (min-width: 801px) {
+  .rp-ctl-b:not(.rp-touch *) { opacity: 0; transition: opacity 120ms; }
+  .ah-message:is(:hover, :focus-within) .rp-ctl-b, .rp-ctl-b[data-active], .rp-show .rp-ctl-b, .rp-ctl-b[data-forced] { opacity: 1; }
+}
+/* C Sävytetty pilleri: accent-soft fill, glyph and word; while replied to,
+   the full accent. */
+.rp-ctl-c button {
+  --i-bg: var(--ah-accent-soft); --i-fg: var(--ah-accent-ink);
+  --i-hover: var(--ah-accent-soft); --i-hover-fg: var(--ah-ink);
+  border-radius: var(--ah-r-pill); gap: var(--b-gap);
+}
+.rp-ctl-c button:is(:hover, [data-ah-state="hover"]) { --i-border: var(--ah-accent); }
+.rp-ctl-c [aria-pressed="true"] { --i-bg: var(--ah-accent); --i-fg: var(--ah-on-accent); --i-hover: var(--ah-accent-hover); --i-hover-fg: var(--ah-on-accent); }
+/* Touch: phone sizes, C drops its word (the accessible name stays). */
+@media (hover: none), (max-width: 800px) {
+  .rp-ctl-c .rp-ctl-label { display: none; }
+  .rp-ctl-c button { padding-inline: 0; width: var(--b-h); }
+}
+.rp-touch { --ah-control-row: 40px; --ah-control-row-font: 14px; --ah-control-inline: 32px; }
+.rp-touch .rp-ctl-c .rp-ctl-label { display: none; }
+.rp-touch .rp-ctl-c button { padding-inline: 0; width: var(--b-h); }
+
+.rp-section { display: grid; gap: var(--ah-s3); }
+.rp-section h2 { margin: var(--ah-s4) 0 0; font-size: var(--ah-size-title, 1.15rem); }
+.rp-section h3 { margin: 0 0 var(--ah-s2); font-size: var(--ah-size-ui); }
+.rp-section h4 { margin: 0; font-size: var(--ah-size-meta); font-weight: 600; color: var(--ah-ink-2); }
+.rp-lead { margin: 0; color: var(--ah-ink-2); max-width: 90ch; }
+.rp-themed { padding: var(--ah-s3); border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-bg); color: var(--ah-ink); }
+.rp-themed h4 { color: var(--ah-ink-2); }
+.rp-matrix { display: grid; gap: var(--ah-s3); }
+.rp-matrix-row, .rp-quote-row { display: grid; gap: var(--ah-s2); padding: var(--ah-s2); border-radius: var(--ah-r-md); }
+:is(.rp-matrix-row, .rp-quote-row)[aria-current] { background: var(--ah-sunken); }
+:is(.rp-matrix-row, .rp-quote-row)[aria-current] h4::after { content: " · valittu keskusteluun"; font-weight: 400; color: var(--ah-muted); }
+.rp-cells { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: var(--ah-s2); }
+.rp-cell { margin: 0; min-width: 0; display: grid; gap: var(--ah-s1); align-content: start; }
+.rp-cell figcaption { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.rp-cell .ah-message { padding: var(--ah-s3); }
+.rp-cell.rp-touch .rp-msg { max-width: 360px; }
+
+/* ---------- 2. The quote inside the composer ----------
+   Round 2 B: the field box's first row, a sunken block like the Markdown
+   frontmatter, inset so the box's own border and focus ring stay whole. */
+.ah-cbox > .rp-q { order: -1; }
+.rp-q {
+  display: grid; gap: 2px; min-width: 0;
+  margin: var(--ah-s2) var(--ah-s2) 0;
+  padding: var(--ah-s1) var(--ah-s1) var(--ah-s2) var(--ah-s3);
+  border: 1px solid var(--ah-line-soft); border-radius: var(--ah-r-md);
+  background: var(--ah-sunken);
+}
+.rp-q-head { display: flex; align-items: center; gap: var(--ah-s2); color: var(--ah-ink-2); font-size: var(--ah-size-meta); font-weight: 600; min-height: 24px; }
+.rp-q-head .rp-glyph { width: 14px; height: 14px; }
+.rp-q-head time { color: var(--ah-muted); font-weight: 400; font-variant-numeric: tabular-nums; }
+.rp-q-tools { margin-inline-start: auto; display: inline-flex; }
+.rp-q-tools button { --i-fg: var(--ah-muted); }
+.rp-q-jump { display: block; width: 100%; padding-inline-end: var(--ah-s2); border-radius: var(--ah-r-sm); }
+.rp-q-body { display: block; color: var(--ah-ink-2); font-size: var(--ah-size-meta); line-height: var(--ah-lh-ui); overflow: hidden; }
+.rp-q-more { margin-inline-start: calc(-1 * var(--ah-s2)); }
+.rp-q-more button { --i-bg: transparent; }
+/* A: two lines, an ellipsis. */
+.rp-q-a .rp-q-body { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+/* B: three lines of the rendered message with a fade; open, the whole
+   message scrolls inside a third of the composer's room. */
+.rp-q-b .rp-q-body { max-height: calc(3 * var(--ah-lh-ui) * 1em); }
+.rp-q-b .rp-q-md .ah-markdown, .rp-q-b .rp-q-md { font-size: var(--ah-size-meta); }
+.rp-q-b .rp-q-md :is(p, ul, ol, pre) { margin: 0 0 var(--ah-s1); }
+.rp-q-b .rp-q-md pre { font-size: var(--ah-size-meta); }
+.rp-q-b[data-open] .rp-q-body { max-height: max(160px, calc(var(--ah-frame-height, 100dvh) / 3)); overflow: auto; }
+/* C: the excerpt itself, four lines with a fade; open, the rest of the
+   excerpt (bounded by the excerpt rule, so no scroll). */
+.rp-q-ex { display: grid; gap: 2px; }
+.rp-q-c .rp-q-body { max-height: calc(4 * var(--ah-lh-ui) * 1em); }
+.rp-q-c[data-open] .rp-q-body, .rp-q-mini .rp-q-body { max-height: none; }
+.rp-q-line { display: block; }
+.rp-q-code { display: block; white-space: pre; overflow: hidden; text-overflow: ellipsis; font: var(--ah-size-meta)/var(--ah-lh-ui) var(--ah-mono); color: var(--ah-ink); }
+:is(.rp-q-b, .rp-q-c)[data-overflow]:not([data-open]) .rp-q-body {
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 1.5em), transparent);
+}
+.rp-q-mini { margin: 0; padding: var(--ah-s2) var(--ah-s3); }
+
+.rp-quote-cells { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: var(--ah-s3); align-items: start; }
+.rp-quote-cells .rp-phone { max-width: 390px; }
+.rp-static-composer { min-width: 0; }
+.rp-static-composer .ah-composer, .rp-static-composer > * { position: static; }
+
+/* The sent reply's quote: the same sunken surface. */
+.rp-sent {
+  display: grid; gap: 2px; width: 100%; box-sizing: border-box;
+  margin-bottom: var(--ah-s3); padding: var(--ah-s1) var(--ah-s3) var(--ah-s2);
+  border: 1px solid var(--ah-line-soft); border-radius: var(--ah-r-md); background: var(--ah-sunken);
+}
+.rp-sent .rp-q-body { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.rp-sent:hover { border-color: var(--ah-line); }
+/* The original wears the sunken surface while it is replied to (round 2 B). */
+.rp-live .rp-msg[data-quoted] .ah-message { background: var(--ah-sunken); border-color: var(--ah-line-soft); }
+
+/* ---------- 3. Excerpt length ---------- */
+.rp-excerpt-pick { display: flex; flex-wrap: wrap; gap: var(--ah-s2) var(--ah-s4); margin: 0; padding: var(--ah-s2) var(--ah-s3); border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); }
+.rp-excerpt-pick legend { color: var(--ah-ink-2); font-size: var(--ah-size-meta); padding: 0 var(--ah-s1); }
+.rp-excerpts { display: grid; gap: var(--ah-s4); }
+.rp-ex-head, .rp-ex-row { display: grid; grid-template-columns: minmax(0, 1.1fr) repeat(3, minmax(0, 1fr)); gap: var(--ah-s3); align-items: start; }
+.rp-ex-head { font-size: var(--ah-size-meta); font-weight: 600; color: var(--ah-ink-2); }
+.rp-ex-head [data-chosen] { color: var(--ah-ink); }
+.rp-ex-row { padding-top: var(--ah-s3); border-top: 1px solid var(--ah-line); }
+.rp-ex-orig, .rp-ex-cell { display: grid; gap: var(--ah-s1); min-width: 0; }
+.rp-ex-msg { padding: var(--ah-s3); border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); font-size: var(--ah-size-meta); }
+.rp-ex-msg .ah-markdown :first-child { margin-top: 0; }
+.rp-ex-msg .ah-markdown :last-child { margin-bottom: 0; }
+.rp-ex-label { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.rp-ex-tag { color: var(--ah-ink); }
+.rp-ex-cell[data-chosen] .rp-ex-tag::after { content: " · käytössä"; color: var(--ah-muted); font-weight: 400; }
+.rp-ex-cell pre { max-height: none; }
+@media (max-width: 1100px) {
+  .rp-ex-head { display: none; }
+  .rp-ex-row { grid-template-columns: minmax(0, 1fr); }
+}
