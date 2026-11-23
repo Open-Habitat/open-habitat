@@ -18,6 +18,7 @@ const fi = {
   done: "Avattu GitHubissa. Palaute lähtee, kun painat siellä Submit.",
   finishFirst: "Lähetä tai peru palaute ensin, niin kirjoittamasi ei katoa.",
   close: "Sulje",
+  back: "Takaisin",
 };
 export const generalFeedbackText = catalog(fi, {
   title: "Feedback about Habitat",
@@ -33,6 +34,7 @@ export const generalFeedbackText = catalog(fi, {
   finishFirst:
     "Send or cancel the feedback first, so what you wrote is not lost.",
   close: "Close",
+  back: "Back",
 });
 
 ```

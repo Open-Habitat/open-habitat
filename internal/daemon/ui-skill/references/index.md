@@ -193,6 +193,7 @@ A label alone does not establish that a control is available to this person.
 - [text/processTray.ts](text--processTray.ts.md)
 - [text/processes.ts](text--processes.ts.md)
 - [text/quietRail.ts](text--quietRail.ts.md)
+- [text/railStateMotion.ts](text--railStateMotion.ts.md)
 - [text/recapCard.ts](text--recapCard.ts.md)
 - [text/recapSettings.tsx](text--recapSettings.tsx.md)
 - [text/refusals.ts](text--refusals.ts.md)

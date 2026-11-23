@@ -33,6 +33,7 @@ import { OwnMachines } from "../app/OwnMachines";
 import { SoundStatus } from "../app/SoundStatus";
 import { serverSettingsText } from "../text/serverSettings";
 import "./Settings.css";
+import "./AccountSheet.css";
 import {
   setDeviceMuted,
   silence,
@@ -88,6 +89,7 @@ import { ControlButton, Segmented } from "./ControlElements";
 import { DefaultModelRow } from "./DefaultModelRow";
 import { useExplainEntry } from "./ExplainMode";
 import { GeneralFeedback } from "./GeneralFeedback";
+import { usePhone } from "./GitStatus";
 import { Icon } from "./Icon";
 import { LetterMark } from "./Integrations";
 import { Menu } from "./Overlays";
@@ -99,6 +101,7 @@ import {
 } from "./SettingsSearch";
 import { StatusMark } from "./Status";
 import { StatusBell } from "./StatusBell";
+import { useAccountSheet } from "./useAccountSheet";
 
 // Gitea and GitLab are code hosts: Koodipalvelut shows them beside GitHub.
 const codeHosts: ProviderId[] = ["gitea", "gitlab"];
@@ -177,6 +180,9 @@ export function AccountShelf({
   onLogout: () => void;
 }) {
   const theme = useThemeChoice();
+  const phone = usePhone();
+  const sheet = useAccountSheet(phone);
+  const [feedbackDraft, setFeedbackDraft] = useState("");
   const accountButton = useRef<HTMLButtonElement>(null);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [workChoice, setWorkChoice] = useState(getWorkPreference);
@@ -217,6 +223,16 @@ export function AccountShelf({
   return (
     <div className="ah-account-shelf" data-account-controls>
       <Menu
+        sheet={phone}
+        isOpen={phone ? sheet.menuOpen : undefined}
+        onOpenChange={
+          phone
+            ? (open) => {
+                if (open) sheet.open();
+                else sheet.back();
+              }
+            : undefined
+        }
         label={t.accountMenu}
         buttonRef={accountButton}
         triggerLabel={
@@ -281,7 +297,12 @@ export function AccountShelf({
                 onChange={setWorkPreference}
               />
             </div>
-            <SoundMenuRow onSettings={onSettings} />
+            <SoundMenuRow
+              closeOnSettings={!phone}
+              onSettings={
+                phone ? (path) => sheet.act(() => onSettings(path)) : onSettings
+              }
+            />
           </section>
         }
         popoverClassName="ah-account-menu"
@@ -327,19 +348,30 @@ export function AccountShelf({
           },
         ]}
         onAction={(id) => {
-          if (id === "settings") onSettings();
-          if (id === "explain") explain?.run();
-          if (id === "feedback") setFeedbackOpen(true);
-          if (id === "administration") onAdministration?.();
-          if (id === "logout") onLogout();
+          if (id === "feedback") {
+            if (phone) sheet.open();
+            else setFeedbackOpen(true);
+            return;
+          }
+          const act = () => {
+            if (id === "settings") onSettings();
+            if (id === "explain") explain?.run();
+            if (id === "administration") onAdministration?.();
+            if (id === "logout") onLogout();
+          };
+          if (phone) sheet.act(act);
+          else act();
         }}
       />
-      {feedbackOpen
+      {(phone ? sheet.feedbackOpen : feedbackOpen)
         ? createPortal(
             <GeneralFeedback
+              sheet={phone}
+              draft={phone ? feedbackDraft : undefined}
+              onDraftChange={phone ? setFeedbackDraft : undefined}
               anchor={accountButton}
               placement="above"
-              onClose={() => setFeedbackOpen(false)}
+              onClose={phone ? sheet.back : () => setFeedbackOpen(false)}
             />,
             document.body,
           )
@@ -374,7 +406,13 @@ function Speaker({ muted }: { muted?: boolean }) {
 }
 
 /** The same reasons and permanent fixes as Settings, beside device mute. */
-function SoundMenuRow({ onSettings }: { onSettings: (path?: string) => void }) {
+function SoundMenuRow({
+  onSettings,
+  closeOnSettings,
+}: {
+  onSettings: (path?: string) => void;
+  closeOnSettings: boolean;
+}) {
   const t = useText(attentionSoundText);
   const preferences = useSessionPreferences();
   const { sound, identity, csrf } = preferences;
@@ -429,7 +467,8 @@ function SoundMenuRow({ onSettings }: { onSettings: (path?: string) => void }) {
             }}
             onDisableNight={() => choose({ night: false })}
             onEditNight={() => {
-              menu?.close();
+              // The phone owner closes its history entry before navigating.
+              if (closeOnSettings) menu?.close();
               onSettings(settingsHref("aanet", "attention-sound-night"));
             }}
           />

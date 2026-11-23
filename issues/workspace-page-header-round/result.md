@@ -1,6 +1,6 @@
 # Toteutus: C2a kokeellisena ominaisuutena (23.11.2026)
 
-Toteutus `d0f4ab3d7`: `workspace-header-c2a` on oletuksena pois.
+Toteutus `eabf4fe7f` (integroitu mainin `a908f3cf6` päälle): `workspace-header-c2a` on oletuksena pois.
 Asetusten Kokeelliset ominaisuudet -kortti kytkee päälle valitun C2a:n:
 Kuvake, Nimi ja Ääni ovat yläosa, toiminnot niiden oikealla puolella.
 Puhelimessa nimi on ylhäällä, kaksi muuta laattaa sen alla ja toiminnot
@@ -18,8 +18,8 @@ ilman painettu-tilaa C2a:ssa. Pienten painikkeiden hyväksytyt säännöt ovat
 Tarkistettu toteutus on yllä nimetty commit; myöhempi tuloskirjaus ei muuta
 ajettavaa koodia. Kaikki alla olevat tarkistukset menivät läpi:
 
-- `./scripts/test-focused.sh --area web`: Biome, TypeScript ja **2197 testiä,
-  260 tiedostoa**.
+- `./scripts/test-focused.sh --area web`: Biome, TypeScript ja **2203 testiä,
+  262 tiedostoa**.
 - `OH_BROWSER_WORKERS=2 OH_PORT_BASE=15200 ./scripts/test-focused.sh --area browser`
   ja kuusi `--spec`-valintaa: `lab-workspace-header-c2a.spec.ts`,
   `lab-workspace-page.spec.ts`, `lab-explain-mode.spec.ts`,
@@ -46,8 +46,9 @@ Kuvat ja rinnakkaiset staattiset HTML:t (synteettinen ympäristö, ei repossa):
 `/var/tmp/agent-keep/workspace-header-c2a/`. Nimet ovat
 `fi-FI|en-US-1280|390-off|on|on-dark|on-contrast|explain`;
 `*-1280-explain-1440` näyttää T07:n 1440 px leveydellä.
-Samassa hakemistossa `web-final.log`, `browser-final.log`,
-`browser-repeat.log` ja `issue-doctor.json`. Kuvat katsottiin: laattojen ja
+Samassa hakemistossa viimeisimmät integraation jälkeiset lokit
+`web-integrated.log`, `browser-integrated.log`,
+`browser-repeat-integrated.log` ja `issue-doctor.json`. Kuvat katsottiin: laattojen ja
 painikkeiden asettelu, Päivä/Yö/Korkea kontrasti sekä T07 suomeksi ja
 englanniksi työpöydällä ja puhelimessa. Englannin UK-teksti käyttää tässä
 samaa katalogitekstiä; erillistä UK-selainajoa ei tehty.
@@ -69,8 +70,11 @@ valinnainen tooltip myös tekstille, joka muuttuu kapealla ikoniksi;
 vanhat kutsut eivät muuta käytöstään.
 
 Ohjeviitteiden generointi löysi myös aiemman active-device-äänimuutoksen
-vanhentuneet viitteet. Ne päivitettiin erillisessä commitissa `a10d85d7b`;
-äänen ajettava koodi ei muuttunut tässä työssä.
+vanhentuneet viitteet. Ne päivitettiin erillisessä commitissa `cce76a928`;
+äänen ajettava koodi ei muuttunut tässä työssä. Integroinnissa säilytettiin
+rinnakkain lisätty rail-state-motion-kokeilu, lisättiin sekin asetustestin
+odotettuun luetteloon ja päivitettiin uuden tilivalikon ja liikkeen generoidut
+viitteet. Kaikki yllä luetellut testit ajettiin uudelleen tämän jälkeen.
 
 ## Decisions for later review
 

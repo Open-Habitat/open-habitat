@@ -11,6 +11,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { Dialog, Modal, ModalOverlay } from "react-aria-components";
 import { useText } from "../i18n";
 import { explainModeText } from "../text/explainMode";
 import { generalFeedbackText } from "../text/generalFeedback";
@@ -22,6 +23,7 @@ import {
   readVersion,
 } from "./explainFeedback";
 import { Icon } from "./Icon";
+import { useAccountSheetDrag } from "./useAccountSheet";
 import "./ExplainMode.css";
 import "./GeneralFeedback.css";
 
@@ -31,10 +33,16 @@ export function GeneralFeedback({
   onClose,
   explain = false,
   placement = "below",
+  sheet = false,
+  draft,
+  onDraftChange,
 }: {
   anchor: RefObject<HTMLButtonElement | null>;
   onClose: () => void;
   explain?: boolean;
+  sheet?: boolean;
+  draft?: string;
+  onDraftChange?: (note: string) => void;
   placement?: "below" | "above";
 }) {
   const t = useText(generalFeedbackText);
@@ -43,7 +51,9 @@ export function GeneralFeedback({
   const panel = useRef<HTMLDivElement>(null);
   const field = useRef<HTMLTextAreaElement>(null);
   const outside = useRef(false);
-  const [note, setNote] = useState("");
+  const [ownNote, setOwnNote] = useState("");
+  const note = draft ?? ownNote;
+  const setNote = onDraftChange ?? setOwnNote;
   const [need, setNeed] = useState(false);
   const [nudge, setNudge] = useState(false);
   const [version, setVersion] = useState<string>();
@@ -51,8 +61,12 @@ export function GeneralFeedback({
   const [copyStatus, setCopyStatus] = useState("");
   const close = () => {
     onClose();
-    anchor.current?.focus({ preventScroll: true });
+    if (!sheet) anchor.current?.focus({ preventScroll: true });
   };
+  const drag = useAccountSheetDrag(() => {
+    if (note.trim() && !done) setNudge(true);
+    else close();
+  });
   useEffect(() => {
     let active = true;
     void readVersion().then((v) => {
@@ -77,6 +91,7 @@ export function GeneralFeedback({
         ?.focus();
   }, [done]);
   useLayoutEffect(() => {
+    if (sheet) return;
     const place = () => {
       const el = panel.current;
       const r = anchor.current?.getBoundingClientRect();
@@ -97,7 +112,7 @@ export function GeneralFeedback({
       window.removeEventListener("resize", place);
       window.removeEventListener("scroll", place, true);
     };
-  }, [anchor, placement]);
+  }, [anchor, placement, sheet]);
   useEffect(() => {
     const block = (e: Event) => {
       e.preventDefault();
@@ -129,10 +144,12 @@ export function GeneralFeedback({
     const key = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         block(e);
-        close();
+        if (sheet && note.trim() && !done) setNudge(true);
+        else close();
       }
     };
     const focus = (e: FocusEvent) => {
+      if (sheet) return;
       if (
         !(e.target instanceof Element) ||
         panel.current?.contains(e.target) ||
@@ -160,24 +177,40 @@ export function GeneralFeedback({
     };
   });
   const empty = !note.trim();
-  return (
+  const content = (
+    // biome-ignore lint/a11y/useAriaPropsSupportedByRole: Both conditional roles (group inside the modal, dialog on desktop) support aria-labelledby.
     <div
       ref={panel}
       className="ah-explain-ui ah-general-feedback"
-      role="dialog"
+      role={sheet ? "group" : "dialog"}
       aria-labelledby={`${id}-title`}
       data-testid="general-feedback"
     >
-      <div className="ah-general-head">
+      {sheet ? (
+        <div className="ah-account-sheet-head" {...drag.head}>
+          <div className="ah-account-sheet-grip" aria-hidden="true" />
+        </div>
+      ) : null}
+      <div
+        className={`ah-general-head${sheet ? " ah-account-sheet-head" : ""}`}
+        {...(sheet ? drag.head : {})}
+      >
         <h2 id={`${id}-title`}>{t.title}</h2>
         <button
           type="button"
           className="ah-explain-x"
           data-testid="general-close"
-          aria-label={t.close}
+          aria-label={sheet ? t.back : t.close}
           onClick={close}
         >
-          ×
+          {sheet ? (
+            <>
+              <Icon name="back" />
+              {t.back}
+            </>
+          ) : (
+            "×"
+          )}
         </button>
       </div>
       {done ? (
@@ -261,7 +294,10 @@ export function GeneralFeedback({
               type="button"
               className="ah-general-cancel"
               data-testid="general-cancel"
-              onClick={close}
+              onClick={() => {
+                setNote("");
+                close();
+              }}
             >
               {f.cancel} <kbd>Esc</kbd>
             </button>
@@ -281,6 +317,22 @@ export function GeneralFeedback({
         </div>
       )}
     </div>
+  );
+  return sheet ? (
+    <ModalOverlay
+      isOpen
+      className="ah-overlay ah-account-sheet-overlay"
+      isKeyboardDismissDisabled
+    >
+      <Modal
+        className="ah-modal ah-account-sheet ah-feedback-sheet"
+        style={drag.style}
+      >
+        <Dialog aria-labelledby={`${id}-title`}>{content}</Dialog>
+      </Modal>
+    </ModalOverlay>
+  ) : (
+    content
   );
 }
 
