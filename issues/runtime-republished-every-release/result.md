@@ -1,5 +1,60 @@
 # Result
 
+## Published-release evidence check, 2026-11-23
+
+**Outcome: insufficient to close; status remains testing.** The published
+release confirms archive distribution reuse, but not this issue's installed
+payload reuse or end-to-end installation acceptance. No live installation was
+run in this verification. The dependent warm-preparation task was not started,
+as the brief requires stopping when this acceptance evidence is missing.
+
+Compared the GitHub release asset lists and downloaded both architectures'
+`release-linux-*.json` manifests for v0.1.5 and v0.1.6, matching artifacts by
+profile. Commands: `gh release view TAG --json tagName,publishedAt,assets` and
+`gh release download TAG --pattern 'release-linux-*.json' --dir DIRECTORY`.
+Public release source: Open-Habitat/open-habitat, tag v0.1.6.
+
+- v0.1.6 was published on November 22, 2026 at 21:43:53 UTC (November 23 at
+  00:43:53 Finnish time); v0.1.5 at 18:21:48 UTC on November 22.
+- Each architecture has twelve runtime descriptors. Eleven preserve the
+  predecessor's archive digest and size; integrations alone changes. The only
+  runtime archives attached to v0.1.6 are its two integrations archives.
+- Core now names `archive_release: v0.1.5`, editor still names v0.1.3, and the
+  other nine unchanged profiles still name v0.1.1. The core descriptor differs
+  only in this archive-release reference; the ten other reused descriptors are
+  identical. This is manifest/asset-list evidence, not an independent hash check
+  of the archive downloads or proof of which build commands ran.
+- Source commits are `f07782c0d7634b829060d1d23a59afcb0b9be509` (v0.1.5)
+  and `41c214dcba83b80a5d491cea5e649ce2a7aca9da` (v0.1.6 and inspected tree).
+
+The installed store's `payloadsName` in
+`internal/host/runtime_payload_linux.go` hashes the selected set of profile
+names and archive digests. An installation selecting integrations therefore
+gets a different store key for this transition. Eleven unchanged archive
+references do not establish that its installed payload set was reused.
+
+Still needed: live receipts for an unchanged-selected-runtime update showing
+fresh verification and reuse, a separate runtime-pin-change measurement, and
+end-to-end plus phase timings evaluated against the 100-second budget. Release
+assets and manifests contain none of these installation observations. The
+previous synthetic measurements below remain useful but are not live evidence.
+
+Downloaded manifests, asset lists and the per-profile comparison are retained
+outside git under
+`/var/tmp/agent-keep/runtime-republished-every-release/release-comparison/`.
+No binaries, screenshots or installation data were added to the repository.
+
+Review level: focused self-review of this evidence-only addition against the
+issue's requested outcome, published manifests and store-key implementation;
+no verification code or authority boundary changed. Checks: project-view
+validator and `git diff --check`. No release-preparation tests or three-run
+before/after timings were run, because the prerequisite did not pass.
+
+Decision for later review: do not substitute distribution reuse for installation
+acceptance merely because the issue slug sounds like release publication.
+Closing on archive references alone would leave its explicit live performance
+requirement unverified.
+
 ## What changed
 
 Runtime payloads live in a content store, `<prefix>/payloads/<digest>/<profile>`. The digest covers each profile and its authenticated archive SHA-256. A generation is still named after its manifest, but its `payloads` is now a link to the store entry. The selectors (`core`, `profiles/*`, `pi-runtime.json`, `editor.json`) name the entry directly, because the daemon refuses a Pi runtime reached through a symlink. When a release names an archive set that is already published, staging reuses it: no spool, gzip decompression, extraction or fsync.
