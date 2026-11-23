@@ -1,14 +1,16 @@
 ---
 created: 2026-11-10
-updated: 2026-11-11
+updated: 2026-11-23
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 related: ['@extend-tool-views']
 lane: turn-changes-proto
 lane_seq: 1
 preparation: pending
+closed: 2026-11-23
+closed_by: jari
 ---
 
 # Design and prototype: what the agent changed in a turn
@@ -54,3 +56,9 @@ Jari 10.11., round 1: Yhteenveto (1) is the best; take from Katselmointi (2) tha
 ### 2026-11-11T05:33:25Z · @jari
 
 Jari 11.11., round 2: Tiivis (count and +/- only) with the Aikajana button on the collapsed line itself. The prototype opened the card under the composer; production must open it in place. Build it as an experimental feature. Source: start from the tool calls (conductor's choice; Jari did not object), exact checkpoint+git source later.
+
+## Resolution
+
+### 2026-11-23T13:53:36Z · @jari
+
+Jari 23.11.2026: prototyped long ago and implemented: the Muutokset card (Tiivis with the Aikajana button) shipped 11.11. (e199ab26d) and now lists changes from turn snapshots (turn-snapshot-reader-migration). Closing the stale prototype issue.
