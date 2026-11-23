@@ -1,0 +1,25 @@
+/* alice-04-market-video: the real 9:16 clip in a phone-shaped frame, its facts beside it. */
+[data-block="alice-04-market-video"] .mv { margin: 0; display: flex; flex-wrap: wrap; gap: var(--ah-s4); align-items: flex-start; container-type: inline-size; }
+[data-block="alice-04-market-video"] .mv-phone { position: relative; flex: 0 0 auto; width: min(244px, 100%); padding: 7px; border-radius: 26px; background: #15181c; box-shadow: var(--ah-shadow-float); }
+[data-block="alice-04-market-video"] .mv-video { display: block; width: 100%; height: auto; aspect-ratio: 9 / 16; border-radius: 20px; background: #1d2b42; object-fit: cover; }
+[data-block="alice-04-market-video"] .mv-side { flex: 1 1 180px; min-width: 0; display: flex; flex-direction: column; gap: var(--ah-s3); font-size: var(--ah-size-meta); color: var(--ah-muted); }
+[data-block="alice-04-market-video"] .mv-k { margin: 0; font-size: var(--ah-size-ui); font-weight: 600; color: var(--ah-ink); }
+[data-block="alice-04-market-video"] .mv-facts { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px var(--ah-s3); }
+[data-block="alice-04-market-video"] .mv-facts div { display: contents; }
+[data-block="alice-04-market-video"] .mv-facts dt { color: var(--ah-muted); }
+[data-block="alice-04-market-video"] .mv-facts dd { margin: 0; color: var(--ah-ink); font-variant-numeric: tabular-nums; }
+[data-block="alice-04-market-video"] .mv-caps { margin: 0; padding: var(--ah-s3) 0 0; border-top: 1px solid var(--ah-line-soft); list-style: none; counter-reset: mv; display: flex; flex-direction: column; gap: 5px; }
+[data-block="alice-04-market-video"] .mv-caps li { counter-increment: mv; color: var(--ah-ink-2); }
+[data-block="alice-04-market-video"] .mv-caps li::before { content: counter(mv); display: inline-block; width: 1.4em; color: var(--ah-faint); font-family: var(--ah-mono); font-size: 0.92em; }
+[data-block="alice-04-market-video"] .mv-credit { margin: 0; font-size: 11px; line-height: 1.4; color: var(--ah-faint); }
+[data-block="alice-04-market-video"] .mv-play { position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%); display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px 10px 12px; border: 0; border-radius: var(--ah-r-pill); background: rgba(255, 255, 255, .92); color: #17201a; font: 600 var(--ah-size-ui) / 1 var(--ah-font); font-variant-numeric: tabular-nums; box-shadow: 0 4px 18px rgba(0, 0, 0, .28); cursor: pointer; transition: transform 120ms ease-out, background 120ms ease-out; }
+[data-block="alice-04-market-video"] .mv-play svg { width: 22px; height: 22px; }
+[data-block="alice-04-market-video"] .mv-play:hover { background: #fff; transform: translate(-50%, -50%) scale(1.04); }
+[data-block="alice-04-market-video"] .mv-play:focus-visible { outline: var(--ah-focus-width) solid var(--ah-focus); outline-offset: 3px; }
+[data-block="alice-04-market-video"] .mv-play[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) { [data-block="alice-04-market-video"] .mv-play { transition: none; } [data-block="alice-04-market-video"] .mv-play:hover { transform: translate(-50%, -50%); } }
+/* Narrow views (the phone layout): the clip centred, the facts under it. */
+@container (max-width: 400px) {
+  [data-block="alice-04-market-video"] .mv-phone { width: min(220px, 70%); margin-inline: auto; }
+  [data-block="alice-04-market-video"] .mv-caps { display: none; }
+}
