@@ -1,0 +1,173 @@
+/* Review chrome above the production shell, as in earlier shell rounds. */
+html, body { margin: 0; background: var(--ah-bg); }
+.rp-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: grid; gap: 4px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: var(--ah-size-meta)/1.4 var(--ah-font);
+}
+.rp-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
+.rp-bar strong { font-weight: 600; }
+.rp-bar select, .rp-bar button { font: inherit; }
+.rp-lines { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; color: var(--ah-ink-2); }
+.rp-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.rp-recommend { margin: 0; color: var(--ah-accent-ink); }
+@media (max-width: 600px) {
+  .rp-bar { padding: 6px 10px; }
+  .rp-controls > strong { display: none; }
+  .rp-lines, .rp-recommend { line-height: 1.3; }
+  .rp-lines li:not([aria-current]), .rp-recommend { display: none; }
+}
+.rp-stage .ah-app-shell {
+  top: var(--review-h, 0px);
+  height: calc(100dvh - var(--review-h, 0px) - 60px);
+}
+.rp-stage .ah-rail { top: var(--review-h, 0px); }
+@media (max-width: 800px) {
+  .rp-stage .ah-shell-body.ah-mobile-open > .ah-rail-slot { top: var(--review-h, 0px); bottom: 60px; }
+}
+.rp-main { height: 100%; min-width: 0; }
+.rp-tools { display: grid; gap: var(--ah-s1); }
+.rp-msg[data-role="assistant"] { max-width: min(var(--ah-measure), 100%); }
+
+/* Buttons the round draws itself reset to the text they carry. */
+.rp-jump, .rp-a-sent, .rp-b-sent, .rp-c-jump, .rp-c-sent {
+  font: inherit; color: inherit; text-align: start; cursor: pointer;
+  background: none; border: 0; padding: 0; margin: 0; min-width: 0;
+}
+:is(.rp-jump, .rp-a-sent, .rp-b-sent, .rp-c-jump, .rp-c-sent):focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-focus); outline-offset: 2px;
+}
+.rp-reply-glyph, .rp-head svg { flex: none; width: 14px; height: 14px; }
+
+/* Shared quote text: the message head as in a card header (meta size,
+   muted time), the excerpt in secondary ink. No accent colour or bar: the
+   quote is identified by its words and the reply glyph. */
+.rp-head {
+  display: flex; align-items: center; gap: var(--ah-s2);
+  color: var(--ah-ink-2); font-size: var(--ah-size-meta); font-weight: 600;
+}
+.rp-head time { color: var(--ah-muted); font-weight: 400; font-variant-numeric: tabular-nums; }
+.rp-text {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+  color: var(--ah-ink-2); font-size: var(--ah-size-meta); line-height: var(--ah-lh-ui);
+}
+.rp-jump { flex: 1; display: grid; gap: 2px; border-radius: var(--ah-r-sm); }
+
+/* The original under a jump: a short accent wash on the reply card. Reduced
+   motion keeps a still focus outline for the same time. */
+[data-flash] .ah-message { animation: rp-flash 1.6s ease-out; }
+@keyframes rp-flash {
+  0%, 30% { background: var(--ah-accent-soft); }
+  100% { background: transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-flash] .ah-message { animation: none; outline: var(--ah-focus-width) solid var(--ah-focus); outline-offset: 2px; }
+}
+
+/* ---------- A Liite ----------
+   The quote card is a draft attachment chip grown to two lines: the chip's
+   line, radius and surface (.ah-attachment-chip). The control is the card's
+   `actions` slot (Rewind.css .ah-message-actions): top-right, after the
+   time; on a desktop it shows on hover or focus like Palaa tähän's ⋯ and
+   stays while the message is replied to. */
+.variant-0 .rp-msg[data-role="assistant"] .ah-message header time { margin-inline-start: auto; }
+.rp-a-corner { margin-inline-start: 0; --i-bg: transparent; --i-border: transparent; --i-fg: var(--ah-muted); }
+.rp-a-corner[data-active] button { --i-fg: var(--ah-ink); background: var(--ah-surface-press); }
+@media (hover: hover) and (min-width: 801px) {
+  .rp-a-corner { opacity: 0; transition: opacity 120ms; }
+  .ah-message:is(:hover, :focus-within) .rp-a-corner, .rp-a-corner[data-active] { opacity: 1; }
+}
+.rp-a-card {
+  display: flex; align-items: flex-start; gap: var(--ah-s2);
+  padding: var(--ah-s2) var(--ah-s1) var(--ah-s2) var(--ah-s3);
+  border: 1px solid var(--ah-line); border-radius: var(--ah-r-md);
+  background: var(--ah-surface);
+}
+.rp-a-sent {
+  display: grid; gap: 2px; width: 100%; box-sizing: border-box;
+  margin-bottom: var(--ah-s3); padding: var(--ah-s2) var(--ah-s3);
+  border: 1px solid var(--ah-line); border-radius: var(--ah-r-md);
+  background: var(--ah-surface);
+}
+.rp-a-sent:hover { background: var(--ah-surface-hover); }
+
+/* ---------- B Kentän sisällä ----------
+   The quote is the field box's first row: a sunken block like the Markdown
+   frontmatter (.ah-frontmatter: sunken surface, soft line), inset from the
+   box's edge so the box's own border and focus ring stay whole. The
+   control sits beside Kopioi in the reply header, in the copy button's
+   presentation. The original wears the same sunken surface while the reply
+   is drafted. */
+.rp-b-beside { display: inline-flex; --i-bg: transparent; --i-border: transparent; --i-fg: var(--ah-muted); }
+.rp-b-beside[data-active] button { --i-fg: var(--ah-ink); background: var(--ah-surface-press); }
+.rp-stage .ah-cbox > .rp-b-card { order: -1; }
+.rp-b-card {
+  display: flex; align-items: flex-start; gap: var(--ah-s2);
+  margin: var(--ah-s2) var(--ah-s2) 0;
+  padding: var(--ah-s2) var(--ah-s1) var(--ah-s2) var(--ah-s3);
+  border: 1px solid var(--ah-line-soft); border-radius: var(--ah-r-md);
+  background: var(--ah-sunken);
+}
+.rp-b-sent {
+  display: grid; gap: 2px; width: 100%; box-sizing: border-box;
+  margin-bottom: var(--ah-s3); padding: var(--ah-s2) var(--ah-s3);
+  border: 1px solid var(--ah-line-soft); border-radius: var(--ah-r-md);
+  background: var(--ah-sunken);
+}
+.rp-b-sent:hover { border-color: var(--ah-line); }
+.variant-1 .rp-msg[data-quoted] .ah-message {
+  background: var(--ah-sunken); border-color: var(--ah-line-soft);
+  padding: var(--ah-s3) var(--ah-s4); margin-inline: calc(-1 * var(--ah-s4));
+  border-radius: var(--ah-r-lg); border-style: solid; border-width: 1px;
+}
+
+/* ---------- C Jonon rivi ----------
+   The quote is the queue's own heading and row (.ah-queue-heading,
+   .ah-queue-items li: accent-soft surface, muted time first), one line.
+   The control is a quiet text button under the reply, like Näytä koko
+   viesti under a long message. The original keeps the queue row's
+   accent-soft surface while the reply is drafted. */
+.rp-stage .rp-c-quote { margin-block: 0; }
+.rp-c-quote .ah-queue-items { margin-bottom: 0; }
+.rp-c-quote .ah-queue-items li { padding: 0; }
+.rp-c-jump {
+  flex: 1; display: flex; gap: var(--ah-s3); padding: 9px 12px; border-radius: var(--ah-r-md);
+}
+.rp-c-jump > span:first-child { color: var(--ah-muted); font-size: var(--ah-size-meta); flex: none; font-variant-numeric: tabular-nums; }
+.rp-c-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rp-c-sent {
+  display: flex; gap: var(--ah-s3); width: 100%; box-sizing: border-box;
+  margin-bottom: var(--ah-s3); padding: var(--ah-s1) 12px;
+  border-radius: var(--ah-r-md); background: var(--ah-accent-soft);
+  font-size: var(--ah-size-meta);
+}
+.rp-c-sent .rp-c-time { color: var(--ah-muted); flex: none; font-variant-numeric: tabular-nums; }
+.rp-c-sent .rp-c-text { color: var(--ah-ink-2); }
+.rp-c-actions { margin-top: var(--ah-s2); margin-inline-start: calc(-1 * var(--ah-s2)); }
+.rp-c-actions button { gap: var(--ah-s1); color: var(--ah-ink-2); }
+.rp-c-actions button[aria-pressed="true"] { color: var(--ah-ink); }
+.variant-2 .rp-msg[data-quoted] .ah-message {
+  background: var(--ah-accent-soft);
+  padding: var(--ah-s3) var(--ah-s4); margin-inline: calc(-1 * var(--ah-s4));
+  border-radius: var(--ah-r-lg);
+}
+
+/* Review only: what the native session records. */
+.rp-payload {
+  margin: var(--ah-s2) 0 0 auto; max-width: min(var(--ah-measure), 100%);
+  padding: var(--ah-s2) var(--ah-s3); border: 1px dashed var(--ah-line-strong); border-radius: var(--ah-r-md);
+}
+.rp-payload figcaption { color: var(--ah-muted); font-size: var(--ah-size-meta); margin-bottom: var(--ah-s1); }
+.rp-payload pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: var(--ah-size-meta)/1.45 var(--ah-mono); color: var(--ah-ink); }
+
+/* B: the control sits right after Kopioi, before the time. */
+.variant-1 .rp-msg[data-role="assistant"] .ah-message header > strong { order: 0; }
+.variant-1 .rp-msg[data-role="assistant"] .ah-message header > [data-testid="message-copy"] { order: 1; }
+.variant-1 .rp-msg[data-role="assistant"] .ah-message header > .rp-b-beside { order: 2; }
+.variant-1 .rp-msg[data-role="assistant"] .ah-message header > :is(time, .ah-status-mark) { order: 3; }
+/* C: the one-line row truncates inside the composer's width. */
+.rp-c-quote .ah-queue-items { grid-template-columns: minmax(0, 1fr); }
+.rp-c-quote .ah-queue-items li { min-width: 0; }
+.rp-c-jump { min-width: 0; overflow: hidden; }
+.rp-c-jump .rp-c-text, .rp-c-sent .rp-c-text { flex: 1 1 0; }
