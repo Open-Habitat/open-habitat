@@ -16,12 +16,13 @@
         "administrator": {"type": "boolean"},
         "unavailable": {"type": "boolean"},
         "usage_bytes": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
-        "limit_bytes": {"type": "integer", "minimum": 0, "maximum": 1125899906842624, "multipleOf": 1024}
+        "limit_bytes": {"type": "integer", "minimum": 0, "maximum": 1125899906842624, "multipleOf": 1024},
+        "removal_due": {"type": "string", "format": "date-time", "description": "The person's removal is scheduled (ADR 0037): nothing of theirs runs, so the sum of limits counts usage_bytes instead of limit_bytes, which is 0 once the data stage has cleared the quota. The row goes when the data is deleted."}
       },
       "allOf": [{
         "if": {"properties": {"unavailable": {"const": true}}},
         "then": {"properties": {"usage_bytes": {"const": 0}, "limit_bytes": {"const": 0}}},
-        "else": {"properties": {"limit_bytes": {"minimum": 1048576}}}
+        "else": {"if": {"required": ["removal_due"]}, "then": {}, "else": {"properties": {"limit_bytes": {"minimum": 1048576}}}}
       }]
     }},
     "filesystem": {"type": "object", "additionalProperties": false,
@@ -31,7 +32,7 @@
         "free_bytes": {"type": "integer", "minimum": 0, "maximum": 9007199254740991}
       }
     },
-    "overcommitted": {"type": ["boolean", "null"], "description": "Null when any user quota is unavailable; not a claim of no overcommit."}
+    "overcommitted": {"type": ["boolean", "null"], "description": "Whether the sum of limits, counting a person under removal by usage, exceeds capacity. Null when any user quota is unavailable; not a claim of no overcommit."}
   },
   "if": {"required": ["limits"], "properties": {"limits": {"const": "not_in_use"}}},
   "then": {"properties": {"users": {"maxItems": 0}, "overcommitted": {"const": null}}}

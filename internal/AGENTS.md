@@ -446,7 +446,15 @@ Identity and authority:
   a listing of it to the administrator: what is in a home is the person's,
   and the removal dialog shows only its size. The gateway never revokes the
   `gh` token, which would need the OAuth client secret beside a person's
-  native credential.
+  native credential. The daemon's disconnect-everything route is the
+  gateway's own request only, never mounted on the agent listener or proxied
+  from a browser; it uses only the person's own credentials and answers
+  counts per provider, never an account name. Its GitLab revocation is the
+  one write the forge HTTP client may make. The gateway's removal record
+  lives only while the person can still be restored (Jari, 2026-11-21): it
+  goes on cancel and on completion, when the gateway also drops the
+  subject's receipt, designation, site key copy and deny, so nothing of the
+  removed person meets a later account of the same GitHub id.
 - The site onboarding configuration (default repositories, integration steps,
   AI offer) is gateway administration state, written only by a current
   administrator's browser session or root's control socket under one version,

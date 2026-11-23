@@ -60,6 +60,11 @@ type serverSettings struct {
 	// Administrators; root's own role operations take a designated subject
 	// over, so a role is always either root's or a designation, never both.
 	Designated []designation `json:"designated_administrators,omitempty"`
+	// Removals are the subjects whose removal (ADR 0037) is scheduled and
+	// not yet finished, with what the gateway recorded about it
+	// (removal_linux.go). A record goes when the removal completes or is
+	// cancelled.
+	Removals map[string]removalRecord `json:"removals,omitempty"`
 }
 
 // The record is read whole at startup and rewritten whole on each change;
@@ -137,7 +142,7 @@ func validSettings(s serverSettings) bool {
 			return false
 		}
 	}
-	return true
+	return validRemovalRecords(s.Removals)
 }
 
 // The gateway holds the only in-process writer lock for browser and control changes.

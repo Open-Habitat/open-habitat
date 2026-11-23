@@ -721,7 +721,7 @@ func collectQuotaPages(ctx context.Context, exchange func(context.Context, provi
 				return nil, fs, gateway.ErrBrokerUnavailable
 			}
 			seen[q.ID] = true
-			rows = append(rows, gateway.QuotaRow{BoundUser: gateway.BoundUser{ID: q.ID, Username: q.Username}, Quota: gateway.Quota{UsageBytes: q.UsageBytes, LimitBytes: q.LimitBytes}, Unavailable: q.Unavailable})
+			rows = append(rows, gateway.QuotaRow{BoundUser: gateway.BoundUser{ID: q.ID, Username: q.Username}, Quota: gateway.Quota{UsageBytes: q.UsageBytes, LimitBytes: q.LimitBytes}, Unavailable: q.Unavailable, RemovalDue: q.RemovalDue})
 		}
 		if r.Next == "" {
 			return rows, fs, nil
@@ -769,6 +769,15 @@ func (b gatewayBroker) Admit(ctx context.Context, id, loginHint, actor string) (
 }
 func (b gatewayBroker) Withdraw(ctx context.Context, id, actor string) (gateway.AccessRow, error) {
 	return accessWrite(b.brokerAccess(ctx, provision.Request{Version: 1, Operation: "withdraw", Provider: "github", ID: id, Actor: actor}))
+}
+
+// Removal operations (ADR 0037). As with admission, only the broker's fixed
+// refusals are definite.
+func (b gatewayBroker) ScheduleRemoval(ctx context.Context, id, loginHint, actor, when string) (gateway.AccessRow, error) {
+	return accessWrite(b.brokerAccess(ctx, provision.Request{Version: 1, Operation: provision.OpRemovalSchedule, Provider: "github", ID: id, LoginHint: loginHint, Actor: actor, When: when}))
+}
+func (b gatewayBroker) CancelRemoval(ctx context.Context, id, actor string) (gateway.AccessRow, error) {
+	return accessWrite(b.brokerAccess(ctx, provision.Request{Version: 1, Operation: provision.OpRemovalCancel, Provider: "github", ID: id, Actor: actor}))
 }
 
 // StopRevoked asks the broker to stop every revoked person's listeners.
@@ -852,6 +861,10 @@ func accessWrite(r provision.Reply, err error) (gateway.AccessRow, error) {
 		return gateway.AccessRow{}, gateway.ErrAccessDrift
 	case provision.StateUnavailable:
 		return gateway.AccessRow{}, gateway.ErrAccessUncertain
+	case provision.RemovalPending:
+		return gateway.AccessRow{}, gateway.ErrRemovalPending
+	case provision.RemovalStarted:
+		return gateway.AccessRow{}, gateway.ErrRemovalStarted
 	default:
 		return gateway.AccessRow{}, gateway.ErrAccessRefused
 	}
@@ -949,7 +962,11 @@ func integrationApps(p provision.IntegrationPage) gateway.IntegrationApps {
 func accessPage(p provision.AccessPage) gateway.AccessPage {
 	out := gateway.AccessPage{Mode: p.Mode, RuntimeAdmission: p.RuntimeAdmission, Rows: make([]gateway.AccessRow, 0, len(p.Rows))}
 	for _, x := range p.Rows {
-		out.Rows = append(out.Rows, gateway.AccessRow{ID: x.ID, Source: x.Source, State: x.State, Username: x.Username, LoginHint: x.LoginHint, Actor: x.Actor, At: x.At, TeamState: x.TeamState, Teams: x.Teams})
+		row := gateway.AccessRow{ID: x.ID, Source: x.Source, State: x.State, Username: x.Username, LoginHint: x.LoginHint, Actor: x.Actor, At: x.At, TeamState: x.TeamState, Teams: x.Teams}
+		if x.Removal != nil {
+			row.Removal = &gateway.RemovalState{Stage: x.Removal.Stage, Due: x.Removal.Due, Actor: x.Removal.Actor, At: x.Removal.At, Reason: x.Removal.Reason}
+		}
+		out.Rows = append(out.Rows, row)
 	}
 	return out
 }

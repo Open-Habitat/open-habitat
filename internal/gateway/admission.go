@@ -31,6 +31,8 @@ type AccessRow struct {
 	// exists: member, left or unconfirmed, and the pinned team ids.
 	TeamState string
 	Teams     []string
+	// Removal is the broker's scheduled removal of the bound person.
+	Removal *RemovalState
 }
 type AccessPage struct {
 	Mode             string
@@ -253,6 +255,12 @@ func (a *Auth) admitAccess(ctx context.Context, caller, subject string) (AccessR
 	if len(page.Rows) == 1 {
 		current = &page.Rows[0]
 	}
+	// A person under removal comes back only after a cancel; one whose
+	// removal finished is admitted as a new account.
+	if current != nil && current.Removal != nil {
+		return AccessRow{}, ErrRemovalPending
+	}
+	a.settleRemoval(current, subject)
 	hint := ""
 	switch {
 	case current != nil && current.Source == "operator":
@@ -334,6 +342,8 @@ type accessEntry struct {
 	// named organisation/slug.
 	TeamState string   `json:"team_state,omitempty"`
 	Teams     []string `json:"teams,omitempty"`
+	// Removal is the person's scheduled removal (ADR 0037).
+	Removal *removalView `json:"removal,omitempty"`
 }
 type accessView struct {
 	SchemaVersion    int           `json:"schema_version"`
@@ -376,6 +386,21 @@ func (a *Auth) accessList(ctx context.Context) (accessView, error) {
 	if err != nil {
 		return accessView{}, err
 	}
+	// A removal the broker has finished, or one cancelled behind the
+	// gateway's back, is settled before the gateway's own facts are read.
+	byID := map[string]*AccessRow{}
+	for i := range page.Rows {
+		byID[page.Rows[i].ID] = &page.Rows[i]
+	}
+	a.mu.Lock()
+	pending := make([]string, 0, len(a.settings.Removals))
+	for subject := range a.settings.Removals {
+		pending = append(pending, subject)
+	}
+	a.mu.Unlock()
+	for _, subject := range pending {
+		a.settleRemoval(byID[subject], subject)
+	}
 	v := a.settingsView()
 	seen := a.lastSeen()
 	view := accessView{SchemaVersion: 1, Mode: page.Mode, RuntimeAdmission: page.RuntimeAdmission, Teams: teamViews(teams), Entries: []accessEntry{}}
@@ -383,6 +408,7 @@ func (a *Auth) accessList(ctx context.Context) (accessView, error) {
 	for _, r := range page.Rows {
 		listed[r.ID] = true
 		e := entryOf(r, teams)
+		e.Removal = removalViewOf(r.Removal, recordOf(v, r.ID))
 		e.LastSeen, e.Administrator, e.Denied, e.Onboarding = seen[r.ID], slices.Contains(v.Administrators, r.ID), slices.Contains(v.Denied, r.ID), receiptView(v.OnboardingReceipts, r.ID)
 		view.Entries = append(view.Entries, e)
 	}
@@ -449,6 +475,7 @@ func entryFor(ctx context.Context, row AccessRow, a *Auth) accessEntry {
 	}
 	e := []accessEntry{entryOf(row, teams)}
 	e[0].LastSeen, e[0].Administrator, e[0].Denied, e[0].Onboarding, e[0].SiteKeyCopy, e[0].AdministratorRole = a.lastSeen()[row.ID], slices.Contains(v.Administrators, row.ID), slices.Contains(v.Denied, row.ID), receiptView(v.OnboardingReceipts, row.ID), a.copyView(row.ID), roleFor(v, row.ID)
+	e[0].Removal = removalViewOf(row.Removal, recordOf(v, row.ID))
 	a.resolveLogins(ctx, e)
 	return e[0]
 }
@@ -523,6 +550,14 @@ func accessReason(err error) (int, string) {
 		return 409, "access_refused"
 	case errors.Is(err, errNotAdmitted):
 		return 409, "not_admitted"
+	case errors.Is(err, ErrRemovalPending):
+		return 409, "removal_pending"
+	case errors.Is(err, ErrRemovalStarted):
+		return 409, "removal_started"
+	case errors.Is(err, errSelfRemoval):
+		return 409, "self_removal"
+	case errors.Is(err, errLoginMismatch):
+		return 409, "login_mismatch"
 	}
 	return 503, "access_unavailable"
 }
@@ -538,7 +573,7 @@ func (a *Auth) accessHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	path := r.URL.Path
-	paths := []string{accessPath, accessPath + "/lookup", accessPath + "/add", accessPath + "/remove", accessPath + "/role", accessPath + "/forget", accessPath + "/teams/add", accessPath + "/teams/remove"}
+	paths := []string{accessPath, accessPath + "/lookup", accessPath + "/add", accessPath + "/remove", accessPath + "/role", accessPath + "/forget", accessPath + "/teams/add", accessPath + "/teams/remove", accessPath + "/remove-person", accessPath + "/cancel-removal"}
 	if !a.exact(r, path) || !slices.Contains(paths, path) {
 		safe(w, 400, "invalid_request")
 		return
@@ -581,6 +616,7 @@ func (a *Auth) accessHTTP(w http.ResponseWriter, r *http.Request) {
 		Team          string `json:"team"`
 		OrgID         string `json:"org_id"`
 		Slug          string `json:"slug"`
+		When          string `json:"when"`
 	}
 	dec := json.NewDecoder(io.LimitReader(r.Body, 257))
 	dec.DisallowUnknownFields()
@@ -598,9 +634,14 @@ func (a *Auth) accessHTTP(w http.ResponseWriter, r *http.Request) {
 	case accessPath + "/teams/add":
 		shaped = body.Team != "" && body.ID == "" && body.Administrator == nil && body.Login == "" && body.OrgID == "" && body.Slug == ""
 	case accessPath + "/teams/remove":
-		shaped = canonicalSubject(body.OrgID) && teamSlugName(body.Slug) && body.ID == "" && body.Administrator == nil && body.Login == "" && body.Team == ""
+		shaped = canonicalSubject(body.OrgID) && teamSlugName(body.Slug) && body.ID == "" && body.Administrator == nil && body.Login == "" && body.Team == "" && body.When == ""
+	case accessPath + "/remove-person":
+		shaped = canonicalSubject(body.ID) && githubLoginName(body.Login) && (body.When == removalNow || body.When == removalGrace) && body.Administrator == nil && body.Team == "" && body.OrgID == "" && body.Slug == ""
 	default:
-		shaped = canonicalSubject(body.ID) && body.Administrator == nil && body.Login == "" && body.Team == "" && body.OrgID == "" && body.Slug == ""
+		shaped = canonicalSubject(body.ID) && body.Administrator == nil && body.Login == "" && body.Team == "" && body.OrgID == "" && body.Slug == "" && body.When == ""
+	}
+	if path != accessPath+"/remove-person" && body.When != "" {
+		shaped = false
 	}
 	if !shaped {
 		safe(w, 400, "invalid_request")
@@ -640,6 +681,10 @@ func (a *Auth) accessHTTP(w http.ResponseWriter, r *http.Request) {
 			row, err = a.withdrawAccess(r.Context(), s.identity.Subject, body.ID)
 		case path == accessPath+"/forget":
 			row, err = a.forgetMember(r.Context(), s.identity.Subject, body.ID)
+		case path == accessPath+"/remove-person":
+			row, err = a.removePerson(r.Context(), s.identity.Subject, body.ID, body.Login, body.When)
+		case path == accessPath+"/cancel-removal":
+			row, err = a.cancelPersonRemoval(r.Context(), s.identity.Subject, body.ID)
 		case *body.Administrator:
 			row, err = a.designateAdministrator(r.Context(), s.identity.Subject, body.ID)
 		default:
@@ -685,6 +730,7 @@ func (a *Auth) accessControl(ctx context.Context, payload []byte) ([]byte, error
 		Operation string `json:"operation"`
 		Subject   string `json:"subject"`
 		Login     string `json:"login"`
+		When      string `json:"when"`
 	}
 	dec := json.NewDecoder(strings.NewReader(string(payload)))
 	dec.DisallowUnknownFields()
@@ -694,7 +740,28 @@ func (a *Auth) accessControl(ctx context.Context, payload []byte) ([]byte, error
 	if !a.administrationAvailable() {
 		return nil, ErrAdministrationState
 	}
+	if r.When != "" && r.Operation != "access_remove_person" {
+		return nil, errors.New("invalid control request")
+	}
 	switch r.Operation {
+	case "access_remove_person":
+		if !canonicalSubject(r.Subject) || !githubLoginName(r.Login) || r.When != removalNow && r.When != removalGrace {
+			break
+		}
+		row, err := a.removePerson(ctx, "", r.Subject, r.Login, r.When)
+		if err != nil {
+			return nil, err
+		}
+		return json.Marshal(entryFor(ctx, row, a))
+	case "access_cancel_removal":
+		if !canonicalSubject(r.Subject) || r.Login != "" {
+			break
+		}
+		row, err := a.cancelPersonRemoval(ctx, "", r.Subject)
+		if err != nil {
+			return nil, err
+		}
+		return json.Marshal(entryFor(ctx, row, a))
 	case "access_list":
 		if r.Subject != "" || r.Login != "" {
 			break
@@ -756,4 +823,12 @@ func accessControlError(err error) (string, bool) {
 		return "", false
 	}
 	return code, true
+}
+
+// recordOf is subject's removal record, if any.
+func recordOf(v serverSettings, subject string) *removalRecord {
+	if r, ok := v.Removals[subject]; ok {
+		return &r
+	}
+	return nil
 }

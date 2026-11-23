@@ -31,10 +31,14 @@ type BrokerQuota interface {
 	SetQuota(context.Context, string, uint64) error
 }
 
+// RemovalDue marks a person whose removal is scheduled (ADR 0037): nothing
+// of theirs runs, so the sum of limits counts their usage instead of their
+// limit, which is zero once the data stage cleared it.
 type QuotaRow struct {
 	BoundUser
 	Quota
-	Unavailable bool `json:"unavailable"`
+	Unavailable bool   `json:"unavailable"`
+	RemovalDue  string `json:"removal_due,omitempty"`
 }
 type BrokerQuotaReader interface {
 	ListQuotas(context.Context) ([]QuotaRow, QuotaFilesystem, error)
@@ -92,13 +96,19 @@ func (a *Auth) quotaUsers(ctx context.Context) ([]byte, error) {
 			}
 			complete = false
 		} else {
-			if !validQuotaLimit(u.LimitBytes) || u.UsageBytes > maxJSONQuota {
+			counted := u.LimitBytes
+			if u.RemovalDue != "" {
+				counted = u.UsageBytes
+				if u.LimitBytes != 0 && !validQuotaLimit(u.LimitBytes) || !validRFC3339(u.RemovalDue) || u.UsageBytes > maxJSONQuota {
+					return nil, errBrokerRead
+				}
+			} else if !validQuotaLimit(u.LimitBytes) || u.UsageBytes > maxJSONQuota {
 				return nil, errBrokerRead
 			}
-			if math.MaxUint64-sum < u.LimitBytes {
+			if math.MaxUint64-sum < counted {
 				sum = math.MaxUint64
 			} else {
-				sum += u.LimitBytes
+				sum += counted
 			}
 		}
 		rows = append(rows, quotaUser{QuotaRow: u, Administrator: a.isAdministrator(u.ID)})

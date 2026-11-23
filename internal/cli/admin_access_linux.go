@@ -5,6 +5,7 @@ package cli
 import (
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 type controlAccessEntry struct {
@@ -31,6 +32,23 @@ type controlAccessEntry struct {
 	// TeamState and Teams are the latest sign-in's team answer.
 	TeamState string   `json:"team_state,omitempty"`
 	Teams     []string `json:"teams,omitempty"`
+	// Removal is the person's scheduled removal: stage scheduled or
+	// removing, the due time, who asked, a held removal's fixed reason and
+	// what their daemon answered about their services.
+	Removal *struct {
+		Stage      string `json:"stage"`
+		Due        string `json:"due"`
+		Actor      string `json:"actor"`
+		At         string `json:"at"`
+		Reason     string `json:"reason,omitempty"`
+		Disconnect string `json:"disconnect,omitempty"`
+		Providers  []struct {
+			Provider  string `json:"provider"`
+			Revoked   int    `json:"revoked"`
+			LocalOnly int    `json:"local_only"`
+			Failed    int    `json:"failed"`
+		} `json:"providers,omitempty"`
+	} `json:"removal,omitempty"`
 }
 
 // controlTeam is one listed GitHub team whose active members may sign in.
@@ -63,6 +81,10 @@ var accessRejections = map[string]string{
 	"github_user_not_found":      "GitHub has no user with that login or id",
 	"github_not_user":            "that GitHub account is an organisation or bot, not a person",
 	"access_refused":             "the broker refused the access change",
+	"removal_pending":            "this person's removal is scheduled; cancel it with admin access cancel-removal before restoring access",
+	"removal_started":            "the removal has begun deleting the person's data and can no longer be cancelled",
+	"self_removal":               "an administrator cannot remove themselves",
+	"login_mismatch":             "--login does not name this GitHub id; check it with admin access lookup",
 }
 
 func accessRejection(code string) (*cliError, bool) {
@@ -130,17 +152,17 @@ func githubIDFlag(args []string, shape string) (string, bool, error) {
 }
 
 func adminAccessCommand(args []string) (any, error) {
-	const shape = "expected admin access list [--state allowed|joined|withdrawn|left|unconfirmed], admin access lookup --login <github-login>, admin access add --github-id <id> [--dry-run] or admin access remove --github-id <id> [--dry-run]"
+	const shape = "expected admin access list [--state allowed|joined|withdrawn|left|unconfirmed|removing], admin access lookup --login <github-login>, admin access add --github-id <id> [--dry-run], admin access remove --github-id <id> [--dry-run], admin access remove-person --github-id <id> --login <github-login> [--now] [--dry-run] or admin access cancel-removal --github-id <id> [--dry-run]"
 	if len(args) == 0 {
 		return nil, usage(shape)
 	}
 	switch args[0] {
 	case "list":
 		state := ""
-		if len(args) == 3 && args[1] == "--state" && (args[2] == "allowed" || args[2] == "joined" || args[2] == "withdrawn" || args[2] == "left" || args[2] == "unconfirmed") {
+		if len(args) == 3 && args[1] == "--state" && (args[2] == "allowed" || args[2] == "joined" || args[2] == "withdrawn" || args[2] == "left" || args[2] == "unconfirmed" || args[2] == "removing") {
 			state = args[2]
 		} else if len(args) != 1 {
-			return nil, usage("expected admin access list [--state allowed|joined|withdrawn|left|unconfirmed]")
+			return nil, usage("expected admin access list [--state allowed|joined|withdrawn|left|unconfirmed|removing]")
 		}
 		v, e := readAccess()
 		if e != nil {
@@ -149,7 +171,9 @@ func adminAccessCommand(args []string) (any, error) {
 		if state != "" {
 			kept := []controlAccessEntry{}
 			for _, x := range v.Entries {
-				if x.State == state {
+				// removing lists every person whose removal is scheduled
+				// or under way; their state is withdrawn.
+				if x.State == state || state == "removing" && x.Removal != nil {
 					kept = append(kept, x)
 				}
 			}
@@ -206,8 +230,97 @@ func adminAccessCommand(args []string) (any, error) {
 			return nil, system("invalid_control_response", "gateway returned an access entry for another id")
 		}
 		return envelope(map[string]any{"entry": row, "updated": true}), nil
+	case "remove-person", "cancel-removal":
+		return adminRemovalCommand(args)
 	}
 	return nil, usage(shape)
+}
+
+// adminRemovalCommand removes a person (ADR 0037) or cancels a removal.
+// Removal signs the person out, disconnects their services and closes them
+// out of the host now; their home is deleted for good after 14 days, or at
+// once with --now. --login must name the id, as the browser's typed
+// confirmation does.
+func adminRemovalCommand(args []string) (any, error) {
+	verb := args[0]
+	shape := "expected admin access remove-person --github-id <id> --login <github-login> [--now] [--dry-run]"
+	if verb == "cancel-removal" {
+		shape = "expected admin access cancel-removal --github-id <id> [--dry-run]"
+	}
+	rest := []string{}
+	login, now := "", false
+	for i := 1; i < len(args); i++ {
+		switch {
+		case verb == "remove-person" && args[i] == "--login":
+			if login != "" || i+1 >= len(args) {
+				return nil, usage(shape)
+			}
+			i++
+			login = strings.TrimPrefix(args[i], "@")
+		case verb == "remove-person" && args[i] == "--now":
+			if now {
+				return nil, usage("--now given twice")
+			}
+			now = true
+		default:
+			rest = append(rest, args[i])
+		}
+	}
+	id, dry, e := githubIDFlag(rest, shape)
+	if e != nil {
+		return nil, e
+	}
+	if verb == "remove-person" && !githubLogin(login) {
+		return nil, usage(fmt.Sprintf("invalid --login %q; %s", login, shape))
+	}
+	v, e := readAccess()
+	if e != nil {
+		return nil, e
+	}
+	current := accessEntryFor(v, id)
+	if v.Mode == "any" {
+		c, _ := accessRejection("admission_open")
+		return nil, c
+	}
+	if current != nil && current.Source == "operator" {
+		c, _ := accessRejection("operator_owned")
+		return nil, c
+	}
+	when := "grace"
+	if now {
+		when = "now"
+	}
+	if dry {
+		effects := map[string]any{"current": current}
+		switch {
+		case verb == "cancel-removal" && (current == nil || current.Removal == nil):
+			effects["effect"] = "no removal to cancel"
+		case verb == "cancel-removal" && current.Removal.Stage == "removing":
+			c, _ := accessRejection("removal_started")
+			return nil, c
+		case verb == "cancel-removal":
+			effects["effect"] = "cancel the removal; access stays withdrawn and the account is unexpired"
+		case current == nil || current.Username == "":
+			effects["effect"] = "no account; the admission records are dropped"
+		case now:
+			effects["effect"] = "sign out, disconnect services and close out now, then delete the home and the account at once"
+		default:
+			effects["effect"] = "sign out, disconnect services and close out now; delete the home and the account after 14 days"
+		}
+		return envelope(map[string]any{"dry_run": true, "operation": verb, "github_id": id, "effects": effects, "unknown": []string{"broker_state_at_commit", "login_confirmation"}}), nil
+	}
+	operation, payload := "access_cancel_removal", map[string]any{"subject": id}
+	if verb == "remove-person" {
+		operation, payload = "access_remove_person", map[string]any{"subject": id, "login": login, "when": when}
+	}
+	var row controlAccessEntry
+	if e = adminOperation(operation, payload, &row); e != nil {
+		return nil, e
+	}
+	if row.ID != id {
+		return nil, system("invalid_control_response", "gateway returned an access entry for another id")
+	}
+	return envelope(map[string]any{"entry": row, "updated": true}), nil
 }
 
 // accessDryRun reports what add or remove would do from the current list.
@@ -265,4 +378,18 @@ func accessDryRun(verb, id string, v controlAccess, current *controlAccessEntry)
 		}
 	}
 	return envelope(map[string]any{"dry_run": true, "would": []any{map[string]any{"action": verb, "resource": "site-access", "input": map[string]any{"github_id": id}, "known_effects": effects, "unknown_until_apply": unknown}}}), nil
+}
+
+// githubLogin is GitHub's login grammar: 1–39 ASCII letters, digits and
+// single inner hyphens.
+func githubLogin(s string) bool {
+	if len(s) < 1 || len(s) > 39 || strings.HasPrefix(s, "-") || strings.HasSuffix(s, "-") || strings.Contains(s, "--") {
+		return false
+	}
+	for _, c := range s {
+		if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '-') {
+			return false
+		}
+	}
+	return true
 }

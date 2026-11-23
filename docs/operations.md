@@ -1558,14 +1558,25 @@ bring the sockets back. An installation gate that refuses socket starts while
 a revoked person's socket is active therefore needs no manual cleanup after a
 withdrawal or a revocation.
 
-Removing a person is a separate, final action beside withdrawal. Removal
-first withdraws access as above, then the broker closes the person out of the
-host at once: it expires the account (which also refuses SSH key logins),
+Removing a person (Settings › Käyttäjät ja pääsy › Poista henkilö, or
+`open-habitat admin access remove-person --github-id <id> --login <login>
+[--now]`) is a separate, final action beside withdrawal; the login must name
+the id, and neither the administrator themselves nor a person or
+administrator `site.json` declares can be removed this way. The gateway ends
+access and the person's sessions, view addresses and shares as on
+withdrawal, and asks the person's own daemon to disconnect their services:
+it revokes Google and Dropbox grants and GitLab tokens with the person's own
+tokens, removes Microsoft, mail and calendar, Gitea and other entries
+locally, logs their own Tailscale node out of their tailnet, and leaves `gh`'s
+token, which goes with the home. The access list shows what it answered as
+counts per provider, never account names. The broker then withdraws access as
+above and closes the person out of the host at once: it expires the account (which also refuses SSH key logins),
 disables lingering, stops `user@<uid>.service`, terminates the person's
 sessions and kills whatever still runs as the UID. The home is untouched
 until the due time, 14 days later or at once when the administrator chose
-immediate removal; until then the administrator may cancel, which unexpires
-the account and leaves access withdrawn. At the due time the broker itself,
+immediate removal; until then the administrator may cancel (Peru poisto, or
+`admin access cancel-removal --github-id <id>`), which unexpires the account
+and leaves access withdrawn; disconnected services stay disconnected. At the due time the broker itself,
 without another request, deletes the person's crontab, at jobs, mail spool,
 user journal files and the files the UID owns on `/tmp` and `/var/tmp`,
 deletes the home by descriptor (it is first renamed to
@@ -1574,8 +1585,12 @@ mount), proves under user quotas that the kernel charges the UID nothing on
 the home filesystem and clears its quota record, removes the socket
 directory, named ACL entries and `daemon-<name>.json`, runs `userdel`
 (without `-r`) and drops the binding. Only then may the UID be given to a
-new account, and only while the kernel still charges it nothing. A person
-admitted again later gets a new, empty account.
+new account, and only while the kernel still charges it nothing. The
+gateway then forgets the subject's onboarding receipt, administrator
+designation, site key copy and deny, so a person admitted again later gets a
+new, empty account and a new onboarding. `admin access list --state
+removing` lists removals that are scheduled or under way; the storage view
+counts each by usage rather than its limit.
 
 The broker journal logs every stage as `broker_removal` with the subject,
 username, stage, outcome and, when held, a fixed reason. A held removal is

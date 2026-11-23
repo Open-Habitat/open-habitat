@@ -763,6 +763,9 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 		a.callbackFailure(w, r, 403, "identity_mapping_denied")
 		return
 	}
+	// A finished removal leaves a deny and receipt behind until the
+	// gateway settles it; settle before they refuse or shape this sign-in.
+	a.settleRemovalOf(r.Context(), id)
 	a.mu.Lock()
 	revoked := a.subjectClosedLocked(id, p.serial)
 	a.mu.Unlock()

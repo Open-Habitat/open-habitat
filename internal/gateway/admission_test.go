@@ -33,6 +33,9 @@ type accessFake struct {
 	// stopRevoked counts root's revocation stops; revokedStopFails makes
 	// that many fail.
 	stopRevoked, revokedStopFails int
+	// removals are scheduled removals (removal_linux_test.go).
+	removals   map[string]*RemovalState
+	onSchedule func()
 }
 
 func (b *accessFake) StopRevoked(context.Context) error {
@@ -82,7 +85,7 @@ func (b *accessFake) row(id string) []AccessRow {
 	case b.operator[id]:
 		return []AccessRow{{ID: id, Source: "operator", State: state, Username: route.Username}}
 	case b.runtime[id] == "withdrawn":
-		return []AccessRow{{ID: id, Source: "site_admin", State: "withdrawn", Username: route.Username, LoginHint: "hint", Actor: "42", At: "2026-10-24T09:30:00Z"}}
+		return []AccessRow{{ID: id, Source: "site_admin", State: "withdrawn", Username: route.Username, LoginHint: "hint", Actor: "42", At: "2026-10-24T09:30:00Z", Removal: b.removals[id]}}
 	case b.runtime[id] != "":
 		return []AccessRow{{ID: id, Source: "site_admin", State: state, Username: route.Username, LoginHint: "hint", Actor: "42", At: "2026-10-24T09:30:00Z"}}
 	}

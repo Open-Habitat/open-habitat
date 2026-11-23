@@ -871,6 +871,20 @@ commands through the real control handler, including dry runs that write
 nothing, refusals, the uncertain exit and strict flags;
 `TestAccessWriteClassification` pins which broker replies are uncertain.
 
+`admin access remove-person --github-id <id> --login <login> [--now]
+[--dry-run]` and `admin access cancel-removal --github-id <id> [--dry-run]`
+go to the same removal sequence as the browser's Poista henkilö (§§1, 7).
+Removal is destructive and final once its data stage begins, so it takes the
+explicit numeric id together with the person's login, which the gateway
+checks against the id (`login_mismatch`, exit 1); `--now` is the only way to
+skip the 14-day grace period (§§4, 6). `self_removal`, `operator_owned`,
+`removal_pending` and `removal_started` are fixed refusals with exit 1, and an
+unconfirmed reply is `outcome_uncertain`, exit 2, after which the operator
+reads `admin access list --state removing` and repeats; a repeat continues
+from what is recorded (§§9–10). `--dry-run` reports the effect from the
+current list and names the broker state and the login check as unknown until
+commit (§11). `TestAdminRemovalArguments` pins the strict flags.
+
 ## Agent view batch
 
 `agent view offer --workspace <ws_> --source <path> [--entry-file <html>]
