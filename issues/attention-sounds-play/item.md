@@ -3,10 +3,11 @@ created: 2026-11-23
 updated: 2026-11-23
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 preparation: ready
+closed: 2026-11-23
 ---
 
 # Attention sounds play during night silence

@@ -126,6 +126,7 @@ const initial: Preferences = {
 const states = new Map<string, Preferences>();
 const generations = new Map<string, number>();
 const reading = new Map<string, number>();
+const readingNow = new Map<string, Promise<void>>();
 const events = new EventTarget();
 const key = (identity: string, csrf: string) => `${identity}:${csrf}`;
 function publish(k: string, value: Preferences) {
@@ -185,15 +186,29 @@ async function readReply(response: Response, identity: string) {
   };
 }
 
-export async function loadAccountPreferences(identity: string, csrf: string) {
+export function loadAccountPreferences(
+  identity: string,
+  csrf: string,
+): Promise<void> {
   const k = key(identity, csrf);
   // Never let a background observation race an outstanding write, and let
   // the many readers of one focus event share one request.
   const current = generations.get(k) ?? 0;
-  if (states.get(k)?.busy || reading.get(k) === current) return;
+  if (states.get(k)?.busy) return Promise.resolve();
+  if (reading.get(k) === current) return readingNow.get(k) ?? Promise.resolve();
   const generation = current + 1;
   generations.set(k, generation);
   reading.set(k, generation);
+  const read = readPreferences(identity, k, generation);
+  readingNow.set(k, read);
+  return read;
+}
+
+async function readPreferences(
+  identity: string,
+  k: string,
+  generation: number,
+) {
   try {
     const confirmed = await readReply(
       await fetch(url, { credentials: "same-origin", cache: "no-store" }),
@@ -209,8 +224,23 @@ export async function loadAccountPreferences(identity: string, csrf: string) {
         error: "read",
       });
   } finally {
-    if (reading.get(k) === generation) reading.delete(k);
+    if (reading.get(k) === generation) {
+      reading.delete(k);
+      readingNow.delete(k);
+    }
   }
+}
+
+/** The attention sound's choices as the daemon has them now: read again
+ * before a sound plays, since a tab in the background does not poll and a
+ * change made on another device must already count. While a write is in
+ * flight, or when the read fails, the last confirmed choices answer. */
+export async function currentSoundPreferences(
+  identity: string,
+  csrf: string,
+): Promise<SoundPreferences> {
+  await loadAccountPreferences(identity, csrf);
+  return (states.get(key(identity, csrf)) ?? initial).sound;
 }
 
 /** Write one change; the state follows only the daemon's confirmation. */

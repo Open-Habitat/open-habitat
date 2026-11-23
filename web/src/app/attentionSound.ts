@@ -307,27 +307,33 @@ const settleMs = 4000;
  * Plays one sound when a conversation becomes the person's turn: an agent
  * replied or asks. No sound for the conversation in view (unless the person
  * chose otherwise), when the sound is off, this device is muted or it is
- * night; the first rows after loading are the baseline, not news. With
- * `activeDevice`, a sound that would play here plays only in the tab the
- * person is using; those silences come first and are not asked about.
+ * night; the first rows after loading are the baseline, not news. A due
+ * sound is decided from the person's choices read again at that moment,
+ * not from what this tab last read. With `activeDevice`, a sound that would
+ * play here plays only in the tab the person is using; those silences come
+ * first and are not asked about.
  */
 export function useAttentionSound({
   identity,
   yours,
-  sound,
   loaded,
   stale,
   activeDevice = false,
+  currentSound,
 }: {
   identity?: string;
   yours: readonly AgentNavModel[];
-  sound: SoundPreferences;
-  /** The preferences have been read, so `sound` is the person's. */
+  /** The preferences have been read once, so the page knows the person. */
   loaded: boolean;
   /** The connection is lost: the rail is the last observation. */
   stale: boolean;
   /** Experimental sounds-active-device is on. */
   activeDevice?: boolean;
+  /** Reads the person's choices as they are now, or the last confirmed
+   * when the read fails. A tab in the background is where the sound plays,
+   * and it does not poll: a choice made since on another device (the sound
+   * off, an earlier night) must already count. */
+  currentSound: () => Promise<SoundPreferences>;
 }) {
   const seen = useRef<Set<string>>(new Set());
   const settleUntil = useRef(0);
@@ -368,28 +374,34 @@ export function useAttentionSound({
     if (!fresh.length || at < settleUntil.current) return;
     const viewing =
       document.visibilityState === "visible" && document.hasFocus();
-    const heard = fresh.find(
-      (row) =>
-        !silence({
-          sound,
-          muted: device.muted,
-          night: deviceNight(sound),
-          inView: viewing && !!row.selected,
-        }),
-    );
-    if (!heard) return;
-    const id = heard.workspaceId
-      ? workspaceSound(sound, heard.workspaceId)
-      : sound.default;
-    const length = sound.length;
-    if (!activeDevice) {
-      if (claimBurst(at)) playSound(id, length);
-      return;
-    }
-    // Another tab of this browser that is not in use must not claim the
-    // burst before the one that is, so the claim waits for the answer.
-    void activeDevicePlays().then((plays) => {
-      if (plays && claimBurst(Date.now())) playSound(id, length);
+    const decide = (sound: SoundPreferences) => {
+      const heard = fresh.find(
+        (row) =>
+          !silence({
+            sound,
+            muted: device.muted,
+            night: deviceNight(sound),
+            inView: viewing && !!row.selected,
+          }),
+      );
+      if (!heard) return undefined;
+      return {
+        id: heard.workspaceId
+          ? workspaceSound(sound, heard.workspaceId)
+          : sound.default,
+        length: sound.length,
+      };
+    };
+    // This device's mute is always current; the person's choices are read
+    // again, so that the sound follows them as they are now.
+    if (device.muted) return;
+    void currentSound().then(async (current) => {
+      const due = decide(current);
+      if (!due) return;
+      // Another tab of this browser that is not in use must not claim the
+      // burst before the one that is, so the claim waits for the answer.
+      if (activeDevice && !(await activeDevicePlays())) return;
+      if (claimBurst(Date.now())) playSound(due.id, due.length);
     });
   });
 }

@@ -345,6 +345,59 @@ for (const target of [
   });
 }
 
+for (const nightStart of [20, 22] as const) {
+  test(`@attention-sound a background tab follows a night changed on another device: start ${nightStart}`, async ({
+    page,
+  }) => {
+    // This tab is in the background: it does not poll its preferences, so
+    // what it read at load time is hours old when a reply arrives.
+    await page.addInitScript(() => {
+      Object.defineProperty(document, "visibilityState", {
+        get: () => "hidden",
+      });
+      document.hasFocus = () => false;
+    });
+    await signIn(page);
+    await page.clock.install({ time: new Date("2026-11-23T20:45:00+02:00") });
+    await page.goto("/workspaces");
+    await openWorkspace(page, "ordinary-dir");
+    await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+    await expect(page).toHaveURL(/conversation=pi(?:%3A|:)/);
+    const agent = new URL(page.url()).searchParams.get("conversation") ?? "";
+    await page.request.get("/fixture/scenario?value=pi-visual-hold");
+    await page.getByTestId("message-input").fill("työ");
+    await page
+      .getByTestId("send")
+      .and(page.locator('[data-mode="send"]'))
+      .click();
+    const nav = page.getByTestId("workspace-navigation");
+    await expect(
+      nav.getByTestId("rail-running").getByTestId(`agent-item-${agent}`),
+    ).toBeVisible({ timeout: 25000 });
+    // Meanwhile, on the person's other device, night quiet starts earlier
+    // (or stays at its default 22).
+    const put = await page.request.put("/api/v1/account/preferences", {
+      headers: await headers(page),
+      data: { sound: { night_start: nightStart } },
+    });
+    expect(put.status()).toBe(200);
+    await page.clock.fastForward(5000);
+    await page.request.get("/fixture/scenario?value=ready");
+    await expect(
+      nav.getByTestId("rail-yours").getByTestId(`agent-item-${agent}`),
+    ).toBeVisible({ timeout: 25000 });
+    if (nightStart === 22) {
+      await expect
+        .poll(() => plays(page), { timeout: 10000 })
+        .toEqual(["kalimba"]);
+    } else {
+      // Give a sound every chance to start before asserting silence.
+      await page.waitForTimeout(1500);
+      expect(await plays(page)).toEqual([]);
+    }
+  });
+}
+
 test("@attention-sound night follows the local clock, edits persist and turning it off is permanent", async ({
   page,
 }) => {

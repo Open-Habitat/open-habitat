@@ -46,7 +46,7 @@ const fi = {
   inViewPlays: "Soi silti",
   night: "Hiljennä yöllä",
   nightDesc:
-    "Äänet ovat hiljaa valitsemanasi aikana laitteen paikallisen kellon mukaan. Tumma teema ei vaikuta ääniin.",
+    "Habitatin äänet ovat hiljaa valitsemanasi aikana laitteen paikallisen kellon mukaan. Habitat ei lähetä järjestelmän ilmoituksia, joten muiden sovellusten ja selaimen omat äänet eivät hiljene tästä. Tumma teema ei vaikuta ääniin.",
   nightStart: "Alkaa",
   nightEnd: "Päättyy",
   clockHour: (time: string) => `klo ${time}`,
@@ -164,7 +164,7 @@ export const attentionSoundText = catalog(fi, {
   inViewPlays: "Play anyway",
   night: "Quiet at night",
   nightDesc:
-    "Sounds stay quiet during your chosen hours by the device's local clock. A dark theme does not affect sounds.",
+    "Habitat's sounds stay quiet during your chosen hours by the device's local clock. Habitat sends no system notifications, so other apps' and the browser's own sounds are not silenced by this. A dark theme does not affect sounds.",
   nightStart: "Starts",
   nightEnd: "Ends",
   clockHour: (time: string) => `at ${time}`,

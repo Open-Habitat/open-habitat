@@ -56,6 +56,7 @@ import {
   chooseQuietSort,
   chooseQuietWorkspace,
   chooseSectionWorkspace,
+  currentSoundPreferences,
   moveWorkspaceSound,
   type QuietSort,
   type RailSection,
@@ -1574,11 +1575,14 @@ export function App() {
   useAttentionSound({
     identity,
     yours: now.yours,
-    sound: confirmedPreferences.sound,
     loaded:
       confirmedPreferences.loaded && confirmedPreferences.error !== "read",
     stale: phase === "stale",
     activeDevice,
+    currentSound: async () =>
+      identity && csrf
+        ? currentSoundPreferences(identity, csrf)
+        : confirmedPreferences.sound,
   });
   const quietChoice = {
     sort: confirmedPreferences.quiet_sort,

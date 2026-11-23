@@ -11,6 +11,7 @@ import {
   chooseEditor,
   chooseLanguage,
   chooseWorkspaceSound,
+  currentSoundPreferences,
   loadAccountPreferences,
   moveWorkspaceSound,
   setExperimentalFeature,
@@ -380,4 +381,47 @@ it("a workspace sound chosen while another write is in flight waits for it, and 
     { workspace_sound: { ws_example123: null } },
     { workspace_sound: { ws_example456: "kulho" } },
   ]);
+});
+
+it("reads the sound's choices afresh for a sound in a hidden tab, sharing a read in flight", async () => {
+  vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+  const withSound = (sound: object) => {
+    const response = reply("wid_sound");
+    return response.json().then(
+      (body) =>
+        new Response(
+          JSON.stringify({ ...body, sound: { ...body.sound, ...sound } }),
+          {
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+    );
+  };
+  const fetch = vi.fn().mockReturnValueOnce(withSound({}));
+  vi.stubGlobal("fetch", fetch);
+  await loadAccountPreferences("wid_sound", "s1");
+  // Another device moved the night earlier and later turned the sound off;
+  // this tab, in the background, has polled neither.
+  let release: (r: Response) => void = () => {};
+  fetch.mockReturnValueOnce(
+    new Promise<Response>((resolve) => {
+      release = resolve;
+    }),
+  );
+  const background = loadAccountPreferences("wid_sound", "s1");
+  const due = currentSoundPreferences("wid_sound", "s1");
+  release(await withSound({ night_start: 20 }));
+  await background;
+  expect(await due).toMatchObject({ enabled: true, night_start: 20 });
+  expect(fetch).toHaveBeenCalledTimes(2);
+  fetch.mockReturnValueOnce(withSound({ enabled: false, night_start: 20 }));
+  expect(await currentSoundPreferences("wid_sound", "s1")).toMatchObject({
+    enabled: false,
+  });
+  // A failed read answers with the last confirmed choices.
+  fetch.mockRejectedValueOnce(new Error("lost read"));
+  expect(await currentSoundPreferences("wid_sound", "s1")).toMatchObject({
+    enabled: false,
+    night_start: 20,
+  });
 });

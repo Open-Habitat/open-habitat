@@ -140,9 +140,9 @@ describe("useAttentionSound", () => {
         useAttentionSound({
           identity: "wid_example",
           yours,
-          sound,
           loaded: true,
           stale,
+          currentSound: async () => sound,
         }),
       {
         initialProps: {
@@ -152,24 +152,32 @@ describe("useAttentionSound", () => {
       },
     );
 
-  it("plays once for a new reply after the page settles, never for what was there", () => {
+  it("plays once for a new reply after the page settles, never for what was there", async () => {
     const hook = mount();
     // Replies already waiting, and those the rail fills in while loading.
-    hook.rerender({ yours: [row("a", "reply:r1"), row("b", "reply:r2")] });
+    await act(async () => {
+      hook.rerender({ yours: [row("a", "reply:r1"), row("b", "reply:r2")] });
+    });
     expect(plays).toHaveLength(0);
     now += 5000;
-    hook.rerender({ yours: [row("a", "reply:r1"), row("b", "reply:r2")] });
+    await act(async () => {
+      hook.rerender({ yours: [row("a", "reply:r1"), row("b", "reply:r2")] });
+    });
     expect(plays).toHaveLength(0);
-    hook.rerender({ yours: [row("a", "reply:r3"), row("b", "reply:r2")] });
+    await act(async () => {
+      hook.rerender({ yours: [row("a", "reply:r3"), row("b", "reply:r2")] });
+    });
     expect(plays).toHaveLength(1);
     expect(plays[0]).toMatchObject({ id: "kalimba", length: "short" });
     // The same observation again is not news.
     now += 5000;
-    hook.rerender({ yours: [row("a", "reply:r3"), row("b", "reply:r2")] });
+    await act(async () => {
+      hook.rerender({ yours: [row("a", "reply:r3"), row("b", "reply:r2")] });
+    });
     expect(plays).toHaveLength(1);
   });
 
-  it("plays one sound when several become ready together, the workspace's own", () => {
+  it("plays one sound when several become ready together, the workspace's own", async () => {
     const hook = mount({
       ...defaultSoundPreferences,
       enabled: true,
@@ -178,76 +186,157 @@ describe("useAttentionSound", () => {
       workspaces: { ws_example01: "pisara" },
     });
     now += 5000;
-    hook.rerender({
-      yours: [
-        row("a", "reply:r1"),
-        row("b", "question", { workspaceId: "ws_example01" }),
-        row("c", "reply:r9"),
-      ],
+    await act(async () => {
+      hook.rerender({
+        yours: [
+          row("a", "reply:r1"),
+          row("b", "question", { workspaceId: "ws_example01" }),
+          row("c", "reply:r9"),
+        ],
+      });
     });
     expect(plays).toEqual([
       expect.objectContaining({ id: "pisara", length: "long" }),
     ]);
   });
 
-  it("stays quiet for the conversation in view, but not when Habitat is in the background", () => {
+  it("stays quiet for the conversation in view, but not when Habitat is in the background", async () => {
     const hook = mount();
     now += 5000;
-    hook.rerender({ yours: [row("a", "reply:r2", { selected: true })] });
+    await act(async () => {
+      hook.rerender({ yours: [row("a", "reply:r2", { selected: true })] });
+    });
     expect(plays).toHaveLength(0);
     vi.mocked(document.hasFocus).mockReturnValue(false);
     now += 5000;
-    hook.rerender({ yours: [row("a", "reply:r3", { selected: true })] });
+    await act(async () => {
+      hook.rerender({ yours: [row("a", "reply:r3", { selected: true })] });
+    });
     expect(plays).toHaveLength(1);
   });
 
-  it("stays quiet on a muted device and when off, and a raise carries no key", () => {
+  it("stays quiet on a muted device and when off, and a raise carries no key", async () => {
     const off = mount({ ...defaultSoundPreferences, enabled: false });
     now += 5000;
-    off.rerender({ yours: [row("a", "reply:r2")] });
+    await act(async () => {
+      off.rerender({ yours: [row("a", "reply:r2")] });
+    });
     expect(plays).toHaveLength(0);
     off.unmount();
     setDeviceMuted(true);
     const muted = mount();
     now += 5000;
-    muted.rerender({ yours: [row("a", "reply:r4"), row("r", undefined)] });
+    await act(async () => {
+      muted.rerender({ yours: [row("a", "reply:r4"), row("r", undefined)] });
+    });
     expect(plays).toHaveLength(0);
   });
 
-  it("checks the current clock for each reply and never replays a silenced reply at dawn", () => {
+  it("checks the current clock for each reply and never replays a silenced reply at dawn", async () => {
     const hour = vi.spyOn(Date.prototype, "getHours").mockReturnValue(23);
     const hook = mount({ ...defaultSoundPreferences, enabled: true });
     now += 5000;
-    hook.rerender({ yours: [row("a", "reply:r2")] });
+    await act(async () => {
+      hook.rerender({ yours: [row("a", "reply:r2")] });
+    });
     expect(plays).toHaveLength(0);
     hour.mockReturnValue(7);
     now += 5000;
-    hook.rerender({ yours: [row("a", "reply:r2")] });
+    await act(async () => {
+      hook.rerender({ yours: [row("a", "reply:r2")] });
+    });
     expect(plays).toHaveLength(0);
-    hook.rerender({ yours: [row("a", "reply:r3")] });
+    await act(async () => {
+      hook.rerender({ yours: [row("a", "reply:r3")] });
+    });
     expect(plays).toHaveLength(1);
   });
 
-  it("takes a reconnect's rows as a new baseline, not as news", () => {
+  it("takes a reconnect's rows as a new baseline, not as news", async () => {
     const hook = mount();
     now += 5000;
-    hook.rerender({ yours: [row("a", "reply:r1")], stale: true });
+    await act(async () => {
+      hook.rerender({ yours: [row("a", "reply:r1")], stale: true });
+    });
     // However long the connection was lost, the rows it brings back are
     // the baseline, and the settle window starts at the recovery.
     now += 60_000;
-    hook.rerender({ yours: [row("a", "reply:r1")] });
-    hook.rerender({ yours: [row("a", "reply:r5"), row("b", "reply:r6")] });
+    await act(async () => {
+      hook.rerender({ yours: [row("a", "reply:r1")] });
+    });
+    await act(async () => {
+      hook.rerender({ yours: [row("a", "reply:r5"), row("b", "reply:r6")] });
+    });
     expect(plays).toHaveLength(0);
     now += 5000;
-    hook.rerender({ yours: [row("a", "reply:r8"), row("b", "reply:r6")] });
+    await act(async () => {
+      hook.rerender({ yours: [row("a", "reply:r8"), row("b", "reply:r6")] });
+    });
     expect(plays).toHaveLength(1);
   });
 
-  it("another tab of this browser that just played claims the burst", () => {
+  // A hidden tab is where the sound plays, and it may hold choices read
+  // hours ago: the hook decides from what currentSound reads at that moment.
+  const mountFresh = (fresh: () => Promise<SoundPreferences>) =>
+    renderHook(
+      ({ yours }: { yours: AgentNavModel[] }) =>
+        useAttentionSound({
+          identity: "wid_example",
+          yours,
+          loaded: true,
+          stale: false,
+          currentSound: fresh,
+        }),
+      { initialProps: { yours: [row("a", "reply:r1")] } },
+    );
+
+  it("stays quiet from a night start the person chose at or before this hour", async () => {
+    const hour = vi.spyOn(Date.prototype, "getHours").mockReturnValue(20);
+    const hook = mountFresh(async () => ({
+      ...defaultSoundPreferences,
+      enabled: true,
+      night_start: 20,
+    }));
+    now += 5000;
+    await act(async () => {
+      hook.rerender({ yours: [row("a", "reply:r2")] });
+    });
+    hour.mockReturnValue(21);
+    await act(async () => {
+      hook.rerender({ yours: [row("a", "reply:r3")] });
+    });
+    expect(plays).toHaveLength(0);
+    hour.mockReturnValue(19);
+    now += 5000;
+    await act(async () => {
+      hook.rerender({ yours: [row("a", "reply:r4")] });
+    });
+    expect(plays).toHaveLength(1);
+  });
+
+  it("stays quiet once the sound was turned off elsewhere, plays once turned on", async () => {
+    let current: SoundPreferences = { ...defaultSoundPreferences };
+    const hook = mountFresh(async () => current);
+    now += 5000;
+    await act(async () => {
+      hook.rerender({ yours: [row("a", "reply:r2")] });
+    });
+    expect(plays).toHaveLength(0);
+    current = { ...defaultSoundPreferences, enabled: true, night: false };
+    now += 5000;
+    await act(async () => {
+      hook.rerender({ yours: [row("a", "reply:r3")] });
+    });
+    expect(plays).toHaveLength(1);
+  });
+
+  it("another tab of this browser that just played claims the burst", async () => {
     const hook = mount();
     now += 5000;
     window.localStorage.setItem("nah:attention-sound-last", String(now - 500));
-    hook.rerender({ yours: [row("a", "reply:r7")] });
+    await act(async () => {
+      hook.rerender({ yours: [row("a", "reply:r7")] });
+    });
     expect(plays).toHaveLength(0);
   });
 });

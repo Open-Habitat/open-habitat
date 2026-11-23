@@ -155,6 +155,7 @@ describe("useAttentionSound with the active device", () => {
     workspaceId: "ws_example00",
     readyKey,
   });
+  const sound = { ...defaultSoundPreferences, enabled: true, night: false };
   const mount = (activeDevice: boolean) => {
     plays.length = 0;
     window.localStorage.clear();
@@ -165,10 +166,10 @@ describe("useAttentionSound with the active device", () => {
         useAttentionSound({
           identity: "wid_example",
           yours,
-          sound: { ...defaultSoundPreferences, enabled: true, night: false },
           loaded: true,
           stale: false,
           activeDevice,
+          currentSound: async () => sound,
         }),
       { initialProps: { yours: [row("a", "reply:r1")] } },
     );
