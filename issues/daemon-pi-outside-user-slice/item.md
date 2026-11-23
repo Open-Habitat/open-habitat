@@ -60,3 +60,7 @@ The holder architecture that would also have solved this was declined (`upgrade-
 ### 2026-11-23T13:41:14Z · @jari
 
 Jari 23.11.2026: each person's daemon instance runs in that person's user-<uid>.slice, so one operator limit per person (systemd user-.slice.d drop-in) bounds everything the person runs, including the daemon's Pi children; no new product setting. The product verifier accepts the one drop-in the product writes itself. docs/operations.md says what the limit covers. Next action (approved): implement.
+
+### 2026-11-23T19:00:22Z · @jari
+
+Jari 23.11.2026: the test release blocked at switch on this change. Fixing the test server comes first. If this change broke it, it goes nowhere but the test server until it has really been tested there; no pilot release carries it before that.
