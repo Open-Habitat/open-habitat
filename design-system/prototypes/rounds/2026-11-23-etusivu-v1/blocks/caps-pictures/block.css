@@ -1,0 +1,39 @@
+/* caps-pictures: the before/after of the enlargement and the blurred photo. */
+[data-block="caps-pictures"] .cp-pic { display: block; width: 100%; height: auto; }
+[data-block="caps-pictures"] .cp-cmp, [data-block="caps-pictures"] .cp-photo { position: relative; border-radius: 8px; overflow: hidden; background: var(--ah-ink); box-shadow: 0 1px 2px rgba(16, 24, 40, .14), 0 8px 24px -12px rgba(16, 24, 40, .35); }
+
+/* The enlargement: scan on the left of the line, Real-ESRGAN on the right. */
+[data-block="caps-pictures"] .cp-cmp { aspect-ratio: 4 / 3; }
+[data-block="caps-pictures"] .cp-after { position: absolute; inset: 0; clip-path: inset(0 0 0 var(--p)); }
+[data-block="caps-pictures"] .cp-tag { position: absolute; top: 8px; padding: 3px 8px; border-radius: var(--ah-r-pill); background: rgba(16, 22, 18, .72); color: #fff; font: 600 11px var(--ah-font); letter-spacing: .01em; pointer-events: none; white-space: nowrap; }
+[data-block="caps-pictures"] .cp-tag-a { left: 8px; }
+[data-block="caps-pictures"] .cp-tag-b { right: 8px; background: var(--ah-accent); }
+[data-block="caps-pictures"] .cp-line { position: absolute; top: 0; bottom: 0; left: var(--p); width: 2px; margin-left: -1px; background: #fff; box-shadow: 0 0 0 1px rgba(16, 22, 18, .25); pointer-events: none; }
+[data-block="caps-pictures"] .cp-line i { position: absolute; top: 50%; left: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(16, 22, 18, .45); }
+[data-block="caps-pictures"] .cp-line i::before, [data-block="caps-pictures"] .cp-line i::after { content: ""; position: absolute; top: 50%; width: 7px; height: 7px; margin-top: -4px; border-left: 2px solid var(--ah-ink); border-bottom: 2px solid var(--ah-ink); }
+[data-block="caps-pictures"] .cp-line i::before { left: 8px; transform: rotate(45deg); }
+[data-block="caps-pictures"] .cp-line i::after { right: 8px; transform: rotate(-135deg); }
+[data-block="caps-pictures"] .cp-range { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize; touch-action: pan-y; }
+[data-block="caps-pictures"] .cp-cmp:has(.cp-range:focus-visible) { outline: 2px solid var(--ah-accent); outline-offset: 2px; }
+[data-block="caps-pictures"] .cp-loc { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+[data-block="caps-pictures"] .cp-thumb { position: relative; flex: none; width: 96px; border-radius: 4px; overflow: hidden; box-shadow: 0 0 0 1px var(--ah-line); }
+[data-block="caps-pictures"] .cp-thumb img { display: block; width: 100%; height: auto; }
+/* The part of the photo the comparison shows: 720 × 540 at 760, 700 of 1600 × 1240. */
+[data-block="caps-pictures"] .cp-thumb i { position: absolute; left: 47.5%; top: 56.45%; width: 45%; height: 43.55%; border: 1.5px solid #fff; border-radius: 2px; box-shadow: 0 0 0 1px var(--ah-accent), 0 0 0 100px rgba(16, 22, 18, .34); }
+[data-block="caps-pictures"] .cp-loc p { display: flex; flex-direction: column; gap: 1px; min-width: 0; font-size: 12.5px; line-height: 1.4; color: var(--ah-muted); }
+[data-block="caps-pictures"] .cp-loc b { font: 500 12.5px var(--ah-mono); color: var(--ah-ink); }
+[data-block="caps-pictures"] .cp-n { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; margin-top: 12px !important; padding-top: 9px; border-top: 1px solid var(--ah-line); font: 400 11.5px var(--ah-mono); color: var(--ah-muted); }
+
+/* The blurred photo; "What it found" lays the detector's boxes over it. */
+[data-block="caps-pictures"] .cp-found { position: absolute; inset: 0; height: 100%; opacity: 0; transition: opacity 180ms ease-out; }
+[data-block="caps-pictures"] .cp-blur[data-state="found"] .cp-found { opacity: 1; }
+[data-block="caps-pictures"] .cp-key { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: var(--ah-ink-2); transition: opacity 180ms ease-out; }
+[data-block="caps-pictures"] .cp-blur[data-state="ready"] .cp-key { opacity: .55; }
+[data-block="caps-pictures"] .cp-key li { display: flex; align-items: center; gap: 6px; }
+[data-block="caps-pictures"] .cp-key b { font-weight: 600; color: var(--ah-ink); }
+[data-block="caps-pictures"] .cp-key i { width: 11px; height: 11px; border-radius: 4px; border: 2px solid #2c6e3f; }
+[data-block="caps-pictures"] .cp-k-unsure i { border-color: #c2410c; }
+[data-block="caps-pictures"] .cp-k-skip i { border: 2px dashed #3a453c; border-radius: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  [data-block="caps-pictures"] .cp-found, [data-block="caps-pictures"] .cp-key { transition: none; }
+}
