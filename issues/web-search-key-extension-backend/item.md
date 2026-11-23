@@ -3,11 +3,13 @@ created: 2026-11-23
 updated: 2026-11-23
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: web-search-key
 lane_seq: 1
 preparation: ready
+closed: 2026-11-23
+closed_by: agent
 ---
 
 # Web search key: key-based backend in the search extension

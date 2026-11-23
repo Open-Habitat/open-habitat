@@ -33,6 +33,17 @@ extension or provider operation outside Pi's dispatch must honour the
 companion's turn mode before shipping; tests against the pinned runtime must
 prove that bridge-served Pi tools still pass through the hook.
 
+A model without provider search gets the same extension's key-backed
+`web_search` (Jari, 2026-11-23: the search key works like the speech key).
+It is an ordinary Pi tool, so the companion's turn mode governs it at
+dispatch like any other. A model that searches natively never gets it, so a
+conversation never has two search tools. The extension reads the person's
+key natively from `~/.config/web-search/key.json` and writes only its refusal
+mark (`state.json`) beside it. The providers that search natively are listed
+in the installed package's `native-search.json`. The daemon reads that file
+rather than keeping a table of its own, so a provider the extension starts
+covering reaches the person's view with the pin.
+
 The web-search source and device tests live in the public
 `Open-Habitat/pi-web-search` repository. Raise its release URL in `package.json`
 and regenerate `package-lock.json` with npm's `--package-lock-only
