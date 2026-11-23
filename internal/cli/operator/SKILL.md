@@ -9,14 +9,14 @@ schema_version: 1
 You are operating a host that several people work on. Each has a Linux
 account, a home, credentials and running agents there, and the separation
 between them is the product. What you change as root reaches all of them: a
-restarted session service ends everyone's running work, a wrong permission
+restarted session service can disrupt people's running work, a wrong permission
 can expose one person's secrets to another, and broker state repaired by hand
 can hand one person's UID to someone else. The work is done when an admitted
 person has signed in through their own browser and their own Pi has reached
 its provider, not when a command returns.
 
 This text matches the binary that printed it. Every command and subcommand
-answers `--help` with its flags, refusals and an example, and
+answers `--help` with its flags and examples, and
 `site/schema.json` with `site/example.json` in the product package define the
 site file; that detail is not repeated here. The longer operator guide, with
 step-by-step recoveries and the app registrations at Google, Microsoft and
@@ -38,8 +38,8 @@ to it. Nothing is changed on a guess:
 
 These, and `--dry-run` of `prepare` and `upgrade`, only read. They take no
 operation lock, change no quota, start no service and install no file (reads
-may change access times), so run them freely. A blocked read exits 1 with its
-document on stderr under `error.result.data` and an empty stdout; a check
+may change access times), so run them freely. A blocked qualification exits 1
+with its document on stderr under `error.result.data` and an empty stdout; a check
 reported unavailable has not passed.
 
 A dry run returns a plan ID that fingerprints what was observed. The live
@@ -59,12 +59,14 @@ refused, the refusal names what to diagnose.
 - Before an operation starts, `stale_plan` means the host changed since the
   observation; take a fresh dry run and a fresh approval.
 - Once an operation has started, it continues only with the same protected
-  inputs (site file, secret files, release) and its original approval. A new
-  approval cannot replace it, and restoring a changed file's bytes does not
-  restore its identity. So keep the declaration and everything it references
-  unchanged, and external delivery tooling quiet, for the whole window.
+  inputs (site file, secret files, release) and its original approval, except
+  for verified `prepare` at `session_restarting` and pre-publication `apply`
+  continuations: those use a fresh preview approval as the guide describes.
+  Otherwise keep inputs unchanged and delivery tooling quiet; restoring a
+  changed file's bytes does not restore its identity.
 - An exact repeat of a finished apply verifies the native postconditions and
-  returns `no_change` without rewriting a receipt or restarting anything.
+  returns `no_change` without rewriting a receipt or restarting anything;
+  the required Chrome check/install still runs afterwards.
 - A run that ends without a terminal event has an unknown outcome. It is not
   evidence that nothing changed or that HTTP is closed. Read `host operation
   show <operation-id> --json` before anything else; a journal phase there is
@@ -73,6 +75,8 @@ refused, the refusal names what to diagnose.
   `verified_closed` the HTTP entry points are fenced. With `unavailable` the
   closure could not be persisted (the binary tries to stop the gateway as a
   last resort): keep external ingress closed and inspect the gateway.
+  A later `server_browser_required` failure is different: entry is already
+  open and the generation transition complete; retry with a fresh apply plan.
 - Exit 2 is a system or native action failure: inspect before retrying.
   Signals exit 130 and 143.
 - Foreign or partial broker state and malformed journals stay closed for
@@ -80,8 +84,11 @@ refused, the refusal names what to diagnose.
 
 ## What the installation needs
 
-The supported host is Ubuntu 24.04 amd64 with `/home` on a separately mounted
-ext4 filesystem with journaled quotas. The customer owns the machine, its
+The supported host is Ubuntu 24.04 amd64 or arm64 with ext4 holding `/home`.
+With `storage.enforce_user_quota: true`, `/home` is a separate mount with
+journaled quotas. With `false`, it may share the root filesystem and
+`storage.default_limit_bytes` must be absent: one person can fill the shared
+disk, so the operator watches free space. The customer owns the machine, its
 volumes and mounts, OS updates, ingress, the TLS certificate and the GitHub
 OAuth registration. The product does not format disks, convert a mounted
 filesystem or accept cloud or account repair hooks; those stay the
@@ -110,8 +117,8 @@ release unprivileged, before anything is installed:
       --manifest-sha256 <GitHub-stated 64-hex manifest digest>
 
 The directory holds `release.json` and every archive the manifest names.
-Output is always JSON. Exit 0 with `data.status=verified` says the manifest
-matches the digest and the complete archive closure matches the manifest,
+Verification results are JSON. Exit 0 with `data.status=verified` says the
+manifest matches the digest and the complete archive closure matches the manifest,
 not that a host is qualified.
 
 **The site file.** Adapt `site/example.json`. No environment expansion or
@@ -148,7 +155,8 @@ includes apply. What the schema cannot tell you:
   refused. The gateway's service identity stays exclusive and non-login,
   since another member of its group could read OAuth and TLS secrets.
 - GitHub admission and administrator subjects are numeric ids. Profiles
-  always include `core` and `integrations`. The default quota is nonzero.
+  always include `core` and `integrations`. With per-user limits, the default
+  quota is nonzero.
 - With the `editor` profile, `editor.origin_template` is a separate wildcard
   HTTPS origin such as `https://oh-code-*.example.org`: one `*` in the first
   DNS label, at most 11 other characters in that label (a 52-character
@@ -157,8 +165,8 @@ includes apply. What the schema cannot tell you:
 - Identity and mount choices become immutable once made.
   People's bindings and native data are not desired state: no apply resets
   a committed binding, a personal file or a per-user quota override.
-- An integration the site declares but whose inputs were not delivered is a
-  blocker, not something to work around with made-up app setup.
+- Missing runtime-profile inputs block installation. Missing integration app
+  credentials leave that provider unavailable, not a reason to invent app setup.
 
 **Units.** The product's service and socket units are fixed. Foreign
 overrides and full instance units are refused, because a drop-in can add a
@@ -171,7 +179,9 @@ versions pass. Plans list unmet `ubuntu.package.<name>` actions and simulate
 apt, and refuse on an unavailable or too-old candidate. The binary does not
 update indexes, set holds or ship Ubuntu debs, so bring the apt indexes up to
 date before planning, resolve holds or pins on the customer's side, then take
-a fresh plan. Installing needs repository access. Non-Ubuntu archives are
+a fresh plan. Installing needs repository access. Required Google Chrome is
+an exception: apply and upgrade add its apt repository and install its minimum
+after entry reopens, updating that repository's index. Non-Ubuntu archives are
 exact and pinned by the manifest.
 
 ## Preparing, applying, verifying
@@ -180,9 +190,10 @@ Preparation, apply and upgrade are three separate operations with separate
 approvals; apply never prepares or upgrades implicitly.
 
 `host prepare` (live form: `--approved-plan <prepare-id>
---approve-disruption --output=jsonl`) proves with a disposable UID that the
-quota really refuses writes and cleans up, installs the home, storage and
-binding boot gates, creates the empty proc exemption group and restarts the
+--approve-disruption --output=jsonl`) proves with a disposable UID that a
+declared quota really refuses writes and cleans up (no probe without per-user
+limits), installs the home, storage and binding boot gates, creates the empty
+proc exemption group and restarts the
 session policy services. It creates no per-user binding and does not enable
 sign-in. It refuses quota accounting without enforcement, a wrong or missing
 home UUID and unsafe group membership.
@@ -196,15 +207,16 @@ stays behind a root-owned fence while the gateway starts. It writes only the
 `tools` section of `/opt/open-habitat/integrations.json` and keeps every
 other section's bytes.
 
-Apply sets the default quota and administrator roles through the gateway's
-private administrative API and reads them back; root does not edit the
-gateway's settings files. A requested administrator who has not signed in yet
+Apply sets the default quota (with per-user limits) and administrator roles
+through the gateway's private administrative API and reads them back; root does
+not edit the gateway's settings files. A requested administrator who has not signed in yet
 comes back `deferred_until_bound`: the gateway holds the grant and applies it
 at the sign-in that creates that person's account, with no further apply.
 Administrators a browser administrator designated
 (`designated_administrators` in `admin settings show`) are not site.json's;
 apply neither removes nor requires them. An admission removed from site.json
-is revoked before the new admission list is published.
+is revoked before the new admission list is published unless another source
+still admits that person.
 
 After installation, and again after a reboot, look at what actually runs: the
 boot gates, broker, gateway, per-user listener ACLs, and daemons starting as
@@ -254,10 +266,10 @@ same arguments to enter maintenance, and use it, never the `current`
 selector, for any recovery of that upgrade.
 
 `--approve-interruption` additionally lets the upgrade interrupt observed
-native work and people's persistent services. A live daemon counts as
-unobservable even when it lists nothing running, because the list is not a
+work in product daemons, not people's user-manager services. A live daemon
+counts as unobservable even when it lists nothing running, because the list is not a
 barrier against a request arriving; without this approval the upgrade refuses
-instead of claiming a drain. Unrelated SSH and tmux sessions are not killed.
+instead of claiming a drain. User-manager services, SSH and tmux survive.
 A failure after quiescence leaves HTTP and native entry fenced: inspect the
 generation-owned journal and the actual postconditions, and continue the
 same operation.
@@ -268,10 +280,10 @@ predecessor, not the repairing binary's version.
 
 ## Administration while the host runs
 
-The `admin` commands talk to the running gateway and broker. This state is
-not site.json's: host apply does not set or reset it, and a browser
-administrator edits the same records, so read before writing. `admin --help`
-lists everything, including roles, storage limits and removing a person for
+The `admin` commands talk to the running gateway and broker. Apart from the
+site-declared admission, roles and quota default, apply leaves this state
+alone; browser administrators edit the same records, so read before writing.
+`admin --help` lists everything, including roles, storage limits and removing a person for
 good; the mutating commands take `--dry-run`, which is the way to see a
 change before making it. Secrets are given on stdin (`--key-file -`,
 `--client-secret-file -`). Two replies deserve care where they appear:
@@ -279,15 +291,18 @@ change before making it. Secrets are given on stdin (`--key-file -`,
 and `outcome_uncertain` (exit 2) means the change may have committed and
 nothing retries it, so read the current state and decide.
 
-**Who may sign in** has two sources, both kept by the broker. site.json
+**Who may sign in** has three sources, all kept by the broker. site.json
 `identities.admission` is root's and host apply converges it; such an id is
 changed in site.json. Runtime entries are added and withdrawn by a browser
-administrator or `admin access add|remove`, only while site.json sets
-`identities.runtime_admission: true`; apply never removes them, and host plan
-reports them under `runtime_admission` with actor and time. The commands take
-the numeric id, which `admin access lookup --login LOGIN` resolves.
-Withdrawing ends web access only: the Unix account, files, SSH and processes
-stay, and adding the id again returns the person to the same account. In
+administrator or `admin access add|remove`. New admissions require site.json
+`identities.runtime_admission: true`; withdrawals remain available when false.
+Apply leaves these entries alone; host plan's `runtime_admission` shows actor
+and time. Listed GitHub teams are the third source, managed in the browser;
+adding teams or new members needs the switch. Withdrawal overrides membership.
+The commands take the numeric id, which `admin access lookup --login LOGIN`
+resolves. Withdrawing ends web access and stops the person's product daemon,
+its Pi conversations and sockets; the account, files, SSH and user-manager
+processes stay. Adding the id again returns the person to the same account. In
 `admin access list`, a `denied` entry that is not withdrawn is a withdrawal
 that was never confirmed: repeat the remove or the add.
 
@@ -350,9 +365,10 @@ which interrupts browser connections and touches no home or credential.
 Afterwards the apply has succeeded, the gateway unit is active and `host
 check` passes; from outside, `curl --fail https://APP_HOST/healthz` without
 `-k`, and `openssl s_client -connect APP_HOST:443 -servername APP_HOST
--verify_hostname APP_HOST -verify_return_error` shows the new serial, expiry
-and names, for editor hosts too. Where an ingress proxy terminates TLS, that
-edge is rotated and verified on its own and the hop to the origin is checked
+-verify_hostname APP_HOST -verify_return_error </dev/null` validates the peer;
+pipe its certificate to `openssl x509 -noout -serial -dates -ext subjectAltName`
+to inspect serial, expiry and names, for editor hosts too. Where an ingress proxy
+terminates TLS, that edge is rotated and verified on its own and the hop to the origin is checked
 with its own server name and CA.
 
 ## Finishing a stopped apply with a corrected binary
@@ -373,10 +389,10 @@ selectors and installed generation unchanged (for `config_io`, the single
 new plan over the fence; `operation.fence / recovery_required` in the
 corrected package's `host check` is expected until the continuation. The
 corrected binary finishes only the late phases of that operation. It does
-not publish itself, rerun apt or reinitialize anything, so the installed
+not publish itself, rerun runtime-package installation or reinitialize anything, so the installed
 service binary stays the originally approved product, and replacing it is a
-separate named upgrade. Foreign unit bytes or overrides, earlier phases,
-changed inputs and split or unknown state stay fenced.
+separate named upgrade. Foreign unit bytes or overrides, unverified earlier
+phases, changed inputs and split or unknown state stay fenced.
 
 It is finished when the same operation ID completes at a higher sequence
 with terminal `applied` (a repeat gives `no_change`), `host check` passes,
