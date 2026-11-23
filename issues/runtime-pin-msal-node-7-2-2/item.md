@@ -1,9 +1,9 @@
 ---
 created: 2026-11-13
-updated: 2026-11-14
+updated: 2026-11-23
 type: chore
 reporter: runtime-pin-watch
-status: open
+status: obsolete
 priority: normal
 labels:
 - runtime-pin
@@ -14,6 +14,8 @@ source_ref: runtime-pin:@azure/msal-node@7.2.2
 lane: runtime-pins
 lane_seq: 5
 preparation: pending
+closed: 2026-11-23
+closed_by: runtime-pin-watch
 ---
 
 # Runtime pin: @azure/msal-node 7.2.2 is available (pinned 5.6.0)
@@ -37,3 +39,9 @@ else stays here for the conductor.
 ### 2026-11-13T16:03:34Z · @runtime-pin-watch
 
 Research verdict: needs-work; this release stays for the conductor.
+
+## Resolution
+
+### 2026-11-23T11:50:14Z · @runtime-pin-watch
+
+Runtime pin watch: superseded.
