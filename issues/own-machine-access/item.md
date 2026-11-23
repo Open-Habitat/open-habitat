@@ -1,6 +1,6 @@
 ---
 created: 2026-10-29
-updated: 2026-10-29
+updated: 2026-11-23
 type: feature
 reporter: jari
 status: done
@@ -8,7 +8,6 @@ priority: normal
 lane: own-machine
 lane_seq: 3
 preparation: ready
-blocked_by: ['@account-keys-page']
 closed: 2026-10-29
 ---
 

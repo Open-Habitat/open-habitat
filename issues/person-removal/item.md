@@ -10,12 +10,11 @@ source_ref: chat:2026-11-14/revoked-access-keeps-quota
 preparation: ready
 lane: person-removal
 lane_seq: 1
-related: ['@person-removal-broker', '@person-removal-daemon', '@person-removal-gateway', '@person-removal-browser']
-closed: 2026-11-23
-closed_by: agent
 commits:
 - hash: 459c2a439
   summary: retire ADR 0037
+closed: 2026-11-23
+closed_by: agent
 ---
 
 # Removing a person's access keeps their quota in the disk sum

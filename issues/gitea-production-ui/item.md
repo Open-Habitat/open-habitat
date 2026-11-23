@@ -1,6 +1,6 @@
 ---
 created: 2026-10-24
-updated: 2026-10-24
+updated: 2026-11-23
 type: improvement
 reporter: jari
 status: done
@@ -11,12 +11,11 @@ originating_run: 01m5p6xkmgyx9p3jzpqdrsrfte
 originating_run_kind: spinoff
 preparation: ready
 related: []
-blocked_by: ['@gitea-common-catalog']
+closed_by: claude
 collision: [web/src/app/NewWorkspacePage, web/src/components/ClonePage, web/src/app/GitHubOnboarding, contracts/v1/, design-system/, web/src/app/, web/src/components/]
 lane: gitea
 lane_seq: 5
 closed: 2026-10-24
-closed_by: claude
 ---
 
 # Gitea production component coverage and fixture acceptance
