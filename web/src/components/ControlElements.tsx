@@ -91,17 +91,21 @@ export function ControlButton({
   presentation,
   className,
   title,
+  tooltip: explicitTooltip,
   ref,
   ...props
 }: AriaButtonProps & {
   title?: string;
+  /** Also useful for a label that becomes icon-only in a compact layout. */
+  tooltip?: string;
   variant?: ControlVariant;
   size: ControlSize;
   presentation?: ControlPresentation;
   ref?: Ref<HTMLButtonElement>;
 }) {
   const text = hasText(props.children);
-  const tooltip = !text ? title || props["aria-label"] : undefined;
+  const tooltip =
+    explicitTooltip ?? (!text ? title || props["aria-label"] : undefined);
   const nativeTitle = tooltip ? undefined : title;
   // Text-labelled controls retain native explanatory titles.
   const own = useRef<HTMLButtonElement | null>(null);

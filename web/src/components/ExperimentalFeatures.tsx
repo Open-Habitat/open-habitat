@@ -45,7 +45,8 @@ function Picture({ id, on }: { id: string; on: boolean }) {
     id === "multiplayer" ||
     id === "own-machines-ssh-config" ||
     id === "sounds-active-device" ||
-    id === "rail-state-motion"
+    id === "rail-state-motion" ||
+    id === "workspace-header-c2a"
   )
     body = (
       <>

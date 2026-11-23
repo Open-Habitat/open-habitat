@@ -1,0 +1,225 @@
+/* C2a is scoped so the default header and strip keep their existing layout. */
+.ws-strip.ws-header-c2a {
+  container-type: normal;
+  align-items: stretch;
+  gap: var(--ah-workspace-tile-gap);
+  margin: 0;
+}
+.ws-header-c2a .ws-item {
+  overflow: visible;
+  height: var(--ah-workspace-tile-height);
+}
+.ws-header-c2a .ws-square {
+  width: var(--ah-workspace-tile-side);
+  grid-template-rows: 16px 1fr 20px;
+  padding: 10px 12px;
+}
+.ws-header-c2a .ws-value {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.ws-header-c2a .ws-header-name {
+  flex: 1;
+  width: auto;
+  grid-template-rows: 16px 1fr auto;
+  gap: 2px;
+  padding: 10px 10px 8px 14px;
+  cursor: default;
+}
+.ws-header-name h1 {
+  margin: 0;
+  align-self: center;
+  min-width: 0;
+}
+.ws-heading-button {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--ah-r-md);
+  background: transparent;
+  color: var(--ah-ink);
+  cursor: text;
+}
+.ws-heading-button[data-hovered] {
+  background: var(--ah-control-hover);
+  border-color: var(--ah-line);
+}
+.ws-heading-button[data-focus-visible] {
+  outline: var(--ah-focus-width) solid var(--ah-focus);
+  outline-offset: var(--ah-focus-offset);
+}
+.ws-header-name .ws-box {
+  height: auto;
+}
+.ws-header-name .ws-name {
+  font-size: 24px;
+  line-height: 30px;
+  overflow-wrap: anywhere;
+  -webkit-line-clamp: 2;
+}
+.ws-heading-path {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+.ws-heading-path code {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 12px / 1.4 var(--ah-mono);
+  color: var(--ah-muted);
+}
+.ws-heading-path .ah-button {
+  flex: none;
+}
+.ws-name-form {
+  grid-row: 1 / 3;
+  display: grid;
+  gap: var(--ah-s1);
+  min-width: 0;
+}
+.ws-name-form .ws-label label {
+  flex: 1;
+}
+.ws-header-c2a .ws-icon-square .ah-wsi[data-size="l"] {
+  width: 48px;
+  height: 48px;
+  font-size: 36px;
+}
+.ws-header-c2a .ws-icon-square .ah-wsi[data-size="l"][data-kind="glyph"] {
+  font-size: 19px;
+}
+.ah-c2a-actions {
+  display: flex;
+  flex: none;
+  width: var(--ah-workspace-actions-width);
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--ah-control-gap);
+}
+.ah-c2a-actions > .ah-button,
+.ah-c2a-actions > [role="group"] > .ah-button {
+  justify-content: flex-start;
+}
+.ah-c2a-actions > [role="group"] > .ah-button {
+  width: 100%;
+}
+.ah-c2a-icons {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-control-gap);
+  margin-top: auto;
+}
+.ah-c2a-delete-gap {
+  flex: 1 0 calc(var(--ah-s4) - 2 * var(--ah-control-gap));
+}
+.ah-c2a-delete {
+  --i-fg: var(--ah-err);
+  --i-hover: var(--ah-err-soft);
+  --i-hover-fg: var(--ah-err);
+  --i-pressed: var(--ah-err-soft-hover);
+  --i-pressed-fg: var(--ah-err);
+}
+@container (max-width: 760px) {
+  .ws-strip.ws-header-c2a {
+    flex-wrap: wrap;
+  }
+  .ws-header-c2a .ws-header-name {
+    order: -1;
+    flex-basis: 100%;
+    height: auto;
+    min-height: var(--ah-workspace-name-compact);
+  }
+  .ws-header-name .ws-name {
+    font-size: 20px;
+    line-height: 26px;
+  }
+  .ws-header-c2a .ws-item.ws-square {
+    flex: 1 1 0;
+    width: auto;
+    height: var(--ah-workspace-tile-compact);
+    grid-template: "label label" 16px "box value" 1fr / auto minmax(0, 1fr);
+    justify-items: start;
+    align-items: center;
+    gap: 4px 10px;
+    padding: 8px 12px;
+  }
+  .ws-header-c2a .ws-square > .ws-label {
+    grid-area: label;
+  }
+  .ws-header-c2a .ws-square > .ws-box {
+    grid-area: box;
+    width: 30px;
+    height: 30px;
+  }
+  .ws-header-c2a .ws-square > .ws-value {
+    grid-area: value;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 12.5px;
+  }
+  .ws-header-c2a .ws-square .se-emblem[data-size="strip"],
+  .ws-header-c2a .ws-icon-square .ah-wsi[data-size="l"] {
+    width: 30px;
+    height: 30px;
+    font-size: 22px;
+  }
+  .ws-header-c2a .ws-icon-square .ah-wsi[data-size="l"][data-kind="glyph"] {
+    font-size: 12px;
+  }
+  .ws-header-c2a .ws-icon-square .ah-wsip-head.ah-button {
+    place-items: start;
+    padding: 26px 0 0 12px;
+  }
+  .ah-c2a-actions {
+    flex-basis: 100%;
+    width: auto;
+    flex-direction: row;
+    align-items: center;
+    margin-top: var(--ah-s2);
+  }
+  .ah-c2a-icons {
+    flex: none;
+    margin-top: 0;
+  }
+  .ah-c2a-primary {
+    min-width: 0;
+  }
+  .ah-c2a-actions > :has(> .ah-c2a-worktree) {
+    margin-left: auto;
+  }
+  .ah-c2a-delete-gap {
+    flex-grow: 0;
+  }
+  .ah-c2a-actions > [role="group"] > .ah-c2a-worktree,
+  .ah-c2a-worktree.ah-button {
+    flex: none;
+    margin-left: auto;
+    width: var(--ah-control-row);
+    padding: 0;
+    justify-content: center;
+  }
+  .ah-c2a-worktree > span {
+    display: none;
+  }
+}
+/* The visible row control stays 40px on a phone, but its touch target is
+   44px. Border widths are outside the pseudo-element's containing box. */
+@media (max-width: 800px) {
+  .ah-c2a-actions .ah-button {
+    position: relative;
+  }
+  .ah-c2a-actions .ah-button::after {
+    content: "";
+    position: absolute;
+    inset: calc((var(--b-h) - 2px - var(--ah-touch)) / 2);
+  }
+}

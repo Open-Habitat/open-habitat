@@ -24,6 +24,8 @@ const fi = {
   delete: "Poista työtila…",
   deleteUnavailable:
     "Työtilaa ei voi poistaa juuri nyt: muutokset eivät ole sallittuja.",
+  changesUnavailable: "Muutokset eivät ole sallittuja juuri nyt.",
+  newWorktree: "Uusi worktree",
   newWorktreeIn: (name: string) => `Uusi worktree-agentti työtilassa ${name}`,
   newWorktreeHint:
     "Uusi worktree-agentti: oma worktree ja haara nykyisestä haarasta",
@@ -49,6 +51,8 @@ export const workspaceActionsText = catalog(fi, {
   delete: "Delete workspace…",
   deleteUnavailable:
     "The workspace cannot be deleted just now: changes are not allowed.",
+  changesUnavailable: "Changes are not allowed right now.",
+  newWorktree: "New worktree",
   newWorktreeIn: (name) => `New worktree agent in the workspace ${name}`,
   newWorktreeHint:
     "New worktree agent: its own worktree and branch from the current branch",

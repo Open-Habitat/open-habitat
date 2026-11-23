@@ -9,7 +9,9 @@ Generated from internal/experimental/catalog.json; do not edit.
     { "id": "remote-browser", "landed": true },
     { "id": "multiplayer", "landed": true },
     { "id": "own-machines-ssh-config", "landed": true },
-    { "id": "sounds-active-device", "landed": true }
+    { "id": "sounds-active-device", "landed": true },
+    { "id": "rail-state-motion", "landed": true },
+    { "id": "workspace-header-c2a", "landed": true }
   ],
   "fi": {
     "features": {
@@ -44,6 +46,22 @@ Generated from internal/experimental/catalog.json; do not edit.
         "shows": "Jokaisesta yhteydestä osoitteen, käyttäjän, portin, avaintiedostot ja onko ne olemassa, ProxyJumpin sekä tiedoston ja rivin. Yhteys tarkistetaan vain, kun painat Tarkista yhteys.",
         "needs": "Habitat lukee tiedoston omana käyttäjänäsi eikä koskaan kirjoita siihen tai known_hostsiin. Jokeririvejä, Match-lohkoja ja Git-palveluita ei näytetä.",
         "caption": "Löytyi ~/.ssh/config:sta"
+      },
+      "rail-state-motion": {
+        "name": "Keskustelurivin siirtyminen",
+        "desc": "Keskustelun rivi liukuu uuteen osioonsa, kun sen tila muuttuu.",
+        "where": "Sivupalkin keskusteluissa ja puhelimen valikkopainikkeessa.",
+        "shows": "Näet, mihin keskustelu siirtyi. Monta muutosta liikkuu yhdessä. Piilossa olevan rivin muutoksen näyttää reunan merkki.",
+        "needs": "Jos laitteesi vähentää liikettä, muutoksesta kertoo hetkeksi jäävä reunus liikkeen sijaan.",
+        "caption": "Rivi siirtyy"
+      },
+      "workspace-header-c2a": {
+        "name": "Työtilan yläosa: laatat ja painikkeet",
+        "desc": "Työtilan kuvake, nimi ja ääni muodostavat yhden yläosan. Toiminnot ovat pieninä painikkeina laattojen vieressä.",
+        "where": "Työtilan etusivun yläosassa. Puhelimessa painikkeet ovat laattojen alla.",
+        "shows": "Uusi keskustelu näkyy sanoin. Uusi worktree säilyttää sanansa työpöydällä; puhelimessa sen kuvakkeen selittää ?-tila. Painikkeiden vihjeet kertovat teon.",
+        "needs": "Ei muita kokeiluja. Pois kytkeminen palauttaa nykyisen yläosan muuttamatta työtilan asetuksia.",
+        "caption": "Laatat ja toiminnot"
       },
       "sounds-active-device": {
         "name": "Ääni vain käyttämälläsi laitteella",
@@ -111,6 +129,22 @@ Generated from internal/experimental/catalog.json; do not edit.
         "shows": "For each connection the address, user, port, key files and whether they exist, the ProxyJump, and the file and line. A connection is checked only when you press Check connection.",
         "needs": "Habitat reads the file as your own user and never writes to it or to known_hosts. Wildcard lines, Match blocks and Git services are not shown.",
         "caption": "Found in ~/.ssh/config"
+      },
+      "rail-state-motion": {
+        "name": "Conversation row movement",
+        "desc": "A conversation's row slides into its new section when its state changes.",
+        "where": "In the sidebar conversations and the phone's menu button.",
+        "shows": "You see where the conversation went. Several changes move together. An edge marker shows changes to rows out of sight.",
+        "needs": "If your device reduces motion, a temporary outline shows the change instead of movement.",
+        "caption": "The row moves"
+      },
+      "workspace-header-c2a": {
+        "name": "Workspace header: tiles and buttons",
+        "desc": "The workspace icon, name and sound form one header. Small action buttons sit beside the tiles.",
+        "where": "At the top of the workspace page. On a phone the buttons sit below the tiles.",
+        "shows": "New conversation has a visible label. New worktree keeps its label on desktop; on a phone, ? mode explains its icon. Button tooltips name each action.",
+        "needs": "No other experiments. Switching it off restores the current header without changing workspace settings.",
+        "caption": "Tiles and actions"
       },
       "sounds-active-device": {
         "name": "Sound only on the device you use",

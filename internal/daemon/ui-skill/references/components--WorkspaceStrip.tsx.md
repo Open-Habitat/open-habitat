@@ -6,7 +6,7 @@ Generated from web/src/components/WorkspaceStrip.tsx; do not edit.
 import {
   type KeyboardEvent,
   type ReactNode,
-  useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -252,10 +252,12 @@ function NameBox({
   name,
   folder,
   onRename,
+  headingPath,
 }: {
   name: string;
   folder: string;
   onRename?: (display: string) => void;
+  headingPath?: ReactNode;
 }) {
   const t = useText(attentionSoundText);
   const [editing, setEditing] = useState(false);
@@ -263,10 +265,13 @@ function NameBox({
   const input = useRef<HTMLInputElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   const done = useRef(false);
-  useEffect(() => {
-    if (!editing) return;
-    done.current = false;
-    input.current?.select();
+  useLayoutEffect(() => {
+    if (editing) {
+      done.current = false;
+      input.current?.select();
+    } else if (done.current) {
+      button.current?.focus();
+    }
   }, [editing]);
   const finish = (save: boolean) => {
     if (done.current) return;
@@ -274,36 +279,38 @@ function NameBox({
     const value = (input.current?.value ?? draft).trim();
     if (save && onRename && value !== name) onRename(value);
     setEditing(false);
-    requestAnimationFrame(() => button.current?.focus());
   };
-  if (!editing)
-    return (
-      <Button
-        ref={button}
-        className="ws-item ws-flat"
-        data-testid="strip-name"
-        aria-label={t.nameLabel(name)}
-        isDisabled={!onRename}
-        onPress={() => {
-          setDraft(name);
-          setEditing(true);
-        }}
-      >
+  const display = (
+    <Button
+      ref={button}
+      className={headingPath ? "ws-heading-button" : "ws-item ws-flat"}
+      data-testid="strip-name"
+      aria-label={t.nameLabel(name)}
+      isDisabled={!onRename}
+      onPress={() => {
+        setDraft(name);
+        setEditing(true);
+      }}
+    >
+      {headingPath ? null : (
         <span className="ws-label">
           <Icon name="pencil" />
           {t.stripName}
         </span>
-        <span className="ws-box">
-          <span className="ws-name" title={name} data-testid="strip-name-value">
-            {name}
-          </span>
+      )}
+      <span className="ws-box">
+        <span className="ws-name" title={name} data-testid="strip-name-value">
+          {name}
         </span>
-      </Button>
-    );
-  return (
+      </span>
+    </Button>
+  );
+  const editor = (
     // biome-ignore lint/a11y/noNoninteractiveElementInteractions: focus leaving the field and its buttons saves, as a rename in a file manager does
     <form
-      className="ws-item ws-flat ws-name-editing"
+      className={
+        headingPath ? "ws-name-form" : "ws-item ws-flat ws-name-editing"
+      }
       data-testid="strip-name"
       data-editing=""
       onSubmit={(event) => {
@@ -369,6 +376,30 @@ function NameBox({
       </span>
     </form>
   );
+  if (!headingPath) return editing ? editor : display;
+  return (
+    <div
+      className="ws-item ws-flat ws-header-name"
+      data-editing={editing || undefined}
+    >
+      {editing ? (
+        editor
+      ) : (
+        <span className="ws-label">
+          <Icon name="pencil" />
+          {t.stripName}
+        </span>
+      )}
+      <h1
+        data-testid="workspace-title"
+        tabIndex={-1}
+        className={editing ? "ah-visually-hidden" : undefined}
+      >
+        {editing ? name : display}
+      </h1>
+      {headingPath}
+    </div>
+  );
 }
 
 /**
@@ -393,7 +424,11 @@ export function WorkspaceStrip({
   enabled,
   onChooseSound,
   onPreview,
+  headingPath,
+  actions,
 }: {
+  headingPath?: ReactNode;
+  actions?: ReactNode;
   workspaceId: string;
   /** The real icon editor, its trigger stretched over the square. */
   icon?: ReactNode;
@@ -416,7 +451,7 @@ export function WorkspaceStrip({
   const [open, setOpen] = useState(false);
   return (
     <section
-      className="ws-strip"
+      className={headingPath ? "ws-strip ws-header-c2a" : "ws-strip"}
       data-testid="workspace-strip"
       aria-label={t.strip}
     >
@@ -436,7 +471,12 @@ export function WorkspaceStrip({
           </span>
         </div>
       ) : null}
-      <NameBox name={name} folder={folder} onRename={onRename} />
+      <NameBox
+        name={name}
+        folder={folder}
+        onRename={onRename}
+        headingPath={headingPath}
+      />
       <DialogTrigger isOpen={open} onOpenChange={setOpen}>
         <Button
           className="ws-item ws-square"
@@ -484,6 +524,7 @@ export function WorkspaceStrip({
           </Dialog>
         </Popover>
       </DialogTrigger>
+      {actions}
     </section>
   );
 }

@@ -223,7 +223,7 @@ export const parts: Record<CardId, Part> = {
   E07: { kind: "list", sel: '[data-testid="empty-workspaces"]' },
   T01: {
     kind: "info",
-    sel: '.ah-workspace-page-head [data-testid="workspace-title"]',
+    sel: '.ah-workspace-page [data-testid="workspace-title"]',
   },
   T46: { kind: "info", sel: '[data-testid="workspace-path"]' },
   T02: { kind: "once", sel: '[data-testid="copy-path"]' },

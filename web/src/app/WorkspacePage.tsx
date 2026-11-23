@@ -16,7 +16,10 @@ import {
 import { Icon } from "../components/Icon";
 import { Dialog } from "../components/Overlays";
 import { PendingNote } from "../components/PendingNote";
-import { WorkspaceActions } from "../components/WorkspaceActions";
+import {
+  WorkspaceActions,
+  WorkspacePathCopy,
+} from "../components/WorkspaceActions";
 import { WorkspaceGitLayer } from "../components/WorkspaceGitLayer";
 import {
   WorkspaceIcon,
@@ -30,6 +33,7 @@ import { liveText } from "../i18n";
 import { workspacePageText } from "../text/workspacePage";
 import {
   chooseWorkspaceSound,
+  useExperimentalFeature,
   useSessionPreferences,
 } from "./accountPreferences";
 import { playSound } from "./attentionSound";
@@ -58,6 +62,7 @@ import {
 } from "./workspaceIcons";
 import { commitNote, useWorkspaceIconWrite } from "./workspaceIconWrite";
 import "./WorkspacePage.css";
+import "./WorkspaceHeader.css";
 
 const txt = liveText(workspacePageText);
 
@@ -193,6 +198,7 @@ export function WorkspacePage({
   onRestoreConversation?: (id: string) => Promise<boolean>;
 }) {
   const navigate = useNavigate();
+  const c2a = useExperimentalFeature("workspace-header-c2a");
   const archiveAction = useCardArchiveAction(onArchive);
   const metadata = useConversationMetadata(store);
   const decorated = conversations.map((c) => ({
@@ -345,64 +351,79 @@ export function WorkspacePage({
       )}
     />
   ) : null;
+  const actions = (
+    <WorkspaceActions
+      page
+      c2a={c2a}
+      workspace={workspace}
+      onNew={onNew}
+      onNewWorktree={onNewWorktree}
+      newReason={startReason}
+      onHide={onVisibility ? () => archive(!hidden) : undefined}
+      settingsAvailable={!!csrf && workspace.mutation_state === "allowed"}
+      deleteRef={deleteButton}
+      onDelete={
+        csrf && onDeleted && workspace.observation_token
+          ? () => setDeleteOpen(true)
+          : undefined
+      }
+    />
+  );
   return (
-    <div className="ah-workspace-page">
-      <header className="ah-workspace-page-head">
-        {icon ? (
-          <span
-            className="ah-workspace-head-icon"
-            data-testid="workspace-head-icon"
-          >
-            <WorkspaceIcon
-              icon={iconPicker(icon, workspace, iconWrite.pending).icon}
-              size="l"
-            />
-          </span>
-        ) : (
-          iconPickerElement
-        )}
-        <div className="ah-workspace-page-title">
-          <h1 data-testid="workspace-title" tabIndex={-1}>
-            {workspace.display_name ?? workspace.name}
-          </h1>
-          <p data-testid="workspace-path">
-            <code title={workspace.path}>{displayPath}</code>
-          </p>
-          {hidden ? (
-            <span className="ah-workspace-hidden">
-              {txt.archived}{" "}
-              <ControlButton
-                variant="quiet"
-                size="inline"
-                isDisabled={
-                  !onVisibility ||
-                  !csrf ||
-                  workspace.mutation_state !== "allowed"
-                }
-                onPress={() => archive(false)}
-              >
-                {txt.restore}
-              </ControlButton>
+    <div className="ah-workspace-page" data-header-c2a={c2a || undefined}>
+      {c2a ? null : (
+        <header className="ah-workspace-page-head">
+          {icon ? (
+            <span
+              className="ah-workspace-head-icon"
+              data-testid="workspace-head-icon"
+            >
+              <WorkspaceIcon
+                icon={iconPicker(icon, workspace, iconWrite.pending).icon}
+                size="l"
+              />
             </span>
-          ) : null}
-        </div>
-        <WorkspaceActions
-          page
-          workspace={workspace}
-          onNew={onNew}
-          onNewWorktree={onNewWorktree}
-          newReason={startReason}
-          onHide={onVisibility ? () => archive(!hidden) : undefined}
-          settingsAvailable={!!csrf && workspace.mutation_state === "allowed"}
-          deleteRef={deleteButton}
-          onDelete={
-            csrf && onDeleted && workspace.observation_token
-              ? () => setDeleteOpen(true)
-              : undefined
-          }
-        />
-      </header>
+          ) : (
+            iconPickerElement
+          )}
+          <div className="ah-workspace-page-title">
+            <h1 data-testid="workspace-title" tabIndex={-1}>
+              {workspace.display_name ?? workspace.name}
+            </h1>
+            <p data-testid="workspace-path">
+              <code title={workspace.path}>{displayPath}</code>
+            </p>
+            {hidden ? (
+              <span className="ah-workspace-hidden">
+                {txt.archived}{" "}
+                <ControlButton
+                  variant="quiet"
+                  size="inline"
+                  isDisabled={
+                    !onVisibility ||
+                    !csrf ||
+                    workspace.mutation_state !== "allowed"
+                  }
+                  onPress={() => archive(false)}
+                >
+                  {txt.restore}
+                </ControlButton>
+              </span>
+            ) : null}
+          </div>
+          {actions}
+        </header>
+      )}
       <WorkspaceStrip
+        headingPath={
+          c2a ? (
+            <div className="ws-heading-path" data-testid="workspace-path">
+              <code title={workspace.path}>{displayPath}</code>
+              <WorkspacePathCopy path={workspace.path} inline />
+            </div>
+          ) : undefined
+        }
+        actions={c2a ? actions : undefined}
         workspaceId={workspace.workspace_id}
         icon={iconPickerElement}
         iconFrom={
@@ -442,6 +463,9 @@ export function WorkspacePage({
         }
         onPreview={(id, where) => playSound(id, sound.length, where)}
       />
+      {c2a && hidden ? (
+        <span className="ah-workspace-hidden">{txt.archived}</span>
+      ) : null}
       {csrf && onDeleted && deleteOpen ? (
         <WorkspaceDeletion
           workspace={workspace}

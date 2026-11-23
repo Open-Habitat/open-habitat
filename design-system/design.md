@@ -88,6 +88,27 @@ kiinni olevat segmentit piirtävät renkaan sisäpuolelleen
 `--ah-focus-room`-verran tilaa, kun taas näppäimistöfokuksen vierittämä
 kontrolli pysähtyy saman verran reunan sisäpuolelle (`scroll-margin`).
 
+### Pienet painikkeet (Jari 23.11.2026)
+
+- Koko tulee riviroolista, myös ikonipainikkeelle. Puhelimessa näkyvän
+  pinnan ulkopuolelle ulottuva osuma-alue on vähintään `--ah-touch`.
+  Väli on vähintään `--ah-control-gap`, eivätkä osuma-alueet tai
+  fokusrenkaat saa peittää toisiaan.
+- Sanoin nimettyjen painikkeiden vieressä pienellä ikonipainikkeella on
+  toissijaisen painikkeen pinta ja reuna. Pelkkä ikoni ilman pintaa kuuluu
+  vain rivin tai kentän sisälle, kuten polun kopiointi.
+- Saavutettava nimi kertoo teon ja kohteen. Hoverin ja näppäimistöfokuksen
+  vihje sanoo saman tai yhden rivin enemmän. Kosketus ei näytä vihjettä:
+  ikonin on oltava tuttu, ja Explain-kortti säilyy sen kohdalla.
+- Estetty toiminto pysyy paikallaan ja sen selitys saa näppäimistöfokuksen;
+  vihje kertoo eston syyn.
+- Toiminnot ovat yksi nimetty `role=group`: päätoiminto ensin, sitten luo,
+  avaa muualla ja piilota. Poista on viimeinen, vähintään `--ah-s4`
+  erillään edellisestä painikkeesta, punaisena ikonina toissijaisella pinnalla.
+- Arkistoi/Palauta vaihtaa nimeä ja ikonia, ei käytä `aria-pressed`-tilaa.
+- Hover, painettu, fokus ja korkea kontrasti käyttävät yhteisiä tuotannon
+  tiloja; pienelle painikkeelle ei tehdä omaa tilakieltä.
+
 ## Tilat ja toimintojen palaute
 
 Agentin aktiivisuus, uuden vastauksen tai virheen vaatima huomio,

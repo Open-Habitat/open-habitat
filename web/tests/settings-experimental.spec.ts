@@ -13,6 +13,8 @@ const features = [
   "multiplayer",
   "own-machines-ssh-config",
   "sounds-active-device",
+  "rail-state-motion",
+  "workspace-header-c2a",
 ];
 const retired = [
   "agent-instructions",
