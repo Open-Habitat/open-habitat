@@ -9,7 +9,7 @@ provenance: chat
 source_ref: habitat:pi-current/2026-11-22-upgrade-announced-to-agents
 lane: upgrade-notice
 lane_seq: 1
-preparation: pending
+preparation: ready
 ---
 
 # Upgrades proceed on schedule with advance notice to running agents
@@ -28,3 +28,7 @@ Jari 23.11.2026 on design.md:
 - First investigate what actually happens at the stop: what becomes of the agent's background processes (process tool and others), whether they survive, and whether the agent finds them again after the restart. Those findings go into the text of the announcement.
 - Agents stopped mid-work (a running turn) are woken after the upgrade. Waking one that had already finished is harmless: it says it had nothing more to do. Idle conversations are not woken.
 Next action (approved): investigate the stop behaviour on a test install and revise design.md to these decisions with the concrete announcement and post-restart texts; implementation waits for Jari's approval of the revised design.
+
+### 2026-11-23T13:51:16Z · @jari
+
+Jari 23.11.2026 on the revised design: announcement lead time 2 minutes; cut turns are woken after any graceful daemon restart, not only upgrades (same oh-restart-stop mark). Next action (approved): implement design.md as revised.
