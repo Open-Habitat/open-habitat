@@ -3,7 +3,7 @@ created: 2026-11-23
 updated: 2026-11-23
 type: chore
 reporter: runtime-pin-watch
-status: untriaged
+status: open
 priority: normal
 labels:
 - runtime-pin
@@ -11,6 +11,9 @@ labels:
 provenance: other
 provenance_detail: runtime pin watch
 source_ref: runtime-pin:playwright-core@1.65.1
+lane: runtime-pins
+lane_seq: 23
+preparation: pending
 ---
 
 # Runtime pin: playwright-core 1.65.1 is available (pinned 1.58.0)
