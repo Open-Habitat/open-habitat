@@ -461,6 +461,14 @@ func (s *sliceHost) ensureDaemonSlice(_ context.Context, i ExecutorIdentity) err
 	return nil
 }
 
+// Verify fails for a binding whose drop-in was not written first.
+func (s *sliceHost) Verify(ctx context.Context, i ExecutorIdentity) error {
+	if len(s.slices) == 0 || s.slices[len(s.slices)-1] != i.username {
+		return ErrInvalid
+	}
+	return s.fakeHost.Verify(ctx, i)
+}
+
 // An installation upgraded by something other than host apply/upgrade has
 // committed bindings without the daemon's slice drop-in. Startup verifies
 // that drop-in, so it must write it first, for revoked bindings too, or the

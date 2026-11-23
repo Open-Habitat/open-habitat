@@ -256,6 +256,12 @@ func (e *LinuxHostExecutor) ensureDaemonSlice(ctx context.Context, i ExecutorIde
 	if err != nil {
 		return err
 	}
+	// An exact file the manager has not loaded is a write whose reload was
+	// cut short; without this check no later start would ever reload it.
+	if !changed {
+		b, err := e.command(ctx, systemctl, "show", "open-habitat-daemon@"+i.username+".service", "--property=Slice,DropInPaths", "--no-pager")
+		changed = err != nil || !daemonSliceShown(b, i)
+	}
 	if changed {
 		if _, err := e.command(ctx, systemctl, "daemon-reload"); err != nil {
 			return ErrInvalid
