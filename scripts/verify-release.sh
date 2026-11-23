@@ -343,7 +343,9 @@ if service.get('ReadWritePaths') != [
 ]:
     sys.exit('error: packaged broker ReadWritePaths differs or duplicates')
 PY
-if find "$root/web" -type f -name '*.map' | grep -q . || grep -R -E 'Synthetic-lab-fixture|Deterministinen testi: daemon|VITE_ENABLE_TEST_FIXTURES' "$root/web" >/dev/null;then echo 'error: test fixture content, control or source map in packaged web assets' >&2;exit 1;fi
+# -quit, not a pipe into grep -q: under pipefail, grep leaving at the first of
+# many maps kills find with SIGPIPE and the test reads as "no maps".
+if [[ -n $(find "$root/web" -type f -name '*.map' -print -quit) ]] || grep -R -E 'Synthetic-lab-fixture|Deterministinen testi: daemon|VITE_ENABLE_TEST_FIXTURES' "$root/web" >/dev/null;then echo 'error: test fixture content, control or source map in packaged web assets' >&2;exit 1;fi
 case $(uname -m) in x86_64) host=amd64;; aarch64) host=arm64;; *) host=;; esac
 warnings='[]'
 if [[ $root == *-linux-$host ]]; then

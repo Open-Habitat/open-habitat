@@ -7,6 +7,10 @@ repo=$(cd "$(dirname "$0")/.." && pwd)
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 archive=$(realpath "$1")
+# A refusal must be the one under test. The verifier's stderr goes to a file,
+# so one that failed for another reason (a full disk, a missing tool) would
+# otherwise end this script with no word of why.
+refused_for(){ grep -q -- "$1" "$2" || { printf 'error: expected a refusal matching %s; the verifier said:\n' "$1" >&2; cat -- "$2" >&2; exit 1; }; }
 "$repo/scripts/verify-release.sh" --archive "$archive" --json >/dev/null
 for mode in 0711 0755 duplicate; do
   mkdir -p "$tmp/$mode/stage"
@@ -23,7 +27,7 @@ for mode in 0711 0755 duplicate; do
   if "$repo/scripts/verify-release.sh" --archive "$tmp/$mode/unsafe.tar.gz" --json >"$tmp/$mode/out" 2>"$tmp/$mode/err"; then
     echo "error: verifier accepted DirectoryMode=$mode" >&2; exit 1
   fi
-  grep -q 'exactly one DirectoryMode=0710' "$tmp/$mode/err" || { cat "$tmp/$mode/err" >&2; exit 1; }
+  refused_for 'exactly one DirectoryMode=0710' "$tmp/$mode/err"
 done
 # Even a re-signed archive must not hide a second effective systemd directive
 # behind whitespace around '=' (accepted by systemd.syntax).
@@ -60,7 +64,7 @@ PY
   if "$repo/scripts/verify-release.sh" --archive "$tmp/$mode/unsafe.tar.gz" --json >"$tmp/$mode/out" 2>"$tmp/$mode/err"; then
     echo "error: verifier accepted $mode" >&2; exit 1
   fi
-  grep -q 'differs or duplicates' "$tmp/$mode/err" || { cat "$tmp/$mode/err" >&2; exit 1; }
+  refused_for 'differs or duplicates' "$tmp/$mode/err"
 done
 # Noncanonical whitespace and line separators must not be normalized away by
 # Python while the unit manager reads different effective directives.
@@ -84,7 +88,7 @@ PY
   if "$repo/scripts/verify-release.sh" --archive "$tmp/$mode/unsafe.tar.gz" --json >"$tmp/$mode/out" 2>"$tmp/$mode/err"; then
     echo "error: verifier accepted $mode" >&2; exit 1
   fi
-  grep -q 'packaged template contains noncanonical bytes' "$tmp/$mode/err" || { cat "$tmp/$mode/err" >&2; exit 1; }
+  refused_for 'packaged template contains noncanonical bytes' "$tmp/$mode/err"
 done
 # Re-signed malicious inventories and continuation lines must also fail.
 for mode in storage-rate-limited binding-rate-limited binding-default-deps binding-cached binding-skipped binding-unordered storage-cached storage-skipped storage-private storage-unguarded extra-file omitted-manifest broker-continuation broker-prestart broker-failure-action proc-visible proc-private proc-exempt proc-members proc-unordered agent-mode agent-route agent-unordered guest-mode guest-group guest-route guest-unordered tmp-shared tmp-public tmp-unaged; do
@@ -146,7 +150,7 @@ for executable in open-habitat runtime-release open-habitat-mcp-relay; do
   if "$repo/scripts/verify-release.sh" --archive "$unsafe" --json >"$tmp/private-$executable/out" 2>"$tmp/private-$executable/err"; then
     echo "error: verifier accepted a private $executable mode" >&2; exit 1
   fi
-  grep -q 'noncanonical permissions' "$tmp/private-$executable/err"
+  refused_for 'noncanonical permissions' "$tmp/private-$executable/err"
 done
 # A relay omitted, modified without its manifest hash, or for another target
 # must be refused even when the outer archive checksum was recomputed.
@@ -175,9 +179,9 @@ PY
     echo "error: verifier accepted $mode" >&2; exit 1
   fi
   case $mode in
-    relay-missing) grep -q 'package missing bin/open-habitat-mcp-relay' "$tmp/$mode/err" ;;
-    relay-corrupt) grep -q 'package checksum mismatch: bin/open-habitat-mcp-relay' "$tmp/$mode/err" ;;
-    relay-arch) grep -q 'bin/open-habitat-mcp-relay is not a 64-bit little-endian' "$tmp/$mode/err" ;;
+    relay-missing) refused_for 'package missing bin/open-habitat-mcp-relay' "$tmp/$mode/err" ;;
+    relay-corrupt) refused_for 'package checksum mismatch: bin/open-habitat-mcp-relay' "$tmp/$mode/err" ;;
+    relay-arch) refused_for 'bin/open-habitat-mcp-relay is not a 64-bit little-endian' "$tmp/$mode/err" ;;
   esac
 done
 # A re-signed package renamed to the other architecture must not pass as one.
@@ -193,4 +197,4 @@ tar --owner=0 --group=0 --numeric-owner -czf "$unsafe" -C "$stage" "$(basename "
 if "$repo/scripts/verify-release.sh" --archive "$unsafe" --json >"$tmp/foreign-arch/out" 2>"$tmp/foreign-arch/err"; then
   echo "error: verifier accepted executables of another architecture" >&2; exit 1
 fi
-grep -q 'is not a 64-bit little-endian' "$tmp/foreign-arch/err" || { cat "$tmp/foreign-arch/err" >&2; exit 1; }
+refused_for 'is not a 64-bit little-endian' "$tmp/foreign-arch/err"
