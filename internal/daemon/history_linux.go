@@ -80,15 +80,16 @@ type recapData struct {
 }
 
 type historyEntry struct {
-	Skill         *recordedSkill `json:"skill,omitempty"`
-	ReplyTo       *replyRef      `json:"reply_to,omitempty"`
-	Notice        *agentNotice   `json:"notice,omitempty"`
-	FailureCause  *bashFailure   `json:"failure_cause,omitempty"`
-	Recap         *recapData     `json:"recap,omitempty"`
-	Rewind        *rewindMarker  `json:"rewind,omitempty"`
-	Restart       *restartNotice `json:"restart,omitempty"`
-	WaitReminder  *waitReminder  `json:"wait_reminder,omitempty"`
-	ScheduledWake *wakeLine      `json:"scheduled_wake,omitempty"`
+	Skill         *recordedSkill     `json:"skill,omitempty"`
+	ReplyTo       *replyRef          `json:"reply_to,omitempty"`
+	Notice        *agentNotice       `json:"notice,omitempty"`
+	FailureCause  *bashFailure       `json:"failure_cause,omitempty"`
+	Recap         *recapData         `json:"recap,omitempty"`
+	Rewind        *rewindMarker      `json:"rewind,omitempty"`
+	Restart       *restartNotice     `json:"restart,omitempty"`
+	WaitReminder  *waitReminder      `json:"wait_reminder,omitempty"`
+	ScheduledWake *wakeLine          `json:"scheduled_wake,omitempty"`
+	UpgradeNotice *upgradeNoticeLine `json:"upgrade_notice,omitempty"`
 	// A shared conversation's own entries (ADR 0038): who wrote a
 	// participant message, and what a Habitat line says happened.
 	ParticipantMessage *participantMessageFact `json:"participant_message,omitempty"`

@@ -9,5 +9,6 @@
     {"kind": "clone"},
     {"kind": "history_title", "agent_id": "pi:00000000-0000-4000-8000-000000000004"},
     {"kind": "workspace_operation"}
-  ]
+  ],
+  "upgrade_notice": {"schedule_id": "0123456789abcdef0123456789abcdef", "revision": 1, "told": 2, "held": 1, "not_delivered": 0}
 }

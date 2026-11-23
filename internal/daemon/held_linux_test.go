@@ -98,6 +98,14 @@ if os.path.exists(os.path.join(home,"background")):
                 append(dict(type="message",message=dict(role="assistant",content=[dict(type="text",text="herätty")],timestamp=ms,stopReason="stop")))
                 out(dict(type="agent_end")); out(dict(type="agent_settled"))
                 continue
+            if q.get("op") in ("upgrade_notice","upgrade_notice_withdraw"):
+                # The upgrade announcement: logged, answered with upgrade-outcome
+                # (told by default).
+                open(os.path.join(home,"upgrade.log"),"a").write(json.dumps(q)+"\n")
+                op=os.path.join(home,"upgrade-outcome")
+                outcome=open(op).read().strip() if os.path.exists(op) else "told"
+                conn.sendall((json.dumps(dict(ok=True,data=dict(outcome=outcome if q["op"]=="upgrade_notice" else "withdrawn")))+"\n").encode()); conn.close()
+                continue
             if q.get("op")=="wake_tell":
                 open(os.path.join(home,"tell.log"),"a").write(json.dumps(q)+"\n")
                 conn.sendall((json.dumps(dict(ok=True,data=dict(told=True)))+"\n").encode()); conn.close()

@@ -735,6 +735,11 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 			}
 			return "confirmed"
 		}()), fact("daemon_owner", "unknown")}, "workspaces": workspaces, "agents": agents, "operations": []any{}, "command_ledger": map[string]any{"epoch": instance, "max_entries": 10000, "max_age_seconds": 86400, "entries": []any{}}, "auth": map[string]any{"provider": cfg.Provider, "provider_account_id": cfg.Subject, "native_github": nativeGitHub, "ai_refused": aiRefusals(nativeHome, scans)}}
+		if controller != nil {
+			if u := controller.upgradeView(); u != nil {
+				body["upgrade"] = u
+			}
+		}
 		b, err := json.Marshal(body)
 		if err != nil || len(b) > MaxSnapshotBytes {
 			snapshotError(w, 503, "native_source_unavailable")

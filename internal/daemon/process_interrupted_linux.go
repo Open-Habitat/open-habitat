@@ -62,6 +62,11 @@ type branchScan struct {
 	// prompt, a tool call or a tool result the model never answered. Pi
 	// stopped in the middle of that work.
 	turnCut bool
+	// restartCut says the daemon's own graceful stop cut that turn: its
+	// restart mark is followed by a reply Pi aborted or by unfinished work
+	// (the companion's branchFacts.restartCut). A crash leaves no mark and
+	// the person's stop reads as theirs.
+	restartCut bool
 	// turnError says the branch's last message is a reply that ended in an
 	// error: the provider failed the turn and Pi gave up on it.
 	turnError bool
@@ -298,6 +303,7 @@ func scanBranchStream(r io.Reader) branchScan {
 				restarted = false
 			}
 			scan.turnCut, scan.turnError = f.open || cut, f.failed && !cut
+			scan.restartCut = cut
 			scan.reply, scan.replyAt = "", 0
 			if f.answer {
 				scan.reply, scan.replyAt = f.id, f.at
@@ -324,6 +330,7 @@ func scanBranchStream(r io.Reader) branchScan {
 			reported[key] = true
 		}
 	}
+	scan.restartCut = scan.restartCut || restarted && scan.turnCut
 	scan.open = []branchProcess{}
 	for _, p := range order {
 		if open[p.ID] == p {

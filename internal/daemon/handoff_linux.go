@@ -103,6 +103,10 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	adapter.OnChange(func() { journal.appendInvalidation("") })
 	githubOrgs.changed = journal.appendSnapshotRaceInvalidation
 	controller.github = &githubWatch{recheck: adapter.Recheck, orgs: githubOrgs}
+	if len(agents) > 0 {
+		controller.setVersion(agents[0].Version)
+	}
+	go controller.watchUpgradeNotice(ctx)
 	go controller.recapRestingConversations(ctx)
 	controller.wakeTimer = newWakeTimerEnv(cfg)
 	go controller.watchScheduledWakes(ctx)

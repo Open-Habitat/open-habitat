@@ -841,6 +841,18 @@ must_reject("github-clone.schema.json", {"action": "start", "full_name": "exampl
 def must_accept(schema: str, instance: object) -> None:
     Draft202012Validator(schemas[schema], registry=registry, format_checker=format_checker).validate(instance)
 
+# The announcement's reach: counts only, never an account or conversation.
+for change in ({"schedule_id": "x"}, {"revision": 0}, {"told": -1}, {"agent_id": "pi:00000000-0000-4000-8000-000000000001"}):
+    must_reject("agent-work.schema.json", {**work, "upgrade_notice": {**work["upgrade_notice"], **change}})
+must_accept("agent-work.schema.json", {k: v for k, v in work.items() if k != "upgrade_notice"})
+# The installation banner: a schedule and its status, never "complete".
+good = json.loads((BASE / "examples" / "snapshot.json").read_text())
+good["upgrade"] = {"schedule_id": "0123456789abcdef0123456789abcdef", "revision": 1, "target_version": "0.9.0", "announced_at": "2026-11-23T12:00:00Z", "deadline": "2026-11-23T12:02:00Z", "status": "countdown"}
+for status in ("countdown", "starting", "withdrawn", "unknown"):
+    must_accept("snapshot.schema.json", {**good, "upgrade": {**good["upgrade"], "status": status}})
+for change in ({"status": "complete"}, {"target_version": "../x"}, {"account": "example"}, {"deadline": "soon"}):
+    must_reject("snapshot.schema.json", {**good, "upgrade": {**good["upgrade"], **change}})
+
 # Only an explicit no-guide goal may omit guide fields; the daemon strips
 # ignored authored copy before returning it.
 no_guide_goal = {"title": "Continue", "prompt": "Continue the work.", "guide": "none", "start": "immediate"}

@@ -25,6 +25,12 @@ import (
 // also after a restart, because the companion records it in the branch
 // (personStopType) and an archived conversation is never started.
 //
+// A turn the daemon's own graceful stop cut (an upgrade or any other
+// restart: the companion's restart mark ahead of an aborted or unfinished
+// turn) is woken at once after the restart, with the same bounds (Jari,
+// 2026-11-23). A crash leaves no mark; an idle conversation's turn was not
+// cut, and its cut-off waits keep the rule above.
+//
 // The facts are native: the branch says what was cut off and what the agent
 // was already told (the catch-up), Taskfleet says whether a run settled. The
 // wake starts Pi like typing does and asks the companion to give the agent
@@ -76,8 +82,14 @@ func (c *ConversationController) wakeWaitingRests(ctx context.Context, now time.
 		if ctx.Err() != nil {
 			return
 		}
-		waits, ok := c.cutWaits(w, now)
+		waits, cut, ok := c.cutWaits(w, now)
 		if !ok {
+			continue
+		}
+		// A turn the daemon's own graceful stop cut is woken at once, whatever
+		// it waited for: the catch-up names its cut waits too, in one message.
+		if cut {
+			c.wakeRest(ctx, w, "turn_cut", now)
 			continue
 		}
 		if len(waits) == 0 {
@@ -180,7 +192,7 @@ func (c *ConversationController) scanRestartWaits(now time.Time) {
 			continue
 		}
 		w := waitingRest{id: n.id, path: n.path, rest: restFact{cause: "restart", at: time.UnixMilli(c.started)}}
-		if waits, ok := c.cutWaits(w, now); ok && len(waits) > 0 {
+		if waits, cut, ok := c.cutWaits(w, now); ok && (len(waits) > 0 || cut) {
 			found[n.id] = true
 		}
 	}
@@ -198,14 +210,16 @@ func (c *ConversationController) scanRestartWaits(now time.Time) {
 
 // cutWaits are the waking processes the branch saw start and not end that no
 // catch-up has told the agent about: the companion's own selection
-// (prepareCatchUp), so the wake's catch-up names them. ok is false when the
-// branch cannot be read now.
-func (c *ConversationController) cutWaits(w waitingRest, now time.Time) ([]branchProcess, bool) {
+// (prepareCatchUp), so the wake's catch-up names them. cut says a graceful
+// daemon stop cut the branch's turn (branchScan.restartCut); the person's own
+// stop rules it out, as it rules out the waits. ok is false when the branch
+// cannot be read now.
+func (c *ConversationController) cutWaits(w waitingRest, now time.Time) (waits []branchProcess, cut bool, ok bool) {
 	path := w.path
 	if path == "" {
 		sessions, err := nativeSessions(c.nativeCfg())
 		if err != nil {
-			return nil, false
+			return nil, false, false
 		}
 		for _, n := range sessions {
 			if n.id == w.id && n.state == "readable" {
@@ -213,21 +227,20 @@ func (c *ConversationController) cutWaits(w waitingRest, now time.Time) ([]branc
 			}
 		}
 		if path == "" {
-			return nil, true
+			return nil, false, true
 		}
 	}
 	var scan branchScan
-	ok := false
 	if c.facts != nil {
 		scan, ok = c.facts.sessions.branch(path, c.cfg.UID)
 	} else {
 		scan, ok = scanBranchFile(path, c.cfg.UID)
 	}
 	if !ok {
-		return nil, false
+		return nil, false, false
 	}
 	if now.Sub(time.UnixMilli(scan.last)) > wakeHorizon {
-		return nil, true
+		return nil, false, true
 	}
 	var unreported []branchProcess
 	for _, p := range scan.open {
@@ -235,13 +248,12 @@ func (c *ConversationController) cutWaits(w waitingRest, now time.Time) ([]branc
 			unreported = append(unreported, p)
 		}
 	}
-	var waits []branchProcess
 	for _, p := range unreported[max(0, len(unreported)-20):] {
 		if p.Wakes && !p.PersonStopped {
 			waits = append(waits, p)
 		}
 	}
-	return waits, true
+	return waits, scan.restartCut, true
 }
 
 // waitOutcome says why a cut-off wait would wake the conversation now:
@@ -395,7 +407,11 @@ func (c *ConversationController) wakeRest(ctx context.Context, w waitingRest, re
 	err = nil
 	if active() {
 		askCtx, cancel := context.WithTimeout(ctx, 6*time.Second)
-		err = s.rpc.processRequest(askCtx, map[string]any{"op": "wake", "session_id": w.id, "generation": s.rpc.processGeneration, "reason": reason}, &outcome)
+		request := map[string]any{"op": "wake", "session_id": w.id, "generation": s.rpc.processGeneration, "reason": reason}
+		if v := c.daemonVersion(); v != "" {
+			request["version"] = v // the cut turn's catch-up says what Habitat now runs
+		}
+		err = s.rpc.processRequest(askCtx, request, &outcome)
 		cancel()
 	} else {
 		outcome.Reason = "not_active"

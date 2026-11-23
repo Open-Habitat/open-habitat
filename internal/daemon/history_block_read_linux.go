@@ -32,6 +32,9 @@ func nativeBlockChunk(raw json.RawMessage, index, offset, limit int) (map[string
 	if _, recognised := nativeWakeLine(nativeEntry{Type: probe.Type, Raw: raw, Message: probe.Message}); recognised {
 		return nil, false
 	}
+	if _, recognised := nativeUpgradeNotice(nativeEntry{Type: probe.Type, Raw: raw, Message: probe.Message}); recognised {
+		return nil, false
+	}
 	var entry struct {
 		Type    string `json:"type"`
 		Message struct {

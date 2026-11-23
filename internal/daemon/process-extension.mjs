@@ -145,7 +145,7 @@ export async function foregroundWaitRuns(tools, records, scan = liveWaitRuns) {
 // unfinished (a prompt, tool call or tool result nobody answered).
 export function branchFacts(branch) {
   const open = new Map(), order = [], reported = new Set(), runs = new Set();
-  let turnCut = false, restartStop = false;
+  let turnCut = false, restartStop = false, restartCut = false;
   for (const entry of branch) {
     const m = entry?.message;
     const custom = entry?.type === 'custom_message' ? entry : m?.role === 'custom' ? m : null;
@@ -160,6 +160,7 @@ export function branchFacts(branch) {
       const cut = restartStop && m.role === 'assistant' && (m.stopReason === 'aborted' || m.stopReason === 'error');
       if (cut) restartStop = false;
       turnCut = m.role !== 'assistant' || m.stopReason === 'toolUse' || cut;
+      restartCut = cut;
     }
     if (m?.role === 'toolResult' && m.toolName === 'process') {
       const d = m.details;
@@ -176,7 +177,11 @@ export function branchFacts(branch) {
       for (const r of custom.details?.spinoffs ?? []) runs.add(toldKey(r.run_id, r.state, Number.isInteger(r.round) ? r.round : 0));
     }
   }
-  return { open: order.filter(p => open.get(p.id) === p), reported, runs, turnCut };
+  // restartCut: the daemon's own stop cut this turn, whether Pi saved the
+  // reply as aborted or died before saving anything after the mark
+  // (process_interrupted_linux.go branchScan.restartCut). It is what the
+  // daemon wakes a conversation for after a graceful restart.
+  return { open: order.filter(p => open.get(p.id) === p), reported, runs, turnCut, restartCut: restartCut || (restartStop && turnCut) };
 }
 function taskfleet(args, cwd, timeout = 2500) {
   return new Promise(resolve => execFile('taskfleet', args, { cwd, timeout, maxBuffer: 4 << 20, env: process.env }, (error, stdout) => {
@@ -297,10 +302,65 @@ const stateText = { round_reported: 'reported a round and waits for your next me
 const wokeBecause = {
   settled: 'the Taskfleet runs it was waiting for have settled',
   cut_off: 'a background process it was waiting for was cut off with it and will never report back',
+  // A graceful daemon restart cut the turn (wake_linux.go): its own text.
+  turn_cut: 'the server restart cut off its turn',
 };
-export function catchUpMessage(processes, spinoffs, stopped = null, turnCut = false, woke = null) {
+const versionPattern = /^[0-9A-Za-z][0-9A-Za-z.+~-]{0,63}$/;
+// The catch-up of a turn a graceful restart cut, given as Habitat's own wake
+// (Jari, 2026-11-23): the agent is told what the restart did and how to
+// finish. Its news is the cut turn itself, so it is never empty.
+function turnCutMessage(processes, spinoffs, stopped, version) {
+  const lines = [
+    `[Open Habitat] This conversation's Pi stopped at ${stopped.at} when Habitat's server restarted${versionPattern.test(version ?? '') ? ` (Habitat now runs ${version})` : ''}. The turn you were working on was cut off: its last step above never finished. Habitat started you again on its own, without a message from the person, so that you can finish it. Habitat re-ran nothing.`,
+    '',
+    'What the restart did:',
+    '- Every process you had started from your own tools ended, including anything started with `&`, `nohup`, `setsid` or `tmux`. The process tool\'s list is now empty.',
+  ];
+  if (processes.length) {
+    lines.push('  Background processes that were cut off (they are no longer running and their output is gone):');
+    for (const p of processes) lines.push(`  - ${p.id} "${p.name.slice(0, 200)}": ${p.command.slice(0, 300)}`);
+  }
+  lines.push(
+    '- Files under /tmp are gone. /var/tmp, your home directory and the workspaces are as you left them.',
+    '- Taskfleet workers, scheduled wakes and `systemd-run --user` units kept running. Find them with `ps -u "$USER"`, `XDG_RUNTIME_DIR=/run/user/$(id -u) systemctl --user list-units` and `taskfleet run list`.',
+  );
+  if (spinoffs.settled.length) {
+    lines.push('  Spinoffs whose state changed:');
+    for (const r of spinoffs.settled) {
+      if (r.state === 'round_reported' && r.round) lines.push(`  - ${r.run_id} "${r.title}" (named worker \`${r.name}\`) reported round ${r.round} and waits for your next message (\`taskfleet run message ${r.name}\`)`);
+      else lines.push(`  - ${r.run_id} "${r.title}" ${stateText[r.state]}${r.ended_at ? ` (${r.ended_at})` : ''}${r.branch ? `; branch ${r.branch} kept` : ''}`);
+    }
+  }
+  if (spinoffs.rearm.length) {
+    const ids = spinoffs.rearm.map(r => r.run_id).join(' ');
+    lines.push(`  Still running, and your wait for them was cut off: ${spinoffs.rearm.map(r => `${r.run_id} "${r.title}"`).join(', ')}. Wait again with \`taskfleet run wait ${ids} --output json\` started with the process tool (notify on exit).`);
+  }
+  if (spinoffs.available === false) lines.push('  Habitat could not read every Taskfleet record just now; check `taskfleet run list` before relying on this.');
+  lines.push(
+    '',
+    'Before you continue, check what the cut-off step left behind: a command may have stopped half-way, and a file may be half-written. Do not repeat a step with outside effects (a push, a message, a deploy) before checking whether it already happened. Then finish the work, or tell the person what is left. If the work was already done, say so in one line and stop.',
+    '',
+    'The person sees this same report in the conversation.',
+  );
+  return lines;
+}
+export function catchUpMessage(processes, spinoffs, stopped = null, turnCut = false, woke = null, version = null) {
   const news = processes.length || spinoffs.settled.length;
   const cut = !!stopped && turnCut;
+  if (woke === 'turn_cut') {
+    // Only a restart's cut turn is this wake's news.
+    if (!cut || stopped.cause !== 'restart') return null;
+    return {
+      customType: catchUpType, display: true, content: turnCutMessage(processes, spinoffs, stopped, version).join('\n'),
+      details: {
+        schema_version: 1, stopped, woke, interrupted_turn: true,
+        ...(versionPattern.test(version ?? '') ? { version } : {}),
+        processes: processes.map(p => ({ id: p.id, startTime: p.startTime, name: p.name.slice(0, 200) })),
+        spinoffs: spinoffs.settled.map(r => ({ run_id: r.run_id, state: r.state, title: r.title, ...(r.round ? { round: r.round, name: r.name } : {}), ...(r.summary ? { summary: r.summary } : {}), ...(r.ended_at ? { ended_at: r.ended_at } : {}), ...(r.branch ? { branch: r.branch } : {}) })),
+        rearm: spinoffs.rearm.map(r => ({ run_id: r.run_id, title: r.title })),
+      },
+    };
+  }
   // Nothing was cut off and nothing settled: the person saw no card, and the
   // agent is told nothing either (Jari, 2026-10-28). An unread Taskfleet is
   // still not told as nothing. A wake needs news of its own.
@@ -341,6 +401,59 @@ export function catchUpMessage(processes, spinoffs, stopped = null, turnCut = fa
       rearm: spinoffs.rearm.map(r => ({ run_id: r.run_id, title: r.title })),
     },
   };
+}
+// Upgrade announcement (upgrade_notice_linux.go): root's `host upgrade`
+// publishes when it will begin stopping Habitat, and the daemon hands the
+// schedule to each live conversation's companion. The text is built here
+// from the daemon's structured fields; the agent reads what the stop does to
+// it, the person sees Habitat's line built from the details.
+export const upgradeNoticeType = 'oh-upgrade-notice';
+const schedulePattern = /^[0-9a-f]{32}$/;
+export function validUpgradeNotice(n) {
+  return !!n && schedulePattern.test(n.schedule_id ?? '') && Number.isInteger(n.revision) && n.revision >= 1 && n.revision <= 1000000
+    && versionPattern.test(n.version ?? '') && isStamp(n.deadline) && isStamp(n.announced_at)
+    && Date.parse(n.deadline) >= Date.parse(n.announced_at) && Date.parse(n.deadline) - Date.parse(n.announced_at) <= 3600000;
+}
+const hhmm = at => { const d = new Date(at); return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')} UTC`; };
+// variant: 'busy' steers into a running turn; 'idle' starts a short turn for
+// an agent whose background processes will be killed.
+export function upgradeNoticeMessage(n, variant, processes = [], now = Date.now()) {
+  const minutes = Math.max(1, Math.round((Date.parse(n.deadline) - now) / 60000));
+  const lines = [
+    `[Open Habitat] Habitat will be upgraded to ${n.version}. In about ${minutes} minute${minutes === 1 ? '' : 's'}, at ${hhmm(n.deadline)}, Habitat stops this conversation's Pi, whatever it is doing, and starts again a few minutes later. There is no need to answer this message. Keep working on the person's task, but get it to a safe point.`,
+  ];
+  if (variant === 'idle' && processes.length) {
+    lines.push('', 'These background processes you started are still running and will be killed at the stop:');
+    for (const p of processes.slice(0, 20)) lines.push(`- ${p.id} "${String(p.name ?? '').slice(0, 200)}": ${String(p.command ?? '').slice(0, 300)}`);
+  }
+  lines.push(
+    '',
+    'What the stop does:',
+    '- Your Pi process ends. If your turn is still running, it is cut off where it is. The conversation up to that point is kept.',
+    '- Every process you started from your own tools ends: process-tool processes, and anything started with `&`, `nohup`, `setsid` or `tmux` from bash. Their process-tool logs are lost.',
+    '- Files under /tmp are deleted. Files under /var/tmp, your home directory and the workspaces are kept.',
+    '- These keep running: Taskfleet workers, scheduled wakes, the person\'s shell tab and SSH sessions, and commands you start under your user manager with `XDG_RUNTIME_DIR=/run/user/$(id -u) systemd-run --user --unit=<name> <command>`.',
+    '',
+    'Before the stop:',
+    '- Do not start anything long now: builds, test suites, servers, long waits.',
+    '- If something you started is still running, let it finish only if it will finish in time. Otherwise stop it yourself so you know where it stopped. If it really must continue, start it again with `systemd-run --user` as above, with its output in a file under your home directory or workspace. A user unit sees a different /tmp and /var/tmp from yours.',
+    '- Save your work in files. Do not push, merge or call work finished just because of the deadline.',
+    '- If you can reach a natural stopping point in time, end your turn by telling the person where things stand.',
+    '',
+    'After the upgrade: if your turn is still running at the stop, Habitat starts you again on its own with a second message about what was cut off. If you have finished by then, nothing wakes you, and the person\'s next message continues the conversation.',
+  );
+  return {
+    customType: upgradeNoticeType, display: true, content: lines.join('\n'),
+    details: { schema_version: 1, schedule_id: n.schedule_id, revision: n.revision, version: n.version, deadline: n.deadline, variant, ...(variant === 'idle' ? { processes: processes.slice(0, 20).map(p => ({ id: p.id, name: String(p.name ?? '').slice(0, 200) })) } : {}) },
+  };
+}
+export function upgradeNoticeInBranch(context, n) {
+  try {
+    return context.sessionManager.getBranch().some(e => {
+      const m = e?.type === 'custom_message' ? e : e?.message?.role === 'custom' ? e.message : null;
+      return m?.customType === upgradeNoticeType && m.details?.schedule_id === n.schedule_id && m.details?.revision === n.revision;
+    });
+  } catch { return false; }
 }
 // Scheduled wake (scheduled_wake_linux.go): the daemon fires a wake the agent
 // set with `open-habitat agent wake create`, and tells it of a cancellation
@@ -1021,6 +1134,11 @@ export default function (pi) {
   const lastOutput = new Map();
   let catchUp = null; // this Pi's first run learns what happened while it was stopped
   const sentWakes = new Set(); // scheduled wakes this Pi has sent
+  // Upgrade announcements this Pi has given (schedule:revision), and the one
+  // an idle agent with nothing to lose holds for the turn that may start
+  // before the deadline.
+  const toldNotices = new Set();
+  let heldNotice = null;
   const grants = new Map(); // subject -> newest { role, generation } the daemon told this Pi
   // The membership record the daemon keeps (membership_linux.go), read at
   // each call of a full-rights run. Not left for tools and nested Pis.
@@ -1172,11 +1290,45 @@ export default function (pi) {
       clearTimeout(timer);
       // A message the person sent meanwhile took the catch-up with it.
       if (catchUp !== pending || shuttingDown) return { woken: false, reason: 'told' };
-      const message = catchUpMessage(pending.processes, spinoffs, pending.stopped, pending.turnCut, q.reason);
+      if (q.reason === 'turn_cut' && !pending.restartCut) return { woken: false, reason: 'nothing_to_tell' };
+      const message = catchUpMessage(pending.processes, spinoffs, pending.stopped, pending.turnCut, q.reason, typeof q.version === 'string' ? q.version : null);
       if (!message) return { woken: false, reason: 'nothing_to_tell' };
       catchUp = null;
       pi.sendMessage(message, { triggerTurn: true });
       return { woken: true };
+    }
+    if (q.op === 'upgrade_notice' || q.op === 'upgrade_notice_withdraw') {
+      if (!context || shuttingDown) return { outcome: 'not_delivered', reason: 'shutting_down' };
+      if (context.sessionManager.getSessionId?.() !== q.session_id || process.env.OPEN_HABITAT_CONVERSATION_ID !== `pi:${q.session_id}` || process.env.OPEN_HABITAT_LAUNCH_GENERATION !== q.generation) return { outcome: 'not_delivered', reason: 'conversation_mismatch' };
+      if (q.op === 'upgrade_notice_withdraw') {
+        if (!schedulePattern.test(q.schedule_id ?? '')) throw new Error('invalid_request');
+        if (heldNotice?.schedule_id === q.schedule_id) heldNotice = null;
+        return { outcome: 'withdrawn' };
+      }
+      const n = q.notice;
+      if (!validUpgradeNotice(n)) throw new Error('invalid_request');
+      const noticeKey = `${n.schedule_id}:${n.revision}`;
+      if (toldNotices.has(noticeKey) || upgradeNoticeInBranch(context, n)) { toldNotices.add(noticeKey); if (heldNotice && `${heldNotice.schedule_id}:${heldNotice.revision}` === noticeKey) heldNotice = null; return { outcome: 'told' }; }
+      if (Date.now() >= Date.parse(n.deadline)) return { outcome: 'not_delivered', reason: 'deadline_passed' };
+      // A running turn hears it after its current tool call returns.
+      if (context.isIdle?.() === false) {
+        toldNotices.add(noticeKey); heldNotice = null;
+        pi.sendMessage(upgradeNoticeMessage(n, 'busy'), { deliverAs: 'steer' });
+        return { outcome: 'told', variant: 'busy' };
+      }
+      // Idle: an agent whose processes will be killed has something to save.
+      let records;
+      try { records = await ask('request:list'); } catch { records = null; }
+      const running = Array.isArray(records) ? records.filter(live) : [];
+      if (running.length) {
+        toldNotices.add(noticeKey); heldNotice = null;
+        pi.sendMessage(upgradeNoticeMessage(n, 'idle', running), { triggerTurn: true });
+        return { outcome: 'told', variant: 'idle' };
+      }
+      // Nothing to lose: no turn is started for it. Should one start before
+      // the deadline, it hears the announcement then (agent_start).
+      heldNotice = n;
+      return { outcome: 'held' };
     }
     if (q.op === 'conversation_line' || q.op === 'grant') {
       if (!context || shuttingDown || (q.op === 'grant' ? !validGrant(q.grant) : !validMemberLine(q.line))) throw new Error('invalid_request');
@@ -1406,6 +1558,18 @@ export default function (pi) {
     // wakes the agent text-only.
     if (shared) setTurn({ ...turn, by: keptBy() });
   });
+  // A turn starting while an announcement is held (an idle agent with
+  // nothing running when it came, or a Pi the person started during the
+  // countdown) gets it as a steering message, with the time left.
+  pi.on('agent_start', () => {
+    const n = heldNotice;
+    heldNotice = null;
+    if (!n || shuttingDown || Date.now() >= Date.parse(n.deadline)) return;
+    const noticeKey = `${n.schedule_id}:${n.revision}`;
+    if (toldNotices.has(noticeKey)) return;
+    toldNotices.add(noticeKey);
+    pi.sendMessage(upgradeNoticeMessage(n, 'busy'), { deliverAs: 'steer' });
+  });
   pi.on('tool_execution_start', event => {
     if (event.toolName !== 'bash') return;
     foregroundTools.add(event.toolCallId);
@@ -1491,7 +1655,7 @@ export default function (pi) {
       const read = () => typeof sessionId === 'string' && sessionId && ctx.cwd
         ? readSpinoffs({ sessionId, cwd: ctx.cwd, since, waited, reported: facts.runs }).catch(() => unread)
         : Promise.resolve(unread);
-      return { processes, spinoffs: read(), read, at: Date.now(), stopped, turnCut: facts.turnCut };
+      return { processes, spinoffs: read(), read, at: Date.now(), stopped, turnCut: facts.turnCut, restartCut: facts.restartCut };
     } catch { return null; }
   }
   // Before the bridge reads its transcript for this run (see guardBridgeTranscript).

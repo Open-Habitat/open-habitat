@@ -261,6 +261,9 @@
         "scheduled_wake": {
           "$ref": "#/$defs/scheduledWake"
         },
+        "upgrade_notice": {
+          "$ref": "#/$defs/upgradeNotice"
+        },
         "rewind": {
           "$ref": "#/$defs/rewind"
         }
@@ -550,6 +553,30 @@
         }
       }
     },
+    "upgradeNotice": {
+      "description": "Habitat's line on the upgrade announcement the agent received: root's host upgrade will stop this conversation's Pi at deadline and Habitat runs version after it. busy: steered into a running turn; idle: an idle agent whose background processes (listed) would be killed got a short turn for it. The agent's context carries its own English text with what the stop does; this is the person's presentation of it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "deadline", "variant", "processes"],
+      "properties": {
+        "version": { "type": "string", "pattern": "^[0-9A-Za-z][0-9A-Za-z.+~-]{0,63}$" },
+        "deadline": { "$ref": "common.schema.json#/$defs/timestamp" },
+        "variant": { "enum": ["busy", "idle"] },
+        "processes": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["process_id", "name"],
+            "properties": {
+              "process_id": { "type": "string", "pattern": "^proc_[a-f0-9]{4}$" },
+              "name": { "type": "string", "maxLength": 200 }
+            }
+          }
+        }
+      }
+    },
     "scheduledWake": {
       "description": "Habitat's line on a scheduled wake (scheduled-wake). fired: the wake that started this turn, with when it was set and fired, how late when more than two minutes, and moved_from when the person moved it. cancelled: the cancellations told to the agent with the person's message that follows (reason person or archived). The agent's context carries its own English text; this is the person's presentation of it.",
       "type": "object",
@@ -631,10 +658,11 @@
           "$ref": "#/$defs/stop"
         },
         "woke": {
-          "description": "Habitat woke the agent on its own, without a message from the person, because what the conversation was waiting for when Pi stopped has ended: settled, the Taskfleet runs a cut-off `taskfleet run wait` was for settled as that wait would have returned; cut_off, another background process that would have woken the agent was cut off with Pi. Absent when the person's message woke it. Only in history; a woken rest has no card before the wake.",
+          "description": "Habitat woke the agent on its own, without a message from the person, because what the conversation was waiting for when Pi stopped has ended: settled, the Taskfleet runs a cut-off `taskfleet run wait` was for settled as that wait would have returned; cut_off, another background process that would have woken the agent was cut off with Pi; turn_cut, a graceful daemon stop (an upgrade or another restart) cut the turn the agent was working on, and it was started again to finish it. Absent when the person's message woke it. Only in history; a woken rest has no card before the wake.",
           "enum": [
             "settled",
-            "cut_off"
+            "cut_off",
+            "turn_cut"
           ]
         },
         "interrupted_turn": {

@@ -602,6 +602,7 @@ esac
 			c := daemon.ConversationHandlerWithFixtureRuntime(ctx, cfg, trusted, status, home, &core.PiRuntimeConfig{Node: self, Entry: "/synthetic/pi/dist/index.js", Manifest: "/synthetic/pi/package.json"})
 			subject := cfg.Subject
 			c.FixtureSetLiveLimits(func() ([]byte, error) { return liveFixture.file(subject) })
+			c.FixtureWatchUpgradeNotice(ctx, upgradeFixture.read)
 			// Only the recap scenarios' fake Pi can make a recap; elsewhere a
 			// restarted daemon would only start Pis the cases do not expect.
 			if name, _ := scenario.Load().(string); name == "pi-recap" || name == "pi-recap-unsupported" || name == "pi-recap-failing" {
@@ -903,6 +904,20 @@ esac
 				w.(http.Flusher).Flush()
 				gatewayRestart <- struct{}{}
 				return
+			case "/fixture/upgrade-notice":
+				// The host's announced upgrade as every daemon reads it:
+				// status countdown (with seconds to the deadline), withdrawn,
+				// unknown (an owner that stopped renewing) or clear.
+				seconds, _ := strconv.Atoi(r.URL.Query().Get("seconds"))
+				if !upgradeFixture.set(r.URL.Query().Get("status"), time.Duration(seconds)*time.Second) {
+					http.Error(w, "invalid fixture", 400)
+					return
+				}
+				for _, current := range conversationHandlers {
+					current.Load().(*daemon.ConversationController).FixtureRefreshUpgrade(r.Context())
+				}
+				w.WriteHeader(http.StatusNoContent)
+				return
 			case "/fixture/edge":
 				// freeze: existing connections go silent (a laptop's sleep, a
 				// proxy that drops an idle stream without telling anyone);
@@ -977,6 +992,7 @@ esac
 				return
 			case "/fixture/conversations-reset":
 				// Each browser case starts from Pi's native unset default.
+				upgradeFixture.set("clear", 0)
 				if err := os.Remove(filepath.Join(tmp, "fakepi-ai-refused")); err != nil && !os.IsNotExist(err) {
 					http.Error(w, "fixture failed", 500)
 					return

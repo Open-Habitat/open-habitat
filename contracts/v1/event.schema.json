@@ -303,6 +303,9 @@
               },
               "scheduled_wake": {
                 "$ref": "history.schema.json#/$defs/scheduledWake"
+              },
+              "upgrade_notice": {
+                "$ref": "history.schema.json#/$defs/upgradeNotice"
               }
             }
           }

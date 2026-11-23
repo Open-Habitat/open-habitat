@@ -294,6 +294,48 @@
           }
         }
       }
+    },
+    "upgrade": {
+      "description": "An installation upgrade root's host upgrade has announced, read by the person's daemon from the host's advisory record. countdown: the stop begins at deadline (UTC; the browser counts down itself); starting: the deadline has passed and the stop is under way or about to begin (never 'complete'); withdrawn: the operator cancelled, or the attempt failed before the stop, and the current release keeps serving; unknown: the upgrade's owner stopped renewing the record, so nothing can be said (never an endless zero). Absent when nothing is scheduled. Every person on the host sees it; it names no account or conversation.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schedule_id",
+        "revision",
+        "target_version",
+        "announced_at",
+        "deadline",
+        "status"
+      ],
+      "properties": {
+        "schedule_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        },
+        "target_version": {
+          "type": "string",
+          "pattern": "^[0-9A-Za-z][0-9A-Za-z.+~-]{0,63}$"
+        },
+        "announced_at": {
+          "$ref": "common.schema.json#/$defs/timestamp"
+        },
+        "deadline": {
+          "$ref": "common.schema.json#/$defs/timestamp"
+        },
+        "status": {
+          "enum": [
+            "countdown",
+            "starting",
+            "withdrawn",
+            "unknown"
+          ]
+        }
+      }
     }
   },
   "$defs": {
@@ -765,7 +807,9 @@
           "type": "array",
           "minItems": 1,
           "maxItems": 100,
-          "items": { "$ref": "agent-wake.schema.json#/$defs/pending" }
+          "items": {
+            "$ref": "agent-wake.schema.json#/$defs/pending"
+          }
         },
         "last_wake": {
           "description": "The conversation's latest scheduled wake that fired, by which an unread reply it started explains itself on the rail row. Absent when none has fired or the daemon cannot read its wakes.",

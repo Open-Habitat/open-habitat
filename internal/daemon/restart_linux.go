@@ -14,7 +14,8 @@ import (
 type restartNotice struct {
 	Stopped map[string]any `json:"stopped,omitempty"`
 	// Habitat woke the agent on its own because what it waited for ended
-	// (wake_linux.go): "settled" or "cut_off". Absent: a person's message.
+	// (wake_linux.go): "settled", "cut_off" or "turn_cut" (a graceful
+	// restart cut its turn). Absent: a person's message.
 	Woke string `json:"woke,omitempty"`
 	// The turn Pi was working on when it stopped never finished.
 	InterruptedTurn bool             `json:"interrupted_turn,omitempty"`
@@ -79,7 +80,7 @@ func nativeRestart(e nativeEntry) (historyEntry, bool) {
 		}
 	}
 	n.InterruptedTurn = n.Stopped != nil && m.Details.InterruptedTurn
-	if w := m.Details.Woke; w == "settled" || w == "cut_off" {
+	if w := m.Details.Woke; w == "settled" || w == "cut_off" || w == "turn_cut" {
 		n.Woke = w
 	}
 	// Each item stands alone: a malformed one is left out, not the notice.

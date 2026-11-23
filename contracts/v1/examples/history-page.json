@@ -76,6 +76,46 @@
           }
         ]
       }
+    },
+    {
+      "entry_key": "entry-redacted-4",
+      "kind": "unknown",
+      "content": {
+        "media_type": "text/plain",
+        "text": "",
+        "complete": true
+      },
+      "upgrade_notice": {
+        "version": "0.9.0",
+        "deadline": "2030-01-01T00:02:00Z",
+        "variant": "idle",
+        "processes": [
+          {
+            "process_id": "proc_0a1c",
+            "name": "preview-example"
+          }
+        ]
+      }
+    },
+    {
+      "entry_key": "entry-redacted-5",
+      "kind": "unknown",
+      "content": {
+        "media_type": "text/plain",
+        "text": "",
+        "complete": true
+      },
+      "restart": {
+        "stopped": {
+          "cause": "restart",
+          "at": "2030-01-01T00:03:10Z"
+        },
+        "woke": "turn_cut",
+        "interrupted_turn": true,
+        "processes": [],
+        "runs": [],
+        "still_running": []
+      }
     }
   ],
   "complete": false,

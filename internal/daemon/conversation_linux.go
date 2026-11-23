@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/open-habitat/open-habitat/internal/upgradenotice"
 	"io"
 	"net/http"
 	"os"
@@ -123,6 +124,16 @@ type ConversationController struct {
 	// fixtureLimits stands in for root's live-limits file in the synthetic
 	// browser host only. Protected by mu.
 	fixtureLimits func() ([]byte, error)
+	// version is this daemon's own release, told to a woken agent. Protected
+	// by mu.
+	version string
+	// The upgrade announcement (upgrade_notice_linux.go), protected by
+	// upgradeMu; never hold mu while taking it. upgradePath and upgradeRead
+	// are test seams: empty and nil read root's record.
+	upgradeMu   sync.Mutex
+	upgrade     upgradeState
+	upgradePath string
+	upgradeRead func(string) (upgradenotice.Record, error)
 }
 
 // A continued native session retains spent browser IDs within this daemon

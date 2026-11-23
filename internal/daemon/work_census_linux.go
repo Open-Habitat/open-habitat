@@ -149,7 +149,11 @@ func (c *ConversationController) census(ctx context.Context, clones *CloneJobs) 
 		}
 		return jobs[i].AgentID < jobs[j].AgentID
 	})
-	return map[string]any{"schema_version": 1, "conversations": conversations, "jobs": jobs}
+	census := map[string]any{"schema_version": 1, "conversations": conversations, "jobs": jobs}
+	if n := c.upgradeCensus(); n != nil {
+		census["upgrade_notice"] = n
+	}
+	return census
 }
 
 // beginTitleWork and endTitleWork bracket naming a history that no handle
