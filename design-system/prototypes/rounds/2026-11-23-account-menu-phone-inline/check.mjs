@@ -1,9 +1,20 @@
 // node check.mjs <offline.html> <out-dir> [--quick]
 // Authored synthetic component lab, not a host-backed acceptance test.
+// Every page is served with the Content-Security-Policy a Habitat view gets,
+// read from the gateway's source (internal/gateway/views_linux.go
+// viewHeaders): an opaque-origin sandbox with scripts, no frames, no
+// connections. The check fails on any CSP violation, any request after the
+// document, any navigation, or any iframe in the page. Round 1 put its phones
+// in iframes, which that policy blocks; this round's phones are inline.
 // First the round directory: no image or HTML file and nothing over 100 KB.
 // Review page (1440 × 900, Päivä and Yö): the three direction lines and the
-// recommendation are visible, both phone frames (390 × 844 and 360 × 640) are
-// on screen side by side with the menu open inside each; the picker.
+// recommendation are visible, both inline phones (390 × 844 and 360 × 640) are
+// on screen side by side, each in its phone layout with the menu open inside
+// it and inside its own box (B's popover included, at the review scale); a tap
+// in either phone works there (the touched phone becomes the live one and the
+// other closes its layers, because React Aria has one overlay stack per
+// page); the Back button under a phone closes its layer; a reopened menu in
+// the scaled phone takes taps; the picker.
 // Every direction on both phones (touch), Päivä and Yö: the menu is open on
 // load in the direction's shape (A a full-width sheet on the bottom edge, B a
 // popover in the drawer, C a page over the whole screen); the items come in
@@ -35,7 +46,7 @@ import {checkPicker} from '../../picker-check.mjs';
 const here=dirname(fileURLToPath(import.meta.url));
 const require=createRequire(resolve(here,'../../../../web/package.json'));
 const {chromium}=require('playwright');
-const round='2026-11-22-account-menu-phone';
+const round='2026-11-23-account-menu-phone-inline';
 const [input,out,flag]=process.argv.slice(2);
 if(!input||!out){console.error('usage: node check.mjs <offline.html> <out-dir> [--quick]');process.exit(2);}
 const quick=flag==='--quick';
@@ -49,14 +60,33 @@ for(const f of readdirSync(here)){
 }
 const browser=await chromium.launch(process.env.PROTO_CHROMIUM?{executablePath:process.env.PROTO_CHROMIUM}:{});
 const html=readFileSync(input,'utf8');
+// The view host's policy, built the way viewHeaders builds it.
+const ORIGIN='http://prototype.test';
+function viewCsp(){
+ const go=readFileSync(resolve(here,'../../../../internal/gateway/views_linux.go'),'utf8');
+ const line=go.split('\n').find(l=>/h\.Set\("Content-Security-Policy", "sandbox allow-scripts;/.test(l));
+ assert.ok(line,'view CSP line not found in internal/gateway/views_linux.go');
+ const expr=line.slice(line.indexOf('"Content-Security-Policy",')+26,line.lastIndexOf(')'));
+ const csp=expr.split('+').map(x=>x.trim()).map(x=>x.startsWith('"')?JSON.parse(x):x==='self'?ORIGIN:x==='a.cfg.Origin'?'http://habitat.test':(()=>{throw new Error(`unknown CSP part ${x}`);})()).join('');
+ for(const need of ["sandbox allow-scripts;","frame-src 'none'","connect-src 'none'","child-src 'none'"])assert.ok(csp.includes(need),`view CSP lacks ${need}`);
+ return csp;
+}
+const CSP=viewCsp();
 const wait=(page,ms=250)=>page.waitForTimeout(ms);
 const PHONES=[[390,844],[360,640]];
 async function open(w,h,query,phone=true){
  const page=await browser.newPage({viewport:{width:w,height:h},deviceScaleFactor:phone?2:1,hasTouch:phone,isMobile:phone});
  page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
- await page.route('http://prototype.test/**',r=>r.fulfill({contentType:'text/html',body:html}));
- await page.goto(`http://prototype.test/${query}`);
+ const url=`${ORIGIN}/${query}`;
+ let documents=0;
+ page.on('request',r=>{if(r.url().startsWith('data:'))return;if(r.isNavigationRequest()&&r.url()===url&&documents++===0)return;errors.push(`request: ${r.url()}`);});
+ page.on('framenavigated',f=>{if(f===page.mainFrame()&&f.url()!==url)errors.push(`navigated: ${f.url()}`);});
+ await page.addInitScript(()=>document.addEventListener('securitypolicyviolation',e=>console.error(`CSP violation: ${e.violatedDirective} ${e.blockedURI}`)));
+ await page.route(`${ORIGIN}/**`,r=>r.fulfill({contentType:'text/html',headers:{'content-security-policy':CSP},body:html}));
+ await page.goto(url);
  await wait(page,900);
+ eq(await page.locator('iframe, frame, object, embed').count(),0,`${query}: no frames`);
+ eq(await page.evaluate(()=>origin),'null',`${query}: opaque origin, as in a view`);
  return page;
 }
 const menu=page=>page.locator('[data-testid="account-menu"]');
@@ -68,7 +98,8 @@ const SHAPE=['sheet','popover','page'];
 // Visible is not enough: the element must be the one a tap at its centre hits.
 const onTop=loc=>loc.evaluate(e=>{const r=e.getBoundingClientRect();const hit=document.elementFromPoint(r.left+r.width/2,r.top+Math.min(r.height/2,40));return !!hit&&e.contains(hit);});
 const shot=(page,name)=>page.screenshot({path:join(out,`${name}.png`)});
-const back=async page=>{await page.evaluate(()=>history.back());await wait(page,400);};
+// The phone's Back: each inline phone keeps its own history.
+const back=async page=>{await page.getByTestId('device').evaluate(e=>e.dispatchEvent(new Event('am-back')));await wait(page,400);};
 const reopen=async(page,d)=>{
  if(!(await drawerOpen(page))){await page.getByTestId('navigation-open').tap();await wait(page,300);}
  await page.getByTestId('account-menu-trigger').tap();await wait(page,450);
@@ -130,14 +161,44 @@ for(const theme of quick?['light']:['light','dark']){
   const label=`review d${d} ${theme}`;
   eq(await page.getByTestId('direction-lines').locator('li').count(),3,`${label}: three direction lines`);
   ok(await page.getByTestId('recommendation').isVisible(),`${label}: recommendation visible`);
-  const frames=page.locator('[data-testid="phone-frame"]');
-  eq(await frames.count(),2,`${label}: two phone frames`);
+  const phones=page.locator('[data-testid="phone-frame"]');
+  eq(await phones.count(),2,`${label}: two inline phones`);
   const a=await page.getByTestId('phone-844').boundingBox(),c=await page.getByTestId('phone-640').boundingBox();
   ok(a.x+a.width<=c.x&&a.y+a.height<=900&&c.y+c.height<=900,`${label}: both phones on screen side by side`);
   await wait(page,800);
-  for(const i of [0,1])ok(await page.frameLocator(`[data-testid="phone-frame"] >> nth=${i}`).locator('[data-testid="account-menu"]').isVisible(),`${label}: frame ${i} shows the menu`);
-  if(theme==='light'&&d===0)await checkPicker(page,round);
+  for(const i of [0,1]){
+   const ph=phones.nth(i),m=ph.locator('[data-testid="account-menu"]');
+   ok(await m.isVisible(),`${label}: phone ${i} shows the menu`);
+   eq(await ph.locator('.ah-mobile-open').count(),1,`${label}: phone ${i} in its phone layout with the drawer open`);
+   eq(await ph.locator('[data-testid="navigation-open"]').count(),1,`${label}: phone ${i} has the phone top bar`);
+   const box=await page.getByTestId(i?'phone-640':'phone-844').locator('.am-phone-box').boundingBox(),mb=await m.boundingBox();
+   ok(mb.x>=box.x-1&&mb.y>=box.y-1&&mb.x+mb.width<=box.x+box.width+1&&mb.y+mb.height<=box.y+box.height+1,`${label}: phone ${i} menu inside its own box ${JSON.stringify([box,mb])}`);
+   ok(await onTop(m),`${label}: phone ${i} menu on top`);
+   const clear=await m.locator('[data-quick]').evaluateAll(els=>els.map(e=>{const t=e.querySelector('.am-label').getBoundingClientRect(),s=e.querySelector('fieldset').getBoundingClientRect();const l=e.querySelector('.am-label');return t.right<=s.left+1&&l.scrollWidth<=l.offsetWidth+1;}));
+   ok(clear.every(Boolean),`${label}: phone ${i} quick-row names not covered at the review scale (${clear.join(',')})`);
+  }
   await shot(page,`d${d}-review-1440-${theme}`);
+  if(theme==='light'){
+   const lay=i=>phones.nth(i).locator('[data-testid="layers"]').textContent();
+   // A tap in one phone does what it says there, whichever phone opened last;
+   // the phone touched becomes the live one and the other closes its layers.
+   await phones.nth(0).getByTestId('sound-choice').getByTestId('segment-quiet').click();await wait(page);
+   eq(await phones.nth(0).getByTestId('sound-muted-badge').count(),1,`${label}: a tap in the first phone works`);
+   eq(await lay(0),'menu',`${label}: the first phone keeps its menu`);
+   eq(await lay(1),'',`${label}: the other phone closed its menu`);
+   eq(await phones.nth(1).getByTestId('sound-muted-badge').count(),0,`${label}: the other phone is untouched`);
+   // Back under a phone closes that phone's layer.
+   await page.getByTestId('back-844').click();await wait(page,400);
+   eq(await lay(0),'',`${label}: Back under 390 × 844 closes its menu`);
+   // The scaled second phone reopens and takes taps where it is drawn.
+   await phones.nth(1).getByTestId('account-menu-trigger').click();await wait(page,450);
+   ok(await phones.nth(1).locator('[data-testid="account-menu"]').isVisible(),`${label}: the second phone reopens its menu`);
+   await phones.nth(1).getByTestId('work-choice').getByTestId('segment-visible').click();await wait(page);
+   eq(await phones.nth(1).getByTestId('work-choice').getByTestId('segment-visible').getAttribute('aria-pressed'),'true',`${label}: a tap in the scaled phone works`);
+   await page.getByTestId('back-640').click();await wait(page,400);
+   eq(await lay(1),'',`${label}: Back under 360 × 640 closes its menu`);
+  }
+  if(theme==='light'&&d===0)await checkPicker(page,round);
   await page.close();
  }
 }
@@ -160,7 +221,7 @@ for(const d of dirs){
   eq(await layers(page),'menu',`${label}: one layer on load`);
   // Quick toggles.
   await menu(page).getByTestId('theme-choice').getByTestId('segment-dark').tap();await wait(page);
-  eq(await page.evaluate(()=>document.documentElement.dataset.theme),'dark',`${label}: theme switch changes the theme`);
+  eq(await page.getByTestId('phone-screen').getAttribute('data-theme'),'dark',`${label}: theme switch changes the theme`);
   await menu(page).getByTestId('work-choice').getByTestId('segment-visible').tap();await wait(page);
   eq(await menu(page).getByTestId('work-choice').getByTestId('segment-visible').getAttribute('aria-pressed'),'true',`${label}: Agentin työ flips`);
   await menu(page).getByTestId('sound-choice').getByTestId('segment-quiet').tap();await wait(page);

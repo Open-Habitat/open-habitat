@@ -9,7 +9,7 @@ provenance: chat
 source_ref: habitat:pi-current/2026-11-22-account-menu-phone
 lane: account-menu-phone
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: the account menu on the phone (sheet vs popover)

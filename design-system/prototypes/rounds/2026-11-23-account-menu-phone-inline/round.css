@@ -1,7 +1,7 @@
 /* The account menu on the phone. Tokens only; the shell, rail, popover, menu
    items and logout dialog are production's (components.css,
-   Controls.module.css). These rules add the review bar with two phone
-   frames, round 1's direction A body, A's sheet, B's popover limits, C's
+   Controls.module.css). These rules add the review bar with two inline
+   phones, round 1's direction A body, A's sheet, B's popover limits, C's
    account page, the feedback panel and the toast. */
 html, body { margin: 0; height: 100%; background: var(--ah-bg); color: var(--ah-ink); font: var(--ah-size-ui) / 1.45 var(--ah-font); }
 #root { height: 100%; }
@@ -19,8 +19,18 @@ html, body { margin: 0; height: 100%; background: var(--ah-bg); color: var(--ah-
 /* ---------- Two phones at one scale ---------- */
 .am-stage { position: fixed; top: calc(var(--review-h, 0px) + 12px); bottom: 64px; left: 0; right: 0; display: flex; justify-content: center; align-items: flex-start; gap: 40px; }
 .am-phone { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.am-phone-box { position: relative; overflow: hidden; border: 1px solid var(--ah-line-strong); border-radius: 22px; background: var(--ah-bg); box-shadow: var(--ah-shadow-menu); }
-.am-phone iframe { position: absolute; top: 0; left: 0; border: 0; transform-origin: 0 0; }
+.am-phone-box { box-sizing: content-box; position: relative; overflow: hidden; border: 1px solid var(--ah-line-strong); border-radius: 22px; background: var(--ah-bg); box-shadow: var(--ah-shadow-menu); }
+/* A phone is a size container, not a frame: build.mjs turns the production
+   width queries and viewport units into container ones, and the container is
+   the containing block of the shell's fixed layers, so each phone lays out at
+   its own size inside the review page and inside a view's sandbox. */
+.am-device { container: am-device / size; overflow: hidden; position: relative; }
+.am-phone .am-device { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+html.am-bare .am-device { width: 100vw; height: 100dvh; }
+.am-screen { position: relative; width: 100%; height: 100%; overflow: hidden; background: var(--ah-bg); color: var(--ah-ink); font: var(--ah-size-ui) / 1.45 var(--ah-font); }
+/* The shell measures the window's visual viewport; in a phone the screen is
+   the container. */
+.am-screen .ah-app-shell { --ah-visible-height: 100cqh !important; --ah-visible-top: 0px !important; }
 .am-phone figcaption { display: flex; gap: 10px; align-items: center; color: var(--ah-muted); font-size: 12px; }
 html.am-bare .proto-picker { display: none; }
 .am-main { display: flex; min-height: 0; height: 100%; position: relative; }
@@ -59,7 +69,9 @@ html.am-bare .proto-picker { display: none; }
 
 /* ---------- B: today's popover in the drawer ---------- */
 /* As wide as the person row it grows from, the drawer's width. */
-.am-pop.ah-account-menu { width: max(var(--trigger-width, 17rem), 17rem); max-height: calc(100dvh - 24px); overflow: auto; overscroll-behavior: contain; }
+/* React Aria measures the trigger on screen, after the review page scales the
+   phone down; --am-scale undoes that so the popover is as wide as on a phone. */
+.am-pop.ah-account-menu { width: max(calc(var(--trigger-width, 17rem) / var(--am-scale, 1)), 17rem); max-height: calc(100dvh - 24px); overflow: auto; overscroll-behavior: contain; }
 
 /* ---------- C: the account page ---------- */
 .am-page-overlay { position: fixed; inset: 0; z-index: 70; }
@@ -67,7 +79,7 @@ html.am-bare .proto-picker { display: none; }
 .am-page[data-entering] { animation: am-in 200ms ease-out; }
 @keyframes am-in { from { transform: translateX(100%); } }
 /* Production's sign-out dialog (z 50) must rise above the page it opens from. */
-body:has(.am-page-overlay) .ah-overlay { z-index: 75; }
+.am-screen:has(.am-page-overlay) .ah-overlay { z-index: 75; }
 .am-page-dialog { display: flex; flex-direction: column; height: 100%; outline: 0; }
 .am-page-bar { flex: none; display: flex; align-items: center; gap: 4px; min-height: 52px; padding: 0 8px; border-bottom: 1px solid var(--ah-line); background: var(--ah-surface); }
 .am-page-bar h2 { margin: 0; font-size: var(--ah-size-h3, 16px); }

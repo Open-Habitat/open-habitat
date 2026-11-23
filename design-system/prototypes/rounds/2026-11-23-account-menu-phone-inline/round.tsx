@@ -11,6 +11,7 @@ import {
   Popover,
   Separator,
 } from "react-aria-components";
+import { UNSAFE_PortalProvider } from "react-aria";
 import { MemoryRouter } from "react-router";
 import pickerSource from "../../lib/picker.js?raw";
 import "../../lib/picker.css";
@@ -38,6 +39,15 @@ import "../../../../web/src/components/ExplainMode.css";
 import { DIRECTIONS, type Lang, type Show, TEXT, type Text } from "./text";
 import "./round.css";
 
+// account-menu-phone round 2 (23.11.2026): round 1 (2026-11-22-account-menu-
+// phone) rebuilt so that it opens as a Habitat view. The view's sandbox CSP
+// blocks frames and network, so round 1's iframe phones stayed empty. Here each
+// phone is an inline container (Device): production CSS answers to its size
+// through container queries (build.mjs rewrites them), React Aria portals its
+// overlays into it, window.matchMedia answers width queries as a phone, and
+// each phone has its own in-memory history so its Back closes its own layers.
+// Directions, content and questions are round 1's unchanged.
+//
 // account-menu-phone (22.11.2026). Round 1 (2026-11-22-account-menu) settled
 // the content and order: Jari chose A Ryhmät with separators only. Today, on a
 // phone, the account button sits at the bottom of the navigation drawer and
@@ -51,8 +61,8 @@ import "./round.css";
 //   C Account page: a full-screen Account page with a back arrow; feedback is
 //     its sub-page, an edge swipe or Back returns.
 // Every direction answers the phone's Back: each open layer is one history
-// entry (history.state.am = depth), so Back pops exactly one layer and every
-// in-page close goes through history.back() too. The shell, rail, menu
+// entry (state.am = depth), so Back pops exactly one layer and every in-page
+// close goes through back() too. The shell, rail, menu
 // primitives, logout dialog, header, timeline and composer are production
 // components; the menu body, the sheet, the page, the feedback panel and the
 // toast are this round's. Synthetic content throughout.
@@ -70,6 +80,98 @@ const useRound = () => React.useContext(RoundContext);
 const useT = (): Text => TEXT[useRound().lang];
 const frames = (n: number, f: () => void) => (n <= 0 ? f() : requestAnimationFrame(() => frames(n - 1, f)));
 const NIGHT = params.get("night") === "1";
+
+// ---------- One phone on a shared page ----------
+
+// Every production component on this page is inside a phone, so a width or
+// height query is answered for the phone (the larger one, 390 × 844: both are
+// under every breakpoint the shell uses), not for the review window.
+const PHONE_W = 390;
+const PHONE_H = 844;
+const realMatchMedia = window.matchMedia?.bind(window);
+window.matchMedia = (query: string) => {
+  if (!/width|height/.test(query)) return realMatchMedia(query);
+  const px = (v: string, u: string) => Number(v) * (u === "rem" || u === "em" ? 16 : 1);
+  const matches = [...query.matchAll(/\((min|max)-(width|height):\s*([\d.]+)(px|rem|em)\)/g)].every(([, mm, dim, v, u]) => {
+    const size = dim === "width" ? PHONE_W : PHONE_H;
+    return mm === "min" ? size >= px(v, u) : size <= px(v, u);
+  });
+  const none = () => {};
+  return { matches, media: query, onchange: null, addEventListener: none, removeEventListener: none, addListener: none, removeListener: none, dispatchEvent: () => false } as MediaQueryList;
+};
+
+// A React Aria modal or popover hides everything outside itself, up to the
+// body (inert or aria-hidden). On this page that would freeze the other phone,
+// the review bar and the picker while one phone has its menu open, and the two
+// phones open theirs at the same time. So the page's own scaffolding, which a
+// real phone does not have, refuses to be hidden; inside a phone's screen the
+// hiding works as in production. (Marking the phones as React Aria top layers
+// instead would also make taps inside them count as "inside", and the sheet's
+// tap-outside close would stop working.)
+const SCAFFOLD = ".am-review, .am-review > *, .am-stage > *, .am-phone > *, .proto-picker, #root";
+const scaffold = (el: Element) => !el.closest(".am-screen") && el.matches(SCAFFOLD);
+const inert = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "inert");
+if (inert?.set && inert.get) {
+  const { get, set } = inert;
+  Object.defineProperty(HTMLElement.prototype, "inert", {
+    configurable: true,
+    get() {
+      return get.call(this);
+    },
+    set(v: boolean) {
+      if (v && scaffold(this)) return;
+      set.call(this, v);
+    },
+  });
+}
+const setAttribute = Element.prototype.setAttribute;
+Element.prototype.setAttribute = function (name: string, value: string) {
+  if (name === "aria-hidden" && value === "true" && scaffold(this)) return;
+  setAttribute.call(this, name, value);
+};
+
+/** A phone's own history. Two phones share one window, and a view's sandbox
+ * is no place to lean on window.history, so each phone keeps the entries its
+ * layers push; Back (the button under the phone, or an am-back event on the
+ * device) pops them asynchronously, like popstate. */
+class PhoneHistory {
+  entries: unknown[] = [null];
+  index = 0;
+  listeners = new Set<(state: unknown) => void>();
+  get state() {
+    return this.entries[this.index];
+  }
+  pushState(state: unknown) {
+    this.entries = [...this.entries.slice(0, this.index + 1), state];
+    this.index++;
+  }
+  replaceState(state: unknown) {
+    this.entries[this.index] = state;
+  }
+  go(n: number) {
+    setTimeout(() => {
+      const next = Math.max(0, Math.min(this.entries.length - 1, this.index + n));
+      if (next === this.index) return;
+      this.index = next;
+      for (const l of this.listeners) l(this.state);
+    }, 0);
+  }
+  back() {
+    this.go(-1);
+  }
+  /** Close every layer now, inside the current event (see Device). */
+  resetNow() {
+    if (this.index === 0) return;
+    this.entries = [this.entries[0]];
+    this.index = 0;
+    flushSync(() => {
+      for (const l of this.listeners) l(this.state);
+    });
+  }
+}
+type DeviceCtx = { history: PhoneHistory; root: () => HTMLElement | null };
+const DeviceContext = React.createContext<DeviceCtx>({ history: new PhoneHistory(), root: () => null });
+const useDevice = () => React.useContext(DeviceContext);
 
 // ---------- Device state the menu shows ----------
 
@@ -526,25 +628,29 @@ function useLayers() {
   // The truth between a close and its popstate: React state lags a tick,
   // and a menu that closes itself after an action must not pop twice.
   const now = useRef<Layer[]>([]);
+  const { history } = useDevice();
   const set = (l: Layer[]) => {
     now.current = l;
     setLayers(l);
   };
   useEffect(() => {
-    history.replaceState({ am: 0 }, "");
-    const pop = (e: PopStateEvent) => {
-      const n = typeof e.state?.am === "number" ? e.state.am : 0;
-      set(now.current.slice(0, n));
+    history.replaceState({ am: 0 });
+    const pop = (state: unknown) => {
+      const am = (state as { am?: unknown } | null)?.am;
+      set(now.current.slice(0, typeof am === "number" ? am : 0));
     };
-    window.addEventListener("popstate", pop);
-    return () => window.removeEventListener("popstate", pop);
+    history.listeners.add(pop);
+    return () => {
+      history.listeners.delete(pop);
+    };
+    // biome-ignore lint/correctness/useExhaustiveDependencies: one history per phone
   }, []);
   return {
     layers,
     top: layers.at(-1),
     push: (l: Layer) => {
       const next = [...now.current, l];
-      history.pushState({ am: next.length }, "");
+      history.pushState({ am: next.length });
       set(next);
     },
     replace: (l: Layer) => set([...now.current.slice(0, -1), l]),
@@ -564,11 +670,12 @@ function useLayers() {
 
 // ---------- The page ----------
 
-const closeDrawer = () => document.querySelector<HTMLElement>(".ah-mobile-scrim")?.click();
-
 function Main({ show }: { show: Show }) {
   const t = useT();
   const { d } = useRound();
+  const { root } = useDevice();
+  const tap = (selector: string) => root()?.querySelector<HTMLElement>(selector)?.click();
+  const closeDrawer = () => tap(".ah-mobile-scrim");
   const L = useLayers();
   const [draft, setDraft] = useState("");
   const [note, setNote] = useState("");
@@ -579,9 +686,9 @@ function Main({ show }: { show: Show }) {
     return () => clearTimeout(id);
   }, [toast]);
   useEffect(() => {
-    document.querySelector<HTMLElement>('[data-testid="navigation-open"]')?.click();
+    tap('[data-testid="navigation-open"]');
     frames(4, () => {
-      if (d === 1) document.querySelector<HTMLElement>('[data-testid="account-menu-trigger"]')?.click();
+      if (d === 1) tap('[data-testid="account-menu-trigger"]');
       else L.push("menu");
       if (show === "menu") return;
       frames(3, () => onAction(show));
@@ -781,10 +888,56 @@ const PHONES = [
   { w: 360, h: 640, key: "frame640" as const },
 ];
 
-function phoneSrc(d: number, theme: Theme, lang: Lang, admin: boolean, show: Show, run: number) {
-  const q = new URLSearchParams({ bare: "1", d: String(d), theme, lang, admin: admin ? "1" : "0", show, run: String(run) });
-  if (NIGHT) q.set("night", "1");
-  return `${location.pathname}?${q}`;
+/** One phone: an inline container the production shell lays itself out in.
+ * container-type: size makes it the containing block of the shell's fixed
+ * layers and the target of the rewritten container queries; overlays portal
+ * into its screen, so they stay inside it and scale with it.
+ *
+ * React Aria keeps one stack of open overlays per page and treats a press
+ * anywhere outside the topmost one as a dismissal, which it swallows. With two
+ * phones open side by side, a tap in one phone would close the other phone's
+ * menu instead of doing what was tapped. So a press outside a phone (and its
+ * caption) first closes that phone's layers, synchronously, before React
+ * Aria sees the press: the phone you touch is the live one. */
+function Device({ w, h, scale = 1, d, theme, lang, admin, show, historyRef, testid }: { w?: number; h?: number; scale?: number; d: number; theme: Theme; lang: Lang; admin: boolean; show: Show; historyRef?: (h: PhoneHistory) => void; testid?: string }) {
+  const box = useRef<HTMLDivElement>(null);
+  const screen = useRef<HTMLDivElement>(null);
+  const portal = useRef<HTMLDivElement>(null);
+  const [history] = useState(() => new PhoneHistory());
+  const [phoneTheme, setPhoneTheme] = useState(theme);
+  const ctx = React.useMemo(() => ({ history, root: () => screen.current }), [history]);
+  useEffect(() => {
+    historyRef?.(history);
+    const el = box.current;
+    const back = () => history.back();
+    const press = (e: Event) => {
+      const own = el?.closest(".am-phone") ?? el;
+      if (own && !own.contains(e.target as Node)) history.resetNow();
+    };
+    el?.addEventListener("am-back", back);
+    window.addEventListener("pointerdown", press, true);
+    return () => {
+      el?.removeEventListener("am-back", back);
+      window.removeEventListener("pointerdown", press, true);
+    };
+  }, [history, historyRef]);
+  return (
+    <div
+      ref={box}
+      className="am-device"
+      data-testid={testid ?? "device"}
+      style={w && h ? ({ width: w, height: h, transform: scale !== 1 ? `scale(${scale})` : undefined, "--am-scale": scale } as React.CSSProperties) : undefined}
+    >
+      <div ref={screen} className="am-screen" data-theme={phoneTheme} data-testid="phone-screen">
+        <DeviceContext.Provider value={ctx}>
+          <UNSAFE_PortalProvider getContainer={() => portal.current}>
+            <Page lang={lang} d={d} admin={admin} theme={phoneTheme} setTheme={setPhoneTheme} show={show} />
+          </UNSAFE_PortalProvider>
+        </DeviceContext.Provider>
+        <div ref={portal} className="am-portal" />
+      </div>
+    </div>
+  );
 }
 
 function App({ direction }: { direction: number }) {
@@ -796,7 +949,7 @@ function App({ direction }: { direction: number }) {
   const [scale, setScale] = useState(1);
   const t = TEXT[lang];
   const bar = useRef<HTMLElement>(null);
-  const frameRefs = useRef<(HTMLIFrameElement | null)[]>([]);
+  const histories = useRef<PhoneHistory[]>([]);
   useLayoutEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
@@ -821,7 +974,7 @@ function App({ direction }: { direction: number }) {
   const restart = () => setRun((r) => r + 1);
   return (
     <div className="am-review" data-direction={direction}>
-      <header className="am-bar" ref={bar}>
+      <header className="am-bar" ref={bar} data-react-aria-top-layer="true">
         <div className="am-controls">
           <strong>{t.title}</strong>
           <label>
@@ -910,22 +1063,25 @@ function App({ direction }: { direction: number }) {
         {PHONES.map((p, i) => (
           <figure key={p.key} className="am-phone" data-testid={`phone-${p.h}`} style={{ width: p.w * scale }}>
             <div className="am-phone-box" style={{ width: p.w * scale, height: p.h * scale }}>
-              <iframe
-                ref={(el) => {
-                  frameRefs.current[i] = el;
-                }}
+              <Device
                 key={`${direction}-${theme}-${lang}-${admin}-${show}-${run}`}
-                title={`${t.title}, ${t[p.key]}`}
-                src={phoneSrc(direction, theme, lang, admin, show, run)}
-                data-testid="phone-frame"
-                width={p.w}
-                height={p.h}
-                style={{ transform: `scale(${scale})` }}
+                testid="phone-frame"
+                w={p.w}
+                h={p.h}
+                scale={scale}
+                d={direction}
+                theme={theme}
+                lang={lang}
+                admin={admin}
+                show={show}
+                historyRef={(h) => {
+                  histories.current[i] = h;
+                }}
               />
             </div>
-            <figcaption>
+            <figcaption data-react-aria-top-layer="true">
               <span>{t[p.key]}</span>
-              <button type="button" className="am-event" data-testid={`back-${p.h}`} title={t.backTitle} onClick={() => frameRefs.current[i]?.contentWindow?.history.back()}>
+              <button type="button" className="am-event" data-testid={`back-${p.h}`} title={t.backTitle} onClick={() => histories.current[i]?.back()}>
                 {t.back}
               </button>
             </figcaption>
@@ -936,25 +1092,23 @@ function App({ direction }: { direction: number }) {
   );
 }
 
-/** The phone frame's page: one direction, no review bar, no picker. */
+/** One phone filling the window: one direction, no review bar, no picker. */
 function Bare() {
   const d = Math.min(2, Math.max(0, Number(params.get("d") ?? 0) || 0));
-  const [theme, setTheme] = useState(firstTheme);
   useLayoutEffect(() => {
-    document.documentElement.dataset.theme = theme;
+    document.documentElement.dataset.theme = firstTheme;
     document.documentElement.classList.add("am-bare");
-  }, [theme]);
-  return <Page lang={reviewLanguage} d={d} admin={reviewAdmin} theme={theme} setTheme={setTheme} show={reviewShow} />;
+  }, []);
+  return <Device d={d} theme={firstTheme} lang={reviewLanguage} admin={reviewAdmin} show={reviewShow} />;
 }
 
 // ---------- Host stand-in: only what the production shell asks for ----------
 
 const json = (value: unknown) => new Response(JSON.stringify(value), { headers: { "content-type": "application/json" } });
-const realFetch = window.fetch.bind(window);
-window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+// No request leaves the page: a view's CSP refuses every connection.
+window.fetch = async (input: RequestInfo | URL) => {
   const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
   const path = new URL(url, "http://prototype.test/").pathname;
-  if (!path.startsWith("/api/")) return realFetch(input, init);
   if (path === "/api/v1/server") return json({ schema_version: 1, name: "Habitat", administrator: reviewAdmin, version: VERSION });
   return new Response("", { status: 404 });
 };
@@ -974,6 +1128,7 @@ if (bare) {
   const picker = document.createElement("nav");
   picker.className = "proto-picker";
   picker.setAttribute("aria-label", "Prototype variants");
+  picker.setAttribute("data-react-aria-top-layer", "true");
   picker.innerHTML = '<span class="proto-picker-highlight" aria-hidden="true"></span>';
   DIRECTIONS.forEach((n, i) => {
     const button = document.createElement("button");
