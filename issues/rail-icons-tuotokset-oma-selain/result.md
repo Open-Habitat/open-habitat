@@ -128,6 +128,8 @@ The decision in item.md supersedes the prototype questions above. Home keeps A's
 
 ### Checks and review
 
+Tested runnable revision: `5c20b1fe87120fc69677fd512fd6c9ec86184e25` (tree `366e6044901e4f8e16c88d0d3c15c36981c3810c`). The checks ran before committing this same code; later edits only record results.
+
 - Focused web checks passed: lint, TypeScript and 2,185 tests in 258 files.
 - Focused browser run: `account-sound-reasons.spec.ts`, `attention-sound.spec.ts`, `dictation-bar.spec.ts`, `rail-place-toggle.spec.ts` — 22 passed; `lab-dictation-hour.spec.ts` — 4 passed. Two workers and reply jitter throughout.
 - Changed browser specs also passed `--repeat-each 3`: 12 account-menu cases and 12 dictation cases.
