@@ -3,7 +3,7 @@ created: 2026-11-24
 updated: 2026-11-24
 type: chore
 reporter: runtime-pin-watch
-status: untriaged
+status: open
 priority: normal
 labels:
 - runtime-pin
@@ -11,6 +11,9 @@ labels:
 provenance: other
 provenance_detail: runtime pin watch
 source_ref: runtime-pin:@anthropic-ai/claude-agent-sdk@0.3.331
+lane: runtime-pins
+lane_seq: 24
+preparation: pending
 ---
 
 # Runtime pin: @anthropic-ai/claude-agent-sdk 0.3.331 is available (pinned 0.3.321)
