@@ -3,11 +3,12 @@ created: 2026-11-23
 updated: 2026-11-23
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: unlaned
 preparation: ready
 collision: [web/src/app/accountPreferences.ts]
+closed: 2026-11-23
 ---
 
 # Attention sounds off by default

@@ -244,7 +244,7 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
     rows: {
       "attention-sound-on": {
         label: "Sounds",
-        desc: "A short sound when the agent finishes or wants your attention. Applies to all your devices.",
+        desc: "A short sound when the agent finishes or wants your attention. Off by default; applies to all your devices.",
       },
       "attention-sound-default": {
         label: "Sound",

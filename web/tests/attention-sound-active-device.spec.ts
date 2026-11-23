@@ -45,6 +45,8 @@ async function twoDevices(browser: Browser, page: Page, feature: boolean) {
   await page.request.get("/fixture/scenario?value=ready");
   await page.clock.install();
   await signIn(page);
+  // Sounds are off by default; this person turned them on.
+  await prefer(page, { sound: { enabled: true } });
   await prefer(page, { sound: { night: false } });
   await prefer(page, { experimental: { "sounds-active-device": feature } });
   const other = await browser.newContext(options);

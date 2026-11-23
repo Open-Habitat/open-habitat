@@ -42,8 +42,9 @@ export type SoundChoice =
   | { night: boolean }
   | { night_start: number }
   | { night_end: number };
+/** Off until the person turns it on (Jari 23.11.2026). */
 export const defaultSoundPreferences: SoundPreferences = {
-  enabled: true,
+  enabled: false,
   default: "kalimba",
   length: "short",
   in_view: "quiet",

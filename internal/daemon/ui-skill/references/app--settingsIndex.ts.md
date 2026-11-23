@@ -535,7 +535,7 @@ export const settingsSections = [
         id: "attention-sound-on",
         label: "Äänet",
         kw: ["päällä", "pois", "on", "off"],
-        desc: "Lyhyt ääni, kun agentti on valmis tai haluaa huomiosi. Koskee kaikkia laitteitasi.",
+        desc: "Lyhyt ääni, kun agentti on valmis tai haluaa huomiosi. Oletuksena pois; koskee kaikkia laitteitasi.",
       },
       {
         id: "attention-sound-default",

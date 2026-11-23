@@ -285,6 +285,38 @@ func TestAccountPreferencesSoundLegacyNight(t *testing.T) {
 	}
 }
 
+// A file from when the sound was on by default: its explicit off is the
+// default now and is dropped, and a file without a choice reads as off.
+func TestAccountPreferencesSoundLegacyOff(t *testing.T) {
+	for _, raw := range []string{
+		`{"engine":"codemirror6","sound":{"off":true}}`,
+		`{"engine":"codemirror6","sound":{"off":true,"default":"lasit"}}`,
+		`{"engine":"codemirror6","sound":{"default":"lasit"}}`,
+	} {
+		home := t.TempDir()
+		dir := filepath.Join(home, ".config", "open-habitat")
+		if err := os.MkdirAll(dir, 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "preferences.json"), []byte(raw), 0600); err != nil {
+			t.Fatal(err)
+		}
+		value, err := readPreferences(home)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if reply := soundReply(value.Sound); reply["enabled"] != false {
+			t.Fatalf("%s: %v", raw, reply)
+		}
+		if err := savePreferences(home, value); err != nil {
+			t.Fatal(err)
+		}
+		if saved, _ := os.ReadFile(filepath.Join(dir, "preferences.json")); strings.Contains(string(saved), `"off"`) {
+			t.Fatalf("legacy off kept: %s", saved)
+		}
+	}
+}
+
 func TestAccountPreferencesSound(t *testing.T) {
 	home := t.TempDir()
 	cfg := transport.Config{Home: home, Provider: "github", Subject: "42"}
@@ -303,14 +335,18 @@ func TestAccountPreferencesSound(t *testing.T) {
 		return reply
 	}
 	file := filepath.Join(home, ".config/open-habitat/preferences.json")
-	defaults := map[string]any{"enabled": true, "default": "kalimba", "length": "short", "in_view": "quiet", "night": true, "night_start": float64(22), "night_end": float64(7), "workspaces": map[string]any{}}
+	defaults := map[string]any{"enabled": false, "default": "kalimba", "length": "short", "in_view": "quiet", "night": true, "night_start": float64(22), "night_end": float64(7), "workspaces": map[string]any{}}
 	if reply := put(`{"engine":"vscode"}`, 200); !reflect.DeepEqual(reply["sound"], defaults) {
 		t.Fatalf("defaults: %v", reply["sound"])
 	}
 	if raw, _ := os.ReadFile(file); strings.Contains(string(raw), `"sound"`) {
 		t.Fatalf("defaults stored a key: %s", raw)
 	}
-	put(`{"sound":{"enabled":false}}`, 200)
+	// Turning it on is the person's choice, stored as such.
+	put(`{"sound":{"enabled":true}}`, 200)
+	if raw, _ := os.ReadFile(file); !strings.Contains(string(raw), `"on":true`) {
+		t.Fatalf("explicit on not stored: %s", raw)
+	}
 	put(`{"sound":{"default":"kulho"}}`, 200)
 	put(`{"sound":{"length":"long"}}`, 200)
 	put(`{"sound":{"in_view":"play"}}`, 200)
@@ -327,7 +363,7 @@ func TestAccountPreferencesSound(t *testing.T) {
 	}
 	put(`{"workspace_sound":{"ws_example123":"pisara"}}`, 200)
 	reply := put(`{"experimental":{"attention-sound":true}}`, 200)
-	want := map[string]any{"enabled": false, "default": "kulho", "length": "long", "in_view": "play", "night": false, "night_start": float64(0), "night_end": float64(9), "workspaces": map[string]any{"ws_example123": "pisara"}}
+	want := map[string]any{"enabled": true, "default": "kulho", "length": "long", "in_view": "play", "night": false, "night_start": float64(0), "night_end": float64(9), "workspaces": map[string]any{"ws_example123": "pisara"}}
 	if !reflect.DeepEqual(reply["sound"], want) || reply["engine"] != "vscode" {
 		t.Fatalf("merge lost a sound choice: %v", reply)
 	}
@@ -338,7 +374,7 @@ func TestAccountPreferencesSound(t *testing.T) {
 	// Back to every default: the file keeps no sound key.
 	put(`{"sound":{"night_start":22}}`, 200)
 	put(`{"sound":{"night_end":7}}`, 200)
-	put(`{"sound":{"enabled":true}}`, 200)
+	put(`{"sound":{"enabled":false}}`, 200)
 	put(`{"sound":{"default":"kalimba"}}`, 200)
 	put(`{"sound":{"length":"short"}}`, 200)
 	put(`{"sound":{"in_view":"quiet"}}`, 200)

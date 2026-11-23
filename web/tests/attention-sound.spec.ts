@@ -19,13 +19,21 @@ test.use({
   reducedMotion: "reduce",
 });
 
-async function signIn(page: Page) {
+/** Signs in as a person who turned sounds on; they are off by default,
+ * which `{ on: false }` keeps. */
+async function signIn(page: Page, { on = true } = {}) {
   await page.request.get("/fixture/conversations-reset");
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
   await page.getByTestId("github-sign-in").click();
   await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await expect(page.getByTestId("workspace-navigation")).toBeVisible();
+  if (!on) return;
+  const put = await page.request.put("/api/v1/account/preferences", {
+    headers: await headers(page),
+    data: { sound: { enabled: true } },
+  });
+  expect(put.status()).toBe(200);
 }
 async function headers(page: Page) {
   const s = await (await page.request.get("/auth/session")).json();
@@ -49,18 +57,33 @@ const openWorkspace = async (page: Page, name: string) => {
 test("@attention-sound the strip is available without opting in and renames in place", async ({
   page,
 }) => {
-  await signIn(page);
+  await signIn(page, { on: false });
+  // Off until the person turns it on, and the settings say so.
   expect(await sound(page)).toMatchObject({
-    enabled: true,
+    enabled: false,
     night: true,
     night_start: 22,
     night_end: 7,
   });
   await page.getByTestId("account-menu-trigger").click();
   await expect(page.getByTestId("sound-menu-row")).toBeVisible();
+  await expect(page.getByTestId("sound-menu-state")).toHaveAttribute(
+    "data-status",
+    "off",
+  );
   await page.keyboard.press("Escape");
   await page.goto("/settings");
   await expect(page.getByTestId("settings-aanet")).toBeVisible();
+  await page.goto("/settings/sounds");
+  await expect(
+    page.getByTestId("sound-enabled").getByTestId("segment-off"),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByTestId("sound-settings")).toContainText(
+    "Oletuksena pois",
+  );
+  // Turning it on from the settings is stored for every device.
+  await page.getByTestId("sound-enabled").getByTestId("segment-on").click();
+  await expect.poll(async () => (await sound(page)).enabled).toBe(true);
   await page.goto("/workspaces");
   await openWorkspace(page, "ordinary-dir");
   const strip = page.getByTestId("workspace-strip");

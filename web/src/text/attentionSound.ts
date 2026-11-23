@@ -22,9 +22,9 @@ const fi = {
   } as Record<SoundId, [string, string]>,
   // Settings › Äänet
   intro:
-    "Habitat soittaa lyhyen äänen, kun agentti on valmis tai haluaa huomiosi. Ääni soi avoimessa Habitat-välilehdessä; suljettu selain ei soi.",
+    "Kun äänet ovat päällä, Habitat soittaa lyhyen äänen, kun agentti on valmis tai haluaa huomiosi. Ääni soi avoimessa Habitat-välilehdessä; suljettu selain ei soi.",
   on: "Äänet",
-  onDesc: "Oletuksena päällä. Koskee kaikkia laitteitasi.",
+  onDesc: "Oletuksena pois. Koskee kaikkia laitteitasi.",
   off: "Pois",
   onLabel: "Päällä",
   sound: "Ääni",
@@ -90,8 +90,6 @@ const fi = {
   menuRow: "Äänet",
   menuScope: "Vain tämä laite",
   stateMuted: "Hiljaa tällä laitteella",
-  stateOff: "Pois kaikilla laitteilla",
-  stateOffWhy: "Huomioääni on pois Asetuksista.",
   stateNight: (time: string) => `Yö: hiljaa klo ${time} asti`,
   menuOf: (account: string, state: string) => `${account}, ${state}`,
   // The workspace strip and its sound picker
@@ -142,9 +140,9 @@ export const attentionSoundText = catalog(fi, {
     jaapuikot: ["Icicles", "Three icicles ring."],
   },
   intro:
-    "Habitat plays a short sound when the agent finishes or wants your attention. The sound plays in an open Habitat tab; a closed browser stays silent.",
+    "When sounds are on, Habitat plays a short sound when the agent finishes or wants your attention. The sound plays in an open Habitat tab; a closed browser stays silent.",
   on: "Sounds",
-  onDesc: "On by default. Applies to all your devices.",
+  onDesc: "Off by default. Applies to all your devices.",
   off: "Off",
   onLabel: "On",
   sound: "Sound",
@@ -211,8 +209,6 @@ export const attentionSoundText = catalog(fi, {
   menuRow: "Sounds",
   menuScope: "This device only",
   stateMuted: "Quiet on this device",
-  stateOff: "Off on every device",
-  stateOffWhy: "The attention sound is off in Settings.",
   stateNight: (time: string) => `Night: quiet until ${time}`,
   menuOf: (account: string, state: string) => `${account}, ${state}`,
   strip: "Workspace settings",

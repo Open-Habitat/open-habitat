@@ -58,10 +58,14 @@ type accountPreferences struct {
 }
 
 // soundPreferences keeps only what differs from the defaults: the sound is
-// on, Kalimba, short, quiet for the conversation in view and quiet at night.
+// off, Kalimba, short, quiet for the conversation in view and quiet at night.
+// On is the person's explicit choice to hear it. Off is what files written
+// while the sound was on by default say about turning it off; it now equals
+// the default, so reading drops it and the next save leaves it out.
 // Workspaces maps a workspace to its own sound; a workspace without an entry
 // plays the default.
 type soundPreferences struct {
+	On         bool              `json:"on,omitempty"`
 	Off        bool              `json:"off,omitempty"`
 	Default    string            `json:"default,omitempty"`
 	Length     string            `json:"length,omitempty"`
@@ -105,7 +109,7 @@ func (s *soundPreferences) valid() bool {
 
 // empty: every choice at its default, stored as no "sound" key at all.
 func (s *soundPreferences) empty() bool {
-	return s == nil || !s.Off && s.Default == "" && s.Length == "" && s.InView == "" && !s.NightOff && s.NightStart == nil && s.NightEnd == nil && len(s.Workspaces) == 0
+	return s == nil || !s.On && !s.Off && s.Default == "" && s.Length == "" && s.InView == "" && !s.NightOff && s.NightStart == nil && s.NightEnd == nil && len(s.Workspaces) == 0
 }
 
 // preferencesWrite names one change. The gateway caps a write at 128 bytes,
@@ -446,6 +450,9 @@ func readPreferences(home string) (accountPreferences, error) {
 		result.Language = ""
 	}
 	result.RecentCount = nil
+	if result.Sound != nil {
+		result.Sound.Off = false
+	}
 	if result.Sound.empty() {
 		result.Sound = nil
 	}
@@ -549,7 +556,7 @@ func applyPreferences(home string, change preferencesWrite) (accountPreferences,
 		if c := change.Sound; c != nil {
 			switch c.key {
 			case "enabled":
-				sound.Off = !c.on
+				sound.On, sound.Off = c.on, false
 			case "night":
 				sound.NightOff = !c.on
 			case "night_start":
@@ -636,7 +643,7 @@ func soundReply(s *soundPreferences) map[string]any {
 	if s.NightEnd != nil {
 		end = *s.NightEnd
 	}
-	return map[string]any{"enabled": !s.Off, "default": sound, "length": length, "in_view": inView, "night": !s.NightOff, "night_start": start, "night_end": end, "workspaces": workspaces}
+	return map[string]any{"enabled": s.On, "default": sound, "length": length, "in_view": inView, "night": !s.NightOff, "night_start": start, "night_end": end, "workspaces": workspaces}
 }
 
 func AccountPreferencesHandler(cfg transport.Config, trusted func(*http.Request) bool) http.Handler {

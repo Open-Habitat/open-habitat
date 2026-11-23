@@ -91,7 +91,7 @@ describe("local-clock night", () => {
 });
 
 describe("silence", () => {
-  const on = defaultSoundPreferences;
+  const on = { ...defaultSoundPreferences, enabled: true };
   it("names the strongest reason: off, then this device, then night, then the view", () => {
     const all = { muted: true, night: true, inView: true };
     expect(silence({ sound: { ...on, enabled: false }, ...all })).toBe("off");
@@ -129,7 +129,11 @@ describe("useAttentionSound", () => {
   afterEach(() => vi.restoreAllMocks());
 
   const mount = (
-    sound: SoundPreferences = { ...defaultSoundPreferences, night: false },
+    sound: SoundPreferences = {
+      ...defaultSoundPreferences,
+      enabled: true,
+      night: false,
+    },
   ) =>
     renderHook(
       ({ yours, stale = false }: { yours: AgentNavModel[]; stale?: boolean }) =>
@@ -168,6 +172,7 @@ describe("useAttentionSound", () => {
   it("plays one sound when several become ready together, the workspace's own", () => {
     const hook = mount({
       ...defaultSoundPreferences,
+      enabled: true,
       length: "long",
       night: false,
       workspaces: { ws_example01: "pisara" },
@@ -211,7 +216,7 @@ describe("useAttentionSound", () => {
 
   it("checks the current clock for each reply and never replays a silenced reply at dawn", () => {
     const hour = vi.spyOn(Date.prototype, "getHours").mockReturnValue(23);
-    const hook = mount(defaultSoundPreferences);
+    const hook = mount({ ...defaultSoundPreferences, enabled: true });
     now += 5000;
     hook.rerender({ yours: [row("a", "reply:r2")] });
     expect(plays).toHaveLength(0);

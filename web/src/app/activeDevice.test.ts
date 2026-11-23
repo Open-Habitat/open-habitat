@@ -165,7 +165,7 @@ describe("useAttentionSound with the active device", () => {
         useAttentionSound({
           identity: "wid_example",
           yours,
-          sound: { ...defaultSoundPreferences, night: false },
+          sound: { ...defaultSoundPreferences, enabled: true, night: false },
           loaded: true,
           stale: false,
           activeDevice,
