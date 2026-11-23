@@ -1,0 +1,108 @@
+/* The scroll mechanism of the story sections, three ways (html[data-v]).
+   Layered after the landing page v1's engine CSS; the v1 files are untouched.
+   In the port, the chosen variant's rules go into engine/screen.css without
+   the html[data-v="n"] prefix (the engine's .s1 rules live in page.css, which
+   loads first, so later rules win).
+
+   The line: on the desktop the sticky screen's top edge rests at --vr-top
+   (the engine's 20px); a step is "in place" when its text's top is level with
+   it. On the phone the line is the sticky status bar's bottom (--vr-bar,
+   measured by client.js) and the text rests 16px below it. */
+:root { --vr-top: 20px; --vr-bar: 49px; }
+
+/* ---------- Shared by all three ---------- */
+@media (min-width: 901px) {
+  .s1-app { top: var(--vr-top); }
+  /* Steps start with their text at the top of their box (v1 centred it). */
+  html[data-v] .s1 > .s1-steps > .s1-step { justify-content: flex-start; padding: 0; scroll-margin-top: var(--vr-top); }
+  /* The last step holds the screen pinned until its text has reached the line. */
+  html[data-v] .s1 > .s1-steps > .s1-step:last-child { min-height: calc(100vh - var(--vr-top) - 64px); }
+  .vr-count { display: none; }
+}
+@media (max-width: 900px) {
+  html[data-v] .s1 > .s1-steps > .s1-step { padding: 16px 0 36px; scroll-margin-top: var(--vr-bar); }
+  html[data-v] .s1 > .s1-steps > .s1-step:first-child { padding-top: 16px; }
+  .vr-count { display: none; }
+  .vr-cap { display: none; }
+}
+
+/* ---------- 1 Napsahdus: CSS scroll snapping per step ----------
+   proximity, not mandatory: snap points exist only in the story sections, and
+   mandatory on the root would hold the reader at the last step instead of
+   letting them read on. A step is 75vh, so the next step's time and ask show
+   faded below the active one. No snapping with reduced motion: the browser's
+   snap is an animated scroll; the steps then simply scroll, active at the line.
+   Desktop only: on the phone each step carries its own screen and is 1100 to
+   2400px tall, and proximity snapping pulls any drag shorter than half a step
+   back to the step's start, so the end of a screen could not be read. There
+   the step is simply active once it reaches the status bar. */
+@media (min-width: 901px) and (prefers-reduced-motion: no-preference) {
+  html[data-v="1"] { scroll-snap-type: y proximity; }
+}
+@media (min-width: 901px) {
+  html[data-v="1"] .s1 > .s1-steps > .s1-step { scroll-snap-align: start; min-height: 0; height: 75vh; }
+  html[data-v="1"] .s1 > .s1-steps > .s1-step:last-child { height: auto; }
+}
+/* Without snapping, a step is Page Down's 87.5vh, so each press is one step. */
+@media (min-width: 901px) and (prefers-reduced-motion: reduce) {
+  html[data-v="1"] .s1 > .s1-steps > .s1-step { height: 87.5vh; }
+}
+
+/* ---------- 2 Kiinnitetty teksti: pinned caption ----------
+   Each step's text is sticky at the line inside its own step box. The boxes
+   overlap by 60vh (taller box, the same negative margin; not padding, because
+   a sticky box is held inside its container's content box), so a text is
+   still pinned when the next one arrives at the same place: the two swap in
+   place. Texts that are not active are invisible, so nothing is seen moving;
+   the swap is a 220ms cross-fade with a 10px rise. A step is 87.5vh of
+   scroll, exactly the browser's Page Down / Space, so each press is one step
+   and none is skipped. */
+@media (min-width: 901px) {
+  html[data-v="2"] .s1 > .s1-steps > .s1-step { min-height: 0; height: 87.5vh; opacity: 1; transition: none; }
+  html[data-v="2"] .s1 > .s1-steps > .s1-step:not(:last-child) { height: calc(87.5vh + 60vh); margin-bottom: -60vh; }
+  html[data-v="2"] .s1 > .s1-steps > .s1-step:last-child { height: auto; min-height: 87.5vh; }
+  html[data-v="2"] .s1-txt { position: sticky; top: var(--vr-top); opacity: 0; transform: translateY(10px); pointer-events: none; transition: opacity 220ms ease-out, transform 220ms ease-out; }
+  html[data-v="2"] .s1-step.past .s1-txt { transform: translateY(-10px); }
+  html[data-v="2"] .s1-step.on .s1-txt { opacity: 1; transform: none; pointer-events: auto; }
+  /* Where we are: level with the screen's bottom edge, under the text. */
+  html[data-v="2"] .vr-count { display: flex; grid-column: 1; grid-row: 1; align-self: end; position: sticky; bottom: 84px; align-items: center; gap: 14px; height: 24px; font: 500 13px var(--ah-mono); color: var(--ah-muted); }
+  .vr-num b { color: var(--ah-ink); font-weight: 600; }
+  .vr-ticks { display: flex; gap: 4px; }
+  .vr-ticks i { width: 14px; height: 3px; border-radius: 2px; background: var(--ah-line); transition: background-color 200ms ease-out; }
+  .vr-ticks i.on { background: var(--ah-accent); }
+}
+/* On the phone each step carries its own screen, so a pinned paragraph would
+   cover it; the status bar becomes the caption instead: "3 / 12" and the ask. */
+@media (max-width: 900px) {
+  html[data-v="2"] .vr-cap { display: flex; gap: 10px; align-items: baseline; padding: 0 16px 9px; margin-top: -2px; font-size: 13.5px; line-height: 1.3; }
+  .vr-cap .vr-n { flex: none; font: 600 12px var(--ah-mono); color: var(--ah-accent-ink); }
+  .vr-cap .vr-ask { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-v="2"] .s1-txt, html[data-v="2"] .s1-step.past .s1-txt, .vr-ticks i { transition: none; transform: none; }
+}
+
+/* ---------- 3 Yläreunan aktivointi: free scrolling, activation at the top line ----------
+   Each text is sticky at the line inside its own step box (no overlap): it
+   rises with the page, rests beside the screen's top while its step lasts, and
+   is pushed off by the next text rising beneath it. The active step is the one
+   whose text has come within 64px of the line. Every text's opacity follows
+   its distance from the line (client.js sets --vr-o), so the next one brightens
+   as it comes up and the old one dims as it leaves. */
+@media (min-width: 901px) {
+  html[data-v="3"] .s1 > .s1-steps > .s1-step { min-height: 0; height: 87.5vh; opacity: 1; transition: none; }
+  html[data-v="3"] .s1 > .s1-steps > .s1-step:last-child { height: auto; min-height: 87.5vh; }
+  html[data-v="3"] .s1-txt { position: sticky; top: var(--vr-top); opacity: var(--vr-o, 1); }
+}
+/* 2 and 3: the last text is as tall as the screen, so the two are let go by
+   the section's end at the same moment and leave together. */
+@media (min-width: 901px) {
+  html:is([data-v="2"], [data-v="3"]) .s1 > .s1-steps > .s1-step:last-child > .s1-txt { min-height: calc(100vh - var(--vr-top) - 84px); }
+}
+
+/* ---------- Prototype chrome: the variant line and test anchors ---------- */
+.vr-head { display: flex; flex-wrap: wrap; gap: 6px 22px; align-items: baseline; justify-content: space-between; padding: 12px clamp(16px, 3vw, 40px); background: #f2f2ef; border-bottom: 1px solid #e2e2dc; font: 13.5px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #333; }
+.vr-desc { margin: 0; max-width: 900px; }
+.vr-links { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; }
+.vr-links a { color: #2c6e3f; }
+.vr-tail { height: 40vh; }
