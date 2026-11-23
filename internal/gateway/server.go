@@ -56,6 +56,8 @@ func (s *Server) routes() http.Handler {
 		mux.HandleFunc(accessPath+"/lookup", s.auth.accessHTTP)
 		mux.HandleFunc(accessPath+"/add", s.auth.accessHTTP)
 		mux.HandleFunc(accessPath+"/remove", s.auth.accessHTTP)
+		mux.HandleFunc(accessPath+"/remove-person", s.auth.accessHTTP)
+		mux.HandleFunc(accessPath+"/cancel-removal", s.auth.accessHTTP)
 		mux.HandleFunc(accessPath+"/role", s.auth.accessHTTP)
 		mux.HandleFunc(accessPath+"/forget", s.auth.accessHTTP)
 		mux.HandleFunc(accessPath+"/teams/add", s.auth.accessHTTP)
