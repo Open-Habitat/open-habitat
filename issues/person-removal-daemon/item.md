@@ -1,8 +1,8 @@
 ---
 created: 2026-11-21
-updated: 2026-11-21
+updated: 2026-11-23
 type: feature
-status: open
+status: done
 priority: normal
 provenance: other
 provenance_detail: ADR 0037 implementation (technical decision run)
@@ -13,6 +13,11 @@ preparation: ready
 related: ['@person-removal']
 lane: person-removal
 lane_seq: 3
+closed: 2026-11-23
+closed_by: agent
+commits:
+- hash: 3e1e1e63d
+  summary: daemon disconnect-all
 ---
 
 # Daemon: disconnect a person's services at the providers before removal
@@ -31,3 +36,9 @@ A gateway-built request only (never on the agent listener) that, as the person a
 - leaves `gh` alone (its token's only copy goes with the home).
 
 The reply carries counts per provider and outcome (`revoked`, `local_only`, `failed`), never an account name, address or token. Repeating the request is harmless. Contract change starts in `contracts/v1/`.
+
+## Resolution
+
+### 2026-11-23T04:41:52Z · @agent
+
+Disconnect-everything route landed; decisions in result.md.
