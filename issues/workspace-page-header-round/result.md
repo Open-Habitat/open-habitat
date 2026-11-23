@@ -1,3 +1,59 @@
+# Tulos, kierros 2: C:n muunnelmat (23.11.)
+
+Kierros `design-system/prototypes/rounds/2026-11-23-workspace-page-header-2/`
+(rakennus ja tarkistus sen `NOTES.md`:ssä). Jarin 23.11. päätöksen mukaan
+vain C Laattojen muunnelmia: kolme valitsimen takana, yksi rivi kustakin
+sivun yläreunassa ja suositus niiden alla. Tuotannon tokenit ja komponentit,
+työpöytä 1280 ja puhelin 390, Päivä, Yö ja Korkea kontrasti. Tuotantokoodi
+ei muuttunut. Tarkistus `check.mjs`: 245 tarkistusta läpi, konsoli puhdas.
+
+Kuvat (DPR 2), ei repossa: `/var/tmp/agent-keep/workspace-page-header-round-2/`
+(`v<n>-<muunnelma>-<tilanne>-<leveys>-<teema>.png`, `heights.json`).
+
+| Muunnelma | Mitä se muuttaa C:stä | 1280 px | 390 px |
+|---|---|---|---|
+| **C1 Matala** | Laatat 88 px, Kuvakkeen ja Äänen kuva arvonsa vieressä; toiminnot rivinä alla. | 142 | 220 |
+| **C2 Toiminnot sivulla** | Laatat ennallaan (120 px), toiminnot sarakkeena laattojen oikealla puolella; yläosa on yksi kaista. | 134 | 240 |
+| **C3 Sanat näkyvissä** | Nimi 30 px ja lihavampi, ja jokainen laatta sanoo tekonsa (Vaihda, Muokkaa). | 174 | 238 |
+
+Korkeus on otsikkoalue sivun sisältöön asti (kierroksen 1 C: 174 / 232).
+
+## Suositus: C2 Toiminnot sivulla
+
+C2 pitää laatat sellaisina kuin ne valittiin, eikä kuva pienene
+tunnistamattomaksi kuten C1:ssä. Silti se on kolmesta matalin, koska
+toimintorivi poistuu laattojen alta. Puhelimessa C2 on sama
+kuin kierroksen 1 C (toiminnot rivinä laattojen alla), joten sen etu näkyy
+vain työpöydällä. Pitkä nimi mahtuu kahdelle riville kapeampaan Nimen
+laattaan.
+
+C1 on hyvä, jos tiheys painaa enemmän kuin kuvan koko. C3:n sanat voi
+lisätä C2:een erikseen, jos Jari kokee, ettei laattojen muokattavuus näy
+ilman hoveria; tämän kierroksen perusteella nimetyt laatat (Kuvake, Nimi,
+Ääni) riittävät ilman niitäkin.
+
+## Decisions for later review (kierros 2)
+
+- **C2:n siivoustoiminnot ovat sarakkeen alarivillä** Uuden keskustelun ja
+  Uuden worktreen alla. Vaihtoehto oli ne Nimen laatan oikeassa
+  yläkulmassa. Valitsin sarakkeen, koska silloin kaikki toiminnot ovat
+  yhdessä ryhmässä eikä Nimen laatta saa ylimääräisiä painikkeita.
+- **C1:n laatat ovat 88 px eivätkä 80 px.** Nimen laattaan pitää mahtua
+  nimike, h1 ja polku; 80 px:ssä polku leikkautuisi.
+- **C3:n Muokkaa on oma painike**, Kuvakkeen ja Äänen Vaihda on osa laatan
+  painiketta. Nimi muuttuu jo h1:stä klikkaamalla, joten Muokkaa on toinen
+  reitti samaan; Kuvakkeen ja Äänen koko laatta on jo painike.
+- **Arkistoitu-merkintä on kaikissa muunnelmissa laattojen alla omalla
+  rivillään**, ei toimintorivillä, jotta C2:ssa ja C1:ssä se on samassa
+  paikassa.
+
+## Kysymys Jarille
+
+C2 vai C1? Ratkaisee, kumpi painaa enemmän: laattojen kuvan koko (C2) vai
+yläosan tiheys myös puhelimessa (C1).
+
+---
+
 # Tulos: työtilan sivun yläosa, yksi kierros
 
 Kierros `design-system/prototypes/rounds/2026-11-22-workspace-page-header/`
