@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 lane: unlaned
-preparation: ready
+preparation: pending
 ---
 
 # Apple Notes and Reminders for agents (research)
