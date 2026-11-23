@@ -1,0 +1,8 @@
+/* Alice's intro and end. The engine styles .day-intro / .day-end; these are the block's own additions. */
+[data-block="alice-day"].day-intro > p:not(.kicker):not(.ad-hint) { font-size: clamp(17px, 1.8vw, 20px); color: var(--ah-ink-2); }
+[data-block="alice-day"].day-intro .ad-hint { display: inline-flex; align-items: center; gap: 8px; margin: 6px 0 0; font: 500 12.5px var(--ah-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--ah-muted); }
+[data-block="alice-day"].day-intro .ad-hint::after { content: ""; width: 7px; height: 7px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: translateY(-2px) rotate(45deg); }
+[data-block="alice-day"].day-end .ad-sum { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; margin: 26px 0 22px; font-size: 15px; font-weight: 400; color: var(--ah-ink-2); }
+[data-block="alice-day"].day-end .ad-sum span { display: inline-flex; align-items: baseline; gap: 7px; padding: 8px 16px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-pill); background: var(--ah-surface); }
+[data-block="alice-day"].day-end .ad-sum b { font-size: 20px; font-weight: 600; color: var(--ah-accent-ink); letter-spacing: -.01em; }
+[data-block="alice-day"].day-end .ad-next { font-size: clamp(16px, 1.6vw, 18px); font-weight: 400; color: var(--ah-ink-2); }
