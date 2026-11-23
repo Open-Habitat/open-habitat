@@ -282,6 +282,39 @@ func TestCloneJobOutlivesItsStream(t *testing.T) {
 	}
 }
 
+// A start that meets a brief holder of the ~/src writer, such as the checkout
+// observation the browser makes just before it, queues behind it instead of
+// being refused for good; a running clone still refuses the next one at once.
+func TestCloneStartWaitsOutABriefWriter(t *testing.T) {
+	home := t.TempDir()
+	script := gitWrapper(t, home, seedBare(t), false)
+	f := newCloneJobsFixture(t, home, script)
+	if !cloneWriter.TryLock("workspace_checkout_check_running") {
+		t.Fatal("writer already held")
+	}
+	released := make(chan struct{})
+	go func() {
+		defer close(released)
+		time.Sleep(200 * time.Millisecond)
+		cloneWriter.Unlock()
+	}()
+	if err := os.WriteFile(f.gate, nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	f.start("full")
+	<-released
+	f.waitFile(f.ready)
+	began := time.Now()
+	code, reply := f.action(`{"action":"start","full_name":"org/repo","mode":"full"}`)
+	if errorCode, _ := reply["error"].(map[string]any)["code"].(string); code != 409 || errorCode != "clone_running" || time.Since(began) > time.Second {
+		t.Fatalf("start beside a running clone: %d %v after %s", code, reply, time.Since(began))
+	}
+	if err := os.Remove(f.gate); err != nil {
+		t.Fatal(err)
+	}
+	f.settle()
+}
+
 // Cancel and failure remove the directory the job created, so a retry is
 // admitted instead of refused with checkout_exists.
 func TestCloneJobCancelAndFailureCleanUp(t *testing.T) {

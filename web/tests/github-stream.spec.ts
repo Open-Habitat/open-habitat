@@ -86,8 +86,18 @@ test("@github-first continue starts clones in the background and reaches the AI 
       page.getByRole("link").and(page.getByTestId("clone-jobs")),
     ).toHaveAttribute("data-live", "true");
     await page.request.get("/fixture/clone?mode=release");
-    await expect.poll(() => checkout(page, "fixture/first")).toBe("confirmed");
-    await expect.poll(() => checkout(page, "fixture/second")).toBe("confirmed");
+    // Each name then goes through native work in turn: the synthetic clone
+    // notices the release on its next 1 s look, Git finishes the checkout and
+    // the daemon verifies it with Git reads, and only after the first has
+    // settled does the queue start the second. On a loaded host that chain
+    // outlasts the 5 s default poll; a clone that never settles still fails.
+    const settled = { timeout: 10_000 };
+    await expect
+      .poll(() => checkout(page, "fixture/first"), settled)
+      .toBe("confirmed");
+    await expect
+      .poll(() => checkout(page, "fixture/second"), settled)
+      .toBe("confirmed");
     expect(await count(page)).toBe(before + 2);
     await expect(page.getByTestId("clone-jobs")).toHaveCount(0);
   } finally {

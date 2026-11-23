@@ -274,7 +274,7 @@ func (c *CloneJobs) handlerAt(path string, trusted func(*http.Request) bool) htt
 				}
 				switch {
 				case g.Action == "remove":
-					c.remove(w, g.FullName, true)
+					c.remove(w, r, g.FullName, true)
 				case g.Provider == "gitlab":
 					c.startForge(w, r, func(ctx context.Context) (cloneTarget, int, string) {
 						return c.resolveGitLab(ctx, g.ConnectionID, g.RepositoryID, g.Action == "restart")
@@ -294,7 +294,7 @@ func (c *CloneJobs) handlerAt(path string, trusted func(*http.Request) bool) htt
 			case "start", "restart":
 				c.start(w, r, in.FullName, in.Mode, in.Action == "restart")
 			case "remove":
-				c.remove(w, in.FullName, false)
+				c.remove(w, r, in.FullName, false)
 			case "cancel":
 				c.cancelJob(w, in.JobID)
 			case "dismiss":
@@ -323,6 +323,24 @@ func validCloneAction(body []byte, action, name, mode, id string) bool {
 	return false
 }
 
+// takeWriter takes the ~/src writer for one of the person's clone writes. A
+// running clone refuses it at once. Any other holder, a checkout observation
+// most often (the browser observes a name just before starting it, and
+// another tab may be polling it), is brief, so the write queues behind it as
+// the other short writes do: a start that met one would otherwise be refused
+// as checkout_unavailable, which the client takes as final. It answers the
+// refusal itself and returns false.
+func (c *CloneJobs) takeWriter(w http.ResponseWriter, r *http.Request) bool {
+	if cloneWriter.TryLock("workspace_clone_running") {
+		return true
+	}
+	if _, running := c.runningName(); !running && cloneWriter.waitBriefly(r.Context(), "workspace_clone_running") == "" {
+		return true
+	}
+	c.busy(w)
+	return false
+}
+
 // busy answers a write refused because ~/src has another writer.
 func (c *CloneJobs) busy(w http.ResponseWriter) {
 	if _, running := c.runningName(); running {
@@ -336,8 +354,7 @@ func (c *CloneJobs) busy(w http.ResponseWriter) {
 // are ordinary errors; after the destination is reserved, the job owns the
 // writer lock, the descriptors and the process until it settles.
 func (c *CloneJobs) start(w http.ResponseWriter, r *http.Request, fullName, mode string, restart bool) {
-	if !cloneWriter.TryLock("workspace_clone_running") {
-		c.busy(w)
+	if !c.takeWriter(w, r) {
 		return
 	}
 	job, status, code := c.admit(r.Context(), fullName, mode, restart)
@@ -667,9 +684,8 @@ func (c *CloneJobs) dismiss(w http.ResponseWriter, id string) {
 // recognises ~/src/<name> as one before touching it. A Gitea or GitLab one is
 // named by the path its own origin ends with, so it can be removed after its
 // connection is gone; nothing else about it comes from the browser.
-func (c *CloneJobs) remove(w http.ResponseWriter, fullName string, forge bool) {
-	if !cloneWriter.TryLock("workspace_clone_running") {
-		c.busy(w)
+func (c *CloneJobs) remove(w http.ResponseWriter, r *http.Request, fullName string, forge bool) {
+	if !c.takeWriter(w, r) {
 		return
 	}
 	defer cloneWriter.Unlock()

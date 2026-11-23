@@ -90,8 +90,7 @@ func cloneDirName(fullName string) string { return fullName[strings.LastIndexByt
 
 // startForge admits a Gitea or GitLab clone resolved by resolve.
 func (c *CloneJobs) startForge(w http.ResponseWriter, r *http.Request, resolve func(context.Context) (cloneTarget, int, string)) {
-	if !cloneWriter.TryLock("workspace_clone_running") {
-		c.busy(w)
+	if !c.takeWriter(w, r) {
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
