@@ -1,0 +1,263 @@
+{
+ "versions": {
+  "ortools": "9.15.6755",
+  "pymupdf": "2.1",
+  "pdftotext": "pdftotext version 24.02.0"
+ },
+ "rota": {
+  "start": "2026-11-30",
+  "people": [
+   "Alice",
+   "Bob",
+   "Kirsi",
+   "Carol",
+   "Dave",
+   "Erin",
+   "Sami",
+   "Noor",
+   "Tom",
+   "Iris"
+  ],
+  "grid": {
+   "Alice": "--SSSS-PPP--S-PP--PS-PPP----",
+   "Bob": "PPPPP--PP-PPS---PPPSS-SS----",
+   "Kirsi": "OOO----OOO----OOO----OO-----",
+   "Carol": "--SSSS-SSS--CS-SSSS--SSS----",
+   "Dave": "OOOOO--O-OOOP---POOP-OOO----",
+   "Erin": "SSC--CS--CSSC-S-C--C-SSC----",
+   "Sami": "PP-PP--PP-PP--PP-PP--PP-----",
+   "Noor": "-PPP----PP-P---PPP-P--PP----",
+   "Tom": "PP-PP----PPPP-P---PP-PP-----",
+   "Iris": "PP-P---PPPP---PPPP---P-P----"
+  },
+  "rules": [
+   "Closed 24 to 27 December: nobody works",
+   "Shop open Monday to Friday: at least one person in the shop",
+   "Saturdays: two people in the shop",
+   "Advent Sundays 6, 13 and 20 December: one person in the shop, nothing else on a Sunday",
+   "Only till-trained people in the shop: Alice, Bob, Carol, Erin",
+   "The courier collects Monday to Friday: at least two packers",
+   "Christmas rush 7 to 22 December: at least four packers on courier days",
+   "Rush Saturdays 12 and 19 December: at least two packers",
+   "Sami and the seasonal packers only pack",
+   "Every packing day has a lead: Bob, Alice or Dave packs",
+   "Until 13 December Sami packs only on days Bob packs",
+   "Thursdays: Bob and Sami both pack, and Alice does not",
+   "Office open Monday to Friday: Kirsi or Dave is there",
+   "Kirsi works three days a week",
+   "Erin teaches every Wednesday, and Saturdays 5, 12 and 19 December",
+   "Carol helps at the wreath course on 12 December",
+   "Nobody works more than five days in a row",
+   "Full-timers work four or five days in a full week; agreed leave counts as a day",
+   "Seasonal packers work three or four days a week",
+   "Sami works four days a week",
+   "Everyone has two days off in a row every week; Sunday with the Monday after counts",
+   "Nobody works more than one Advent Sunday, and has the Monday after it off",
+   "The seasonal packers get the same number of days, give or take one"
+  ],
+  "failed": [],
+  "wishes": [
+   {
+    "who": "Kirsi",
+    "text": "Monday to Wednesday as her three days",
+    "kept": true,
+    "days": []
+   },
+   {
+    "who": "Kirsi",
+    "text": "Wed 23 Dec off",
+    "kept": true,
+    "days": [
+     23
+    ]
+   },
+   {
+    "who": "Carol",
+    "text": "Sat 19 Dec off",
+    "kept": true,
+    "days": [
+     19
+    ]
+   },
+   {
+    "who": "Bob",
+    "text": "Sat 19 Dec off",
+    "kept": false,
+    "days": [
+     19
+    ]
+   },
+   {
+    "who": "Alice",
+    "text": "Fri 11 Dec off",
+    "kept": true,
+    "days": [
+     11
+    ]
+   },
+   {
+    "who": "Alice",
+    "text": "No Advent Sundays",
+    "kept": true,
+    "days": []
+   },
+   {
+    "who": "Erin",
+    "text": "Tue 15 Dec off",
+    "kept": true,
+    "days": [
+     15
+    ]
+   },
+   {
+    "who": "Erin",
+    "text": "Not the Sunday after the wreath course",
+    "kept": true,
+    "days": [
+     13
+    ]
+   },
+   {
+    "who": "Dave",
+    "text": "Fri 4 Dec off",
+    "kept": false,
+    "days": [
+     4
+    ]
+   },
+   {
+    "who": "Dave",
+    "text": "At most two packing days a week",
+    "kept": true,
+    "days": []
+   },
+   {
+    "who": "Sami",
+    "text": "Wednesdays free",
+    "kept": true,
+    "days": []
+   },
+   {
+    "who": "Sami",
+    "text": "Sat 12 Dec off",
+    "kept": true,
+    "days": [
+     12
+    ]
+   },
+   {
+    "who": "Noor",
+    "text": "Mondays free",
+    "kept": true,
+    "days": []
+   },
+   {
+    "who": "Noor",
+    "text": "Fri 18 Dec off",
+    "kept": true,
+    "days": [
+     18
+    ]
+   },
+   {
+    "who": "Tom",
+    "text": "Both rush Saturdays",
+    "kept": true,
+    "days": [
+     12,
+     19
+    ]
+   },
+   {
+    "who": "Tom",
+    "text": "Tue 8 Dec off",
+    "kept": true,
+    "days": [
+     8
+    ]
+   },
+   {
+    "who": "Iris",
+    "text": "Fridays free",
+    "kept": true,
+    "days": []
+   },
+   {
+    "who": "Iris",
+    "text": "Tue 22 Dec off",
+    "kept": true,
+    "days": [
+     22
+    ]
+   },
+   {
+    "who": "Carol",
+    "text": "Mon 30 Nov off",
+    "kept": true,
+    "days": [
+     0
+    ]
+   }
+  ],
+  "status": "OPTIMAL",
+  "seconds": 1.08,
+  "variables": 1203,
+  "constraints": 1484,
+  "log": [
+   "CP-SAT OPTIMAL in 0.65 s · 1203 variables · 1484 constraints",
+   "rules checked on the result: 23 of 23 hold",
+   "wishes kept: 17 of 19",
+   "  not kept: Bob, Sat 19 Dec off",
+   "  not kept: Dave, Fri 4 Dec off"
+  ]
+ },
+ "redact": {
+  "made": "11 documents · 35 entries in redactions.csv",
+  "log": [
+   "01-employment-contract.pdf: 2 redactions",
+   "02-contract-amendment.pdf: 5 redactions",
+   "03-pay-summary-2023.pdf: 2 redactions",
+   "04-shift-record-2024-03.pdf: 11 redactions",
+   "05-review-2023.pdf: 6 redactions",
+   "06-training-record.pdf: 6 redactions",
+   "07-sick-leave.pdf: 2 redactions",
+   "08-incident-note.pdf: 4 redactions",
+   "09-email-holiday-2024.pdf: 3 redactions",
+   "10-leaving-checklist.pdf: 1 redactions",
+   "11-reference.pdf: 0 redactions",
+   "11 documents · 42 redactions · text removed, not covered · metadata cleared"
+  ],
+  "names": 6,
+  "before": 16,
+  "after": 0,
+  "documents": 11,
+  "shown": "04-shift-record-2024-03.pdf",
+  "text": "EX AMPLE STU DIO · PERSONNEL FILE · NORA HALE · EMPLOYEE 0117\n\n\n\nShift and overtime record\nMarch 2024\n\nShifts worked by Nora Hale in the packing room and the shop, with changes agreed during\nthe month.\nDATE                    SHIFT       HOURS        NOTE\n\nThu 7 March             Pack        9            Wholesale day, 2 h overtime\nThu 14 March            Shop        7.5          Swapped with                  ; approved by Dave\nSat 16 March            Shop        6            Covered for             (           )\nWed 27 March            Pack        9.5          Easter orders, 4 h overtime\n\nOvertime\nOvertime in March: 6 hours, approved by Dave and paid in April at €17.10 an hour plus 50 %.\nFor comparison,                      worked                and                    of overtime in March,\nboth at      an hour.\n\nKeys\nKey 7 to the packing room was held by Nora Hale all month. The second key holder was\n              ,           , telephone         .\n\nKept in people/files/. Changes to this record are made by Dave.\n\f",
+  "metaBefore": {
+   "format": "PDF 1.4",
+   "title": "Shift and overtime record · Nora Hale",
+   "author": "",
+   "subject": "",
+   "keywords": "",
+   "creator": "Chromium",
+   "producer": "Skia/PDF m153",
+   "creationDate": "D:20261123121822+00'00'",
+   "modDate": "D:20261123121822+00'00'",
+   "trapped": "",
+   "encryption": null
+  },
+  "metaAfter": {
+   "format": "PDF 1.4",
+   "title": "",
+   "author": "",
+   "subject": "",
+   "keywords": "",
+   "creator": "",
+   "producer": "",
+   "creationDate": "",
+   "modDate": "",
+   "trapped": "",
+   "encryption": null
+  }
+ }
+}
