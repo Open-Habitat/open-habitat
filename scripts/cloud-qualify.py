@@ -53,7 +53,10 @@ INTEGRATIONS_INSTALLED = {'imap': [True, None], 'caldav': [True, None], 'carddav
                           'microsoft': [False, 'app_credentials_required'],
                           'dropbox': [False, 'app_credentials_required'],
                           'gitea': [True, None],
-                          'gitlab': [True, None]}
+                          'gitlab': [True, None],
+                          # Native Pi OAuth connectors: no tool, so always offered.
+                          'atlassian': [True, None],
+                          'trello': [True, None]}
 PACKAGE_RE = re.compile(r'^open-habitat-[0-9A-Za-z.+-]+-linux-(amd64|arm64)\.tar\.gz$')
 # What uname -m reports for each package architecture.
 MACHINES = {'amd64': 'x86_64', 'arm64': 'aarch64'}
