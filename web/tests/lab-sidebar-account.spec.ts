@@ -73,7 +73,9 @@ for (const width of [1440, 390]) {
         else await page.getByTestId("menu-feedback").click();
         await expect(page.getByTestId("general-text")).toBeFocused();
         await page.keyboard.press("Escape");
-        await expect(trigger).toBeFocused();
+        await expect(
+          width === 390 ? page.getByTestId("menu-feedback") : trigger,
+        ).toBeFocused();
         await expect(page.getByTestId("general-feedback")).toHaveCount(0);
       });
     });
@@ -246,6 +248,10 @@ test("@lab long rail, workspace actions, drawer and four visual states", async (
         `${process.env.OH_ACCOUNT_MENU_CAPTURE}/feedback-phone-${theme}`,
       );
     await page.getByTestId("general-text").fill("Synthetic feedback draft");
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("general-nudge")).toBeVisible();
+    await page.goBack();
+    await expect(page.getByTestId("menu-feedback")).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(account).toBeFocused();
     await page

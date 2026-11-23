@@ -1,0 +1,68 @@
+.ah-account-sheet-overlay {
+  place-items: end stretch;
+  padding: var(--ah-s6) 0 0;
+}
+.ah-modal.ah-account-sheet {
+  width: 100%;
+  max-height: calc(100dvh - var(--ah-s6));
+  border-radius: var(--ah-r-xl) var(--ah-r-xl) 0 0;
+  background: var(--ah-surface);
+  box-shadow: var(--ah-shadow-dialog);
+  overscroll-behavior: contain;
+}
+.ah-account-sheet[data-entering] {
+  animation: ah-account-sheet-in var(--ah-fade);
+}
+@keyframes ah-account-sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ah-account-sheet[data-entering] {
+    animation: none;
+  }
+}
+.ah-account-sheet-dialog.ah-account-menu {
+  min-width: 0;
+  max-width: none;
+  padding: var(--ah-s2) var(--ah-s3)
+    calc(var(--ah-s3) + env(safe-area-inset-bottom));
+  outline: none;
+}
+.ah-account-sheet-head {
+  touch-action: none;
+}
+.ah-account-sheet-grip {
+  width: var(--ah-touch);
+  height: var(--ah-s1);
+  margin: 0 auto var(--ah-s2);
+  border-radius: var(--ah-r-sm);
+  background: var(--ah-line-strong);
+}
+.ah-account-sheet [role="menuitem"],
+.ah-account-sheet .ah-account-menu-theme-row {
+  min-height: var(--ah-touch);
+}
+.ah-account-sheet .ah-account-menu-theme > button {
+  min-height: var(--ah-control-row);
+  min-width: var(--ah-touch);
+}
+.ah-feedback-sheet .ah-general-feedback {
+  position: static;
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding-bottom: calc(var(--ah-s4) + env(safe-area-inset-bottom));
+}
+.ah-feedback-sheet .ah-general-head .ah-explain-x {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ah-s1);
+  width: auto;
+  min-height: var(--ah-touch);
+  font-size: var(--ah-size-ui);
+}

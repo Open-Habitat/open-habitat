@@ -27,6 +27,7 @@ import { Icon } from "./Icon";
 import { Button } from "./Primitives";
 import type { Availability } from "./types";
 import { enabled, unavailableReason } from "./types";
+import { useAccountSheetDrag } from "./useAccountSheet";
 
 const txt = liveText(overlaysText);
 
@@ -195,6 +196,9 @@ export function Menu({
   buttonRef,
   placement,
   isNonModal,
+  sheet = false,
+  isOpen,
+  onOpenChange,
 }: {
   label: string;
   triggerLabel?: string;
@@ -206,6 +210,10 @@ export function Menu({
   triggerTestId?: string;
   buttonRef?: RefObject<HTMLButtonElement | null>;
   isNonModal?: boolean;
+  /** Account controls use a bottom sheet on phones, keeping feedback above it. */
+  sheet?: boolean;
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
   placement?: "top start" | "end top" | "bottom start" | "bottom end";
   betweenItems?: ReactNode;
   items: {
@@ -225,7 +233,16 @@ export function Menu({
   const ownTriggerRef = useRef<HTMLButtonElement>(null);
   const triggerRef = buttonRef ?? ownTriggerRef;
   const popoverRef = useRef<HTMLDivElement>(null);
-  const [open, setOpen] = useState(false);
+  const [ownOpen, setOwnOpen] = useState(false);
+  const open = isOpen ?? ownOpen;
+  const setOpen = useCallback(
+    (value: boolean) => {
+      setOwnOpen(value);
+      onOpenChange?.(value);
+    },
+    [onOpenChange],
+  );
+  const drag = useAccountSheetDrag(() => setOpen(false));
   useEffect(() => {
     if (!isNonModal || !open) return;
     // Nonmodal React Aria popovers close on blur, but a tap on plain text
@@ -240,7 +257,7 @@ export function Menu({
     };
     document.addEventListener("pointerdown", dismiss, true);
     return () => document.removeEventListener("pointerdown", dismiss, true);
-  }, [isNonModal, open, triggerRef]);
+  }, [isNonModal, open, triggerRef, setOpen]);
   const actionItems = betweenItems ? items.slice(0, -1) : items;
   const renderItem = (item: (typeof items)[number]) => (
     <ControlMenuItem
@@ -265,9 +282,52 @@ export function Menu({
     </ControlMenuItem>
   );
   const sections = [...new Set(actionItems.map((item) => item.section))];
+  const Trigger = sheet ? DialogTrigger : MenuTrigger;
+  const content = (
+    <>
+      {!sheet && heading ? (
+        <div className="ah-menu-heading">{heading}</div>
+      ) : null}
+      <AriaMenu
+        shouldCloseOnSelect={sheet ? false : undefined}
+        data-testid="disclosure-toggle"
+        aria-label={label}
+        onAction={(key) => {
+          if (sheet && isOpen === undefined) setOpen(false);
+          onAction(String(key));
+        }}
+      >
+        {sections.some(Boolean)
+          ? sections.flatMap((section, index) => [
+              ...(index ? [<Separator key={`separator-${section}`} />] : []),
+              <MenuSection key={section ?? "ungrouped"} aria-label={section}>
+                {actionItems
+                  .filter((item) => item.section === section)
+                  .map(renderItem)}
+              </MenuSection>,
+            ])
+          : actionItems.map(renderItem)}
+      </AriaMenu>
+      {betweenItems ? (
+        <>
+          {betweenItems}
+          <AriaMenu
+            shouldCloseOnSelect={sheet ? false : undefined}
+            aria-label={txt.menuEnd(label)}
+            onAction={(key) => {
+              if (sheet && isOpen === undefined) setOpen(false);
+              onAction(String(key));
+            }}
+          >
+            {renderItem(items[items.length - 1])}
+          </AriaMenu>
+        </>
+      ) : null}
+    </>
+  );
   return (
-    <MenuTrigger
-      isOpen={isNonModal ? open : undefined}
+    <Trigger
+      isOpen={isNonModal || sheet ? open : undefined}
       onOpenChange={(open) => {
         setOpen(open);
         if (!open)
@@ -295,58 +355,43 @@ export function Menu({
         {trigger ?? label}
         <span aria-hidden="true" className="ah-menu-chevron" />
       </ControlButton>
-      <Popover
-        ref={popoverRef}
-        isNonModal={isNonModal}
-        shouldCloseOnInteractOutside={
-          isNonModal
-            ? (target) => !triggerRef.current?.contains(target)
-            : undefined
-        }
-        placement={placement}
-        className={`ah-popover${popoverClassName ? ` ${popoverClassName}` : ""}`}
-      >
-        {heading ? <div className="ah-menu-heading">{heading}</div> : null}
-        <AriaMenu
-          data-testid="disclosure-toggle"
-          aria-label={label}
-          onAction={(key) => onAction(String(key))}
+      {sheet ? (
+        <ModalOverlay
+          className="ah-overlay ah-account-sheet-overlay"
+          isDismissable
         >
-          {sections.some(Boolean)
-            ? sections.flatMap((section, index) => [
-                ...(index ? [<Separator key={`separator-${section}`} />] : []),
-                <MenuSection key={section ?? "ungrouped"} aria-label={section}>
-                  {actionItems
-                    .filter((item) => item.section === section)
-                    .map(renderItem)}
-                </MenuSection>,
-              ])
-            : actionItems.map(renderItem)}
-        </AriaMenu>
-        {betweenItems ? (
-          <>
-            {betweenItems}
-            <AriaMenu
-              aria-label={txt.menuEnd(label)}
-              onAction={(key) => onAction(String(key))}
+          <Modal className="ah-modal ah-account-sheet" style={drag.style}>
+            <AriaDialog
+              className={`ah-account-sheet-dialog ${popoverClassName ?? ""}`}
+              aria-label={label}
+              data-testid="account-menu-sheet"
             >
-              <ControlMenuItem
-                data-testid={`menu-${items[items.length - 1].id}`}
-                id={items[items.length - 1].id}
-                danger={items[items.length - 1].danger}
-                className={
-                  items[items.length - 1].danger ? "ah-menu-danger" : undefined
-                }
-                textValue={items[items.length - 1].label}
-              >
-                {items[items.length - 1].icon}
-                <span>{items[items.length - 1].label}</span>
-              </ControlMenuItem>
-            </AriaMenu>
-          </>
-        ) : null}
-      </Popover>
-    </MenuTrigger>
+              <div className="ah-account-sheet-head" {...drag.head}>
+                <div className="ah-account-sheet-grip" aria-hidden="true" />
+                {heading ? (
+                  <div className="ah-menu-heading">{heading}</div>
+                ) : null}
+              </div>
+              {content}
+            </AriaDialog>
+          </Modal>
+        </ModalOverlay>
+      ) : (
+        <Popover
+          ref={popoverRef}
+          isNonModal={isNonModal}
+          shouldCloseOnInteractOutside={
+            isNonModal
+              ? (target) => !triggerRef.current?.contains(target)
+              : undefined
+          }
+          placement={placement}
+          className={`ah-popover${popoverClassName ? ` ${popoverClassName}` : ""}`}
+        >
+          {content}
+        </Popover>
+      )}
+    </Trigger>
   );
 }
 export function Disclosure({
