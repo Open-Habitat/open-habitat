@@ -1,0 +1,106 @@
+/* Rail state change, round 2: motion. Tokens only; the shell, rail, rows,
+   marks, counts and edge chips are production's (components.css). These
+   rules add the review panel, the desktop stage and the phone box, and the
+   effects the round sets on production's elements while they run:
+     [data-rsc-roll] (+ data-rsc-old/new)  A, C  a number or time rolls
+     [data-rsc-hold]                       A, C  ring on a changed number
+     .ah-now-row[data-rsc-glow|still]      A     the row's glow on arrival
+     [data-rsc-sweep] > .rsc-sweep          B     one band of light
+     [data-rsc-outline]                    B     the band, reduced motion
+     .ah-rail-beyond-chip[data-rsc-ring]   A     edge chip ring, fading
+     .rsc-fly, .ah-navigation-badge[data-rsc-pending]  A  phone flight
+   The flights, slides and bands are Web Animations started by round.tsx,
+   never with reduced motion; CSS animations here are also stopped by
+   production's tokens/motion.css under the media query. */
+html, body { margin: 0; height: 100%; background: var(--ah-bg); color: var(--ah-ink); font: var(--ah-size-ui) / 1.45 var(--ah-font); }
+#root { height: 100%; }
+
+/* ---------- Review panel: not a contestant ---------- */
+:root { --rsc-panel: 380px; }
+.rsc-bar { position: fixed; top: 0; right: 0; bottom: 0; width: var(--rsc-panel); box-sizing: border-box; z-index: 60; overflow: auto; padding: 12px 14px 80px; border-left: 1px solid var(--ah-line); background: var(--ah-surface-2); font-size: 12.5px; line-height: 1.4; }
+.rsc-title { display: block; font-size: 14px; margin-bottom: 8px; }
+.rsc-lines { margin: 0; padding: 0; list-style: none; color: var(--ah-muted); display: grid; gap: 6px; }
+.rsc-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.rsc-recommend { margin: 8px 0 0; font-weight: 600; color: var(--ah-accent-ink); }
+.rsc-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 12px; }
+.rsc-controls select, .rsc-controls button { font: inherit; color: var(--ah-ink); background: var(--ah-surface); border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-sm); padding: 3px 8px; }
+.rsc-controls .rsc-play { background: var(--ah-accent); color: var(--ah-on-accent); border-color: var(--ah-accent); font-weight: 600; }
+.rsc-controls button:disabled { background: var(--ah-disabled-bg); color: var(--ah-disabled-fg); border-color: var(--ah-disabled-line); }
+.rsc-settings { margin-top: 10px; }
+.rsc-caption { margin: 10px 0 0; padding: 8px 10px; border-radius: var(--ah-r-sm); background: var(--ah-surface); border: 1px solid var(--ah-line); min-height: 3em; }
+.rsc-reduced-line { margin: 10px 0 0; color: var(--ah-muted); }
+
+/* ---------- Stage: production's shell in a size container ---------- */
+/* Layout containment makes the stage the containing block of production's
+   fixed shell (a size container alone does not), and the container name
+   answers its rewritten queries. */
+.rsc-stage { position: fixed; top: 0; left: 0; right: var(--rsc-panel); bottom: 64px; container: rscstage / size; contain: strict; outline: 1px solid var(--ah-line); }
+.rsc-shell { position: absolute; inset: 0; }
+.rsc-stage .ah-app-shell:has(.ah-rail) { inset: 0; height: auto; min-height: 0; }
+.rsc-stage .ah-shell-body { min-height: 0; }
+.rsc-main { display: flex; min-height: 0; height: 100%; position: relative; }
+.rsc-main > .ah-conversation-frame { flex: 1 1 auto; min-width: 0; min-height: 0; }
+.proto-picker { margin-inline-start: calc(var(--rsc-panel) / -2); }
+
+/* The phone on a desktop window: a box of a phone's size, not a frame. */
+.rsc-stage[data-view="phone"]:has(.rsc-phone) { container-type: normal; contain: layout; display: grid; place-items: center; background: var(--ah-surface-2); }
+.rsc-phone { position: relative; width: 390px; height: min(800px, calc(100% - 24px)); box-sizing: content-box; border: 8px solid var(--ah-ink); border-radius: 34px; overflow: hidden; container: rscstage / size; contain: strict; background: var(--ah-bg); }
+.rsc-stage .ah-rail-slot { max-height: 100%; }
+
+/* A real narrow window: the panel above, the phone layout on the rest. */
+@media (width < 900px) {
+  .rsc-bar { inset: 0 0 auto 0; width: auto; max-height: 42vh; padding-bottom: 12px; border-left: 0; border-bottom: 1px solid var(--ah-line); }
+  .rsc-stage { top: var(--review-h, 42vh); right: 0; }
+  .proto-picker { margin-inline-start: 0; }
+  .proto-picker-item { white-space: nowrap; }
+}
+
+/* ---------- Rolling numbers (A, C) ---------- */
+/* The element's own text goes transparent; the new value rolls in from
+   below and the old one out above, clipped like a meter's window. */
+.rsc-shell [data-rsc-roll] { color: transparent !important; position: relative; overflow: hidden; display: inline-block; vertical-align: bottom; }
+.rsc-shell .ah-navigation-badge[data-rsc-roll] { position: absolute; display: block; }
+.rsc-shell [data-rsc-roll]::before, .rsc-shell [data-rsc-roll]::after {
+  position: absolute; inset: 0; padding: inherit; box-sizing: border-box; text-align: inherit; color: var(--rsc-ink); white-space: nowrap;
+}
+.rsc-shell [data-rsc-roll]::before { content: attr(data-rsc-new); animation: rsc-roll-in 480ms cubic-bezier(.25, .75, .25, 1) both; }
+.rsc-shell [data-rsc-roll]::after { content: attr(data-rsc-old); animation: rsc-roll-out 480ms cubic-bezier(.25, .75, .25, 1) both; }
+@keyframes rsc-roll-in { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes rsc-roll-out { from { transform: none; } to { transform: translateY(-100%); } }
+/* A ring, not colour alone, tells which number just changed. */
+.rsc-shell [data-rsc-hold] { outline: 2px solid var(--rsc-line, var(--ah-accent-line)); outline-offset: 2px; border-radius: 4px; font-weight: 700; }
+.rsc-shell .ah-rail-count-attention[data-rsc-hold], .rsc-shell .ah-navigation-badge[data-rsc-hold], .rsc-shell .ah-rail-beyond-chip[data-rsc-hold] { border-radius: 999px; }
+
+/* ---------- A: the row's glow on arrival ---------- */
+.rsc-shell .ah-now-row[data-rsc-glow], .rsc-shell .ah-now-row[data-rsc-still] { border-radius: var(--ah-r-sm); }
+.rsc-shell .ah-now-row[data-rsc-glow] { animation: rsc-glow 1.8s ease-out both; }
+@keyframes rsc-glow {
+  0% { background: color-mix(in srgb, var(--rsc-c) 30%, transparent); box-shadow: inset 0 0 0 1.5px var(--rsc-line); }
+  35% { background: color-mix(in srgb, var(--rsc-c) 20%, transparent); box-shadow: inset 0 0 0 1.5px var(--rsc-line); }
+  100% { background: transparent; box-shadow: inset 0 0 0 1.5px transparent; }
+}
+/* Reduced motion: the same tint, still, then gone at once. */
+.rsc-shell .ah-now-row[data-rsc-still] { background: color-mix(in srgb, var(--rsc-c) 18%, transparent); box-shadow: inset 0 0 0 1.5px var(--rsc-line); }
+.rsc-shell .ah-rail-beyond-chip[data-rsc-ring] { animation: rsc-ring 1.6s ease-out both; }
+@keyframes rsc-ring { 0%, 30% { box-shadow: 0 0 0 2px var(--rsc-line); } 100% { box-shadow: 0 0 0 2px transparent; } }
+
+/* ---------- B: one band of light ---------- */
+.rsc-shell [data-rsc-sweep] { position: relative; overflow: hidden; }
+.rsc-sweep {
+  position: absolute; inset-block: 0; left: 0; width: 50%; z-index: 1; pointer-events: none;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--rsc-c) 42%, transparent) 50%, transparent);
+}
+.rsc-shell [data-rsc-outline] { outline: 2px solid var(--rsc-line); outline-offset: -2px; border-radius: var(--ah-r-sm); background: color-mix(in srgb, var(--rsc-c) 10%, transparent); }
+
+/* ---------- A on the phone: the name flies into the menu button ---------- */
+.rsc-fly {
+  position: absolute; left: 50%; z-index: 40; max-width: calc(100% - 48px); box-sizing: border-box;
+  padding: 6px 12px; border: 1px solid var(--rsc-line); border-radius: 999px;
+  background: var(--ah-surface); color: var(--ah-ink); font-size: var(--ah-size-meta); font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none;
+  transform: translateX(-50%); box-shadow: 0 6px 16px -8px rgb(0 0 0 / .4); transform-origin: center;
+}
+/* Until the name arrives the badge still shows its old count. */
+.rsc-shell .ah-navigation-badge[data-rsc-pending] { color: transparent; }
+.rsc-shell .ah-navigation-badge[data-rsc-pending]::before { content: attr(data-rsc-pending); position: absolute; inset: 0; padding: inherit; color: var(--ah-on-accent); }
+.rsc-shell .ah-navigation-badge[data-rsc-pending=""] { visibility: hidden; }

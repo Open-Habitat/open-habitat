@@ -9,7 +9,7 @@ provenance: chat
 source_ref: habitat:pi-current/2026-11-22-rail-state-change
 lane: rail-state-change
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: how the rail shows that a conversation changed state
