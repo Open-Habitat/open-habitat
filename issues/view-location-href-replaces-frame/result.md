@@ -61,9 +61,8 @@ artifacts and final check logs are retained with the evidence below.
 
 ## Verification
 
-Final implementation checked on the worker branch based on
-`f1011f6239af3504bf8f51328c56815d2dc665a8`; the commits carrying this result identify
-its exact source tree.
+Final implementation: `57c8a6243` (based on
+`f1011f6239af3504bf8f51328c56815d2dc665a8`). Subsequent changes only record evidence.
 
 - `./scripts/test-focused.sh --area web`: **259 files, 2187 tests passed**,
   including static checks, types, catalog parity and frame-message regressions.
@@ -82,6 +81,10 @@ its exact source tree.
   including Explain card V44 and successful recovery. Paired PNG and offline
   HTML snapshots are outside the repository at
   `/var/tmp/agent-keep/view-location-href-replaces-frame/`.
+- Native `linux-arm64` package build and `verify-release.sh --json`: **verified,
+  no warnings**, including embedded identity. A `linux-amd64` cross-build also
+  passed archive verification; its embedded identity was not executed on this
+  host. Neither archive was deployed or published.
 - UI-reference regeneration and `--check`, `git diff --check`, project-view
   validation and `issuectl doctor`: passed. Regeneration also repaired pre-existing
   drift in the access/storage reference files; that is a separate docs commit,
