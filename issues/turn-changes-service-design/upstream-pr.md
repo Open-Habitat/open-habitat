@@ -2,17 +2,21 @@
 
 Not opened. Jari decides when it goes to `raine/better-pi-rewind`.
 
-- **Branch:** `turn-snapshots` on a local clone of `raine/better-pi-rewind`
-  (no GitHub fork exists yet), based on `e42fa9c` (v0.4.0).
-- **Commit:** `17dfa796d6b1daf2b0749afb69d035508f5ecebf`, one commit on top
-  of `e42fa9c`. Where the clone and a bundle of the branch are kept is in
-  `result.md`.
-- **Checks:** `npm run check` (upstream's typecheck and `node:test` suite)
-  green: 61 tests, 29 of them new.
+- **Fork/branch:** `Open-Habitat/better-pi-rewind:turn-snapshots`, pushed
+  23 November 2026. No pull request was opened.
+- **Commit:** `2aa1b1c87d917144a9fc9193d316f6af7d8981d1`, preserving the reviewed
+  recorder commit `17dfa796d6b1daf2b0749afb69d035508f5ecebf` and adding the
+  generic restore/ignore safety policy used by Habitat. Both upstream and
+  fork `main` remain `e42fa9cbf14c300867fb2f31511979dde1898aee` (v0.4.0);
+  no rebase was necessary.
+- **Checks:** `npm run check` (typecheck and `node:test`): 66/66 passed,
+  including a real Pi loader against an npm-shaped installation. All 18
+  embedded recorder/policy files and tests match the fork byte for byte.
+  Mapping and synchronization checklist: `issues/pi-rewind-own-repo/result.md`.
 
-To open it: fork `raine/better-pi-rewind` on GitHub, push the branch from
-the bundle (`git fetch <bundle> turn-snapshots:turn-snapshots`), and open the
-pull request with the text below.
+This is draft text, not permission to submit. Jari decides after the agreed
+couple of weeks of real use. At that point fetch both main branches, reconcile
+any movement, rerun the checks, and update this text before opening a PR.
 
 ---
 
@@ -91,7 +95,7 @@ start is between runs; start → start happens when the user steers a running
 agent or the host stopped before settling, and counts as the agent's
 window. `listTurns` returns exactly this grouping.
 
-*The module.* `turnSnapshotsFromEntries`, `listTurns`, `compareTurn` /
+*The reader module.* `turnSnapshotsFromEntries`, `listTurns`, `compareTurn` /
 `compareTrees` (files, kind of change, line counts, bounded), `diffFiles`
 (unified diff, bounded), `compareWithWorkingTree` (what restoring a snapshot
 would change; works on a private copy of the store's index),
@@ -111,6 +115,27 @@ modification time is older than the moment the snapshot began (the entry's
 first, deepest first, so a file the run replaced by a directory can come
 back when that directory held only the run's files. Git references and the
 index are never touched.
+
+*Optional restore policy.* A separate export,
+`better-pi-rewind/snapshots/restore-policy`, carries the consumer safety fixes
+used alongside this recorder. `scopeFiles` accepts the caller's edited-path
+set (or an explicit legacy all-tracked choice), excludes currently ignored
+paths and refuses unknown ignore status. Compute it before restoring any tree:
+putting back an older `.gitignore` must not expand the per-file fallback scope.
+Git's exit 128 alone is not evidence of a plain folder; broken configuration
+is an unanswered ignore check.
+
+`restoreWithUndo` captures the current tree before any write. It leaves
+skipped target paths to fallback, refuses a missing/different-root undo tree
+or truncated skip list, and does not overwrite an existing file absent from
+that undo tree. In particular, a file that grew beyond 20 MiB is not overwritten
+just because its older target contents fit. Currently ignored paths are left
+alone. Its result separates absolute `covered` paths from root-relative actual
+writes and an undo descriptor; cancellation should restore only those writes.
+These helpers accept no host context or command protocol. The caller owns
+checkpoint decoding, recording edited paths, per-file backup capture, undo
+persistence and navigation. Low-level `restorePaths` remains available without
+this optional policy. Neither path is a transaction against concurrent writers.
 
 *Limits.* A snapshot skips a new or changed file over 20 MiB, stops storing
 new content after 200 MiB, and gives up after 2 s; skipped paths are named
@@ -148,13 +173,22 @@ outside the root, and as the whole mechanism where there is no `git` binary
 or repository, so the extension still works without a repository. The
 optional hard reset is unchanged.
 
-*Next step.* With this merged, `/rewind`'s selector counts and its restore
-can cover every non-ignored file under the repository root by taking the
-union of `pathsChangedSince` and the tracked per-file paths. I kept that out
-of this PR so the recorder and its format can be judged on their own; I am
-glad to add it here or as a follow-up, whichever you prefer.
+*Next step.* The terminal selector and restore could consume
+`pathsChangedSince` together with scoped per-file fallback, subject to snapshot
+limits and successful undo capture. That requires recording per-turn edited
+paths in upstream's checkpoint format and agreeing its restore semantics;
+blindly unioning every previously tracked path would undo unrelated later work.
+I kept that terminal integration out of this PR so the recorder, format and
+optional policy can be judged on their own; I am glad to discuss it here or as
+a follow-up, whichever you prefer.
 
-*Tests.* New `node:test` suites run against real Git repositories in a
+*Tests.* `npm run check` passes typechecking and 66 tests. The five additional
+policy/package regressions cover scoped and legacy fallback, outside-root
+copies, ignored paths, broken Git configuration, oversized undo coverage,
+ignore decisions frozen before `.gitignore` restoration, actual-write-only
+undo, skipped target paths, unavailable path discovery, and loading the export
+through Pi from a real `node_modules` layout in a fresh Node process.
+The recorder's `node:test` suites run against real Git repositories in a
 temporary directory: capture of shell edits, deletions, renames, new
 directories, binaries, symlinks and mode changes with the workspace's `.git`
 listing unchanged; alternates, store mode and no hook templates; size limits
