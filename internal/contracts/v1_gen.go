@@ -3,7 +3,7 @@ package contracts
 
 import "encoding/json"
 
-const V1SchemaFingerprint = "6be4d046d83a434ab163f751466498afb12232392cf0c9adece406c3c5dd1412"
+const V1SchemaFingerprint = "1c5abfc68b090132cea1cbb264440d64294b75ceb5ceed9e4b59a281f57b0619"
 
 var V1SchemaFiles = []string{
 	"account-keys.schema.json",
@@ -95,6 +95,7 @@ var V1SchemaFiles = []string{
 	"server-conversations.schema.json",
 	"server-integrations.schema.json",
 	"server-onboarding.schema.json",
+	"server-search-key.schema.json",
 	"server-speech-key.schema.json",
 	"server-storage-change.schema.json",
 	"server-storage.schema.json",
@@ -110,6 +111,7 @@ var V1SchemaFiles = []string{
 	"turn-mark.schema.json",
 	"view-address.schema.json",
 	"view.schema.json",
+	"web-search-key.schema.json",
 	"workspace-change.schema.json",
 	"workspace-deletion.schema.json",
 	"workspace-editor-files.schema.json",
@@ -208,6 +210,7 @@ type ServerConversationsChange = json.RawMessage
 type ServerConversations = json.RawMessage
 type ServerIntegrations = json.RawMessage
 type ServerOnboarding = json.RawMessage
+type ServerSearchKey = json.RawMessage
 type ServerSpeechKey = json.RawMessage
 type ServerStorageChange = json.RawMessage
 type ServerStorage = json.RawMessage
@@ -223,6 +226,7 @@ type Terminal = json.RawMessage
 type TurnMark = json.RawMessage
 type ViewAddress = json.RawMessage
 type View = json.RawMessage
+type WebSearchKey = json.RawMessage
 type WorkspaceChange = json.RawMessage
 type WorkspaceDeletion = json.RawMessage
 type WorkspaceEditorFiles = json.RawMessage

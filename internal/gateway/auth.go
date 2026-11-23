@@ -282,6 +282,7 @@ type Auth struct {
 	// concurrent change has already replaced.
 	siteKeyOps          chan struct{}
 	speech              siteSpeech
+	webSearch           siteSearch
 	admission           map[string]admission
 	unmatchedLog        admission // process-wide budget; never keyed by request input
 	accessLog           admission // bound anonymous Access denials independently
@@ -354,6 +355,9 @@ func NewAuth(cfg OAuthConfig, opts AuthOptions) (*Auth, error) {
 	}
 	a.siteKeyOps = make(chan struct{}, 1)
 	if err := a.loadSiteSpeechKey(); err != nil {
+		return nil, err
+	}
+	if err := a.loadSiteSearchKey(); err != nil {
 		return nil, err
 	}
 	a.loadViewLinks()
@@ -850,6 +854,7 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 	}
 	if ensured.Created {
 		a.giveSpeechKeyAtFirstLogin(target)
+		a.giveSearchKeyAtFirstLogin(target)
 	}
 	sid, e := a.secret()
 	if e != nil {

@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/open-habitat/open-habitat/internal/core"
@@ -70,6 +71,9 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	mux.Handle(SiteKeyPath, SiteKeyHandler(cfg, server.TrustedPeer, pi))
 	speech := NewSpeech(cfg, server.TrustedPeer)
 	speech.Mount(mux)
+	// The search extension's list of providers that search on their own is in
+	// the same validated core runtime as Pi.
+	NewWebSearch(cfg, server.TrustedPeer, filepath.Dir(filepath.Dir(runtime.Node))).Mount(mux)
 	mux.Handle("/api/v1/pi/models", PiModelsHandler(cfg, server.TrustedPeer, pi))
 	mux.Handle(RecapSettingsPath, RecapSettingsHandler(cfg, server.TrustedPeer, pi))
 	claude := &claudeLogin{device: pi, onSignedIn: func() { signedIn() }}

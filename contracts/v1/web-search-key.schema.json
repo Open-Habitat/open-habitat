@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/web-search-key.schema.json",
+  "title": "Web search: the person's search key for models without their own web search",
+  "$comment": "The key lives in ~/.config/web-search/key.json, which the person's own daemon writes and the core runtime's search extension reads. Errors are the common envelope with fixed codes: search_key_rejected (409, the search service refused the key in the trial search), search_limit_reached (429, the service's or the daemon's limit), search_unavailable (503, the service did not answer). A key update is saved only after its trial search has passed. Nothing the service said crosses.",
+  "$defs": {
+    "backend": {
+      "enum": ["brave", "staan"]
+    },
+    "key_state": {
+      "$comment": "refused_at is when the search extension last recorded the service refusing exactly this key (matched by its SHA-256 and service), null otherwise. native_providers are the Pi providers the installed search extension serves with their own web search, from its native-search.json; null when the daemon could not read the list. The browser compares them with the person's providers; neither side keeps a table of its own.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "present", "backend", "suffix", "source", "refused_at", "native_providers"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "present": {"type": "boolean"},
+        "backend": {"enum": ["brave", "staan", null]},
+        "suffix": {"type": ["string", "null"], "pattern": "^[A-Za-z0-9_-]{4}$"},
+        "source": {"enum": ["own", "site", null]},
+        "refused_at": {"type": ["string", "null"], "format": "date-time"},
+        "native_providers": {
+          "type": ["array", "null"],
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"}
+        }
+      }
+    },
+    "key_update": {
+      "$comment": "Only Brave is offered until Staan's coverage has been checked: a Staan key has no trial search yet. A key for one service replaces a key for the other, since search uses one service at a time.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["backend", "key"],
+      "properties": {
+        "backend": {"const": "brave"},
+        "key": {"type": "string", "minLength": 16, "maxLength": 256, "pattern": "^[A-Za-z0-9_-]{16,256}$"}
+      }
+    }
+  },
+  "oneOf": [
+    {"$ref": "#/$defs/key_state"},
+    {"$ref": "#/$defs/key_update"}
+  ]
+}

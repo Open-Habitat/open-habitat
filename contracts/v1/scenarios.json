@@ -920,5 +920,31 @@
       "examples/account-storage-breakdown.json",
       "examples/account-storage-breakdown-measuring.json"
     ]
+  },
+  {
+    "id": "CT-047",
+    "covers": [
+      "web search key",
+      "site service key"
+    ],
+    "given": [
+      "a person has a web search key in their home, saved by them or copied from the site's search key, or none, and the installed search extension lists which Pi providers search on their own"
+    ],
+    "when": [
+      "the person saves, replaces or removes their search key",
+      "an administrator sets or removes the site's search key",
+      "the search extension has recorded that the service refused the key"
+    ],
+    "then": [
+      "a key, the person's or the site's, is saved only after one trial search with it has passed in the person's or the setting administrator's own daemon; a refused key, a reached limit and an unreachable service reach the browser as search_key_rejected, search_limit_reached and search_unavailable, never the service's own text",
+      "replies carry presence, service, source, at most the four-character suffix, the extension's refusal of exactly this key and the extension's list of providers that search on their own; the key never crosses back",
+      "a site key is written into a home only where there is no key or an earlier site copy; a key the person saved is kept, a key for the other service replaces the site key and its copies as a changed key would, removing the site key recalls nothing, and the administrator sees counts of answers, never who holds their own key"
+    ],
+    "fixtures": [
+      "examples/web-search-key.json",
+      "examples/web-search-key-refused.json",
+      "examples/web-search-error.json",
+      "examples/server-search-key.json"
+    ]
   }
 ]

@@ -1,0 +1,1 @@
+{"schema_version": 1, "present": true, "backend": "brave", "suffix": "Ab12", "source": "site", "refused_at": null, "native_providers": ["openai-codex", "openai", "anthropic", "claude-bridge"]}

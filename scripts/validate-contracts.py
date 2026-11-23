@@ -222,6 +222,12 @@ checks = {
     "speech-error.json": "error.schema.json",
     "server-speech-key.json": "server-speech-key.schema.json",
     "server-speech-key-set.json": "server-speech-key.schema.json",
+    "web-search-key.json": "web-search-key.schema.json",
+    "web-search-key-refused.json": "web-search-key.schema.json",
+    "web-search-key-update.json": "web-search-key.schema.json",
+    "web-search-error.json": "error.schema.json",
+    "server-search-key.json": "server-search-key.schema.json",
+    "server-search-key-set.json": "server-search-key.schema.json",
 }
 for fixture, schema in checks.items():
     instance = json.loads((BASE / "examples" / fixture).read_text())
@@ -623,6 +629,18 @@ must_reject("server-speech-key.schema.json", {**server_speech, "site_key": {**se
 must_reject("server-speech-key.schema.json", {**server_speech, "given": {"seeded": 1, "people": ["43"]}})
 must_reject("server-speech-key.schema.json", {**server_speech, "given": {"own": 1}})
 must_reject("server-speech-key.schema.json", {"region": "eu", "key": "example0000000000000000000000Kq7Z"})
+web_search_key = json.loads((BASE / "examples" / "web-search-key.json").read_text())
+must_reject("web-search-key.schema.json", {**web_search_key, "key": "example0000000000000000000000Ab12"})
+must_reject("web-search-key.schema.json", {**web_search_key, "suffix": "example0000000000000000000000Ab12"})
+must_reject("web-search-key.schema.json", {**web_search_key, "native_providers": ["../openai"]})
+must_reject("web-search-key.schema.json", {"backend": "staan", "key": "example0000000000000000000000Ab12"})
+must_reject("web-search-key.schema.json", {"backend": "brave", "key": "$BRAVE_API_KEY"})
+must_reject("web-search-key.schema.json", {"backend": "brave", "key": "example0000000000000000000000Ab12", "source": "site"})
+server_search = json.loads((BASE / "examples" / "server-search-key.json").read_text())
+must_reject("server-search-key.schema.json", {**server_search, "site_key": {**server_search["site_key"], "key": "example0000000000000000000000Kq7Z"}})
+must_reject("server-search-key.schema.json", {**server_search, "given": {"seeded": 1, "people": ["43"]}})
+must_reject("server-search-key.schema.json", {"key": "example0000000000000000000000Kq7Z"})
+must_reject("server-search-key.schema.json", {"backend": "staan", "key": "example0000000000000000000000Kq7Z"})
 
 terminal_validator = Draft202012Validator(schemas["terminal.schema.json"], registry=registry, format_checker=format_checker)
 for message in json.loads((BASE / "examples" / "terminal-messages.json").read_text()):
