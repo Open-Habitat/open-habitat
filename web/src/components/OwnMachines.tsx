@@ -27,8 +27,15 @@ import type { Tone } from "./types";
 import "./OwnMachines.css";
 import { liveText } from "../i18n";
 import { ownMachinesText } from "../text/ownMachines";
+import { sshConfigMachinesText } from "../text/sshConfigMachines";
+import {
+  ConfigGroup,
+  ConfigMachineCards,
+  type SSHConfigState,
+} from "./SSHConfigMachines";
 
 const txt = liveText(ownMachinesText);
+const configTxt = liveText(sshConfigMachinesText);
 
 // Asetukset › Omat koneet, prototype direction 1 Ohjattu (Jari 29.10.2026):
 // the page summarises; a five-step dialog does the setup, and renewal opens
@@ -534,8 +541,12 @@ export function OwnMachinesPage({
   notice,
   busy,
   actions,
+  config,
 }: {
   data: OwnMachines;
+  /** The hosts of ~/.ssh/config, while own-machines-ssh-config is on and
+   * the daemon read them. */
+  config?: SSHConfigState;
   /** The last check this page made per machine. */
   checks: Readonly<Record<string, Check>>;
   checking?: string;
@@ -550,9 +561,15 @@ export function OwnMachinesPage({
     if (!busy) setConfirming("");
   }, [busy]);
   const ts = data.tailscale.state;
+  // A shown config host is a machine on the page too.
+  const none =
+    data.machines.length === 0 &&
+    !config?.config.shown.some((a) =>
+      config.config.hosts.some((h) => h.alias === a),
+    );
   return (
     <div className="s-stack om" data-testid="own-machines">
-      <p className="s-intro">{txt.intro}</p>
+      <p className="s-intro">{config ? configTxt.intro : txt.intro}</p>
       {notice && (
         <p
           className="om-notice"
@@ -584,6 +601,7 @@ export function OwnMachinesPage({
             busy={Boolean(busy)}
           />
         ))}
+        {config && <ConfigMachineCards state={config} />}
         {removed && (
           <div className="om-note om-removed" data-testid="own-machine-removed">
             <p>{txt.removed(removed.name)}</p>
@@ -598,9 +616,7 @@ export function OwnMachinesPage({
         )}
         <div className="s-card om-card">
           <div className="om-blk om-btns">
-            {data.machines.length === 0 && (
-              <span className="om-muted">{txt.none}</span>
-            )}
+            {none && <span className="om-muted">{txt.none}</span>}
             <ControlButton
               data-testid="own-machines-add"
               size="row"
@@ -611,12 +627,11 @@ export function OwnMachinesPage({
               <Icon name="plus" />
               {data.machines.length === 0 ? txt.add : txt.addAnother}
             </ControlButton>
-            {data.machines.length === 0 && (
-              <span className="s-desc">{txt.addTime}</span>
-            )}
+            {none && <span className="s-desc">{txt.addTime}</span>}
           </div>
         </div>
       </div>
+      {config && <ConfigGroup state={config} />}
     </div>
   );
 }

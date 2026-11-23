@@ -633,7 +633,7 @@ esac
 		mux.Handle(daemon.FirstRoutePath, daemon.FirstRouteHandler(fixtureWorkspaceCfg, trusted))
 		mux.Handle(daemon.AgentInstructionsPath, daemon.AgentInstructionsHandler(fixtureWorkspaceCfg, trusted))
 		mux.Handle(daemon.StorageBreakdownPath, daemon.StorageBreakdownHandler(fixtureWorkspaceCfg, trusted))
-		if _, own, e := newOwnMachinesHost(tmp, m.Username); e != nil {
+		if _, own, e := newOwnMachinesHost(tmp, home, m.Username); e != nil {
 			log.Fatal(e)
 		} else {
 			mux.Handle(daemon.OwnMachinesPath, daemon.OwnMachinesHandlerWithFixture(fixtureWorkspaceCfg, trusted, own))

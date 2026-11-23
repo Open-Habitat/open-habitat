@@ -336,7 +336,10 @@ type ownMachinesView struct {
 	// Windows keeps an administrator's keys in one file for all of them.
 	WindowsRemoveCommand      string `json:"windows_remove_command"`
 	WindowsAdminRemoveCommand string `json:"windows_admin_remove_command"`
-	status                    tailnetStatus
+	// SSHConfig is the person's own ~/.ssh/config, only while
+	// SSHConfigFeature is on.
+	SSHConfig *sshConfigView `json:"ssh_config,omitempty"`
+	status    tailnetStatus
 }
 
 // peerName is the machine's name in the person's tailnet: the first label
@@ -456,6 +459,26 @@ func (e ownMachineEnv) read(ctx context.Context) (ownMachinesView, error) {
 		view.Machines = append(view.Machines, mv)
 	}
 	view.SSHInclude = e.includePresent()
+	if prefs, err := readPreferences(e.home); err == nil && prefs.Experimental[SSHConfigFeature] {
+		cfg := readSSHConfig(e.home, e.username)
+		// Habitat's own machines are on the page already.
+		hosts := cfg.Hosts[:0]
+		for _, h := range cfg.Hosts {
+			own := false
+			for _, m := range view.Machines {
+				own = own || m.Name == h.Alias
+			}
+			if !own {
+				hosts = append(hosts, h)
+			}
+		}
+		cfg.Hosts = hosts
+		if cfg.State == "ok" && len(hosts) == 0 {
+			cfg.State = "empty"
+		}
+		cfg.withChoices(prefs.SSHConfigMachines)
+		view.SSHConfig = &cfg
+	}
 	if keys, err := readAccountKeys(e.home, e.keys); err == nil {
 		for i, k := range keys.Keys {
 			if k.Kind == keyKindSSH && k.File == "~/"+machineKeyRel {
@@ -1194,6 +1217,8 @@ type ownMachinesRequest struct {
 	Days    int    `json:"days,omitempty"`
 	Expires string `json:"expires,omitempty"`
 	HostKey string `json:"host_key,omitempty"`
+	// Alias names a host of the person's own ~/.ssh/config.
+	Alias string `json:"alias,omitempty"`
 }
 
 // decodeOwnMachinesRequest takes exactly the keys each action names.
@@ -1218,6 +1243,12 @@ func decodeOwnMachinesRequest(b []byte) (ownMachinesRequest, bool) {
 		"save":       {"peer", "user", "expires", "host_key"},
 		"extend":     {"machine", "expires"},
 		"remove":     {"machine"},
+		// The hosts of ~/.ssh/config, behind SSHConfigFeature.
+		"config_show":   {"alias"},
+		"config_unshow": {"alias"},
+		"config_hide":   {"alias"},
+		"config_unhide": {"alias"},
+		"config_check":  {"alias"},
 	}
 	keys, ok := want[req.Action]
 	if !ok || len(in) != len(keys)+1 {
@@ -1242,6 +1273,8 @@ func decodeOwnMachinesRequest(b []byte) (ownMachinesRequest, bool) {
 			ok = str(k, &req.Expires) && (req.Expires == "" || validDate(req.Expires))
 		case "host_key":
 			ok = str(k, &req.HostKey) && fingerprintPattern.MatchString(req.HostKey)
+		case "alias":
+			ok = str(k, &req.Alias) && sshAliasPattern.MatchString(req.Alias)
 		}
 		if !ok {
 			return req, false
@@ -1325,6 +1358,9 @@ func ownMachinesHandler(cfg transport.Config, trusted func(*http.Request) bool, 
 		reply["remove_command"] = view.RemoveCommand
 		reply["windows_remove_command"] = view.WindowsRemoveCommand
 		reply["windows_admin_remove_command"] = view.WindowsAdminRemoveCommand
+		if view.SSHConfig != nil {
+			reply["ssh_config"] = view.SSHConfig
+		}
 		if view.AccountKey != nil {
 			reply["account_key"] = map[string]string{"file": view.AccountKey.File, "fingerprint": view.AccountKey.Fingerprint}
 		}
@@ -1355,6 +1391,9 @@ func (e ownMachineEnv) act(ctx context.Context, req ownMachinesRequest, reply ma
 	view, err := e.read(ctx)
 	if err != nil {
 		return 503, "own_machines_unavailable"
+	}
+	if strings.HasPrefix(req.Action, "config_") {
+		return e.actConfig(ctx, view, req, reply)
 	}
 	// Removing a machine is local; everything else needs the node.
 	if view.Tailscale.Node == nil && req.Action != "remove" {
@@ -1437,6 +1476,44 @@ func (e ownMachineEnv) act(ctx context.Context, req ownMachinesRequest, reply ma
 			return 503, "machine_remove_failed"
 		}
 		reply["removed"] = target.name
+	}
+	return 0, ""
+}
+
+// actConfig is one choice or check for a host of ~/.ssh/config. The host
+// is named by the file as it is now, never by the browser alone; a choice
+// may be undone for an alias that already left it.
+func (e ownMachineEnv) actConfig(ctx context.Context, view ownMachinesView, req ownMachinesRequest, reply map[string]any) (int, string) {
+	cfg := view.SSHConfig
+	if cfg == nil {
+		return 409, "feature_off"
+	}
+	known := map[string]bool{}
+	for _, h := range cfg.Hosts {
+		known[h.Alias] = true
+	}
+	shown := false
+	for _, a := range cfg.Shown {
+		shown = shown || a == req.Alias
+	}
+	switch req.Action {
+	case "config_check":
+		// Checked only once shown: the found row asks the person first.
+		if !known[req.Alias] || !shown {
+			return 409, "unknown_host"
+		}
+		reply["config_check"] = e.checkConfigHost(ctx, req.Alias)
+		return 0, ""
+	case "config_show", "config_hide":
+		if !known[req.Alias] {
+			return 409, "unknown_host"
+		}
+	}
+	switch err := changeSSHConfigMachines(e.home, req.Action, req.Alias, known); {
+	case errors.Is(err, errTooManyChosen):
+		return 409, "too_many_machines"
+	case err != nil:
+		return 503, "preferences_unavailable"
 	}
 	return 0, ""
 }

@@ -173,3 +173,52 @@ Tunnistemuutoksia ei tarvita.
 2. Saako näytetty config-kone tulla agentin skillin "omat koneet"
    -listaan, eli kerrotaanko agentille, että se on ihmisen oma kone samoin
    säännöin? Vai pelkkä näkyvyys sivulla?
+
+## Toteutus (23.11.2026): suunta 1 kokeellisena ominaisuutena
+
+Kokeellinen ominaisuus `own-machines-ssh-config` (oletuksena pois). Daemon
+(`internal/daemon/ssh_config_linux.go`) jäsentää `~/.ssh/config`in omalla
+jäsentimellä vain, kun ominaisuus on päällä ihmisen asetuksissa; pois
+päältä tiedostoa ei lueta ja `config_*`-toiminnot torjutaan
+`feature_off`-koodilla. Sopimus: `ssh_config` ja `config_check`
+vastauksessa, toiminnot `config_show|config_unshow|config_hide|config_unhide|config_check`
+aliaksella. Valinnat ovat aliaksina `preferences.json`in
+`ssh_config_machines`-kentässä; kaikki muu luetaan joka kerta tiedostosta.
+Sivu: `web/src/components/SSHConfigMachines.tsx`, suunnan 1 rakenne ja
+`data-testid`:t.
+
+Todisteet (synteettinen config, Päivä, 1280 ja 390 px):
+`/var/tmp/agent-keep/own-machines-import-ssh-config/impl/`.
+
+### Päätökset myöhempään katselmointiin
+
+- **Agentin skilliin ei lisätä config-koneita.** Kysymys 2 jäi auki.
+  Vaihtoehto: näytetyt aliakset skillin "The person's own machines"
+  -osioon. Peruste: se muuttaa agentin käytöstä ilman Jarin vastausta;
+  keskustelun konesiru tunnistaa näytetyt aliakset (pelkkä näkyvyys).
+- **Daemon tarkistaa kytkimen itse**, ei vain selain. Vaihtoehto: daemon
+  lukee aina, selain piilottaa. Peruste: pois päältä tiedostoa ei lueta
+  lainkaan, ja "pois = ei mitään" pitää hostin päässä.
+- **Tarkistus vain näytetylle** (`config_check` torjuu muut). Kuten
+  prototyypin suunta 1.
+- **Tarkistuksen ssh-asetukset:** prototyypin luonnoksen lisäksi
+  `UpdateHostKeys=no` (muuten ssh voi päivittää known_hostsia),
+  `ClearAllForwardings=yes`, `PermitLocalCommand=no`, `ForwardAgent=no`,
+  `ControlPersist=no` ja `--` ennen aliasta. Agenttia (`SSH_AUTH_SOCK`) ei
+  välitetä: Habitat ei käytä ihmisen ssh-agenttia.
+- **Tuloksiin lisättiin `host_key_changed` ja `failed`.** Prototyypissä oli
+  viisi; muuttunut isäntäavain on eri asia kuin hyväksymätön, ja tunnistamaton
+  virhe ei saa näyttää jonkin muun syyltä.
+- **Aliaksen muoto** `^[a-z0-9][a-z0-9._-]{0,62}$` (ssh pienentää nimen).
+  Muut ohitetaan syyllä `name`. Peruste: alias annetaan ssh:lle yhtenä
+  sanana eikä se saa näyttää optiolta.
+- **Include `Host`-lohkon sisällä** koskee vain sitä lohkoa (OpenSSH:n
+  tapa); sen sisäiset `Host`-rivit listataan vain, jos ne osuvat myös
+  ulompaan lohkoon. `Include` Match-lohkossa ohitetaan.
+- **Rajat:** 1 MiB/tiedosto, 32 tiedostoa, 16 tasoa, 64 konetta, 32
+  ohitettua, 32 näytettyä ja 32 piilotettua. `preferences.json`in raja
+  nostettiin 8 KiB:stä 16 KiB:hen, jotta valinnat mahtuvat kaikkien muiden
+  kenttien rinnalle.
+- **Sivun johdanto yleistyy** ominaisuuden ollessa päällä ("… tai omilla
+  SSH-asetuksillasi").
+- **Englanninkieliset tekstit** kirjoitettiin toteutuksessa.

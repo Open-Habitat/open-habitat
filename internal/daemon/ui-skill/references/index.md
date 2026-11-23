@@ -220,6 +220,7 @@ A label alone does not establish that a control is available to this person.
 - [text/spinoffConversation.ts](text--spinoffConversation.ts.md)
 - [text/spinoffState.ts](text--spinoffState.ts.md)
 - [text/spinoffs.tsx](text--spinoffs.tsx.md)
+- [text/sshConfigMachines.tsx](text--sshConfigMachines.tsx.md)
 - [text/startHere.tsx](text--startHere.tsx.md)
 - [text/startPageRequest.ts](text--startPageRequest.ts.md)
 - [text/status.ts](text--status.ts.md)

@@ -5,6 +5,18 @@
     "state": "on",
     "node": {"name": "habitat-alice", "dns_name": "habitat-alice.example-tailnet.ts.net", "address": "100.101.22.7", "tailnet": "example-tailnet.ts.net", "login": "alice@example.com", "shields_up": true}
   },
+  "ssh_config": {
+    "state": "ok",
+    "files": ["~/.ssh/config", "~/.ssh/config.d/old.conf"],
+    "hosts": [
+      {"alias": "nas", "host_name": "nas.home.arpa", "user": "admin", "port": 22, "keys": [{"path": "~/.ssh/id_ed25519", "present": true}], "proxy_command": false, "tailscale": false, "file": "~/.ssh/config", "line": 4},
+      {"alias": "build", "host_name": "10.20.0.5", "user": "build", "port": 2222, "keys": [], "proxy_jump": "nas", "proxy_command": false, "tailscale": false, "file": "~/.ssh/config.d/old.conf", "line": 2}
+    ],
+    "skipped": [{"what": "Host *", "why": "wildcard"}, {"what": "github.com", "why": "git_service"}],
+    "match": false,
+    "shown": ["nas"],
+    "hidden": []
+  },
   "peers": [
     {"name": "alice-macbook", "dns_name": "alice-macbook.example-tailnet.ts.net", "os": "macOS", "address": "100.88.14.53", "online": true, "ssh": "possible"},
     {"name": "alice-phone", "dns_name": "alice-phone.example-tailnet.ts.net", "os": "iOS", "address": "100.90.1.2", "online": true, "ssh": "no"},

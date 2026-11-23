@@ -172,6 +172,17 @@ for a in "$@"; do
   esac
   host=$prev; prev=$a
 done
+printf '%s\n' "$@" >"$fix/last-args"
+if [ -f "$fix/config-$host" ]; then
+  case $(cat "$fix/config-$host") in
+    ok) exit 0 ;;
+    offline) echo "ssh: connect to host $host port 22: Connection timed out" >&2 ;;
+    unresolved) echo "ssh: Could not resolve hostname $host: Name or service not known" >&2 ;;
+    hostkey_unknown) echo "No ED25519 host key is known for $host and you have requested strict checking." >&2; echo "Host key verification failed." >&2 ;;
+    key_rejected) echo "user@$host: Permission denied (publickey)." >&2 ;;
+  esac
+  exit 255
+fi
 mode=rejected; [ -f "$fix/mode-$host" ] && mode=$(cat "$fix/mode-$host")
 if [ "$mode" = down ]; then echo "kex_exchange_identification: Connection closed by remote host" >&2; exit 255; fi
 key=$(cat "$fix/key-A")
@@ -207,4 +218,15 @@ func SetHostKey(dir, address string, seed byte) error {
 		return errors.New("unknown key")
 	}
 	return os.WriteFile(filepath.Join(dir, "hostkey-"+address), []byte{seed}, 0600)
+}
+
+// SetConfigHost makes a check of the ~/.ssh/config host alias answer with
+// result: ok, offline, unresolved, hostkey_unknown or key_rejected.
+func SetConfigHost(dir, alias, result string) error {
+	switch result {
+	case "ok", "offline", "unresolved", "hostkey_unknown", "key_rejected":
+	default:
+		return errors.New("unknown result")
+	}
+	return os.WriteFile(filepath.Join(dir, "config-"+alias), []byte(result), 0600)
 }

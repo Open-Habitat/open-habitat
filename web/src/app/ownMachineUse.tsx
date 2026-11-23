@@ -70,7 +70,14 @@ export function OwnMachineUseProvider({ children }: { children: ReactNode }) {
       .then(readOwnMachines)
       .then((data) => {
         if (controller.signal.aborted) return;
-        setMachines(new Set(data.machines.map((m) => m.name)));
+        // A ~/.ssh/config host the person showed as their own machine is
+        // one too; the daemon lists them only while that feature is on.
+        setMachines(
+          new Set([
+            ...data.machines.map((m) => m.name),
+            ...(data.ssh_config?.shown ?? []),
+          ]),
+        );
         setOpenNow(
           data.machines.filter((m) => m.connection_open).map((m) => m.name),
         );

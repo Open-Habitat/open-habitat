@@ -98,6 +98,57 @@
         "host_key": {"description": "The host key the machine showed, for the person to compare before it is saved.", "$ref": "#/$defs/fingerprint"}
       }
     },
+    "alias": {"description": "A host of the person's own ~/.ssh/config as ssh matches it (lower-case); the agent reaches it with `ssh <alias>`.", "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,62}$"},
+    "ssh_config_host": {
+      "description": "One concrete Host pattern of ~/.ssh/config with the values `ssh <alias>` uses (first value wins over every block it matches; Match blocks are not interpreted).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["alias", "host_name", "user", "port", "keys", "proxy_command", "tailscale", "file", "line"],
+      "properties": {
+        "alias": {"$ref": "#/$defs/alias"},
+        "host_name": {"type": "string", "minLength": 1, "maxLength": 255},
+        "user": {"type": "string", "minLength": 1, "maxLength": 64},
+        "port": {"type": "integer", "minimum": 1, "maximum": 65535},
+        "keys": {
+          "description": "The IdentityFiles named for the host, as paths; empty is ssh's default keys. Only whether each file exists is looked at.",
+          "type": "array", "maxItems": 8,
+          "items": {"type": "object", "additionalProperties": false, "required": ["path", "present"], "properties": {"path": {"type": "string", "minLength": 1, "maxLength": 255}, "present": {"type": "boolean"}}}
+        },
+        "proxy_jump": {"type": "string", "minLength": 1, "maxLength": 255},
+        "proxy_command": {"description": "A ProxyCommand is set; its text is never shown, as it may hold a token.", "type": "boolean"},
+        "tailscale": {"description": "The address is a Tailscale name (*.ts.net) or address.", "type": "boolean"},
+        "file": {"description": "The file the Host line is in, ~/ for the home.", "type": "string", "minLength": 1, "maxLength": 4096},
+        "line": {"type": "integer", "minimum": 1}
+      }
+    },
+    "ssh_config": {
+      "description": "The person's own ~/.ssh/config, read only, present only while the experimental feature own-machines-ssh-config is on. shown and hidden are the person's choices for hosts the file has now.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "files", "hosts", "skipped", "match", "shown", "hidden"],
+      "properties": {
+        "state": {"description": "ok: hosts were found; empty: no file or no host; unreadable: ~/.ssh/config is not a regular file of at most 1 MiB the person can read.", "enum": ["ok", "empty", "unreadable"]},
+        "files": {"type": "array", "maxItems": 32, "items": {"type": "string", "minLength": 1, "maxLength": 4096}},
+        "hosts": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/ssh_config_host"}},
+        "skipped": {
+          "description": "What was read but not listed, and why: wildcard (a pattern, not one host), match (a Match block), git_service (a code host), name (a name the page cannot pass to ssh), unreadable (an Include that cannot be read), limit.",
+          "type": "array", "maxItems": 32,
+          "items": {"type": "object", "additionalProperties": false, "required": ["what", "why"], "properties": {"what": {"type": "string", "maxLength": 200}, "why": {"enum": ["wildcard", "match", "git_service", "name", "unreadable", "limit"]}}}
+        },
+        "match": {"description": "The files have Match blocks, so a host's values may differ from what is shown.", "type": "boolean"},
+        "shown": {"type": "array", "maxItems": 32, "items": {"$ref": "#/$defs/alias"}},
+        "hidden": {"type": "array", "maxItems": 32, "items": {"$ref": "#/$defs/alias"}}
+      }
+    },
+    "config_check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["alias", "result"],
+      "properties": {
+        "alias": {"$ref": "#/$defs/alias"},
+        "result": {"description": "The person's own `ssh <alias> exit 0`: ok; offline: no answer; unresolved: the name does not resolve here; hostkey_unknown: the host key is not in known_hosts (Habitat never accepts one); host_key_changed; key_rejected: no login without a password or passphrase; failed: anything else.", "enum": ["ok", "offline", "unresolved", "hostkey_unknown", "host_key_changed", "key_rejected", "failed"]}
+      }
+    },
     "request": {
       "description": "One action. A new machine is named only by its tailnet name; its address comes from Tailscale.",
       "oneOf": [
@@ -107,7 +158,8 @@
         {"type": "object", "additionalProperties": false, "required": ["action", "peer", "user"], "properties": {"action": {"const": "check"}, "peer": {"$ref": "#/$defs/name"}, "user": {"$ref": "#/$defs/user"}}},
         {"type": "object", "additionalProperties": false, "required": ["action", "machine"], "properties": {"action": {"enum": ["recheck", "remove"]}, "machine": {"$ref": "#/$defs/name"}}},
         {"type": "object", "additionalProperties": false, "required": ["action", "peer", "user", "expires", "host_key"], "properties": {"action": {"const": "save"}, "peer": {"$ref": "#/$defs/name"}, "user": {"$ref": "#/$defs/user"}, "expires": {"$ref": "#/$defs/expires"}, "host_key": {"$ref": "#/$defs/fingerprint"}}},
-        {"type": "object", "additionalProperties": false, "required": ["action", "machine", "expires"], "properties": {"action": {"const": "extend"}, "machine": {"$ref": "#/$defs/name"}, "expires": {"$ref": "#/$defs/expires"}}}
+        {"type": "object", "additionalProperties": false, "required": ["action", "machine", "expires"], "properties": {"action": {"const": "extend"}, "machine": {"$ref": "#/$defs/name"}, "expires": {"$ref": "#/$defs/expires"}}},
+        {"description": "A choice or an on-request check for a host of ~/.ssh/config; refused with feature_off while the experimental feature is off. Only a shown host is checked.", "type": "object", "additionalProperties": false, "required": ["action", "alias"], "properties": {"action": {"enum": ["config_show", "config_unshow", "config_hide", "config_unhide", "config_check"]}, "alias": {"$ref": "#/$defs/alias"}}}
       ]
     },
     "result": {
@@ -130,6 +182,8 @@
           "required": ["file", "fingerprint"],
           "properties": {"file": {"const": "~/.ssh/id_ed25519"}, "fingerprint": {"$ref": "#/$defs/fingerprint"}}
         },
+        "ssh_config": {"$ref": "#/$defs/ssh_config"},
+        "config_check": {"$ref": "#/$defs/config_check"},
         "grant": {"$ref": "#/$defs/grant"},
         "check": {"$ref": "#/$defs/check"},
         "saved": {"$ref": "#/$defs/name"},

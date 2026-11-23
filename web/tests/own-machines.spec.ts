@@ -427,3 +427,107 @@ test("@own-machines a command run on the person's machine names it, and the head
   ).toHaveAttribute("data-machine", "alice-macbook");
   await expect(open).toHaveCount(0);
 });
+
+async function setFeature(page: Page, on: boolean) {
+  const session = await (await page.request.get("/auth/session")).json();
+  const response = await page.request.put("/api/v1/account/preferences", {
+    headers: {
+      Origin: new URL(page.url()).origin,
+      "X-Agent-Host-CSRF": session.csrf,
+    },
+    data: { experimental: { "own-machines-ssh-config": on } },
+  });
+  expect(response.ok()).toBe(true);
+}
+
+// The person's own ~/.ssh/config (a synthetic one in the disposable home)
+// behind the experimental switch, through the real gateway and daemon.
+test("@own-machines ~/.ssh/config hosts appear only with the feature on, and one is shown and checked", async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(90_000);
+  await signIn(page);
+  await fixture(page, "do=ssh-config");
+  const found = page.getByTestId("found-host");
+  const configMachine = (alias: string) =>
+    page.locator(`[data-testid="config-machine"][data-machine="${alias}"]`);
+
+  // Off: nothing of the file, though it has hosts.
+  await page.goto("/settings/machines");
+  await expect(page.getByTestId("own-machines-tailscale")).toBeVisible();
+  await expect(page.getByTestId("found-group")).toHaveCount(0);
+  await expect(page.getByTestId("config-machine")).toHaveCount(0);
+
+  await setFeature(page, true);
+  await page.reload();
+  const group = page.getByTestId("found-group");
+  await expect(group).toBeVisible();
+  // The Include's host is there; the Git service and Host * are not.
+  await expect(found).toHaveCount(3);
+  expect(
+    await found.evaluateAll((rows) =>
+      rows.map((r) => (r as HTMLElement).dataset.host),
+    ),
+  ).toEqual(["vanha", "nas", "rakennus"]);
+  await expect(page.getByTestId("config-skipped")).toBeAttached();
+
+  // Shown as an own machine: a card in the machine list, not yet checked.
+  await page
+    .locator('[data-testid="found-host"][data-host="nas"]')
+    .getByRole("button")
+    .and(page.getByTestId("found-adopt"))
+    .click();
+  await expect(
+    page
+      .locator('[data-settings-row="own-machines"]')
+      .locator('[data-testid="config-machine"][data-machine="nas"]'),
+  ).toHaveAttribute("data-state", "unchecked");
+  await expect(found).toHaveCount(2);
+
+  // A check runs only on request.
+  await fixture(page, "do=config-host&alias=nas&mode=ok");
+  await configMachine("nas")
+    .getByRole("button")
+    .and(page.getByTestId("config-check"))
+    .click();
+  await expect(configMachine("nas")).toHaveAttribute("data-state", "ok");
+
+  // Hidden goes under Piilotetut; the choices outlive a reload.
+  await page
+    .locator('[data-testid="found-host"][data-host="vanha"]')
+    .getByRole("button")
+    .and(page.getByTestId("found-hide"))
+    .click();
+  await expect(found).toHaveCount(1);
+  await page.reload();
+  await expect(configMachine("nas")).toHaveAttribute("data-state", "unchecked");
+  await expect(found).toHaveCount(1);
+  await expect(
+    page.getByTestId("config-hidden").locator('[data-host="vanha"]'),
+  ).toBeAttached();
+  expect(
+    (
+      await new AxeBuilder({ page })
+        .include("[data-testid=own-machines]")
+        .withTags(["wcag2a", "wcag2aa"])
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+  await page.screenshot({
+    path: testInfo.outputPath("evidence/omat-koneet-ssh-config-1280-light.png"),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({
+    path: testInfo.outputPath("evidence/omat-koneet-ssh-config-390-light.png"),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 1280, height: 800 });
+
+  // Off again: the page shows none of it, and the daemon refuses choices.
+  await setFeature(page, false);
+  await page.reload();
+  await expect(page.getByTestId("own-machines-tailscale")).toBeVisible();
+  await expect(page.getByTestId("found-group")).toHaveCount(0);
+  await expect(page.getByTestId("config-machine")).toHaveCount(0);
+});

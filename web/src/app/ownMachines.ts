@@ -1,9 +1,11 @@
 import schema from "../../../contracts/v1/own-machines.schema.json";
 import { formatDate, liveText } from "../i18n";
 import { ownMachinesText } from "../text/ownMachines";
+import { sshConfigMachinesText } from "../text/sshConfigMachines";
 import { LazyAjv } from "./lazyAjv";
 
 const txt = liveText(ownMachinesText);
+const configTxt = liveText(sshConfigMachinesText);
 
 /** Omat koneet as the person's daemon reads it: their own Tailscale node,
  * the devices Tailscale lists, and the machines in their SSH configuration.
@@ -68,6 +70,46 @@ export type CheckResult =
   | "no_ssh"
   | "failed";
 export type Check = { machine: string; result: CheckResult; host_key?: string };
+/** A host of the person's own ~/.ssh/config with the values `ssh <alias>`
+ * uses; read only, present while own-machines-ssh-config is on. */
+export type SSHConfigHost = {
+  alias: string;
+  host_name: string;
+  user: string;
+  port: number;
+  /** IdentityFiles; empty is ssh's default keys. */
+  keys: { path: string; present: boolean }[];
+  proxy_jump?: string;
+  proxy_command: boolean;
+  tailscale: boolean;
+  file: string;
+  line: number;
+};
+export type SSHConfigSkipReason =
+  | "wildcard"
+  | "match"
+  | "git_service"
+  | "name"
+  | "unreadable"
+  | "limit";
+export type SSHConfig = {
+  state: "ok" | "empty" | "unreadable";
+  files: string[];
+  hosts: SSHConfigHost[];
+  skipped: { what: string; why: SSHConfigSkipReason }[];
+  match: boolean;
+  shown: string[];
+  hidden: string[];
+};
+export type ConfigCheckResult =
+  | "ok"
+  | "offline"
+  | "unresolved"
+  | "hostkey_unknown"
+  | "host_key_changed"
+  | "key_rejected"
+  | "failed";
+export type ConfigCheck = { alias: string; result: ConfigCheckResult };
 export type OwnMachines = {
   schema_version: 1;
   web_identity_id: string;
@@ -79,6 +121,8 @@ export type OwnMachines = {
   windows_remove_command: string;
   windows_admin_remove_command: string;
   account_key?: { file: string; fingerprint: string };
+  ssh_config?: SSHConfig;
+  config_check?: ConfigCheck;
   grant?: Grant;
   check?: Check;
   saved?: string;
@@ -98,7 +142,16 @@ export type OwnMachinesRequest =
       expires: string;
       host_key: string;
     }
-  | { action: "extend"; machine: string; expires: string };
+  | { action: "extend"; machine: string; expires: string }
+  | {
+      action:
+        | "config_show"
+        | "config_unshow"
+        | "config_hide"
+        | "config_unhide"
+        | "config_check";
+      alias: string;
+    };
 
 /** 0 is a line without an end, the default (Jari 30.10.2026). */
 export type GrantDays = 0 | 7 | 30 | 90;
@@ -223,6 +276,10 @@ export function ownMachinesRefusal(code: string) {
       return txt.errors.host_key_mismatch;
     case "own_machines_busy":
       return txt.errors.busy;
+    case "feature_off":
+      return configTxt.errors.feature_off;
+    case "unknown_host":
+      return configTxt.errors.unknown_host;
     default:
       return txt.errors.failed;
   }
@@ -313,4 +370,24 @@ export function sshTarget(command: string): string | undefined {
     return undefined;
   }
   return undefined;
+}
+
+/** The config hosts as the page groups them: shown ones are machine cards,
+ * found ones rows of the group, hidden ones its Piilotetut list. The daemon
+ * already left out choices for aliases no longer in the file. */
+export function configGroups(config: SSHConfig) {
+  const by = new Map(config.hosts.map((h) => [h.alias, h]));
+  const pick = (aliases: string[]) =>
+    aliases.flatMap((a) => (by.has(a) ? [by.get(a) as SSHConfigHost] : []));
+  const chosen = new Set([...config.shown, ...config.hidden]);
+  return {
+    shown: pick(config.shown),
+    found: config.hosts.filter((h) => !chosen.has(h.alias)),
+    hidden: pick(config.hidden),
+  };
+}
+
+/** The first IdentityFile named for the host that is not on the server. */
+export function missingKey(host: SSHConfigHost) {
+  return host.keys.find((k) => !k.present)?.path;
 }

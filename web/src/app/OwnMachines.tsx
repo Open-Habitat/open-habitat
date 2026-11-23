@@ -6,11 +6,14 @@ import {
   type WizardStep,
 } from "../components/OwnMachines";
 import { Button } from "../components/Primitives";
+import type { SSHConfigState } from "../components/SSHConfigMachines";
 import { liveText } from "../i18n";
 import { ownMachinesText } from "../text/ownMachines";
+import { useExperimentalFeature } from "./accountPreferences";
 import { jsonWrite, writeOutcome } from "./mutations";
 import {
   type Check,
+  type ConfigCheckResult,
   type OwnMachines as Data,
   type OwnMachinesRequest,
   ownMachinesPath,
@@ -39,6 +42,13 @@ export function OwnMachines({ csrf }: { csrf?: string }) {
   const [removed, setRemoved] = useState<{ name: string; os?: string }>();
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const [configChecks, setConfigChecks] = useState<
+    Record<string, ConfigCheckResult>
+  >({});
+  const [configChecking, setConfigChecking] = useState<string>();
+  // The daemon reads ~/.ssh/config only while the switch is on; the page
+  // shows it only then too, so turning it off hides it at once.
+  const configFeature = useExperimentalFeature("own-machines-ssh-config");
   const pendingRead = useRef<AbortController | undefined>(undefined);
   const phone = useRef(
     typeof window !== "undefined" &&
@@ -48,6 +58,7 @@ export function OwnMachines({ csrf }: { csrf?: string }) {
   useEffect(() => {
     void csrf;
     void refresh;
+    void configFeature;
     const controller = new AbortController();
     pendingRead.current = controller;
     void fetch(ownMachinesPath, {
@@ -71,7 +82,7 @@ export function OwnMachines({ csrf }: { csrf?: string }) {
         if (!controller.signal.aborted) setError(true);
       });
     return () => controller.abort();
-  }, [csrf, refresh]);
+  }, [csrf, refresh, configFeature]);
 
   // While Tailscale waits for the person's login, read again until it is
   // done; nothing is sent meanwhile.
@@ -301,6 +312,40 @@ export function OwnMachines({ csrf }: { csrf?: string }) {
     },
   };
 
+  const configActions = {
+    show: (alias: string) => void page({ action: "config_show", alias }),
+    unshow: (alias: string) =>
+      void page({ action: "config_unshow", alias }, () =>
+        setConfigChecks((c) => {
+          const next = { ...c };
+          delete next[alias];
+          return next;
+        }),
+      ),
+    hide: (alias: string) => void page({ action: "config_hide", alias }),
+    unhide: (alias: string) => void page({ action: "config_unhide", alias }),
+    check: async (alias: string) => {
+      setConfigChecking(alias);
+      setNotice("");
+      const r = await send({ action: "config_check", alias });
+      setConfigChecking(undefined);
+      if (r.ok && r.reply.config_check) {
+        const c = r.reply.config_check;
+        setConfigChecks((now) => ({ ...now, [alias]: c.result }));
+      } else if (!r.ok) setNotice(r.message);
+    },
+  };
+  const config: SSHConfigState | undefined =
+    configFeature && data?.ssh_config
+      ? {
+          config: data.ssh_config,
+          checks: configChecks,
+          checking: configChecking,
+          busy,
+          actions: configActions,
+        }
+      : undefined;
+
   if (!data)
     return error ? (
       <div className="s-stack">
@@ -332,6 +377,7 @@ export function OwnMachines({ csrf }: { csrf?: string }) {
         notice={notice}
         busy={busy}
         actions={actions}
+        config={config}
       />
       {wizard && (
         <AddMachineDialog

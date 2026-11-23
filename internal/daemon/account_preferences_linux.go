@@ -52,6 +52,9 @@ type accountPreferences struct {
 	// Sound is the attention sound's personal choices; absent while none is
 	// made. Mute and volume are each device's own and stay in its browser.
 	Sound *soundPreferences `json:"sound,omitempty"`
+	// SSHConfigMachines is what the person chose for the hosts of their own
+	// ~/.ssh/config on Omat koneet, by alias only (ssh_config_linux.go).
+	SSHConfigMachines *sshConfigMachines `json:"ssh_config_machines,omitempty"`
 }
 
 // soundPreferences keeps only what differs from the defaults: the sound is
@@ -76,8 +79,9 @@ var soundIDs = []string{"kalimba", "marimba", "vibrafoni", "tunnus-puu", "pisara
 // maxPreferencesSize with every other field at its own bound.
 const maxWorkspaceSounds = 32
 
-// maxPreferencesSize bounds the stored file and so the reply.
-const maxPreferencesSize = 8192
+// maxPreferencesSize bounds the stored file and so the reply. The config
+// hosts' choices take up to about 4 KiB beside everything else.
+const maxPreferencesSize = 16384
 
 func validSoundID(id string) bool { return slices.Contains(soundIDs, id) }
 
@@ -211,7 +215,7 @@ func (p accountPreferences) valid() bool {
 			return false
 		}
 	}
-	return p.Sound.valid()
+	return p.Sound.valid() && p.SSHConfigMachines.valid()
 }
 
 // decodePreferencesWrite accepts exactly what the contract's write allows:
@@ -445,6 +449,9 @@ func readPreferences(home string) (accountPreferences, error) {
 	if result.Sound.empty() {
 		result.Sound = nil
 	}
+	if result.SSHConfigMachines.empty() {
+		result.SSHConfigMachines = nil
+	}
 	if !result.valid() || dec.Decode(new(any)) != io.EOF {
 		return result, errors.New("invalid preferences")
 	}
@@ -460,6 +467,9 @@ func savePreferences(home string, value accountPreferences) error {
 	}
 	if value.Sound.empty() {
 		value.Sound = nil
+	}
+	if value.SSHConfigMachines.empty() {
+		value.SSHConfigMachines = nil
 	}
 	dir, err := preferencesDir(home, true)
 	if err != nil {

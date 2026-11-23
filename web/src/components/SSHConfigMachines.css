@@ -1,0 +1,112 @@
+/* Omat koneet › hosts of the person's own ~/.ssh/config (prototype round
+   2026-11-22-omat-koneet-ssh-config, direction 1). Production's om-* pieces
+   underneath; these are only what the group and its cards add. */
+.omc-source {
+  flex: none;
+}
+.omc-machine .om-head {
+  flex-wrap: wrap;
+}
+.omc-tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+.omc-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--ah-size-meta);
+  color: var(--ah-ink-2);
+}
+.omc-tag svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+}
+.omc-tag[data-tone="warning"] {
+  color: var(--ah-warn-ink, var(--ah-ink));
+}
+.omc-tag[data-tone="info"] {
+  color: var(--ah-accent-ink);
+}
+.omc-err {
+  color: var(--ah-err);
+}
+.omc-key {
+  display: block;
+}
+.omc-machine code,
+.omc-group code,
+.om .s-intro code {
+  font-family: var(--ah-mono);
+  font-size: var(--ah-size-code);
+  overflow-wrap: anywhere;
+}
+.omc-group {
+  margin-top: var(--ah-s4);
+  display: grid;
+  gap: var(--ah-s3);
+}
+.omc-group .om-sub {
+  margin-top: 0;
+}
+.omc-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.omc-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--ah-s3);
+  padding: 10px var(--ah-s4);
+  border-top: 1px solid var(--ah-line-soft);
+}
+.omc-row-t {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.omc-row-a {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-end;
+}
+.omc-skipped ul,
+.omc-hidden ul {
+  margin: var(--ah-s2) 0;
+  padding-left: var(--ah-s4);
+  display: grid;
+  gap: 4px;
+  font-size: var(--ah-size-meta);
+}
+.omc-hidden li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+.omc-empty {
+  margin: 0;
+}
+@media (max-width: 640px) {
+  .omc-row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .omc-row-a {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
+  .omc-machine .om-name {
+    flex: 1 1 calc(100% - 48px);
+  }
+  .omc-machine .om-head > [data-testid] {
+    margin-left: 44px;
+  }
+  .omc-machine .om-head > [data-testid] + [data-testid] {
+    margin-left: 0;
+  }
+}

@@ -2,7 +2,8 @@
   "features": [
     { "id": "rewind-conversation", "landed": true },
     { "id": "remote-browser", "landed": true },
-    { "id": "multiplayer", "landed": true }
+    { "id": "multiplayer", "landed": true },
+    { "id": "own-machines-ssh-config", "landed": true }
   ],
   "fi": {
     "features": {
@@ -29,6 +30,14 @@
         "shows": "Osallistujan viestit tulevat keskusteluun hänen nimellään. Hänen viesteihinsä agentti vastaa ilman työkaluja, kunnes päästät sen jatkamaan tai annat hänelle Täydet oikeudet.",
         "needs": "Kutsuttavan pitää olla kirjautunut tälle palvelimelle.",
         "caption": "Muut mukana"
+      },
+      "own-machines-ssh-config": {
+        "name": "Koneet ~/.ssh/config:sta",
+        "desc": "Omat koneet näyttää myös yhteydet, jotka olet itse kirjoittanut ~/.ssh/config-tiedostoosi. Voit näyttää ne omina koneinasi tai piilottaa ne.",
+        "where": "Asetusten Omat koneet -sivulla koneiden alla ryhmässä Löytyi ~/.ssh/config:sta. Näytetty yhteys siirtyy koneiden listaan korttina.",
+        "shows": "Jokaisesta yhteydestä osoitteen, käyttäjän, portin, avaintiedostot ja onko ne olemassa, ProxyJumpin sekä tiedoston ja rivin. Yhteys tarkistetaan vain, kun painat Tarkista yhteys.",
+        "needs": "Habitat lukee tiedoston omana käyttäjänäsi eikä koskaan kirjoita siihen tai known_hostsiin. Jokeririvejä, Match-lohkoja ja Git-palveluita ei näytetä.",
+        "caption": "Löytyi ~/.ssh/config:sta"
       }
     },
     "picture": {
@@ -80,6 +89,14 @@
         "shows": "A participant's messages appear under their name. The agent answers them without tools until you let it continue or give them full rights.",
         "needs": "The invited person must have signed in to this server.",
         "caption": "Others in"
+      },
+      "own-machines-ssh-config": {
+        "name": "Machines from ~/.ssh/config",
+        "desc": "Your own machines also shows the connections you wrote yourself in your ~/.ssh/config. You can show them as your own machines or hide them.",
+        "where": "On the Your own machines page in Settings, below the machines, in the group Found in ~/.ssh/config. A shown connection moves into the machine list as a card.",
+        "shows": "For each connection the address, user, port, key files and whether they exist, the ProxyJump, and the file and line. A connection is checked only when you press Check connection.",
+        "needs": "Habitat reads the file as your own user and never writes to it or to known_hosts. Wildcard lines, Match blocks and Git services are not shown.",
+        "caption": "Found in ~/.ssh/config"
       }
     },
     "picture": {

@@ -20,7 +20,10 @@ type ownMachinesHost struct {
 	mu      sync.Mutex
 	runtime string
 	sshDir  string
-	node    *tailnetfake.Node
+	// home is the person's disposable home, where a spec's synthetic
+	// ~/.ssh/config goes.
+	home string
+	node *tailnetfake.Node
 	// open are the agents' SSH connections to machines (ControlMaster
 	// sockets), by machine name.
 	open map[string]net.Listener
@@ -28,8 +31,8 @@ type ownMachinesHost struct {
 
 var ownMachineHosts = map[string]*ownMachinesHost{}
 
-func newOwnMachinesHost(tmp, user string) (*ownMachinesHost, daemon.OwnMachinesFixture, error) {
-	h := &ownMachinesHost{runtime: filepath.Join(tmp, "rt-"+user), sshDir: filepath.Join(tmp, "ssh-"+user)}
+func newOwnMachinesHost(tmp, home, user string) (*ownMachinesHost, daemon.OwnMachinesFixture, error) {
+	h := &ownMachinesHost{runtime: filepath.Join(tmp, "rt-"+user), sshDir: filepath.Join(tmp, "ssh-"+user), home: home}
 	bin := filepath.Join(tmp, "ts-"+user)
 	for _, d := range []string{h.runtime, h.sshDir, bin} {
 		if err := os.MkdirAll(d, 0700); err != nil {
@@ -80,8 +83,29 @@ func (h *ownMachinesHost) userManager(_ context.Context, args ...string) error {
 	return nil
 }
 
-// fixture serves /fixture/own-machines?do=approve|machine|hostkey|open|close
-// for alice.
+// syntheticSSHConfig is a person's own ~/.ssh/config for the specs: three
+// hosts (one through an Include) and what the page leaves out.
+const syntheticSSHConfig = `Include config.d/*.conf
+
+Host nas
+  HostName nas.home.arpa
+  User admin
+  IdentityFile ~/.ssh/id_nas
+
+Host rakennus
+  HostName 10.20.0.5
+  User build
+  ProxyJump nas
+
+Host github.com
+  User git
+
+Host *
+  ServerAliveInterval 30
+`
+
+// fixture serves /fixture/own-machines?do=approve|machine|hostkey|open|close|
+// ssh-config|config-host for alice.
 func ownMachinesFixture(w http.ResponseWriter, r *http.Request) {
 	h := ownMachineHosts["alice"]
 	q := r.URL.Query()
@@ -108,6 +132,16 @@ func ownMachinesFixture(w http.ResponseWriter, r *http.Request) {
 		} else {
 			err = tailnetfake.SetHostKey(h.sshDir, q.Get("address"), seed[0])
 		}
+	case "ssh-config":
+		dir := filepath.Join(h.home, ".ssh")
+		if err = os.MkdirAll(filepath.Join(dir, "config.d"), 0700); err == nil {
+			err = os.WriteFile(filepath.Join(dir, "config.d", "vanhat.conf"), []byte("Host vanha\n  HostName old.example.net\n"), 0600)
+		}
+		if err == nil {
+			err = os.WriteFile(filepath.Join(dir, "config"), []byte(syntheticSSHConfig), 0600)
+		}
+	case "config-host":
+		err = tailnetfake.SetConfigHost(h.sshDir, filepath.Base(q.Get("alias")), q.Get("mode"))
 	case "open", "close":
 		name := q.Get("name")
 		h.mu.Lock()

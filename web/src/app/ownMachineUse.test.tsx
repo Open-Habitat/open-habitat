@@ -5,6 +5,7 @@ import example from "../../../contracts/v1/examples/own-machines.json";
 import {
   OwnMachineUseProvider,
   useOpenMachines,
+  useOwnMachine,
   useOwnMachineHosts,
 } from "./ownMachineUse";
 
@@ -71,6 +72,18 @@ describe("own machines in a conversation", () => {
     await settle();
     expect(fetch).toHaveBeenCalledTimes(2);
     expect(result.current).toEqual(["alice-macbook"]);
+  });
+
+  it("counts a ~/.ssh/config host only once the person showed it", async () => {
+    vi.useFakeTimers();
+    serve(() => false);
+    const { result } = renderHook(
+      () => [useOwnMachine("nas", "done"), useOwnMachine("build", "done")],
+      { wrapper },
+    );
+    await settle();
+    // The example shows nas and leaves build among the found hosts.
+    expect(result.current).toEqual(["nas", undefined]);
   });
 
   it("does not show another machine's open connection", async () => {
