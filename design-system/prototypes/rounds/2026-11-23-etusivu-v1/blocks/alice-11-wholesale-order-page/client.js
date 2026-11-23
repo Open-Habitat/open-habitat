@@ -1,10 +1,14 @@
-// The order page beside the conversation really counts: + and − change the order total.
+// The order page beside the conversation really counts: + and − change the
+// quantity, the item count and the order total. (The tabs need no code: the
+// engine's data-view / data-set toggle switches them and the address.)
 document.addEventListener('click', (e) => {
-  const ob = e.target.closest('[data-block="alice-11-wholesale-order-page"] .op-b');
-  if (!ob) return;
-  const row = ob.closest('.op-row'); const out = row.querySelector('output');
-  out.textContent = Math.max(0, +out.textContent + +ob.dataset.d);
-  const op = ob.closest('[data-op]');
-  const sum = [...op.querySelectorAll('.op-row')].reduce((a, r) => a + +r.dataset.p * +r.querySelector('output').textContent, 0);
-  op.querySelector('.op-sum').textContent = `€${sum.toFixed(2)}`;
+  const b = e.target.closest('[data-block="alice-11-wholesale-order-page"] .ws-b');
+  if (!b) return;
+  const out = b.closest('.ws-card').querySelector('output');
+  out.textContent = Math.max(0, +out.textContent + +b.dataset.d);
+  const shop = b.closest('.ws-shop');
+  let n = 0; let sum = 0;
+  shop.querySelectorAll('.ws-card').forEach((c) => { const q = +c.querySelector('output').textContent; n += q; sum += q * +c.dataset.p; });
+  shop.querySelector('.ws-n').textContent = n;
+  shop.querySelector('.ws-sum').textContent = `€${sum.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 });

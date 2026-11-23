@@ -1,0 +1,110 @@
+/* Alice's wholesale order page: Example Studio's own small shop in a browser
+   frame. The page inside has the studio's brand (warm linen, indigo, rust);
+   the frame, tabs and type stay on the design-system tokens. */
+[data-block="alice-11-wholesale-order-page"] .ws {
+  --ws-paper: #f7f2e9; --ws-card: #fffdf8; --ws-ink: #2b2620; --ws-soft: #6f665a; --ws-rule: #e7dfd1;
+  --ws-indigo: #2c3e63; --ws-rust: #a5502f;
+  container-type: inline-size;
+  border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); overflow: hidden; background: var(--ws-paper);
+  box-shadow: 0 1px 2px rgba(23, 32, 26, .05), 0 8px 24px -12px rgba(23, 32, 26, .18);
+}
+[data-block="alice-11-wholesale-order-page"] .ws-url {
+  display: flex; align-items: center; gap: 7px; margin: 0; padding: 7px 10px;
+  background: var(--ah-surface-2); border-bottom: 1px solid var(--ah-line);
+  font: 400 11.5px var(--ah-mono); color: var(--ah-ink-2);
+}
+[data-block="alice-11-wholesale-order-page"] .ws-lock { width: 8px; height: 7px; margin-top: 2px; border: 1.5px solid var(--ah-muted); border-radius: 2px; position: relative; }
+[data-block="alice-11-wholesale-order-page"] .ws-lock::before { content: ""; position: absolute; left: 0; top: -5px; width: 4px; height: 4px; border: 1.5px solid var(--ah-muted); border-bottom: 0; border-radius: 3px 3px 0 0; }
+[data-block="alice-11-wholesale-order-page"] .ws-addr { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+[data-block="alice-11-wholesale-order-page"] .ws-live { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; font: 600 10.5px var(--ah-font); font-style: normal; letter-spacing: .06em; text-transform: uppercase; color: var(--ah-ok); }
+[data-block="alice-11-wholesale-order-page"] .ws-live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ah-ok); animation: alice-11-wholesale-order-page-pulse 2.4s ease-in-out infinite; }
+@keyframes alice-11-wholesale-order-page-pulse { 50% { opacity: .35; } }
+
+[data-block="alice-11-wholesale-order-page"] .ws-tabs { display: flex; gap: 2px; margin: 0; padding: 6px 8px 0; background: var(--ah-surface-2); border-bottom: 1px solid var(--ah-line); }
+[data-block="alice-11-wholesale-order-page"] .ws-tabs button {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px 7px; border: 0; border-bottom: 2px solid transparent;
+  background: none; font: 500 12px var(--ah-font); color: var(--ah-muted); cursor: pointer;
+}
+[data-block="alice-11-wholesale-order-page"] .ws-tabs button b { font: 600 10.5px var(--ah-mono); padding: 1px 6px; border-radius: var(--ah-r-pill); background: var(--ah-accent-soft); color: var(--ah-accent-ink); }
+[data-block="alice-11-wholesale-order-page"] .ws-tabs button[aria-pressed="true"] { color: var(--ah-ink); border-bottom-color: var(--ah-accent); }
+[data-block="alice-11-wholesale-order-page"] .ws-tabs button:focus-visible { outline: 2px solid var(--ah-accent); outline-offset: -2px; }
+[data-block="alice-11-wholesale-order-page"] .ws[data-state="shop"] .ws-pane-orders,
+[data-block="alice-11-wholesale-order-page"] .ws[data-state="orders"] .ws-pane-shop { display: none; }
+
+/* ---------- The shop page ---------- */
+[data-block="alice-11-wholesale-order-page"] .ws-shop { padding: 14px 14px 12px; color: var(--ws-ink); font-family: var(--ah-font); }
+[data-block="alice-11-wholesale-order-page"] .ws-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding-bottom: 12px; border-bottom: 1px solid var(--ws-rule); }
+[data-block="alice-11-wholesale-order-page"] .ws-brand { margin: 0; display: flex; flex-direction: column; gap: 2px; }
+[data-block="alice-11-wholesale-order-page"] .ws-brand b { font-size: 15px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+[data-block="alice-11-wholesale-order-page"] .ws-brand span { font-size: 11.5px; color: var(--ws-soft); letter-spacing: .02em; }
+[data-block="alice-11-wholesale-order-page"] .ws-who { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; }
+[data-block="alice-11-wholesale-order-page"] .ws-who > span:last-child { display: flex; flex-direction: column; line-height: 1.25; }
+[data-block="alice-11-wholesale-order-page"] .ws-who small { font-weight: 400; font-size: 11px; color: var(--ws-soft); }
+[data-block="alice-11-wholesale-order-page"] .ws-av { flex: none; display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: #e8dcc8; color: var(--ws-ink); font: 600 10.5px var(--ah-font); letter-spacing: .04em; }
+[data-block="alice-11-wholesale-order-page"] .ws-lead { margin: 12px 0 10px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--ws-soft); }
+[data-block="alice-11-wholesale-order-page"] .ws-lead b { font-size: 13.5px; color: var(--ws-ink); font-weight: 600; }
+
+[data-block="alice-11-wholesale-order-page"] .ws-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+[data-block="alice-11-wholesale-order-page"] .ws-card { display: flex; flex-direction: column; background: var(--ws-card); border: 1px solid var(--ws-rule); border-radius: var(--ah-r-md); overflow: hidden; }
+[data-block="alice-11-wholesale-order-page"] .ws-ph { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; background: #efe7da; }
+[data-block="alice-11-wholesale-order-page"] .ws-name { flex: 1; margin: 0; padding: 9px 10px 0; display: flex; flex-direction: column; gap: 1px; }
+[data-block="alice-11-wholesale-order-page"] .ws-name b { font-size: 12.5px; font-weight: 600; }
+[data-block="alice-11-wholesale-order-page"] .ws-name span { font-size: 11px; color: var(--ws-soft); }
+[data-block="alice-11-wholesale-order-page"] .ws-buy { margin: 0; padding: 8px 10px 10px; margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+[data-block="alice-11-wholesale-order-page"] .ws-price { font: 600 12.5px var(--ah-font); font-variant-numeric: tabular-nums; }
+[data-block="alice-11-wholesale-order-page"] .ws-q { display: inline-flex; align-items: center; border: 1px solid var(--ws-rule); border-radius: var(--ah-r-pill); background: var(--ws-paper); }
+[data-block="alice-11-wholesale-order-page"] .ws-q output { min-width: 20px; text-align: center; font: 600 12px var(--ah-mono); }
+[data-block="alice-11-wholesale-order-page"] .ws-b { width: 26px; height: 26px; border: 0; border-radius: 50%; background: none; color: var(--ws-ink); font: 500 15px/1 var(--ah-font); cursor: pointer; }
+[data-block="alice-11-wholesale-order-page"] .ws-b:hover { background: #ece3d4; }
+[data-block="alice-11-wholesale-order-page"] .ws-b:focus-visible { outline: 2px solid var(--ws-indigo); outline-offset: -2px; }
+[data-block="alice-11-wholesale-order-page"] .ws-b:active { transform: scale(.92); }
+
+[data-block="alice-11-wholesale-order-page"] .ws-foot { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--ws-rule); display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 12px; }
+[data-block="alice-11-wholesale-order-page"] .ws-tot { margin: 0; display: flex; align-items: baseline; gap: 10px; font-size: 12px; color: var(--ws-soft); }
+[data-block="alice-11-wholesale-order-page"] .ws-sum { font-size: 17px; font-weight: 600; color: var(--ws-ink); font-variant-numeric: tabular-nums; }
+[data-block="alice-11-wholesale-order-page"] .ws-place { padding: 8px 16px; border-radius: var(--ah-r-pill); background: var(--ws-indigo); color: #fff; font: 600 12.5px var(--ah-font); white-space: nowrap; }
+[data-block="alice-11-wholesale-order-page"] .ws-note { grid-column: 1 / -1; margin: 0; font-size: 11px; color: var(--ws-soft); }
+
+/* ---------- Today's orders (Alice's own view) ---------- */
+[data-block="alice-11-wholesale-order-page"] .ws-orders { padding: 14px; background: var(--ah-surface); color: var(--ah-ink); font-family: var(--ah-font); }
+[data-block="alice-11-wholesale-order-page"] .ws-oh { margin: 0 0 10px; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+[data-block="alice-11-wholesale-order-page"] .ws-oh b { font-size: 14px; font-weight: 600; }
+[data-block="alice-11-wholesale-order-page"] .ws-oh span { font-size: 11.5px; color: var(--ah-muted); }
+[data-block="alice-11-wholesale-order-page"] .ws-kpi { margin: 0 0 12px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+[data-block="alice-11-wholesale-order-page"] .ws-kpi span { display: flex; flex-direction: column; gap: 2px; padding: 9px 10px; border-radius: var(--ah-r-md); background: var(--ah-sunken); font-size: 11px; color: var(--ah-muted); }
+[data-block="alice-11-wholesale-order-page"] .ws-kpi b { font-size: 17px; font-weight: 600; color: var(--ah-ink); font-variant-numeric: tabular-nums; }
+[data-block="alice-11-wholesale-order-page"] .ws-ol { list-style: none; margin: 0; padding: 0; }
+[data-block="alice-11-wholesale-order-page"] .ws-ol li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--ah-line-soft); }
+[data-block="alice-11-wholesale-order-page"] .ws-om, [data-block="alice-11-wholesale-order-page"] .ws-os { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+[data-block="alice-11-wholesale-order-page"] .ws-os { align-items: flex-end; }
+[data-block="alice-11-wholesale-order-page"] .ws-om b, [data-block="alice-11-wholesale-order-page"] .ws-os b { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+[data-block="alice-11-wholesale-order-page"] .ws-om small { font: 400 11px var(--ah-mono); color: var(--ah-muted); }
+[data-block="alice-11-wholesale-order-page"] .ws-os small { font-size: 11px; color: var(--ah-ok); }
+[data-block="alice-11-wholesale-order-page"] .ws-os small::before { content: "✓ "; }
+[data-block="alice-11-wholesale-order-page"] .ws-svc { margin: 4px 0 0; padding-top: 10px; border-top: 1px solid var(--ah-line-soft); font-size: 11px; color: var(--ah-muted); }
+[data-block="alice-11-wholesale-order-page"] .ws-svc code { font: 400 11px var(--ah-mono); color: var(--ah-ink-2); }
+
+/* The draft in the 12:10 reply waits for her yes. */
+[data-block="alice-11-wholesale-order-page"] .dr-ready .dr-s { background: var(--ah-accent-soft); color: var(--ah-accent-ink); }
+
+@container (min-width: 460px) {
+  [data-block="alice-11-wholesale-order-page"] .ws-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  [data-block="alice-11-wholesale-order-page"] .ws-name { padding: 7px 8px 0; }
+  [data-block="alice-11-wholesale-order-page"] .ws-name b { font-size: 12px; line-height: 1.25; }
+  [data-block="alice-11-wholesale-order-page"] .ws-name span { font-size: 10.5px; }
+  [data-block="alice-11-wholesale-order-page"] .ws-buy { flex-direction: column; align-items: stretch; gap: 6px; padding: 6px 8px 8px; }
+  [data-block="alice-11-wholesale-order-page"] .ws-q { justify-content: space-between; }
+}
+@container (max-width: 380px) {
+  [data-block="alice-11-wholesale-order-page"] .ws-shop { padding: 12px 10px 10px; }
+  [data-block="alice-11-wholesale-order-page"] .ws-grid { gap: 8px; }
+  [data-block="alice-11-wholesale-order-page"] .ws-name { padding: 7px 8px 0; }
+  [data-block="alice-11-wholesale-order-page"] .ws-buy { padding: 6px 8px 8px; flex-wrap: wrap; }
+  [data-block="alice-11-wholesale-order-page"] .ws-b { width: 24px; height: 24px; }
+  [data-block="alice-11-wholesale-order-page"] .ws-foot { grid-template-columns: 1fr; }
+  [data-block="alice-11-wholesale-order-page"] .ws-place { justify-self: stretch; text-align: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-block="alice-11-wholesale-order-page"] .ws-live::before { animation: none; }
+  [data-block="alice-11-wholesale-order-page"] .ws-b:active { transform: none; }
+}
