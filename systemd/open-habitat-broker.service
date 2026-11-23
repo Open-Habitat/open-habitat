@@ -20,7 +20,13 @@ ProtectHome=no
 # /opt/open-habitat: an administrator's integration app credentials are
 # renamed into its integrations.json, which a file-only exception would forbid.
 ReadWritePaths=/etc /var/lib/open-habitat /home /run/open-habitat /opt/open-habitat
-PrivateTmp=yes
+# Removing a person (ADR 0037) deletes what their own processes left outside
+# the home: files the UID owns on the host's /tmp and /var/tmp, its crontab,
+# at jobs, mail spool and user journal files. The broker therefore sees the
+# host's temporary directories rather than private ones; it walks them by
+# descriptor and never follows a link. Absent spool directories are skipped.
+ReadWritePaths=/tmp /var/tmp -/var/spool/cron -/var/mail -/var/log/journal -/run/log/journal
+PrivateTmp=no
 PrivateDevices=yes
 UMask=0077
 # Account/ACL/unit operations require access to NSS, home, /etc, /run and

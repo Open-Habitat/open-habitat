@@ -73,14 +73,22 @@ type HostExecutor interface {
 
 var phases = []string{"account", "home", "config", "socket", "unit", "quota"}
 
+// QuotaOperations are the kernel's quota records. Charged reads what the
+// kernel charges a UID in bytes and inodes, limit or not; Clear ends a
+// record that charges nothing. Both serve a person's removal and the
+// allocator's proof that a returned UID owns nothing (ADR 0037).
 type QuotaOperations interface {
 	Read(uint32) (storagequota.Quota, error)
 	Set(uint32, uint64) error
+	Charged(uint32) (uint64, uint64, error)
+	Clear(uint32) error
 }
 type nativeQuota struct{}
 
 func (nativeQuota) Read(uid uint32) (storagequota.Quota, error) { return storagequota.Read(uid) }
 func (nativeQuota) Set(uid uint32, limit uint64) error          { return storagequota.Set(uid, limit) }
+func (nativeQuota) Charged(uid uint32) (uint64, uint64, error)  { return storagequota.Charged(uid) }
+func (nativeQuota) Clear(uid uint32) error                      { return storagequota.Clear(uid) }
 
 type journal struct {
 	Version    int    `json:"version"`
@@ -137,9 +145,15 @@ type Writer struct {
 	IntegrationEvent func(operation, provider, actor string)
 	// StopEvent reports each revoked binding's listener stop: the
 	// committed username and whether all its units are inactive.
-	StopEvent  func(string, bool)
-	owner      uint32
-	activation *activationState
+	StopEvent func(string, bool)
+	// RemovalHost performs the host side of a person's removal (ADR 0037);
+	// nil refuses removal. RemovalEvent reports each removal stage: the
+	// subject, committed username, stage, outcome and fixed reason.
+	RemovalHost  RemovalExecutor
+	RemovalEvent func(id, user, stage, outcome, reason string)
+	owner        uint32
+	activation   *activationState
+	removal      *removalState
 }
 
 // A single broker serializes activations, including login ensures. An
@@ -151,7 +165,7 @@ type activationState struct {
 }
 
 func NewWriter(dir string, min, max uint32, executor HostExecutor) Writer {
-	return Writer{Dir: dir, UIDMin: min, UIDMax: max, Executor: executor, Quota: nativeQuota{}, QuotaEnabled: storagequota.Enabled, Capacity: storagequota.Capacity, activation: &activationState{slot: make(chan struct{}, 1)}}
+	return Writer{Dir: dir, UIDMin: min, UIDMax: max, Executor: executor, Quota: nativeQuota{}, QuotaEnabled: storagequota.Enabled, Capacity: storagequota.Capacity, activation: &activationState{slot: make(chan struct{}, 1)}, removal: newRemovalState()}
 }
 func failure(f Failure) Reply { return Reply{Version: 1, Failure: f} }
 
@@ -314,6 +328,9 @@ func stateAt(ctx context.Context, fd int, owner uint32) (allowFile, ledgerFile, 
 	if e = validRevoked(ar["revoked"]); e != nil {
 		return a, l, nil, nil, e
 	}
+	if e = validRemovals(ar["removals"]); e != nil {
+		return a, l, nil, nil, e
+	}
 	lr, e := object(lb, "version", "generation", "bindings")
 	if e != nil {
 		return a, l, nil, nil, e
@@ -368,6 +385,9 @@ func (w Writer) Handle(ctx context.Context, r Request) Reply {
 	// lock (the native pre-start gate itself takes that lock).
 	if r.Operation == OpStopRevoked {
 		return w.handleStopRevoked(ctx)
+	}
+	if removalOperation(r.Operation) {
+		return w.handleRemoval(ctx, r)
 	}
 	if accessOperation(r.Operation) {
 		reply := w.handleAccess(ctx, r)
@@ -527,7 +547,9 @@ func (w Writer) handleLocked(ctx context.Context, r Request) Reply {
 				defer workers.Done()
 				for index := range jobs {
 					b := l.Bindings[offset+index]
-					if ctx.Err() == nil && b.UID >= w.UIDMin && b.UID <= w.UIDMax {
+					// A binding under removal is not verified: its account
+					// and home may already be partly gone.
+					if ctx.Err() == nil && b.UID >= w.UIDMin && b.UID <= w.UIDMax && a.removal(b.ID) == nil {
 						verified[index] = w.Executor.Verify(ctx, ExecutorIdentity{provider: "github", id: b.ID, username: b.Username, uid: b.UID}) == nil
 					}
 				}
@@ -541,6 +563,10 @@ func (w Writer) handleLocked(ctx context.Context, r Request) Reply {
 		for index, b := range l.Bindings[offset:end] {
 			if ctx.Err() != nil {
 				return failure(StateUnavailable)
+			}
+			if e := a.removal(b.ID); e != nil && e.UID == b.UID && b.UID >= w.UIDMin && b.UID <= w.UIDMax {
+				page.Rows = append(page.Rows, w.removalQuotaRow(b, *e))
+				continue
 			}
 			row := QuotaRow{BoundUser: BoundUser{ID: b.ID, Username: b.Username}, Unavailable: true}
 			if verified[index] {
@@ -625,6 +651,11 @@ func (w Writer) handleLocked(ctx context.Context, r Request) Reply {
 		if b.ID == r.ID {
 			if b.UID < w.UIDMin || b.UID > w.UIDMax {
 				return failure(Drift)
+			}
+			// A binding under removal routes nobody and changes no limit,
+			// even if some source admits the subject again (ADR 0037).
+			if a.removal(b.ID) != nil {
+				return failure(RemovalPending)
 			}
 			if ctx.Err() != nil {
 				return failure(StateUnavailable)
@@ -729,6 +760,18 @@ func (w Writer) handleLocked(ctx context.Context, r Request) Reply {
 					w.GuardEvent(stage)
 				}
 				return failure(Drift)
+			}
+			// Under user quotas a UID returned by a removal is reused only
+			// when the kernel charges it nothing on the home filesystem.
+			if ok && !w.NoUserQuota {
+				bytes, inodes, err := w.Quota.Charged(n)
+				if err != nil {
+					if w.GuardEvent != nil {
+						w.GuardEvent("quota_charged")
+					}
+					return failure(Drift)
+				}
+				ok = bytes == 0 && inodes == 0
 			}
 			if ok {
 				uid = n

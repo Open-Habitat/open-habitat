@@ -1558,6 +1558,49 @@ bring the sockets back. An installation gate that refuses socket starts while
 a revoked person's socket is active therefore needs no manual cleanup after a
 withdrawal or a revocation.
 
+Removing a person is a separate, final action beside withdrawal. Removal
+first withdraws access as above, then the broker closes the person out of the
+host at once: it expires the account (which also refuses SSH key logins),
+disables lingering, stops `user@<uid>.service`, terminates the person's
+sessions and kills whatever still runs as the UID. The home is untouched
+until the due time, 14 days later or at once when the administrator chose
+immediate removal; until then the administrator may cancel, which unexpires
+the account and leaves access withdrawn. At the due time the broker itself,
+without another request, deletes the person's crontab, at jobs, mail spool,
+user journal files and the files the UID owns on `/tmp` and `/var/tmp`,
+deletes the home by descriptor (it is first renamed to
+`/home/.open-habitat-removing-<uid>`, never following a link or crossing a
+mount), proves under user quotas that the kernel charges the UID nothing on
+the home filesystem and clears its quota record, removes the socket
+directory, named ACL entries and `daemon-<name>.json`, runs `userdel`
+(without `-r`) and drops the binding. Only then may the UID be given to a
+new account, and only while the kernel still charges it nothing. A person
+admitted again later gets a new, empty account.
+
+The broker journal logs every stage as `broker_removal` with the subject,
+username, stage, outcome and, when held, a fixed reason. A held removal is
+retried each hour and when the broker starts, and the access list shows it
+as interrupted with the reason:
+
+- `close_failed`: something of the person still runs or the account could
+  not be expired; look at `user@<uid>.service` and the UID's processes.
+- `admitted`: `site.json` admits the person again; remove them there or
+  cancel the removal.
+- `home_unsafe`: the home is not a directory of the committed UID on
+  `/home`'s filesystem, or a mount (such as a stale FUSE mount) is inside
+  it; unmount it or inspect the home.
+- `files_remain`: the kernel still charges the UID blocks or inodes on the
+  home filesystem after the deletion; find them with
+  `find / -xdev -uid <uid>` on that filesystem and remove them.
+- `step_failed`: a deletion or account step failed; the journal's stage
+  names which.
+
+The broker's unit therefore sees the host's `/tmp` and `/var/tmp` and may
+write the cron, mail and journal spools (`ReadWritePaths` in
+`open-habitat-broker.service`); a deployment that installs its own units
+must keep those paths. Shared memory under `/dev/shm` is removed by logind
+when the person's last session ends.
+
 ## Start and prove first use
 
 After successful apply, inspect the selected version and administrative readback:
@@ -1666,7 +1709,7 @@ a site that contains it, so upgrade first and add the field afterwards.
   person's writes fail with "no space left", and on a single filesystem it can
   also stop journald, the broker's and gateway's state writes and package
   updates. The product does not reserve space or clean anything up for you.
-- **Backups:** back up `/home` with ownership, ACLs and user credentials protected; `/var/lib/open-habitat/broker` as **one consistent snapshot** including its monotonic head and an independently retained high-water record; `/var/lib/open-habitat-gateway`; the protected gateway configuration/TLS secrets; the UID-pool and quota/boot policy; and the selected release and Pi runtime provenance. Keep backup keys separate from the server. Do not back up `/run` as persistent authority. Test a restore offline and reestablish UID/GID, quotas, ACLs and socket activation before reopening ingress. A stale broker ledger can reassign another person's UID: if the snapshot's high-water cannot be proved current, do not restore it onto a host with newer identities. There is no supported one-command recovery, deprovision or rollback operator for arbitrary installations. Lost session state requires new browser login; lost native home/history or credentials cannot be recreated from the release archive.
+- **Backups:** back up `/home` with ownership, ACLs and user credentials protected; `/var/lib/open-habitat/broker` as **one consistent snapshot** including its monotonic head and an independently retained high-water record; `/var/lib/open-habitat-gateway`; the protected gateway configuration/TLS secrets; the UID-pool and quota/boot policy; and the selected release and Pi runtime provenance. Keep backup keys separate from the server. Do not back up `/run` as persistent authority. Test a restore offline and reestablish UID/GID, quotas, ACLs and socket activation before reopening ingress. A stale broker ledger can reassign another person's UID: if the snapshot's high-water cannot be proved current, do not restore it onto a host with newer identities. There is no supported one-command recovery or rollback operator for arbitrary installations. Removing a person deletes their home for good (see removing a person above): the product hands nobody a copy, so a backup of `/home` taken before the removal is the only one, and keeping, protecting and expiring it is the operator's responsibility. Lost session state requires new browser login; lost native home/history or credentials cannot be recreated from the release archive.
 
 Local automation invokes the shipped host operator; it must not replace its lock, qualification or broker transactions with ad-hoc state edits.
 

@@ -45,6 +45,37 @@ type allowFile struct {
 	// admitted is equally unadmitted, but team changes leave their daemon
 	// running. An id goes when any source admits it again.
 	Revoked []string `json:"revoked,omitempty"`
+	// Removals are scheduled removals of committed bindings (ADR 0037).
+	// Each names the binding's UID and username as committed when it was
+	// scheduled, so it can never apply to a later binding of the same id.
+	// The admission file holds them, not the ledger, because it is the
+	// broker's tolerant commit point: an epoch ahead of the watermark is
+	// recorded by the next exchange, while a ledger write outside ensure's
+	// journal could leave the ledger and the watermark disagreeing.
+	Removals []removalEntry `json:"removals,omitempty"`
+}
+
+// removalEntry is one scheduled removal. Due, Actor and At are when the data
+// stage may start, who asked and when; Stage and Reason are the last stage
+// reached and the fixed reason it is held, if any.
+type removalEntry struct {
+	ID       string `json:"id"`
+	UID      uint32 `json:"uid"`
+	Username string `json:"username"`
+	Due      string `json:"due"`
+	Actor    string `json:"actor"`
+	At       string `json:"at"`
+	Stage    string `json:"stage"`
+	Reason   string `json:"reason,omitempty"`
+}
+
+func (a allowFile) removal(id string) *removalEntry {
+	for i := range a.Removals {
+		if a.Removals[i].ID == id {
+			return &a.Removals[i]
+		}
+	}
+	return nil
 }
 
 // teamSource is one GitHub team whose active members may sign in. The org id
@@ -154,7 +185,34 @@ func fileLimit(name string) int64 {
 }
 
 // allowFields are the admission file's keys, checked before any typed decode.
-var allowFields = []string{"version", "epoch", "ids", "runtime_admission", "runtime", "teams", "members", "revoked"}
+var allowFields = []string{"version", "epoch", "ids", "runtime_admission", "runtime", "teams", "members", "revoked", "removals"}
+
+// validRemovals checks the scheduled removals: bounded like the runtime
+// source whose withdrawn entries they keep, one per subject, each naming a
+// pool-shaped binding and a fixed stage and reason.
+func validRemovals(raw json.RawMessage) error {
+	if len(raw) == 0 {
+		return nil
+	}
+	entries, err := checkArray(raw, "removals")
+	if err != nil || len(entries) > MaxRuntimeAdmission {
+		return ErrInvalid
+	}
+	seen := map[string]bool{}
+	for _, entry := range entries {
+		var x removalEntry
+		if decode(entry, &x, "id", "uid", "username", "due", "actor", "at", "stage", "reason") != nil || !numericID(x.ID) || seen[x.ID] || x.UID < 1000 || x.UID > 60000 || !username(x.Username) || !validStamp(x.Due) || !validActor(x.Actor) || !validStamp(x.At) || !removalStage(x.Stage) || !removalReason(x.Reason) {
+			return ErrInvalid
+		}
+		if fields, _ := object(entry, "id", "uid", "username", "due", "actor", "at", "stage", "reason"); fields != nil {
+			if _, ok := fields["reason"]; ok && x.Reason == "" {
+				return ErrInvalid
+			}
+		}
+		seen[x.ID] = true
+	}
+	return nil
+}
 
 // validRevoked checks root's revocation record: canonical ids, no
 // duplicate, at most one per identity in the largest pool.
@@ -356,6 +414,9 @@ func readState(dir string, owner uint32) (allowFile, ledgerFile, error) {
 		return a, l, err
 	}
 	if err = validRevoked(ar["revoked"]); err != nil {
+		return a, l, err
+	}
+	if err = validRemovals(ar["removals"]); err != nil {
 		return a, l, err
 	}
 	lr, err := object(lb, "version", "generation", "bindings")

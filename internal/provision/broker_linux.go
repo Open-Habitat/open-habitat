@@ -137,7 +137,7 @@ func ServeBroker(ctx context.Context) error {
 	writer.GuardEvent = func(stage string) {
 		// Writer supplies fixed literals only. Never log request, candidate,
 		// UID, route, path, command output or raw host errors.
-		if stage != "persistent_identity" && stage != "availability_error" && stage != "no_available_binding" && stage != "invalid_executor" && stage != "nss_probe" && stage != "group_probe" && stage != "parent_policy" && stage != "acl_policy" && stage != "path_probe" && stage != "unit_probe" && stage != "quota_not_enforced" && stage != "binding_quota_missing" && stage != "activation_uncertain" {
+		if stage != "persistent_identity" && stage != "availability_error" && stage != "no_available_binding" && stage != "invalid_executor" && stage != "nss_probe" && stage != "group_probe" && stage != "parent_policy" && stage != "acl_policy" && stage != "path_probe" && stage != "unit_probe" && stage != "quota_not_enforced" && stage != "binding_quota_missing" && stage != "activation_uncertain" && stage != "quota_charged" {
 			return
 		}
 		log.Warn("broker_guard", "outcome", "rejected", "reason", stage)
@@ -155,6 +155,16 @@ func ServeBroker(ctx context.Context) error {
 	// that same lock before systemd starts each socket. A failure for one binding
 	// must not prevent the broker serving the others.
 	go writer.restoreSockets(ctx, bindings, restored(log), synced(log))
+	// Removals: due data stages and unconfirmed close-outs, now and hourly.
+	writer.RemovalHost = writer.Executor.(*LinuxHostExecutor)
+	writer.RemovalEvent = func(id, user, stage, outcome, reason string) {
+		if reason == "" {
+			log.Info("broker_removal", "outcome", outcome, "stage", stage, "subject", id, "user", user)
+		} else {
+			log.Warn("broker_removal", "outcome", outcome, "stage", stage, "reason", reason, "subject", id, "user", user)
+		}
+	}
+	go writer.removalLoop(ctx)
 	if ctx.Err() != nil {
 		return ErrBrokerStartup
 	}
@@ -267,6 +277,12 @@ func (w Writer) startupBindings(ctx context.Context) ([]ExecutorIdentity, error)
 	for _, b := range l.Bindings {
 		if ctx.Err() != nil || b.UID < w.UIDMin || b.UID > w.UIDMax {
 			return nil, ErrBrokerStartup
+		}
+		// A binding under removal is neither verified nor activated: its
+		// quota record, account and home may already be partly gone, and
+		// the removal runner observes and continues it (ADR 0037).
+		if e := a.removal(b.ID); e != nil && e.UID == b.UID && e.Username == b.Username {
+			continue
 		}
 		// A binding on a filesystem that lost quota accounting must not be
 		// authorized just because its NSS identity and socket still exist.

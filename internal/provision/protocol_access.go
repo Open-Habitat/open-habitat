@@ -62,6 +62,8 @@ type AccessRow struct {
 	// member, left or unconfirmed, and the pinned team ids last confirmed.
 	TeamState string   `json:"team_state,omitempty"`
 	Teams     []string `json:"teams,omitempty"`
+	// Removal is a bound person's scheduled removal (ADR 0037).
+	Removal *RemovalState `json:"removal,omitempty"`
 }
 
 // TeamRow is one listed team. OrgID and Org come from GitHub's public
@@ -223,6 +225,9 @@ func validAccessRow(x AccessRow, fields map[string]json.RawMessage) bool {
 	if !numericID(x.ID) || x.Username != "" && !username(x.Username) {
 		return false
 	}
+	if raw, ok := fields["removal"]; ok && (x.Removal == nil || x.Username == "" || !validRemovalState(*x.Removal, raw)) {
+		return false
+	}
 	_, hasTeams := fields["teams"]
 	if x.TeamState == "" && hasTeams || x.TeamState != "" && x.TeamState != "member" && x.TeamState != "left" && x.TeamState != "unconfirmed" || len(x.Teams) > MaxTeams || x.TeamState == "member" && len(x.Teams) == 0 {
 		return false
@@ -277,7 +282,7 @@ func parseAccessReply(raw map[string]json.RawMessage, r Reply) (Reply, error) {
 	seen := map[string]bool{}
 	for _, row := range rows {
 		var x AccessRow
-		fields, err := object(row, "id", "source", "state", "username", "login_hint", "actor", "at", "team_state", "teams")
+		fields, err := object(row, "id", "source", "state", "username", "login_hint", "actor", "at", "team_state", "teams", "removal")
 		if err != nil || json.Unmarshal(row, &x) != nil || !validAccessRow(x, fields) || seen[x.ID] {
 			return Reply{}, ErrInvalid
 		}

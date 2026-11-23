@@ -52,6 +52,8 @@ type Request struct {
 	Teams []TeamObservation `json:"teams,omitempty"`
 	// LiveLimit is the number live_limit_set writes.
 	LiveLimit *int `json:"live_limit,omitempty"`
+	// When is removal_schedule's timing: now or after the grace period.
+	When string `json:"when,omitempty"`
 }
 type Route struct {
 	UID      uint32 `json:"uid"`
@@ -75,11 +77,16 @@ type QuotaReply struct {
 
 // Quota pages contain only committed bindings and native quota observations.
 // Unavailable rows carry no native error text or guessed usage.
+//
+// RemovalDue marks a binding with a scheduled removal: nothing of the person
+// runs, so the administrator's sum counts its usage instead of its limit.
+// Its limit is zero once the data stage has cleared the quota record.
 type QuotaRow struct {
 	BoundUser
 	UsageBytes  uint64 `json:"usage_bytes"`
 	LimitBytes  uint64 `json:"limit_bytes"`
 	Unavailable bool   `json:"unavailable"`
+	RemovalDue  string `json:"removal_due,omitempty"`
 }
 type QuotaPage struct {
 	Rows          []QuotaRow `json:"rows"`
@@ -207,7 +214,7 @@ func validLimit(n uint64) bool { return n >= 1<<20 && n <= 1<<50 && n%1024 == 0 
 
 func ParseRequest(b []byte) (Request, error) {
 	var r Request
-	raw, err := object(b, "version", "operation", "provider", "id", "candidate", "default_limit_bytes", "limit_bytes", "login_hint", "actor", "fields", "slug", "teams", "live_limit")
+	raw, err := object(b, "version", "operation", "provider", "id", "candidate", "default_limit_bytes", "limit_bytes", "login_hint", "actor", "fields", "slug", "teams", "live_limit", "when")
 	if err != nil {
 		return Request{}, err
 	}
@@ -217,6 +224,18 @@ func ParseRequest(b []byte) (Request, error) {
 		}
 	}
 	if err := json.Unmarshal(b, &r); err != nil {
+		return Request{}, ErrInvalid
+	}
+	if removalOperation(r.Operation) {
+		if _, ok := raw["live_limit"]; ok {
+			return Request{}, ErrInvalid
+		}
+		if _, ok := raw["fields"]; ok {
+			return Request{}, ErrInvalid
+		}
+		return parseRemovalRequest(raw, r)
+	}
+	if _, ok := raw["when"]; ok {
 		return Request{}, ErrInvalid
 	}
 	if liveOperation(r.Operation) {
@@ -285,7 +304,7 @@ func ParseReply(b []byte) (Reply, error) {
 	}
 	if r.Failure != "" {
 		switch r.Failure {
-		case Denied, Invalid, StateUnavailable, NameCollision, Drift, RuntimeDisabled, RuntimeFull, AdmissionOpen, OperatorOwned, BrowserSetupOff, HostBusy, IntegrationsFile, QuotaNotInUse:
+		case Denied, Invalid, StateUnavailable, NameCollision, Drift, RuntimeDisabled, RuntimeFull, AdmissionOpen, OperatorOwned, BrowserSetupOff, HostBusy, IntegrationsFile, QuotaNotInUse, RemovalPending, RemovalStarted:
 		default:
 			return Reply{}, ErrInvalid
 		}
@@ -327,7 +346,7 @@ func ParseReply(b []byte) (Reply, error) {
 		seen := map[string]bool{}
 		for _, row := range rows {
 			var q QuotaRow
-			fields, err := object(row, "id", "username", "usage_bytes", "limit_bytes", "unavailable")
+			fields, err := object(row, "id", "username", "usage_bytes", "limit_bytes", "unavailable", "removal_due")
 			if err != nil || json.Unmarshal(row, &q) != nil || !numericID(q.ID) || !username(q.Username) || seen[q.ID] {
 				return Reply{}, ErrInvalid
 			}
@@ -336,7 +355,10 @@ func ParseReply(b []byte) (Reply, error) {
 					return Reply{}, ErrInvalid
 				}
 			}
-			if q.Unavailable && (q.UsageBytes != 0 || q.LimitBytes != 0) || !q.Unavailable && !validLimit(q.LimitBytes) {
+			if _, due := fields["removal_due"]; due && !validStamp(q.RemovalDue) {
+				return Reply{}, ErrInvalid
+			}
+			if q.Unavailable && (q.UsageBytes != 0 || q.LimitBytes != 0) || !q.Unavailable && !validLimit(q.LimitBytes) && !(q.RemovalDue != "" && q.LimitBytes == 0) {
 				return Reply{}, ErrInvalid
 			}
 			seen[q.ID] = true

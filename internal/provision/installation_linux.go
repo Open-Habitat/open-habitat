@@ -289,7 +289,7 @@ func PublishAdmission(ctx context.Context, expectedToken string, ids []string, r
 func operatorPublication(current allowFile, ids []string, runtimeAdmission bool, bound map[string]bool) allowFile {
 	want := append([]string{}, ids...)
 	sort.Strings(want)
-	next := allowFile{Version: 1, Epoch: current.Epoch + 1, IDs: []allowed{}, RuntimeAdmission: runtimeAdmission, Runtime: current.Runtime, Teams: current.Teams, Members: current.Members}
+	next := allowFile{Version: 1, Epoch: current.Epoch + 1, IDs: []allowed{}, RuntimeAdmission: runtimeAdmission, Runtime: current.Runtime, Teams: current.Teams, Members: current.Members, Removals: current.Removals}
 	for _, id := range want {
 		next.IDs = append(next.IDs, allowed{ID: id})
 	}

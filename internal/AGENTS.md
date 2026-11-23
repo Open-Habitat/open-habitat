@@ -431,6 +431,22 @@ Identity and authority:
   withdrawal, continuing the apply and the broker's next start repeat only
   the stop, and restore and the next admitted sign-in bring the sockets
   back.
+- Removing a person (Jari, 2026-11-21) is the broker's only account
+  deletion and the one way a binding leaves its ledger. It acts only on a
+  committed binding with a durable removal entry, of a subject no source
+  admits, on the gateway's administrator request, root's control socket or
+  its own due-time check, and every host step takes the committed UID and
+  name, never a name, path or UID from a request. Stage 1 alone ends the
+  person's own user manager and processes, the one case where their native
+  work must stop; it never touches the home. Every step observes before it
+  acts so the removal is repeated, not resumed from a journal; a second
+  deletion journal or a retired-UID ledger is the rejected design. A UID
+  returns to the pool only with the binding, and is reused only while the
+  kernel charges it nothing. The product never hands a home, an archive or
+  a listing of it to the administrator: what is in a home is the person's,
+  and the removal dialog shows only its size. The gateway never revokes the
+  `gh` token, which would need the OAuth client secret beside a person's
+  native credential.
 - The site onboarding configuration (default repositories, integration steps,
   AI offer) is gateway administration state, written only by a current
   administrator's browser session or root's control socket under one version,

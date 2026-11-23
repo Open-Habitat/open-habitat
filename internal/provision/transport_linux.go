@@ -27,7 +27,7 @@ const ensureTimeout = 90 * time.Second
 const ensureClientTimeout = ensureTimeout + exchangeTimeout + 3*time.Second
 
 func longExchange(operation string) bool {
-	return operation == "ensure" || operation == "admit" || operation == "withdraw" || operation == OpStopRevoked
+	return operation == "ensure" || operation == "admit" || operation == "withdraw" || operation == OpStopRevoked || removalOperation(operation)
 }
 
 const maxActiveEnsures = 2 // includes lock waiters; the writer itself serializes mutations

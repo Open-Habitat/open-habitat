@@ -47,6 +47,7 @@ const (
 	getQuota       = (0x800007 << 8)         // QCMD(Q_GETQUOTA, USRQUOTA)
 	setQuota       = (0x800008 << 8)         // QCMD(Q_SETQUOTA, USRQUOTA)
 	qifBlockLimits = 1
+	qifLimits      = 1 | 4 // QIF_BLIMITS | QIF_ILIMITS
 )
 
 // quotactl_fd addresses the filesystem through a descriptor, not a device
@@ -183,6 +184,58 @@ func Set(uid uint32, bytes uint64) error {
 	}
 	q, err := readFD(fd, uid)
 	if err != nil || q.Limit != bytes {
+		return ErrUnavailable
+	}
+	return nil
+}
+
+// Charged reads what the kernel charges uid on the home filesystem, in
+// bytes and inodes, whether or not uid has a limit. A person's removal
+// (ADR 0037) proves with it that nothing of theirs is left before the UID
+// may be reused; zero is a kernel observation, never a default.
+func Charged(uid uint32) (bytes, inodes uint64, err error) {
+	if uid < 1000 || uid > 60000 {
+		return 0, 0, ErrUnavailable
+	}
+	fd, err := homeFD()
+	if err != nil {
+		return 0, 0, err
+	}
+	defer unix.Close(fd)
+	if enforcedFD(fd) != nil {
+		return 0, 0, ErrUnavailable
+	}
+	var b dqblk
+	if quotaCall(fd, getQuota, uid, &b) != nil {
+		return 0, 0, ErrUnavailable
+	}
+	return b.Current, b.ICurrent, nil
+}
+
+// Clear removes uid's limits, which ends its quota record, but only while
+// the kernel charges uid nothing: it never unlimits a live account.
+func Clear(uid uint32) error {
+	if uid < 1000 || uid > 60000 {
+		return ErrUnavailable
+	}
+	fd, err := homeFD()
+	if err != nil {
+		return err
+	}
+	defer unix.Close(fd)
+	if enforcedFD(fd) != nil {
+		return ErrUnavailable
+	}
+	var current dqblk
+	if quotaCall(fd, getQuota, uid, &current) != nil || current.Current != 0 || current.ICurrent != 0 {
+		return ErrUnavailable
+	}
+	b := dqblk{Valid: qifLimits}
+	if quotaCall(fd, setQuota, uid, &b) != nil {
+		return ErrUnavailable
+	}
+	var after dqblk
+	if quotaCall(fd, getQuota, uid, &after) != nil || after.Hard != 0 || after.Soft != 0 || after.IHard != 0 || after.ISoft != 0 {
 		return ErrUnavailable
 	}
 	return nil

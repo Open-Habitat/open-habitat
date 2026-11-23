@@ -126,6 +126,11 @@ func (w Writer) handleAccess(ctx context.Context, r Request) Reply {
 	teams := false
 	switch r.Operation {
 	case "admit":
+		// A person whose removal is scheduled comes back only after the
+		// administrator cancels it (ADR 0037).
+		if a.removal(r.ID) != nil {
+			return failure(RemovalPending)
+		}
 		// The operator source already admits the id; the switch governs only
 		// what the gateway may add, so a restore of an operator id succeeds.
 		if operator {
@@ -522,6 +527,11 @@ func rowFor(a allowFile, bound map[string]binding, id string) AccessRow {
 				}
 				row = AccessRow{ID: id, Source: SourceSiteAdmin, State: s, Username: b.Username, LoginHint: x.LoginHint, Actor: x.Actor, At: x.At}
 			}
+		}
+	}
+	if joined && row.ID != "" {
+		if e := a.removal(id); e != nil && e.UID == b.UID {
+			row.Removal = removalRow(e)
 		}
 	}
 	m := a.member(id)

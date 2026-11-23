@@ -175,7 +175,9 @@ func (q *uidQuotas) Read(uid uint32) (storagequota.Quota, error) {
 	}
 	return storagequota.Quota{Usage: uint64(uid), Limit: 1 << 30}, nil
 }
-func (q *uidQuotas) Set(uint32, uint64) error { return ErrInvalid }
+func (q *uidQuotas) Set(uint32, uint64) error               { return ErrInvalid }
+func (q *uidQuotas) Charged(uint32) (uint64, uint64, error) { return 0, 0, nil }
+func (q *uidQuotas) Clear(uint32) error                     { return ErrInvalid }
 
 func TestQuotaPages50WithinControlDeadline(t *testing.T) {
 	w, h := writerFixture(t)

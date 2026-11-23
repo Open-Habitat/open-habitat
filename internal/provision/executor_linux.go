@@ -101,6 +101,11 @@ func commandBudget(ctx context.Context, path string, args ...string) time.Durati
 	if path == systemctl && len(args) == 5 && args[0] == "stop" && strings.HasPrefix(args[1], "open-habitat-daemon@") {
 		budget = 60 * time.Second
 	}
+	// A removal's close-out waits for the person's user manager, with
+	// their shells, editors and Taskfleet units, to stop.
+	if path == systemctl && len(args) == 2 && args[0] == "stop" && strings.HasPrefix(args[1], "user@") {
+		budget = 60 * time.Second
+	}
 	if startup, _ := ctx.Value(startupProbes{}).(bool); startup && budget < startupProbeBudget {
 		budget = startupProbeBudget
 	}

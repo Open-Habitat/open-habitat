@@ -638,6 +638,33 @@ type fakeQuota struct {
 	fail  bool
 	uid   uint32
 	calls int
+	// charged is what the kernel charges each UID (bytes, inodes);
+	// cleared records Clear calls.
+	charged     map[uint32][2]uint64
+	cleared     []uint32
+	chargedFail bool
+	clearFail   int
+}
+
+func (q *fakeQuota) Charged(uid uint32) (uint64, uint64, error) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if q.chargedFail {
+		return 0, 0, ErrInvalid
+	}
+	c := q.charged[uid]
+	return c[0], c[1], nil
+}
+
+func (q *fakeQuota) Clear(uid uint32) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if q.clearFail > 0 || q.charged[uid] != [2]uint64{} {
+		q.clearFail--
+		return ErrInvalid
+	}
+	q.cleared = append(q.cleared, uid)
+	return nil
 }
 
 func (q *fakeQuota) Read(uid uint32) (storagequota.Quota, error) {
