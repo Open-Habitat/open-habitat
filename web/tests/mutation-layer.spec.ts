@@ -68,10 +68,9 @@ test("@mutation-layer archive, undo and rename show before the host answers, at 
   });
   await page.getByTestId("workspace-archive").click();
   await expect(listed(page)).toHaveCount(0);
+  // In the hidden group, which stays closed until its header is used.
   await expect(
-    archivedGroup(page).locator(
-      'a[data-testid^="workspace-"][data-workspace-name="ordinary-dir"]',
-    ),
+    archivedGroup(page).getByTestId("toggle-archived"),
   ).toBeVisible();
   // Undo while the archive is still unconfirmed: shown at once, queued
   // behind it rather than sent alongside or refused.
@@ -184,10 +183,9 @@ test("@mutation-layer a lost reply stays pending until the next read decides", a
   // Uncertain is not refused: no rollback, no "done"; the next read is the
   // receipt and shows the archive happened.
   await expect(page.getByRole("alert")).toHaveCount(0);
+  // In the hidden group, which stays closed until its header is used.
   await expect(
-    archivedGroup(page).locator(
-      'a[data-testid^="workspace-"][data-workspace-name="ordinary-dir"]',
-    ),
+    archivedGroup(page).getByTestId("toggle-archived"),
   ).toBeVisible();
   await expect(
     page.locator('[data-testid="mutation-pending"][data-phase="uncertain"]'),

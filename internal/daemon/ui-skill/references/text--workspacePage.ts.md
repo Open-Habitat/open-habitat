@@ -32,10 +32,11 @@ const fi = {
   iconUnavailable: "Kuvaketta voi vaihtaa, kun työtilan tila on vahvistettu.",
   askModel: "Ehdotuksia mallilta…",
   iconSource: "Kuvake:",
-  archived: "Arkistoitu · tiedostot ja keskustelut säilyvät ·",
+  hidden: "Piilotettu · tiedostot ja keskustelut säilyvät ·",
+  hiddenNotice: "Piilotettu",
   restore: "Palauta",
-  archivedRail:
-    "Tiedostot ja keskustelut säilyvät. Löydät sen sivupalkin lopusta, Arkistoidut-ryhmästä.",
+  hiddenRail:
+    "Tiedostot ja keskustelut säilyvät. Löydät sen sivupalkin lopusta, Piilotetut-ryhmästä.",
   repoLogo: "Repon logo",
   close: "Sulje",
   recheckCreation: "Tarkista luonnin tulos",
@@ -87,10 +88,11 @@ export const workspacePageText = catalog(fi, {
     "The icon can be changed once the workspace's state is confirmed.",
   askModel: "Suggestions from a model…",
   iconSource: "Icon:",
-  archived: "Archived · files and conversations are kept ·",
+  hidden: "Hidden · files and conversations are kept ·",
+  hiddenNotice: "Hidden",
   restore: "Restore",
-  archivedRail:
-    "Files and conversations are kept. You find it at the end of the sidebar, in the Archived group.",
+  hiddenRail:
+    "Files and conversations are kept. You find it at the end of the sidebar, in the Hidden group.",
   repoLogo: "Repository logo",
   close: "Close",
   recheckCreation: "Check the creation's result",

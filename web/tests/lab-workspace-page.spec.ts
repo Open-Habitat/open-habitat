@@ -249,12 +249,15 @@ test("@workspace-page sidebar plus creates directly; rename and hide use current
       .getByRole("link")
       .and(page.getByTestId("workspace-Uusi nimi")),
   ).toHaveCount(0);
+  const hiddenGroup = page
+    .getByRole("region")
+    .and(page.getByTestId("archived-workspaces"));
+  await hiddenGroup
+    .getByRole("button")
+    .and(page.getByTestId("toggle-archived"))
+    .click();
   await expect(
-    page
-      .getByRole("region")
-      .and(page.getByTestId("archived-workspaces"))
-      .getByRole("link")
-      .and(page.getByTestId("workspace-Uusi nimi")),
+    hiddenGroup.getByRole("link").and(page.getByTestId("workspace-Uusi nimi")),
   ).toBeVisible();
   await expect(page.locator(".ah-home-card-title")).toHaveText(titles);
   await page

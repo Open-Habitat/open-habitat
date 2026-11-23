@@ -45,12 +45,12 @@ const fi = {
   closeRefused: (reason: string) =>
     `Sulkemista ei tehty: ${reason} Keskustelussa voi olla sisältöä.`,
   closeReverted: "Sulkeminen ei tallentunut. Keskustelu on yhä listassa.",
-  archiveWorkspaceRefused: (reason: string) =>
-    `Arkistointia ei tehty: ${reason} Työtila näkyy taas.`,
+  hideWorkspaceRefused: (reason: string) =>
+    `Piilotusta ei tehty: ${reason} Työtila näkyy taas.`,
   restoreRefused: (reason: string) => `Palautusta ei tehty: ${reason}`,
-  archiveWorkspaceReverted: "Arkistointi ei tallentunut. Työtila näkyy taas.",
+  hideWorkspaceReverted: "Piilotus ei tallentunut. Työtila näkyy taas.",
   restoreWorkspaceReverted:
-    "Palautus ei tallentunut. Työtila on yhä arkistossa.",
+    "Palautus ei tallentunut. Työtila on yhä piilotettu.",
   renameRefused: (reason: string) => `Nimeä ei vaihdettu: ${reason}`,
   turnRefused: (reason: string) => `Ei siirretty: ${reason}`,
   renameReverted: "Uusi nimi ei tallentunut. Aiempi nimi palautettiin.",
@@ -151,13 +151,12 @@ export const appText = catalog(fi, {
   closeRefused: (reason) =>
     `Not closed: ${reason} The conversation may have content.`,
   closeReverted: "Closing was not saved. The conversation is still listed.",
-  archiveWorkspaceRefused: (reason) =>
-    `Not archived: ${reason} The workspace is shown again.`,
+  hideWorkspaceRefused: (reason) =>
+    `Not hidden: ${reason} The workspace is shown again.`,
   restoreRefused: (reason) => `Not restored: ${reason}`,
-  archiveWorkspaceReverted:
-    "Archiving was not saved. The workspace is shown again.",
+  hideWorkspaceReverted: "Hiding was not saved. The workspace is shown again.",
   restoreWorkspaceReverted:
-    "Restoring was not saved. The workspace is still in the archive.",
+    "Restoring was not saved. The workspace is still hidden.",
   renameRefused: (reason) => `Not renamed: ${reason}`,
   turnRefused: (reason) => `Not moved: ${reason}`,
   renameReverted: "The new name was not saved. The previous name is back.",

@@ -395,7 +395,7 @@ export function WorkspacePage({
             </p>
             {hidden ? (
               <span className="ah-workspace-hidden">
-                {txt.archived}{" "}
+                {txt.hidden}{" "}
                 <ControlButton
                   variant="quiet"
                   size="inline"
@@ -464,7 +464,7 @@ export function WorkspacePage({
         onPreview={(id, where) => playSound(id, sound.length, where)}
       />
       {c2a && hidden ? (
-        <span className="ah-workspace-hidden">{txt.archived}</span>
+        <span className="ah-workspace-hidden">{txt.hidden}</span>
       ) : null}
       {csrf && onDeleted && deleteOpen ? (
         <WorkspaceDeletion
@@ -487,7 +487,8 @@ export function WorkspacePage({
         <ArchiveNotice
           kind="workspace-archive"
           title={workspace.display_name ?? workspace.name}
-          detail={txt.archivedRail}
+          message={txt.hiddenNotice}
+          detail={txt.hiddenRail}
           restoreLabel={txt.undo}
           busy={false}
           onRestore={() => archive(false)}

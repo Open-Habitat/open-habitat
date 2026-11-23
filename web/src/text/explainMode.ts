@@ -480,7 +480,7 @@ const fi = {
     S14: {
       name: "Työtilat",
       lead: "Kaikki työtilasi; luku kertoo, montako niitä on.",
-      know: "Arkistoidut työtilat ovat listan lopussa omana ryhmänään.",
+      know: "Piilotetut työtilat ovat listan lopussa omana ryhmänään.",
     },
     S15: {
       name: "Uusi työtila",
@@ -693,9 +693,9 @@ const fi = {
       know: "Kansion nimi ei muutu, joten päätteessä ja agentilla kaikki toimii kuten ennen.",
     },
     T05: {
-      name: "Arkistoi työtila",
-      lead: "Siirtää työtilan sivupalkin Arkistoidut-ryhmään. Tiedostot ja keskustelut säilyvät.",
-      know: "Sieltä saat sen takaisin Palauta-painikkeella.",
+      name: "Piilota työtila",
+      lead: "Siirtää työtilan sivupalkin Piilotetut-ryhmään. Tiedostot ja keskustelut säilyvät.",
+      know: "Sieltä saat sen takaisin näkyviin Palauta-painikkeella.",
     },
     T06: {
       name: "Poista työtila…",
@@ -2558,7 +2558,7 @@ export const explainModeText = catalog(fi, {
     S14: {
       name: "Workspaces",
       lead: "All your workspaces; the number is how many there are.",
-      know: "Archived workspaces are a group of their own at the end of the list.",
+      know: "Hidden workspaces are a group of their own at the end of the list.",
     },
     S15: {
       name: "New workspace",
@@ -2768,8 +2768,8 @@ export const explainModeText = catalog(fi, {
       know: "The folder keeps its name, so the terminal and the agent work as before.",
     },
     T05: {
-      name: "Archive workspace",
-      lead: "Moves the workspace to the sidebar's Archived group. Files and conversations stay.",
+      name: "Hide workspace",
+      lead: "Moves the workspace to the sidebar's Hidden group. Files and conversations stay.",
       know: "Bring it back from there with Restore.",
     },
     T06: {

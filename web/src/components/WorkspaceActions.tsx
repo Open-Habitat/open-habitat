@@ -157,13 +157,13 @@ export function WorkspaceActions({
         variant={c2a ? "secondary" : "quiet"}
         presentation="icon"
         data-testid={hidden ? "workspace-restore" : "workspace-archive"}
-        aria-label={hidden ? t.restore : t.archive}
+        aria-label={hidden ? t.restore : t.hide}
         title={
           c2a && (!settingsAvailable || !onHide || hidePending)
             ? t.changesUnavailable
             : hidden
               ? t.restoreHint
-              : t.archiveHint
+              : t.hideHint
         }
         aria-pressed={c2a ? undefined : hidden}
         isDisabled={!settingsAvailable || !onHide || hidePending}

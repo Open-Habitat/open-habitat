@@ -16,11 +16,11 @@ const fi = {
   openGitHubRepo: (repo: string) => `Avaa GitHubissa · ${repo}`,
   noOrigin: "Työtilalla ei ole GitHub-originia.",
   rename: "Muuta näyttönimeä…",
-  restore: "Palauta työtila",
-  archive: "Arkistoi työtila",
-  restoreHint: "Palauta työtila sivupalkkiin",
-  archiveHint:
-    "Arkistoi: siirtää työtilan sivupalkin Arkistoidut-ryhmään. Tiedostot ja keskustelut säilyvät.",
+  restore: "Palauta työtila näkyviin",
+  hide: "Piilota työtila",
+  restoreHint: "Palauta työtila näkyviin sivupalkkiin",
+  hideHint:
+    "Piilota: siirtää työtilan sivupalkin Piilotetut-ryhmään. Tiedostot ja keskustelut säilyvät.",
   delete: "Poista työtila…",
   deleteUnavailable:
     "Työtilaa ei voi poistaa juuri nyt: muutokset eivät ole sallittuja.",
@@ -44,10 +44,10 @@ export const workspaceActionsText = catalog(fi, {
   noOrigin: "The workspace has no GitHub origin.",
   rename: "Change display name…",
   restore: "Restore workspace",
-  archive: "Archive workspace",
-  restoreHint: "Restore the workspace to the sidebar",
-  archiveHint:
-    "Archive: moves the workspace to the sidebar's Archived group. Files and conversations are kept.",
+  hide: "Hide workspace",
+  restoreHint: "Show the workspace in the sidebar again",
+  hideHint:
+    "Hide: moves the workspace to the sidebar's Hidden group. Files and conversations are kept.",
   delete: "Delete workspace…",
   deleteUnavailable:
     "The workspace cannot be deleted just now: changes are not allowed.",

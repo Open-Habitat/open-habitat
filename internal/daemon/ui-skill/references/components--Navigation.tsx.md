@@ -1883,15 +1883,34 @@ export function ArchivedWorkspaces({
   /** Open while a filter is narrowing the list, so it finds them too. */
   forceOpen?: boolean;
 }) {
-  const [show, setShow] = useState(false);
   const t = useText(navigationText);
+  // The header alone opens and closes the section, with one exception: going
+  // to a workspace that was already hidden opens it so the current row is in
+  // view. Hiding the current workspace does not, and leaving it never closes
+  // the section; the hide notice says where the workspace went. Deriving
+  // "open" from the selection on every render kept the header from closing
+  // it while that workspace was current, and closed it by itself on
+  // navigation.
+  const selectedId = workspaces.find((w) => w.selected)?.id ?? null;
+  const ids = workspaces.map((w) => w.id).join("\n");
+  const [show, setShow] = useState(false);
+  const [seen, setSeen] = useState({ selectedId, ids });
+  if (seen.selectedId !== selectedId || seen.ids !== ids) {
+    setSeen({ selectedId, ids });
+    if (
+      selectedId !== null &&
+      selectedId !== seen.selectedId &&
+      seen.ids.split("\n").includes(selectedId)
+    )
+      setShow(true);
+  }
   if (!workspaces.length && !problem) return null;
-  const open = show || forceOpen || workspaces.some((w) => w.selected);
+  const open = show || forceOpen;
   return (
     <section
       data-testid="archived-workspaces"
       className="ah-rail-archived"
-      aria-label={t.archivedWorkspaces}
+      aria-label={t.hiddenWorkspaces}
     >
       {workspaces.length ? (
         <ControlButton
@@ -1903,7 +1922,7 @@ export function ArchivedWorkspaces({
           onPress={() => setShow(!open)}
         >
           <span aria-hidden="true" className="ah-disclosure-chevron" />
-          {t.archived}
+          {t.hidden}
           <span className="ah-rail-count">{workspaces.length}</span>
         </ControlButton>
       ) : null}

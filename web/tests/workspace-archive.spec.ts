@@ -54,13 +54,13 @@ test("@workspace-archive archive shows at once, is findable and restores from th
       .getByRole("button")
       .and(page.getByTestId(/^workspace-(archive|restore)$/))
       .click();
-    // Before the host has answered: gone from the list, in the archived group,
-    // and the notice says nothing was deleted.
+    // Before the host has answered: gone from the list, counted in the
+    // hidden group, and the notice says nothing was deleted.
     await expect(listed(page)).toHaveCount(0);
     await expect(
       archivedGroup(page)
-        .getByRole("link")
-        .and(page.getByTestId("workspace-ordinary-dir")),
+        .getByRole("button")
+        .and(page.getByTestId("toggle-archived")),
     ).toBeVisible();
     await expect(
       page
@@ -162,4 +162,59 @@ test("@workspace-archive the host's later answer wins over the overlay", async (
       .getByRole("button")
       .and(page.getByTestId(/^workspace-(archive|restore)$/)),
   ).toBeEnabled();
+});
+
+test("@workspace-archive the hidden section toggles on every click and keeps its state across navigation", async ({
+  page,
+}) => {
+  await openWorkspace(page);
+  const written = page.waitForResponse((r) =>
+    isWrite(r.url(), r.request().method()),
+  );
+  await page
+    .getByRole("button")
+    .and(page.getByTestId(/^workspace-(archive|restore)$/))
+    .click();
+  expect((await written).ok()).toBe(true);
+  // Hiding the open workspace leaves the section closed, and the header
+  // opens and closes it while that workspace is still the current one.
+  const toggle = archivedGroup(page)
+    .getByRole("button")
+    .and(page.getByTestId("toggle-archived"));
+  const hiddenRow = archivedGroup(page)
+    .getByRole("link")
+    .and(page.getByTestId("workspace-ordinary-dir"));
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(hiddenRow).toHaveCount(0);
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await expect(hiddenRow).toBeVisible();
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(hiddenRow).toHaveCount(0);
+  // The keyboard opens and closes it as well.
+  await toggle.focus();
+  await page.keyboard.press("Enter");
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await expect(hiddenRow).toBeVisible();
+  await page.keyboard.press("Space");
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+
+  // Leaving the hidden workspace while the section is open does not close
+  // it, and coming back through its row does not either.
+  await page.keyboard.press("Enter");
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  const hiddenUrl = page.url();
+  await page
+    .getByRole("navigation")
+    .getByRole("link")
+    .and(page.getByTestId("workspace-without-metadata"))
+    .click();
+  await expect(page).not.toHaveURL(hiddenUrl);
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await hiddenRow.click();
+  await expect(page).toHaveURL(hiddenUrl);
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
 });

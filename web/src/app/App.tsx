@@ -1722,9 +1722,9 @@ export function App() {
         if (change) dispatch(hostChanged(change));
         else refresh();
       },
-      refused: hidden ? t.app.archiveWorkspaceRefused : t.app.restoreRefused,
+      refused: hidden ? t.app.hideWorkspaceRefused : t.app.restoreRefused,
       reverted: hidden
-        ? t.app.archiveWorkspaceReverted
+        ? t.app.hideWorkspaceReverted
         : t.app.restoreWorkspaceReverted,
     });
     if (result.outcome === "login") requireLogin();

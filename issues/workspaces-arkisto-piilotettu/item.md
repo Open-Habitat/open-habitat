@@ -3,10 +3,11 @@ created: 2026-11-23
 updated: 2026-11-23
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 preparation: ready
+closed: 2026-11-23
 ---
 
 # Workspaces: "Arkisto" should be "Piilotettu", and the hidden section will not close
