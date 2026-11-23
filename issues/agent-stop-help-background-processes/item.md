@@ -2,7 +2,7 @@
 created: 2026-11-23
 updated: 2026-11-23
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: ai-review
 source_ref: taskfleet:01m84f790sn3vszrv2j1vx7sae/review-finding:stop-help-background-lifetime
@@ -16,6 +16,7 @@ review_severity: medium
 review_target: internal/cli/help.go
 lane: unlaned
 preparation: ready
+closed: 2026-11-23
 ---
 
 # Agent stop help promises that background tools survive

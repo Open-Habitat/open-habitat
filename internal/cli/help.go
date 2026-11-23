@@ -67,7 +67,7 @@ var helpSpecs = []helpSpec{
 	{"agent conversation list", "List the rail's native-history conversations, including archived and not-yet-written ones, with title and lifecycle (live/resting/archived); never starts Pi", "agent conversation list --output conversations.jsonl --json", []string{"--output"}},
 	{"agent conversation create", "Start a conversation; lost replies are uncertain, inspect list before acting", "agent conversation create --workspace ws_example123 --json", []string{"--workspace", "--provider", "--model", "--thinking", "--worktree", "--dry-run"}},
 	{"agent conversation resume", "Resume after the existing native ownership and one-writer proof", "agent conversation resume --conversation pi:00000000-0000-4000-8000-000000000001 --json", []string{"--conversation", "--dry-run"}},
-	{"agent conversation stop", "Stop the daemon-owned Pi, not its detached tools", "agent conversation stop --conversation pi:00000000-0000-4000-8000-000000000001 --json", []string{"--conversation", "--dry-run"}},
+	{"agent conversation stop", "Stop the daemon-owned Pi and its managed background processes (process tool). Work started from its tools that remains in the daemon's cgroup also ends when the daemon stops, even if detached. Independently owned work survives: Taskfleet workers, user-manager units (XDG_RUNTIME_DIR=/run/user/$(id -u) systemd-run --user), shell-tab and SSH work", "agent conversation stop --conversation pi:00000000-0000-4000-8000-000000000001 --json", []string{"--conversation", "--dry-run"}},
 	{"agent conversation delete", "Close only a fresh empty daemon-owned conversation", "agent conversation delete --conversation pi:00000000-0000-4000-8000-000000000001 --empty-only --json", []string{"--conversation", "--empty-only", "--dry-run"}},
 	{"agent conversation update", "Change archive annotation using an explicit fresh observation", "agent conversation update --conversation pi:00000000-0000-4000-8000-000000000001 --workspace ws_example123 --archived true --previous-archive active --observation-token obs_example --json", []string{"--conversation", "--workspace", "--archived", "--previous-archive", "--observation-token", "--dry-run"}},
 	{"agent archive show", "Read the native archive state and freshness token", "agent archive show --conversation pi:00000000-0000-4000-8000-000000000001 --json", []string{"--conversation"}},
@@ -214,6 +214,20 @@ func commandHelp(args []string) (any, error) {
 		description = exact.description
 		for _, f := range exact.flags {
 			flag := helpFlag(f)
+			if key == "agent attachment create" && f == "--input-file" {
+				flag["description"] = "Required: regular file or - for stdin containing raw attachment bytes, 1 byte to 20 MiB; not JSON"
+			}
+			if key == "agent attachment show" && f == "--output" {
+				flag["description"] = "Required: new private file for binary attachment bytes, not JSONL; never overwrites or prints bytes inline"
+			}
+			if key == "agent conversation create" {
+				switch f {
+				case "--provider":
+					flag["description"] = "Optional model provider override; requires --model; omit both to inherit native defaults"
+				case "--model":
+					flag["description"] = "Optional native model ID override from model list; omit to inherit native defaults"
+				}
+			}
 			if f == "--provider" && strings.HasPrefix(key, "agent credential ") {
 				flag["description"] = "Required provider whose API key Pi stores; subscriptions are separate"
 				flag["possible_values"] = []string{"openai", "anthropic", "deepseek"}

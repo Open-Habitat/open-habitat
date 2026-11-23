@@ -182,8 +182,8 @@ the view beside the conversation or in a new tab. It is a frozen copy that
 runs sandboxed without network access, so inline or bundle its assets and
 offer again after a change. Where `site.views` in the environment output is
 false, the offer fails with `views_unavailable`: say so and offer the file
-instead. Only the person can share a view with others, with *Jaa linkillä* on
-its card where the site allows it.
+instead. Only the person can share a view with others, with the globe button
+(*Julkinen* / *Public*) on its card where the site allows it.
 
 To give them files you made (charts, spreadsheets, documents, a zip, a folder
 of photos), offer the files:
@@ -198,7 +198,7 @@ conversation's file panel lists every offer. This too is a frozen copy.
 The title is what the person sees on the card, so give every offer a short
 descriptive one in their language, naming the subject and, when useful, the
 iteration ("Viimeisimmät sivupalkissa – prototyyppi, kierros 2"), not a
-filename or "Prototype". The agent skill has the limits and other inputs.
+filename or "Prototype". Each offer command's `--help` has the limits and other inputs.
 
 ## Signed-in server browser
 

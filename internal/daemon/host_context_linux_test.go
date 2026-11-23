@@ -140,6 +140,19 @@ func TestHostContextRunningSection(t *testing.T) {
 	}
 }
 
+func TestHostContextOfferGuidance(t *testing.T) {
+	for _, want := range []string{"Only the person can share", "globe button", "*Julkinen* / *Public*", "Each offer command's `--help` has the limits"} {
+		if !strings.Contains(hostContext, want) {
+			t.Errorf("missing offer guidance: %s", want)
+		}
+	}
+	for _, stale := range []string{"Jaa linkillä", "The agent skill has the limits"} {
+		if strings.Contains(hostContext, stale) {
+			t.Errorf("stale offer guidance: %s", stale)
+		}
+	}
+}
+
 // Every conversation launch gets the helper recipe; auxiliary launches do not.
 func TestLaunchContextHelperRecipe(t *testing.T) {
 	home := t.TempDir()

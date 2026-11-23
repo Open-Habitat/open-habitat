@@ -62,6 +62,49 @@ func TestHelpDrilldownAndAgentSkill(t *testing.T) {
 		}
 	}
 }
+func TestAgentHelpDescribesProcessLifetimeAndCommandSpecificIO(t *testing.T) {
+	for _, tc := range []struct {
+		path, flag string
+		want, deny []string
+	}{
+		{"agent conversation stop", "", []string{"managed background processes (process tool)", "when the daemon stops", "even if detached", "Taskfleet workers", "XDG_RUNTIME_DIR=", "shell-tab and SSH"}, []string{"not its detached tools"}},
+		{"agent attachment create", "--input-file", []string{"raw attachment bytes", "1 byte to 20 MiB", "regular file or - for stdin"}, []string{"protected JSON", "0600"}},
+		{"agent attachment show", "--output", []string{"binary attachment bytes, not JSONL", "never overwrites"}, []string{"FILE.jsonl"}},
+		{"agent conversation create", "--provider", []string{"Optional", "requires --model", "inherit native defaults"}, []string{"Required"}},
+		{"agent conversation create", "--model", []string{"Optional", "inherit native defaults"}, []string{"Required"}},
+		{"agent model update", "--provider", []string{"Required"}, nil},
+	} {
+		t.Run(tc.path+"/"+tc.flag, func(t *testing.T) {
+			args := append(strings.Fields(tc.path), "--help", "--json")
+			code, out, message := call(t, args...)
+			if code != 0 {
+				t.Fatalf("help: %s", message)
+			}
+			data := out["data"].(map[string]any)
+			text := data["description"].(string)
+			if tc.flag != "" {
+				text = ""
+				for _, raw := range data["flags"].([]any) {
+					flag := raw.(map[string]any)
+					if flag["long"] == tc.flag {
+						text = flag["description"].(string)
+					}
+				}
+			}
+			for _, want := range tc.want {
+				if !strings.Contains(text, want) {
+					t.Errorf("missing %q in %q", want, text)
+				}
+			}
+			for _, deny := range tc.deny {
+				if strings.Contains(text, deny) {
+					t.Errorf("misleading %q in %q", deny, text)
+				}
+			}
+		})
+	}
+}
+
 func TestPersonalSettingsDoesNotExposeExtensionSecrets(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "settings.json")
 	if err := os.WriteFile(p, []byte(`{"defaultModel":"example","extension":{"secret":"sentinel-secret"}}`), 0600); err != nil {
