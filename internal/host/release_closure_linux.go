@@ -164,7 +164,7 @@ func validCoreRuntime(a ReleaseArtifact) bool {
 	if components["node"].Version != "22.21.1" || files["runtime/bin/node"].Component != "node" {
 		return false
 	}
-	for name, version := range map[string]string{"@earendil-works/pi-coding-agent": "1.5.2", "@aliou/pi-processes": "0.10.9", "pi-claude-bridge": "0.12.0", "@anthropic-ai/claude-agent-sdk": "0.3.321", "@aliou/sh": "0.3.4", "playwright-core": "1.58.0", "@mozilla/readability": "0.6.0", "turndown": "7.2.0"} {
+	for name, version := range map[string]string{"@earendil-works/pi-coding-agent": "1.5.2", "@aliou/pi-processes": "0.10.9", "@open-habitat/pi-web-search": "0.1.0", "pi-claude-bridge": "0.12.0", "@anthropic-ai/claude-agent-sdk": "0.3.321", "@aliou/sh": "0.3.4", "playwright-core": "1.58.0", "@mozilla/readability": "0.6.0", "turndown": "7.2.0"} {
 		// npm may nest the overridden parser below its consumer.
 		found := false
 		for id, p := range components {
@@ -237,10 +237,13 @@ func validCoreAgentTools(files map[string]RuntimeFile, components map[string]Run
 	}
 	// The Pi extensions the launcher and the daemon load: the one that offers
 	// the skills, the provider's own web search and the page reader.
-	for _, path := range []string{"runtime/taskfleet/extension.mjs", "runtime/web-search/extension.mjs", "runtime/page-reader/extension.mjs"} {
+	for _, path := range []string{"runtime/taskfleet/extension.mjs", "runtime/page-reader/extension.mjs"} {
 		if files[path].Component != "agent-launcher" {
 			return false
 		}
+	}
+	if files["runtime/web-search/extension.mjs"].Component != "npm:node_modules/@open-habitat/pi-web-search" {
+		return false
 	}
 	for name, version := range CoreAgentTools {
 		owner := coreAgentToolOwner(name)

@@ -45,7 +45,7 @@ func TestVerificationContractSource(t *testing.T) {
 		}
 	}
 	const reviewedContract = "runtime-release-v1"
-	const reviewedSource = "a7ccdd1e827e750294e337bfa176829a014125cb5ca3828df5264639267bfab0"
+	const reviewedSource = "7f4467906f42f2bb9d72021d6e5df09cf9404b0ead6109360bbc985b3cd834f3"
 	got := fmt.Sprintf("%x", h.Sum(nil))
 	if RuntimeVerificationContract != reviewedContract || got != reviewedSource {
 		t.Fatalf("verification code changed: contract=%q source=%s; review verify semantics and helper coverage, bump RuntimeVerificationContract only for semantic changes, then deliberately update both goldens (see internal/host/AGENTS.md)", RuntimeVerificationContract, got)

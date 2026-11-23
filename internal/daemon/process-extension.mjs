@@ -1103,7 +1103,7 @@ export default function (pi) {
     if (turn.mode === 'approve_each') return approveCall(event, ctx);
     return undefined;
   }
-  // The provider's own web search (runtime/core/web-search.mjs) and the
+  // The provider's own web search (@open-habitat/pi-web-search) and the
   // Claude bridge's built-in WebSearch and WebFetch run outside Pi's tool
   // dispatch, so they are off unless the run has all its tools. Read per
   // provider request and per bridge query.

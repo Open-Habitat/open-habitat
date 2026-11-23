@@ -23,8 +23,10 @@ BSD-3-Clause), retaining upstream attribution; 0.2.2 declares UNLICENSED and is
 not shipped. The synthetic Pi integration-test lockfile mirrors that override.
 The product companion itself is original code embedded in the Go binary.
 
-The core runtime's web search extension (`runtime/core/web-search.mjs`) is
-original code. Its provider tool shapes follow `pi-web-search` 1.7.0 (ttttmr,
+The core runtime's web search extension is `@open-habitat/pi-web-search`
+(MIT), released from `Open-Habitat/pi-web-search` and integrity-pinned in the
+core npm lock. Its LICENSE stays in the runtime closure. The original code's
+provider tool shapes follow `pi-web-search` 1.7.0 (ttttmr,
 MIT) and `pi-web-access` 0.47.0 (Nico Bailon, MIT), which it credits; no code is
 copied from either and neither is installed. The core runtime build changes one
 line of `pi-claude-bridge` 0.12.0 (Eli Dickinson, MIT), which MIT permits: its

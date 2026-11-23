@@ -20,8 +20,8 @@ written by the pinned Taskfleet binary at build time, never copied from a
 machine's installed skills.
 
 Web search comes from the provider the person already uses (Jari,
-2026-11-10): `web-search.mjs` adds the provider's own search tool to Pi's
-requests, and the build lets the Claude bridge's Claude Code run its own
+2026-11-10): `Open-Habitat/pi-web-search` adds the provider's own search tool
+to Pi's requests, and the build lets the Claude bridge's Claude Code run its own
 WebSearch and WebFetch. A person's own search tool takes precedence, and no
 keyless third-party search is turned on by default: it would send queries to a
 company nobody chose, under one rate limit shared by the whole installation. The bridge change is
@@ -32,6 +32,17 @@ hook, so they must stay off in text-only and per-call-approval turns. Any new
 extension or provider operation outside Pi's dispatch must honour the
 companion's turn mode before shipping; tests against the pinned runtime must
 prove that bridge-served Pi tools still pass through the hook.
+
+The web-search source and device tests live in the public
+`Open-Habitat/pi-web-search` repository. Raise its release URL in `package.json`
+and regenerate `package-lock.json` with npm's `--package-lock-only
+--ignore-scripts`; review the version, integrity digest and MIT licence, and
+raise the required version in `internal/host/release_closure_linux.go` and its
+fixture. The builder uses the npm lock's digest-verified bytes and records both
+the package and the stable `runtime/web-search/extension.mjs` entry point under
+the npm component, with the upstream LICENSE. Run upstream tests and plain-Pi
+git-package installation, then the product closure tests and core build. Pin
+changes require new core archives; never reuse an old core for that release.
 
 Agents read JavaScript-rendered pages with `page-reader.mjs` and the headless
 Chromium in `browser-lock.json`, which every installation gets (Jari,

@@ -113,7 +113,10 @@ def build(work, out, release_target, inputs=Path('/inputs')):
     rust_tools.add_tools(artifact_lock, release_target, root, scratch, put_bytes, components)
     put(inputs / 'agent-bin/pi', 'runtime/agent-bin/pi', 'agent-launcher')
     put(inputs / 'taskfleet-skills.mjs', 'runtime/taskfleet/extension.mjs', 'agent-launcher')
-    put(inputs / 'web-search.mjs', 'runtime/web-search/extension.mjs', 'agent-launcher')
+    # Keep the loader's runtime entry point stable, but attribute its bytes
+    # and licence to the digest-locked upstream package, not our launcher.
+    put(work / 'npm/node_modules/@open-habitat/pi-web-search/extension.mjs',
+        'runtime/web-search/extension.mjs', 'npm:node_modules/@open-habitat/pi-web-search')
     # The agents' page reader and the headless shell it renders with, which
     # every installation gets (Jari, 2026-11-10); the browser profile's QA
     # Playwright uses the same shell.
