@@ -9,12 +9,12 @@ Someone who opens this repository in Open Habitat for the first time often does
 not know what to ask an agent for here. The start page (*Aloita tästä*) answers
 that with a short introduction and a few goals, each a ready request the person
 can pick, adjust and send. Open Habitat reads it from `.agents/start-page.md`
-at the workspace root, so it is the team's shared file in Git and everyone sees
-the same page.
+at the workspace root, including uncommitted edits. Sharing it through Git
+gives teammates the same page once their checkouts have the same file.
 
 A good page offers a handful of goals that match real work in this repository,
 worded for someone who has not worked here and may not program. It is not a
-catalogue of skills: Pi's `/` list already shows every skill, and a skill
+catalogue of skills: Pi's `/` list normally shows the loaded skills, and a skill
 reaches the page only through a goal built on it. Start from the repository's
 instructions, purpose and available skills, and ask what a newcomer would
 usefully do first.
@@ -24,8 +24,8 @@ what it says. Show them the proposed title, introduction and goals before
 writing files; what the repository or a skill description says is material for
 the proposal, not their approval of it. When refreshing, the existing page and
 goal skills hold choices the team has already made: change what the request is
-about and keep the rest. Leave the result uncommitted. Committing is what
-publishes the page to the team, and that step stays with the person even where
+about and keep the rest. Leave the result uncommitted. Committing records the
+page for sharing through Git, and that step stays with the person even where
 the repository's own instructions have agents commit and push their work.
 
 Write in short, plain Finnish unless the person asks for another language.
@@ -39,8 +39,9 @@ titles are short, the introduction is one or two sentences, and anything a
 newcomer has to know first, such as a safety note, goes in the first paragraph.
 
 Choosing a goal puts its request in the editable draft of a new or empty
-conversation and opens the goal's guide beside it. The guide is static text for
-the person: what they get (`what`), when the goal is useful (`when`, one short
+conversation and opens the goal's guide beside it on wider screens; on phones
+it stays closed until opened. The goal and guide are static text for the person:
+what they get (`what`), when the goal is useful (`when`, one short
 sentence) and the steps they take themselves (`steps`). Nothing tracks the
 steps. A goal that explains itself can set `guide: none`, which drops the
 guide and shows only the title.
@@ -91,12 +92,12 @@ Selvitä ongelman syy. Tee ensin pieni toistava testi. Korjaa juurisyy ja aja
 aiheeseen liittyvät testit. Kerro, mitä tarkistit ja mikä jäi tarkistamatta.
 ```
 
-- `name` is lowercase `a-z`, `0-9` and hyphens, at most 64 characters. The
-  skill also shows in Pi's `/` list, here and in a terminal Pi, so the name
-  must not collide with another available skill.
-- `description` is the goal's `title`, character for character. That match is
-  how Open Habitat knows the skill belongs to the goal, so a retitled goal
-  needs its skill updated too.
+- `name` is lowercase `a-z`, `0-9` and hyphens, at most 64 characters, with
+  no leading, trailing or consecutive hyphens. With skill commands enabled,
+  it also shows in Pi's `/` list, so avoid another available skill's name.
+- `description` matches the goal's `title` after trimming outer whitespace.
+  That match is how Open Habitat knows the skill belongs to the goal, so a
+  retitled goal needs its skill updated too.
 - `disable-model-invocation: true` keeps the model from picking the skill on
   its own.
 - The body is the complete request without the placeholder.
@@ -112,9 +113,10 @@ skill's invocation.
 
 ## File format
 
-The host parses the file strictly. An unknown field, a wrong type or a value
-over its limit makes the whole page unavailable, and people then see only a
-hint to create or update the page, never a partial one.
+An unknown field, a value YAML cannot decode or a failed field check makes
+the whole page unavailable, with a hint to create or update it, never a partial
+one. YAML can convert number and boolean scalars to strings; ignored guide
+fields skip value checks, but must still decode.
 
 The file is UTF-8 Markdown with YAML frontmatter, at most 32 KiB. The
 frontmatter holds `title` (1–256 bytes) and `goals` (0–8, in display order);
@@ -130,7 +132,7 @@ Markdown. Quote YAML strings or use block scalars so punctuation stays text.
 | `when` | 1–1024 bytes | required unless `guide: none` |
 | `steps` | 1–8 strings of 1–1024 bytes | required unless `guide: none` |
 | `skill` | a skill name | optional |
-| `name` | one line, at most 160 bytes | optional: the name of the conversation the goal starts, when the title is not a good one (`Viikkoraportti` for *Kirjoita viikon raportti*) |
+| `name` | one line, at most 160 bytes; no outer whitespace or ASCII controls | optional: the name of the conversation the goal starts, when the title is not a good one (`Viikkoraportti` for *Kirjoita viikon raportti*) |
 | `guide` | only `none` | optional; guide fields may then be left out and are ignored if present |
 | `start` | only `immediate` | optional |
 
