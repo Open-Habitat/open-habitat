@@ -146,6 +146,9 @@ func ServeBroker(ctx context.Context) error {
 	// is stopped before startup verifies bindings: a daemon still
 	// deactivating from an earlier stop would otherwise fail that
 	// verification and keep the broker, and so this retry, from starting.
+	// A removal interrupted between its ledger and watermark writes is
+	// finished first; startup would otherwise refuse the ledger.
+	writer.RecoverRemoval(ctx)
 	_, _ = writer.stopRevoked(withStartupProbes(ctx), "", writer.stopReport)
 	bindings, err := writer.startupBindings(ctx)
 	if err != nil {

@@ -131,6 +131,9 @@ func (n *nativeApply) converge(ctx context.Context) error {
 			return e
 		}
 		if _, e = provision.PublishAdmission(ctx, state.Token, n.site.Identities.Admission, n.site.Identities.RuntimeAdmission); e != nil {
+			if errors.Is(e, provision.ErrAdmissionRemovalPending) {
+				return ErrAdmissionRemovalPending
+			}
 			return e
 		}
 	}
@@ -189,6 +192,10 @@ func (n *nativeApply) converge(ctx context.Context) error {
 // ErrRevokedListeners is a revocation whose stop did not finish: the broker
 // already denies the person and their sessions are gone, but their daemon
 // or a socket may still run.
+// ErrAdmissionRemovalPending is a site.json admission of a person whose
+// removal is scheduled; nothing was published.
+var ErrAdmissionRemovalPending = errors.New("admission_removal_pending: site.json admits a person whose removal is scheduled")
+
 var ErrRevokedListeners = errors.New("revoked_listeners_running: a person site.json no longer admits still has a running Open Habitat daemon or socket")
 
 // stopRevoked asks the broker, through the gateway, to stop the daemon and

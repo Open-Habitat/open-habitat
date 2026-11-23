@@ -7,6 +7,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 )
 
 // ScheduleRemoval and CancelRemoval model the broker's removal: schedule
@@ -183,4 +184,41 @@ func (removalQuotaBroker) ListQuotas(context.Context) ([]QuotaRow, QuotaFilesyst
 		{BoundUser: BoundUser{ID: "43", Username: "bob"}, Quota: Quota{UsageBytes: 10 << 30, LimitBytes: 50 << 30}, RemovalDue: "2026-12-05T09:00:00Z"},
 		{BoundUser: BoundUser{ID: "44", Username: "carol"}, Quota: Quota{UsageBytes: 2 << 30}, RemovalDue: "2026-11-21T09:00:00Z"},
 	}, QuotaFilesystem{CapacityBytes: 100 << 30, FreeBytes: 80 << 30}, nil
+}
+
+// A list read while the removal is still under way (here, while the broker
+// is being asked) must not take the not-yet-scheduled removal for a
+// cancelled one and drop the record.
+func TestPersonRemovalSurvivesConcurrentList(t *testing.T) {
+	x := newAccessHarness(t)
+	x.broker.onSchedule = func() {
+		if _, err := x.auth.accessList(context.Background()); err != nil {
+			t.Error(err)
+		}
+		if !strings.Contains(x.file("administration.json"), `"removals":{"43":`) {
+			t.Error("a concurrent list dropped the removal record")
+		}
+	}
+	if _, err := x.auth.removePerson(context.Background(), "42", "43", "bob", "grace"); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(x.file("administration.json"), `"scheduled":true`) {
+		t.Fatal("schedule not confirmed in the record", x.file("administration.json"))
+	}
+	x.broker.complete("43")
+	if _, err := x.auth.accessList(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if admin := x.file("administration.json"); strings.Contains(admin, `"43"`) {
+		t.Fatal("completion not settled", admin)
+	}
+}
+
+func TestRemovalControlDeadlines(t *testing.T) {
+	if d := AdminControlDeadline([]byte(`{"operation":"access_remove_person"}`)); d <= disconnectAllDeadline {
+		t.Fatal(d)
+	}
+	if d := AdminControlDeadline([]byte(`{"operation":"access_cancel_removal"}`)); d < 60*time.Second {
+		t.Fatal(d)
+	}
 }

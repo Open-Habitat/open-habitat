@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -506,5 +507,85 @@ func TestRemoveHomeAt(t *testing.T) {
 	}
 	if _, err := os.Stat(outside); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// A drop interrupted between the ledger and the watermark is finished by the
+// next ledger read or the broker's start, instead of refusing the broker.
+func TestInterruptedBindingDropRecovers(t *testing.T) {
+	w, _, _, _, _ := removalWriter(t)
+	accessRow(t, schedule(w, "50", RemovalNow))
+	// The data stage reached the drop: the entry is removing, the ledger
+	// lost the binding with generation+1, and the watermark did not follow.
+	a := allowState(t, w.Dir)
+	a.Removals[0].Stage = RemovalRemoving
+	b, _ := json.Marshal(a)
+	put(t, w.Dir, "allowlist.json", string(b))
+	l := ledgerState(t, w.Dir)
+	put(t, w.Dir, "bindings.json", fmt.Sprintf(`{"version":1,"generation":%d,"bindings":[]}`, l.Generation+1))
+	w.RecoverRemoval(context.Background())
+	var h head
+	if json.Unmarshal(mustRead(t, w.Dir, "head.json"), &h) != nil || h.Generation != l.Generation+1 {
+		t.Fatalf("watermark not finished: %+v", h)
+	}
+	w.RunRemovals(context.Background())
+	if allowState(t, w.Dir).Removals != nil {
+		t.Fatal("admission records not forgotten after recovery")
+	}
+	// Without a removing entry the same mismatch is refused as before.
+	put(t, w.Dir, "bindings.json", fmt.Sprintf(`{"version":1,"generation":%d,"bindings":[]}`, h.Generation+1))
+	w.RecoverRemoval(context.Background())
+	if json.Unmarshal(mustRead(t, w.Dir, "head.json"), &h) != nil || h.Generation != l.Generation+1 {
+		t.Fatal("unrelated mismatch repaired")
+	}
+}
+
+// A cancel marks the removal closing before it unexpires the account, so an
+// interrupted cancel is closed out again by the runner.
+func TestInterruptedCancelClosesAgain(t *testing.T) {
+	w, _, f, _, _ := removalWriter(t)
+	accessRow(t, schedule(w, "50", RemovalGrace))
+	f.taken()
+	f.fail["reopen"] = 1
+	if r := cancelRemoval(w, "50"); r.Failure != StateUnavailable {
+		t.Fatal(r)
+	}
+	if e := allowState(t, w.Dir).removal("50"); e == nil || e.Stage != RemovalClosing {
+		t.Fatalf("entry after interrupted cancel: %+v", e)
+	}
+	f.taken()
+	w.RunRemovals(context.Background())
+	if got := f.taken(); !reflect.DeepEqual(got, []string{"close:newcomer"}) {
+		t.Fatal("not closed out again", got)
+	}
+}
+
+// Host apply never admits a person whose removal is scheduled; the
+// publication is refused and nothing is written.
+func TestHostPublicationRefusesPendingRemoval(t *testing.T) {
+	p, owner, policy := installFixture(t)
+	ctx := context.Background()
+	if _, e := initializeBroker(ctx, p, "broker", policy, []string{"123"}, owner, nil); e != nil {
+		t.Fatal(e)
+	}
+	dir := filepath.Join(p, "broker")
+	allow := `{"version":1,"epoch":2,"ids":[{"id":"123"}],"runtime_admission":true,"runtime":[{"id":"50","state":"withdrawn","login_hint":"newcomer","actor":"123","at":"2026-10-24T09:30:00Z"}],"removals":[{"id":"50","uid":2100,"username":"newcomer","due":"2026-11-07T09:30:00Z","actor":"123","at":"2026-10-24T09:30:00Z","stage":"closed"}]}`
+	put(t, dir, "allowlist.json", allow)
+	put(t, dir, "head.json", `{"version":1,"epoch":2,"generation":1}`)
+	s, e := inspectInstallation(ctx, dir, owner)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if _, e := publishAdmission(ctx, dir, owner, s.Token, []string{"123", "50"}, true); !errors.Is(e, ErrAdmissionRemovalPending) {
+		t.Fatal(e)
+	}
+	if string(mustRead(t, dir, "allowlist.json")) != allow {
+		t.Fatal("refused publication wrote")
+	}
+	if _, e := publishAdmission(ctx, dir, owner, s.Token, []string{"456"}, true); e != nil {
+		t.Fatal("unrelated publication", e)
+	}
+	if allowState(t, dir).removal("50") == nil {
+		t.Fatal("publication dropped the removal")
 	}
 }

@@ -198,12 +198,19 @@ func (e *LinuxHostExecutor) endProcesses(ctx context.Context, uid uint32) error 
 	return ErrInvalid
 }
 
-// openDir opens name below dirfd as a directory without following a link.
-func openDir(dirfd int, name string) (int, error) {
-	return unix.Openat(dirfd, name, unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_RDONLY|unix.O_CLOEXEC, 0)
-}
-
 var errMountInside = errors.New("mount inside a removed tree")
+
+// openDir opens name below dirfd as a directory without following a link
+// and without crossing into another mount. A bind mount of the same file
+// system has the same device number, so only the kernel's mount check
+// (RESOLVE_NO_XDEV) keeps a walk from emptying it.
+func openDir(dirfd int, name string) (int, error) {
+	fd, err := unix.Openat2(dirfd, name, &unix.OpenHow{Flags: unix.O_DIRECTORY | unix.O_NOFOLLOW | unix.O_RDONLY | unix.O_CLOEXEC, Resolve: unix.RESOLVE_NO_XDEV | unix.RESOLVE_NO_SYMLINKS | unix.RESOLVE_BENEATH})
+	if err == unix.EXDEV {
+		return -1, errMountInside
+	}
+	return fd, err
+}
 
 // removeContents deletes everything below the open directory fd,
 // descriptor-relative, never following a link and never entering another
@@ -328,6 +335,9 @@ func removeHomeAt(ctx context.Context, base string, i ExecutorIdentity) error {
 		return nil
 	}
 	fd, err := openDir(home, reserved)
+	if errors.Is(err, errMountInside) {
+		return removalHold(RemovalHomeUnsafe)
+	}
 	if err != nil {
 		return removalHold(RemovalStepFailed)
 	}

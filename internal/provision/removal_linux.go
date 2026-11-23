@@ -122,7 +122,10 @@ func (w Writer) openLedger(ctx context.Context) (*ledger, error) {
 		return fail()
 	}
 	hb, err := readAt(fd, "head.json", w.owner)
-	if err != nil || decode(hb, &g.h, "version", "epoch", "generation") != nil || g.h.Version != 1 || g.h.Epoch == 0 || g.h.Generation == 0 || g.a.Epoch < g.h.Epoch || g.l.Generation != g.h.Generation {
+	if err != nil || decode(hb, &g.h, "version", "epoch", "generation") != nil || g.h.Version != 1 || g.h.Epoch == 0 || g.h.Generation == 0 || g.a.Epoch < g.h.Epoch {
+		return fail()
+	}
+	if g.l.Generation != g.h.Generation && !finishDroppedBinding(fd, g.a, g.l, &g.h) {
 		return fail()
 	}
 	if g.a.Epoch > g.h.Epoch {
@@ -395,10 +398,11 @@ func (w Writer) recordStage(ctx context.Context, e removalEntry, stage, reason s
 	return g.commitAllow(ctx, next) == nil
 }
 
-// cancelRemoval ends a removal that has not reached the data stage. The
-// account is unexpired first, so a lost reply leaves at worst an expired
-// account with its entry still in place, which the repeat finishes. Access
-// stays withdrawn; restoring it is the separate admit.
+// cancelRemoval ends a removal that has not reached the data stage: the
+// entry goes back to closing, the account is unexpired, then the entry is
+// dropped. An interruption anywhere leaves a closing entry, which a repeated
+// cancel finishes and the runner otherwise closes out again. Access stays
+// withdrawn; restoring it is the separate admit.
 func (w Writer) cancelRemoval(ctx context.Context, r Request) Reply {
 	g, err := w.openLedger(ctx)
 	if err != nil {
@@ -415,6 +419,14 @@ func (w Writer) cancelRemoval(ctx context.Context, r Request) Reply {
 		return failure(RemovalStarted)
 	}
 	g.close()
+	// The close-out is no longer observed once the account is unexpired:
+	// an interrupted cancel leaves closing, which the runner closes out
+	// again, never a closed entry over an open account.
+	if e.Stage != RemovalClosing || e.Reason != "" {
+		if !w.recordStage(ctx, e, RemovalClosing, "") {
+			return failure(StateUnavailable)
+		}
+	}
 	if w.RemovalHost.Reopen(ctx, e.identity()) != nil {
 		return failure(StateUnavailable)
 	}
@@ -681,4 +693,66 @@ func removalRow(e *removalEntry) *RemovalState {
 		return nil
 	}
 	return &RemovalState{Stage: e.Stage, Due: e.Due, Actor: e.Actor, At: e.At, Reason: e.Reason}
+}
+
+// finishDroppedBinding completes a binding drop that published the ledger
+// but not the watermark (dropBinding writes bindings.json, then head.json).
+// It applies only to that exact state: the ledger one generation ahead, no
+// staging file (an ensure's publish always leaves pending.json), and a
+// removing entry whose subject the ledger no longer binds. Anything else is
+// left for the existing refusal. Call under the directory lock.
+func finishDroppedBinding(fd int, a allowFile, l ledgerFile, h *head) bool {
+	if l.Generation != h.Generation+1 || h.Generation == 0 {
+		return false
+	}
+	for _, n := range []string{"pending.json", "pending.json.next", "bindings.json.next", "head.json.next", "allowlist.json.next"} {
+		if !absent(fd, n) {
+			return false
+		}
+	}
+	dropped := false
+	for _, e := range a.Removals {
+		if e.Stage != RemovalRemoving {
+			continue
+		}
+		bound := false
+		for _, b := range l.Bindings {
+			bound = bound || b.ID == e.ID || b.UID == e.UID
+		}
+		dropped = dropped || !bound
+	}
+	if !dropped {
+		return false
+	}
+	next := *h
+	next.Generation = l.Generation
+	if replace(fd, "head.json", marshal(next)) != nil {
+		return false
+	}
+	*h = next
+	return true
+}
+
+// RecoverRemoval finishes an interrupted binding drop before the broker's
+// startup verification, which would otherwise refuse the ledger.
+func (w Writer) RecoverRemoval(ctx context.Context) {
+	if ctx == nil || !w.valid() {
+		return
+	}
+	fd, err := lockedDir(ctx, w.Dir, w.owner)
+	if err != nil {
+		return
+	}
+	defer unix.Close(fd)
+	defer unix.Flock(fd, unix.LOCK_UN)
+	a, l, _, _, err := stateAt(ctx, fd, w.owner)
+	if err != nil {
+		return
+	}
+	hb, err := readAt(fd, "head.json", w.owner)
+	var h head
+	if err != nil || decode(hb, &h, "version", "epoch", "generation") != nil || h.Version != 1 || h.Epoch == 0 || a.Epoch < h.Epoch || l.Generation == h.Generation {
+		return
+	}
+	finishDroppedBinding(fd, a, l, &h)
 }

@@ -68,6 +68,10 @@ type removalRecord struct {
 	// not; empty until the request was made.
 	Disconnect string          `json:"disconnect,omitempty"`
 	Providers  []providerCount `json:"providers,omitempty"`
+	// Scheduled is set once the broker confirmed the schedule. Before that
+	// a bound row without a removal is the removal still under way, never
+	// a cancelled one.
+	Scheduled bool `json:"scheduled,omitempty"`
 }
 
 // providerCount is the daemon's count of one provider's accounts by
@@ -246,6 +250,18 @@ func (a *Auth) removePerson(ctx context.Context, caller, subject, login, when st
 		}
 		return AccessRow{}, err
 	}
+	a.mu.Lock()
+	if cur, still := a.settings.Removals[subject]; still && !cur.Scheduled {
+		next := a.settings
+		next.Removals = cloneRemovals(a.settings.Removals)
+		cur.Scheduled = true
+		next.Removals[subject] = cur
+		err = a.commitAdministration(next)
+	}
+	a.mu.Unlock()
+	if err != nil {
+		return AccessRow{}, ErrAccessUncertain
+	}
 	if row.State == "removed" {
 		// Nothing was bound: there is nothing to wait for.
 		if err := a.completeRemoval(subject); err != nil {
@@ -394,12 +410,18 @@ func (a *Auth) completeRemoval(subject string) error {
 // still under removal, or no definite read, changes nothing.
 func (a *Auth) settleRemoval(row *AccessRow, subject string) {
 	a.mu.Lock()
-	_, recorded := a.settings.Removals[subject]
+	rec, recorded := a.settings.Removals[subject]
 	a.mu.Unlock()
 	if !recorded || row != nil && row.Removal != nil {
 		return
 	}
 	if row != nil && row.Username != "" {
+		// Bound with no removal: cancelled, but only once the broker had
+		// confirmed scheduling; before that the removal is still under way
+		// (or its reply was lost) and a repeat continues it.
+		if !rec.Scheduled {
+			return
+		}
 		a.mu.Lock()
 		next := a.settings
 		next.Removals = cloneRemovals(a.settings.Removals)

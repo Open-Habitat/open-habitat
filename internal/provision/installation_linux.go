@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"os"
 	"slices"
 	"sort"
@@ -296,6 +297,11 @@ func operatorPublication(current allowFile, ids []string, runtimeAdmission bool,
 	keepRevoked(current, &next, bound)
 	return next
 }
+
+// ErrAdmissionRemovalPending refuses a site.json admission of a person
+// whose removal is scheduled.
+var ErrAdmissionRemovalPending = errors.New("admission of a person whose removal is pending")
+
 func publishAdmission(ctx context.Context, dir string, owner uint32, token string, ids []string, runtimeAdmission bool) (InstallationState, error) {
 	if !validAdmission(ids) {
 		return InstallationState{}, ErrInvalid
@@ -327,6 +333,14 @@ func publishAdmission(ctx context.Context, dir string, owner uint32, token strin
 	bound := map[string]bool{}
 	for _, b := range ledger.Bindings {
 		bound[b.ID] = true
+	}
+	// A person whose removal is scheduled is not admitted again by
+	// site.json until the removal is cancelled (ADR 0037): the data stage
+	// may already be deleting their home.
+	for _, id := range ids {
+		if current.removal(id) != nil {
+			return InstallationState{}, ErrAdmissionRemovalPending
+		}
 	}
 	a := operatorPublication(current, ids, runtimeAdmission, bound)
 	if ctx.Err() != nil {

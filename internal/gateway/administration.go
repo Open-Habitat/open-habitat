@@ -729,7 +729,11 @@ func AdminControlDeadline(payload []byte) time.Duration {
 		return siteKeyDaemonDeadline + 15*time.Second
 	case "ai_key_set":
 		return 5 * time.Minute
-	case "access_remove", "access_stop_revoked":
+	case "access_remove_person":
+		// The person's daemon disconnects their services, then the broker
+		// schedules and closes the person out within its exchange budget.
+		return disconnectAllDeadline + 10*time.Second + 100*time.Second
+	case "access_remove", "access_stop_revoked", "access_cancel_removal":
 		// The broker stops the withdrawn or revoked people's daemons,
 		// which may take its own stop budget; this covers the broker's
 		// exchange budget.
