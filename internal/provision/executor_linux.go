@@ -304,7 +304,7 @@ func (e *LinuxHostExecutor) available(ctx context.Context, name string, uid uint
 	if e.parentACL(ctx, 0) != nil {
 		return false, availabilityGuard("acl_policy")
 	}
-	for _, p := range []string{filepath.Join(homeBase, name), filepath.Join(configBase, "daemon-"+name+".json"), filepath.Join(socketBase, name), socketFor(name), agentSocketFor(name), guestSocketFor(name)} {
+	for _, p := range []string{filepath.Join(homeBase, name), filepath.Join(configBase, "daemon-"+name+".json"), filepath.Join(socketBase, name), socketFor(name), agentSocketFor(name), guestSocketFor(name), filepath.Join(unitBase, DaemonSliceDir(name))} {
 		ok, err := missing(p)
 		if err != nil {
 			return false, availabilityGuard("path_probe")
@@ -507,6 +507,9 @@ func (e *LinuxHostExecutor) Step(ctx context.Context, phase string, i ExecutorId
 	case "socket":
 		return e.prepareSocket(ctx, i)
 	case "unit":
+		if err := e.ensureDaemonSlice(ctx, i); err != nil {
+			return err
+		}
 		return e.unit(ctx, i, false)
 	default:
 		return ErrInvalid
@@ -728,6 +731,10 @@ func (e *LinuxHostExecutor) unit(ctx context.Context, i ExecutorIdentity, retry 
 	service := "open-habitat-daemon@" + i.username + ".service"
 	effective, err := e.command(ctx, systemctl, "show", service, "--property=User,Group,SupplementaryGroups,NoNewPrivileges,ExecStart", "--no-pager")
 	if err != nil || !properties(effective, map[string]string{"User": i.username, "Group": i.username, "SupplementaryGroups": "", "NoNewPrivileges": "yes"}) || !strings.Contains(string(effective), "/opt/open-habitat/current/open-habitat") || !strings.Contains(string(effective), "--config "+filepath.Join(configBase, "daemon-"+i.username+".json")) {
+		return ErrInvalid
+	}
+	effective, err = e.command(ctx, systemctl, "show", service, "--property=Slice,DropInPaths", "--no-pager")
+	if err != nil || !daemonSliceShown(effective, i) {
 		return ErrInvalid
 	}
 	// Inspect effective socket properties too: systemctl cat includes the base

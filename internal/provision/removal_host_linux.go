@@ -558,6 +558,11 @@ func (e *LinuxHostExecutor) RemoveArtifacts(ctx context.Context, i ExecutorIdent
 	if removeFileIn(configBase, func(name string, _ unix.Stat_t) bool { return name == "daemon-"+i.username+".json" }) != nil {
 		return removalHold(RemovalStepFailed)
 	}
+	// The daemon is stopped; a reload is not needed for a unit nobody can
+	// start, and a later binding of the same name writes its own and reloads.
+	if removeDaemonSliceAt(unitBase, 0, i.username) != nil {
+		return removalHold(RemovalStepFailed)
+	}
 	present, err := e.accountPresent(ctx, i)
 	if err != nil {
 		return removalHold(RemovalStepFailed)

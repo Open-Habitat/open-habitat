@@ -203,6 +203,11 @@ for socket in ('open-habitat-daemon@%i.socket', 'open-habitat-agent@%i.socket', 
 # One OOM-killed agent build must not stop every conversation of the person.
 if unit('open-habitat-daemon@.service')['[Service]'].get('OOMPolicy') != 'continue':
     sys.exit('error: daemon unit must keep running when one of its processes is OOM-killed')
+# The daemon's slice is the person's user-<uid>.slice, set by the broker's
+# per-person drop-in: systemd cannot derive the UID from the instance name,
+# and a template Slice= would put every person's daemon in one shared budget.
+if 'Slice' in unit('open-habitat-daemon@.service')['[Service]']:
+    sys.exit('error: daemon template must leave Slice= to the broker drop-in')
 # Agents' /var/tmp outlives a daemon restart but stays the person's own, and
 # /tmp stays private; the tmpfiles policy ages the persistent directory.
 daemon = unit('open-habitat-daemon@.service')['[Service]']

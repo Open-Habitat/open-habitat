@@ -210,8 +210,11 @@ ACLs; unsafe existing metadata is refused, never silently cleared.
 Product service/socket fragments are fixed qualified policy. Foreign fragments,
 full instance units and overrides (including global service/socket drop-ins)
 are refused rather than adopted: they can add root hooks, ambient capabilities
-or extra groups despite correct base template bytes. Put resource budgets on
-user slices. Keep the declaration and referenced secret inputs unchanged while
+or extra groups despite correct base template bytes. The one drop-in the
+product writes itself is `open-habitat-daemon@<user>.service.d/open-habitat-slice.conf`,
+which puts a person's daemon in their user slice; it is accepted only with
+exactly the broker's bytes. Put resource budgets on user slices (see
+per-person resource limits under daily operation). Keep the declaration and referenced secret inputs unchanged while
 maintenance runs; external delivery that changes them is an input drift refusal.
 App registrations go in the operator file described under Integrations; the
 site's `integrations.browser_setup` only decides whether a browser
@@ -933,7 +936,8 @@ The proc exemption group must have no ordinary members. Only logind and polkit
 receive it through the installed drop-ins; never exempt the gateway, daemons,
 users or a shared administrative group. Check the effective `/proc` mount and
 running service groups after installation/reboot. User resource budgets such
-as `MemoryMax=`, `TasksMax=` and `CPUWeight=` remain customer policy.
+as `MemoryMax=`, `TasksMax=` and `CPUWeight=` remain customer policy; set them
+on user slices as described under per-person resource limits.
 
 A person's daemon, and the Pi conversations and tools it starts, have a
 private `/tmp` that disappears whenever the daemon stops, as on every upgrade.
@@ -1720,6 +1724,32 @@ a site that contains it, so upgrade first and add the field afterwards.
   manager (SSH sessions, a lingering person's shells and editors) are never
   restarted automatically by Ubuntu; they pick up the update when they are
   restarted or at reboot.
+- **Per-person resource limits:** everything a person runs is in their
+  `user-<uid>.slice`: their SSH sessions and lingering user manager (shells,
+  tmux, editors, Taskfleet workers) and their Open Habitat daemon
+  `open-habitat-daemon@<user>.service` with every Pi conversation and every
+  build, test or server its tools start. The broker writes the daemon's
+  `Slice=` drop-in when it binds the person and removes it with them; apply
+  and upgrade add it for people bound earlier, and the upgrade's daemon
+  restart moves them. One drop-in therefore bounds each person separately,
+  for example `/etc/systemd/system/user-.slice.d/50-budget.conf`:
+
+  ```ini
+  [Slice]
+  MemoryMax=8G
+  MemorySwapMax=0
+  TasksMax=4096
+  CPUWeight=100
+  ```
+
+  followed by `systemctl daemon-reload`; a running slice takes the new values
+  at once. Choose values that leave the gateway, broker and system services
+  room. When a person reaches `MemoryMax=`, the kernel OOM killer chooses
+  among that person's processes only, normally the largest build or test; the
+  daemon stays up and other conversations continue, and if the daemon itself
+  is chosen systemd restarts it, ending that person's turns. Without such a
+  drop-in nothing is limited, as before. Do not put limits on the daemon unit
+  itself: apply and the broker refuse any other drop-in on product units.
 - **Free space without per-user limits:** nothing stops one home from filling
   the shared filesystem. Watch `df -h /home` (the administrator storage page
   shows the same figures) and act before it is full: a full disk makes every

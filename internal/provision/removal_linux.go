@@ -40,8 +40,8 @@ type RemovalExecutor interface {
 	// crossing a mount.
 	RemoveHome(context.Context, ExecutorIdentity) error
 	// RemoveArtifacts removes what the broker created for the binding: the
-	// socket directory, named ACL entries, daemon configuration, and finally
-	// the passwd and group entries.
+	// socket directory, named ACL entries, daemon configuration and slice
+	// drop-in, and finally the passwd and group entries.
 	RemoveArtifacts(context.Context, ExecutorIdentity) error
 }
 

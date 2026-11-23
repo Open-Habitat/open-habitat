@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	policy "github.com/open-habitat/open-habitat"
+	"github.com/open-habitat/open-habitat/internal/provision"
 	"net"
 	"os"
 	"path/filepath"
@@ -43,6 +44,8 @@ func legacyApplyUnitPolicies() []policyFile {
 // from: its saved policy list may lack exactly these, and nothing else.
 var predecessorOptionalPolicies = map[string]bool{"/etc/systemd/system/open-habitat-guest@.socket": true}
 
+const unitDir = "/etc/systemd/system"
+
 var productUnitFragments = []string{"open-habitat-proc.service", "open-habitat-storage.service", "open-habitat-binding@.service", "open-habitat-broker.service", "open-habitat-broker.socket", "open-habitat-revoke.socket", "open-habitat-gateway.service", "open-habitat-daemon@.service", "open-habitat-daemon@.socket", "open-habitat-agent@.socket", "open-habitat-guest@.socket"}
 
 func unitSearchPaths(ctx context.Context) ([]string, error) {
@@ -65,7 +68,11 @@ func unitSearchPaths(ctx context.Context) ([]string, error) {
 // Product actors use fixed unit templates. Unknown overrides can add root
 // hooks, ambient capabilities or foreign groups even when base bytes are right.
 // Resource budgets belong on user slices, not unqualified actor overrides.
-func unitOverridesSafe(paths []string, owner uint32) error {
+// The one drop-in accepted is the broker's own slice drop-in on a person's
+// daemon instance in productDir (/etc/systemd/system), which puts that daemon
+// in the person's user slice; its bytes must be exactly what the broker
+// writes, so it can set nothing but that slice.
+func unitOverridesSafe(paths []string, productDir string, owner uint32) error {
 	for _, path := range paths {
 		fd, e := openDir(path, owner, false)
 		if errors.Is(e, os.ErrNotExist) {
@@ -112,6 +119,9 @@ func unitOverridesSafe(paths []string, owner uint32) error {
 			if e != nil {
 				return e
 			}
+			if path == productDir && productDaemonSlice(path, name, members, owner) {
+				continue
+			}
 			for _, member := range members {
 				if strings.HasSuffix(member.Name(), ".conf") {
 					return ErrUnitPolicy
@@ -120,6 +130,34 @@ func unitOverridesSafe(paths []string, owner uint32) error {
 		}
 	}
 	return nil
+}
+
+// productDaemonSlice reports whether dir/name is a person's daemon drop-in
+// directory whose only loaded member is the broker's exact slice drop-in.
+func productDaemonSlice(dir, name string, members []os.DirEntry, owner uint32) bool {
+	person := strings.TrimSuffix(strings.TrimPrefix(name, "open-habitat-daemon@"), ".service.d")
+	if provision.DaemonSliceDir(person) != name {
+		return false
+	}
+	found := false
+	for _, member := range members {
+		if !strings.HasSuffix(member.Name(), ".conf") {
+			continue
+		}
+		if member.Name() != provision.DaemonSliceFile {
+			return false
+		}
+		found = true
+	}
+	if !found {
+		return false
+	}
+	got, e := policyBytes("/", policyFile{Path: filepath.Join(dir, name, provision.DaemonSliceFile)}, owner)
+	if e != nil || got.Mode != 0644 {
+		return false
+	}
+	_, ok := provision.ParseDaemonSlice(person, []byte(got.Content))
+	return ok
 }
 
 func nativeUnitInputs(ctx context.Context, s Site, initialized bool) error {
@@ -139,7 +177,7 @@ func nativeUnitInputs(ctx context.Context, s Site, initialized bool) error {
 	if e != nil {
 		return e
 	}
-	return unitOverridesSafe(paths, 0)
+	return unitOverridesSafe(paths, unitDir, 0)
 }
 
 func verifyInstalledUnits(ctx context.Context, s Site) error {
@@ -157,7 +195,7 @@ func verifyUnitPolicies(ctx context.Context, policies []policyFile) error {
 	if e != nil {
 		return e
 	}
-	if e = unitOverridesSafe(paths, 0); e != nil {
+	if e = unitOverridesSafe(paths, unitDir, 0); e != nil {
 		return e
 	}
 	listed := map[string]bool{}

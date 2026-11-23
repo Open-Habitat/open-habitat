@@ -593,6 +593,13 @@ func (n *nativeApply) activate(ctx context.Context) error {
 	if _, e = nativeCommand(ctx, "/usr/bin/systemd-tmpfiles", "--create", "/etc/tmpfiles.d/open-habitat.conf"); e != nil {
 		return e
 	}
+	// People bound before daemons ran in their user slices get the broker's
+	// slice drop-in here, before the reload and before an upgrade starts
+	// their daemons again; the broker owns the file and its contents.
+	// A refusal is nearly always a foreign file in that directory.
+	if e = provision.EnsureDaemonSlices(ctx); e != nil {
+		return errors.Join(ErrUnitPolicy, e)
+	}
 	if _, e = nativeCommand(ctx, "/usr/bin/systemctl", "daemon-reload"); e != nil {
 		return e
 	}

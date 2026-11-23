@@ -4,6 +4,7 @@ package host
 
 import (
 	"context"
+	"github.com/open-habitat/open-habitat/internal/provision"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,20 +16,20 @@ func TestApplyUnitOverridesAreNotAdopted(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			root, owner := operationFixture(t)
 			root = filepath.Dir(root)
-			if e := unitOverridesSafe([]string{root, root + "/absent"}, owner); e != nil {
+			if e := unitOverridesSafe([]string{root, root + "/absent"}, root, owner); e != nil {
 				t.Fatal(e)
 			}
 			path := filepath.Join(root, name)
 			if e := os.Mkdir(path, 0755); e != nil {
 				t.Fatal(e)
 			}
-			if e := unitOverridesSafe([]string{root}, owner); e != nil {
+			if e := unitOverridesSafe([]string{root}, root, owner); e != nil {
 				t.Fatal("empty directory treated as an override", e)
 			}
 			if e := os.WriteFile(path+"/foreign.conf", []byte("[Service]\nAmbientCapabilities=CAP_DAC_READ_SEARCH\n"), 0644); e != nil {
 				t.Fatal(e)
 			}
-			if e := unitOverridesSafe([]string{root}, owner); e == nil {
+			if e := unitOverridesSafe([]string{root}, root, owner); e == nil {
 				t.Fatal("foreign actor privilege override accepted")
 			}
 		})
@@ -40,7 +41,7 @@ func TestApplyUnitOverridesAreNotAdopted(t *testing.T) {
 			if e := os.WriteFile(filepath.Join(root, name), []byte("foreign instance"), 0644); e != nil {
 				t.Fatal(e)
 			}
-			if e := unitOverridesSafe([]string{root}, owner); e == nil {
+			if e := unitOverridesSafe([]string{root}, root, owner); e == nil {
 				t.Fatal("full foreign instance adopted")
 			}
 		})
@@ -58,7 +59,7 @@ func TestApplyUnitOverridesAreNotAdopted(t *testing.T) {
 	if e := os.WriteFile(filepath.Join(root, "user-21032.slice.d", "budget.conf"), []byte("[Slice]\nMemoryMax=1G\n"), 0644); e != nil {
 		t.Fatal(e)
 	}
-	if e := unitOverridesSafe([]string{root}, owner); e != nil {
+	if e := unitOverridesSafe([]string{root}, root, owner); e != nil {
 		t.Fatal("templates or user slice budget rejected", e)
 	}
 }
@@ -87,7 +88,7 @@ func TestApplyUnitLookupWhenSystemdInstalled(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	if e = unitOverridesSafe(paths, 0); e != nil {
+	if e = unitOverridesSafe(paths, unitDir, 0); e != nil {
 		t.Fatal("base Ubuntu unit lookup policy", e)
 	}
 }
@@ -174,5 +175,79 @@ func TestGatewayRaisedPrivilegedPortThreshold(t *testing.T) {
 		if got := unprivilegedPortAllowed(tc.port, tc.threshold); got != tc.want {
 			t.Fatalf("%+v: %v", tc, got)
 		}
+	}
+}
+
+// The broker's slice drop-in on a person's daemon is the one product drop-in
+// accepted, only where the broker writes it and only with its exact bytes.
+func TestApplyAcceptsOnlyTheBrokerDaemonSliceDropIn(t *testing.T) {
+	setup := func(t *testing.T, name, content string) (string, uint32) {
+		root, owner := operationFixture(t)
+		root = filepath.Dir(root)
+		dir := filepath.Join(root, name)
+		if e := os.Mkdir(dir, 0755); e != nil {
+			t.Fatal(e)
+		}
+		file := filepath.Join(dir, provision.DaemonSliceFile)
+		if e := os.WriteFile(file, []byte(content), 0644); e != nil {
+			t.Fatal(e)
+		}
+		if e := os.Chmod(file, 0644); e != nil { // whatever the test's umask
+			t.Fatal(e)
+		}
+		return root, owner
+	}
+	exact := provision.DaemonSliceContent("person", 32000)
+	root, owner := setup(t, "open-habitat-daemon@person.service.d", exact)
+	if e := unitOverridesSafe([]string{root}, root, owner); e != nil {
+		t.Fatal("broker drop-in refused", e)
+	}
+	if e := unitOverridesSafe([]string{root}, root+"/other", owner); e == nil {
+		t.Fatal("drop-in accepted outside the product unit directory")
+	}
+	if e := os.WriteFile(filepath.Join(root, "open-habitat-daemon@person.service.d", "budget.conf"), []byte("[Service]\nMemoryMax=1G\n"), 0644); e != nil {
+		t.Fatal(e)
+	}
+	if e := unitOverridesSafe([]string{root}, root, owner); e == nil {
+		t.Fatal("foreign drop-in beside the broker's accepted")
+	}
+	for _, tc := range []struct{ name, dir, content string }{
+		{"other_person", "open-habitat-daemon@other.service.d", exact},
+		{"tampered", "open-habitat-daemon@person.service.d", exact + "AmbientCapabilities=CAP_DAC_READ_SEARCH\n"},
+		{"socket", "open-habitat-daemon@person.socket.d", exact},
+		{"agent_socket", "open-habitat-agent@person.socket.d", exact},
+		{"template", "open-habitat-daemon@.service.d", exact},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root, owner := setup(t, tc.dir, tc.content)
+			if e := unitOverridesSafe([]string{root}, root, owner); e == nil {
+				t.Fatal("foreign drop-in accepted under the broker's name")
+			}
+		})
+	}
+	root, owner = setup(t, "open-habitat-daemon@person.service.d", exact)
+	if e := os.Chmod(filepath.Join(root, "open-habitat-daemon@person.service.d", provision.DaemonSliceFile), 0664); e != nil {
+		t.Fatal(e)
+	}
+	if e := unitOverridesSafe([]string{root}, root, owner); e == nil {
+		t.Fatal("group-writable drop-in accepted")
+	}
+}
+
+// The real unit search paths with a person's slice drop-in written by the
+// broker, in a disposable systemd container only.
+func TestApplyUnitLookupWithDaemonSliceWhenSystemdInstalled(t *testing.T) {
+	if os.Geteuid() != 0 || os.Getenv("OH_SLICE_SYSTEMD_CONTAINER") != "1" {
+		t.Skip("disposable systemd container only")
+	}
+	paths, e := unitSearchPaths(context.Background())
+	if e != nil {
+		t.Fatal(e)
+	}
+	if e = unitOverridesSafe(paths, unitDir, 0); e != nil {
+		t.Fatal("broker slice drop-in refused on a real host", e)
+	}
+	if e = verifyUnitPolicies(context.Background(), nil); e != nil {
+		t.Fatal("effective product fragments", e)
 	}
 }
