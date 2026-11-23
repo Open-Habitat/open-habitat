@@ -1,3 +1,102 @@
+# Toteutus: C2a kokeellisena ominaisuutena (23.11.2026)
+
+Toteutus `d0f4ab3d7`: `workspace-header-c2a` on oletuksena pois.
+Asetusten Kokeelliset ominaisuudet -kortti kytkee päälle valitun C2a:n:
+Kuvake, Nimi ja Ääni ovat yläosa, toiminnot niiden oikealla puolella.
+Puhelimessa nimi on ylhäällä, kaksi muuta laattaa sen alla ja toiminnot
+viimeisenä rivinä. Pois palauttaa aiemman otsikon ja erillisen nauhan.
+
+Toimintojen käsittelijät ja sallittavuus säilyivät. Uusi worktree säilyttää
+sanansa työpöydällä; puhelimen ikonilla on sama saavutettava nimi ja vihje,
+jotka sanovat **Uusi worktree-agentti**. Explain käyttää vanhoja kortteja,
+myös T07:ää. Kopiointi on polun vieressä, ja Arkistoi/Palauta vaihtaa tekoa
+ilman painettu-tilaa C2a:ssa. Pienten painikkeiden hyväksytyt säännöt ovat
+`design-system/design.md`:n Painikkeet-kohdassa.
+
+## Tarkistus
+
+Tarkistettu toteutus on yllä nimetty commit; myöhempi tuloskirjaus ei muuta
+ajettavaa koodia. Kaikki alla olevat tarkistukset menivät läpi:
+
+- `./scripts/test-focused.sh --area web`: Biome, TypeScript ja **2197 testiä,
+  260 tiedostoa**.
+- `OH_BROWSER_WORKERS=2 OH_PORT_BASE=15200 ./scripts/test-focused.sh --area browser`
+  ja kuusi `--spec`-valintaa: `lab-workspace-header-c2a.spec.ts`,
+  `lab-workspace-page.spec.ts`, `lab-explain-mode.spec.ts`,
+  `lab-explain-coverage.spec.ts`, `lab-explain-follow.spec.ts`,
+  `settings-experimental.spec.ts`: **48 lab-testiä ja 4 asetustestiä**.
+- Muutetut ja lisätyt specit lisäksi `npx playwright test --repeat-each 3`:
+  `--config playwright.lab.config.ts tests/lab-workspace-header-c2a.spec.ts`
+  sekä `tests/settings-experimental.spec.ts`, kaksi workeriä ja 0–60 ms
+  vastausviive: **12 + 12 läpi**. Molemmat ajoivat uuden tuotantobuildin.
+- `python3 scripts/generate-ui-reference.py --check`,
+  `python3 scripts/validate-project-view.py`, `issuectl doctor --json` ja
+  `git diff --check`.
+
+Uusi spec kokeilee oletuksena pois, päälle ja takaisin pois, sekä
+nimenmuutoksen säilymisen vaihdossa. Se mittaa asettelun 1280/390-leveyksillä
+suomeksi ja englanniksi, testaa puhelimen 44 px osuma-alueen selaimen
+osumatestauksella, poiston erottavan välin, vihjeet myös estetyllä
+GitHub-painikkeella, saavutettavuuden, pitkän äänen nimen rajauksen,
+Explain-kortit, poistoikkunan sulkemisen ja fokuksen sekä molemmat
+keskustelun aloitusreitit. Nimenmuutoksen testissä seurataan hostin palauttamaa
+työtilan tunnistetta eikä oleteta vanhan reitin pysyvän voimassa.
+
+Kuvat ja rinnakkaiset staattiset HTML:t (synteettinen ympäristö, ei repossa):
+`/var/tmp/agent-keep/workspace-header-c2a/`. Nimet ovat
+`fi-FI|en-US-1280|390-off|on|on-dark|on-contrast|explain`;
+`*-1280-explain-1440` näyttää T07:n 1440 px leveydellä.
+Samassa hakemistossa `web-final.log`, `browser-final.log`,
+`browser-repeat.log` ja `issue-doctor.json`. Kuvat katsottiin: laattojen ja
+painikkeiden asettelu, Päivä/Yö/Korkea kontrasti sekä T07 suomeksi ja
+englanniksi työpöydällä ja puhelimessa. Englannin UK-teksti käyttää tässä
+samaa katalogitekstiä; erillistä UK-selainajoa ei tehty.
+
+Näyttö on host-backed synteettinen selainnäyttö, ei asennetun palvelimen,
+erillisten Unix-käyttäjien tai oikean Pi-palveluntarjoajan hyväksyntä.
+Koko selaintestistöä, clean gatea tai käyttöönottoa ei ajettu; ne eivät olleet
+tämän rajatun käyttöliittymämuutoksen worker-tarkistuksia.
+
+## Katselmointi
+
+Rajattu oma diff-katselmointi: oletushaaran säilyminen, samat callbackit ja
+estoedellytykset, pysyvät Explain-tunnisteet, lomakkeen/h1:n rakenne,
+fokuksen palautus vasta DOM-commitissa, tooltipit, osuma-alueet ja
+käännökset. Pitkä äänen nimi rajattiin, ettei se valu toimintojen päälle.
+Ei istunto-, sopimus-, daemonin tilakone- tai valtuutusmuutoksia, joten
+erillistä mallikatselmointia ei tarvittu. Yhteisen ControlButtonin lisäys on
+valinnainen tooltip myös tekstille, joka muuttuu kapealla ikoniksi;
+vanhat kutsut eivät muuta käytöstään.
+
+Ohjeviitteiden generointi löysi myös aiemman active-device-äänimuutoksen
+vanhentuneet viitteet. Ne päivitettiin erillisessä commitissa `a10d85d7b`;
+äänen ajettava koodi ei muuttunut tässä työssä.
+
+## Decisions for later review
+
+- **Pitkä äänen nimi ja oletusliite rajautuvat ellipsiin**, saavutettava nimi
+  ja valitsin kertovat koko valinnan. Vaihtoehto oli leventää laattaa tai
+  kasvattaa sen korkeutta; C2a:n kiinteä rytmi säilytettiin.
+- **Englannin New conversation saa rivittyä 390 px:ssä.** Vaihtoehto oli
+  lyhentää se New chatiksi tai piilottaa sana; nykyinen termi säilyy eikä
+  worktree-ikonin koko kutistu.
+- **Polun kopiointi käyttää olemassa olevaa inline-roolia**, ei prototyypin
+  omaa kiinteää minipainiketta. Näin koko ja vihje tulevat tuotantoprimitiivistä;
+  toimintoryhmän pienet painikkeet seuraavat hyväksyttyä 40/44 px sääntöä.
+
+## Live check
+
+Odottaa käyttöönottoa ja käyttäjän kokeilua, ei tehty tässä workerissa:
+
+1. Asetukset › Kokeelliset ominaisuudet › Työtilan yläosa: laatat ja painikkeet
+   päälle. Avaa työtila työpöydällä ja puhelimella.
+2. Muuta nimeä, avaa kuvake- ja äänivalitsin, kokeile polun kopiointia.
+3. Kokeile toimintojen vihjeitä ja ?-tilan Uusi worktree-agentti -korttia;
+   avaa uusi worktree-agentti. Poisto avaa vahvistuksen, ei poista suoraan.
+4. Kytke kokeilu pois: vanha yläosa palaa ja työtilan asetukset säilyvät.
+
+---
+
 # Tulos, kierros 3: C2:n toimintoryhmä ja pienet painikkeet (23.11.)
 
 Kierros `design-system/prototypes/rounds/2026-11-23-workspace-page-header-3/`

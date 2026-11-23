@@ -3,7 +3,7 @@ created: 2026-11-22
 updated: 2026-11-23
 type: improvement
 reporter: jari
-status: open
+status: testing
 priority: normal
 provenance: chat
 source_ref: habitat:pi-current/2026-11-22-workspace-page-header-round
@@ -12,7 +12,7 @@ lane_seq: 1
 preparation: ready
 ---
 
-# Prototype: the workspace page header (title, actions, Kuvake/Nimi/Ääni tiles)
+# Workspace page header C2a (experimental)
 
 ## Description
 
