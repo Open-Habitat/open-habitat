@@ -124,8 +124,12 @@ class StorageTests(unittest.TestCase):
             path.write_text('#!/usr/bin/env bash\nset -eu\n' + text)
             path.chmod(0o755)
 
-        for name in ('go', 'node', 'sha256sum'):
+        for name in ('go', 'node'):
             executable(bins / name, 'exit 0\n')
+        # The gate pipes the expected checksum into `sha256sum -c -`, which
+        # reads it. A stand-in that left unread would end the writer with
+        # SIGPIPE whenever it exits first, and pipefail turns that into 141.
+        executable(bins / 'sha256sum', 'cat >/dev/null\n')
         executable(bins / 'npm', '''mkdir -p web/dist/assets; echo fixture >web/dist/index.html
 if [[ -n ${INJECT_BAD_OUTPUT:-} && ! -L web/node_modules ]];then
   ln -s "$INJECT_BAD_OUTPUT" web/node_modules
