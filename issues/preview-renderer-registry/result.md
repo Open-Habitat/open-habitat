@@ -1,42 +1,51 @@
-# Result: design for registering special preview renderers
+# Result: approved registry already delivered
 
-The design is in `design.md`: what the four preview surfaces do today, the
-selection and registration options, the renderer contract, three Mermaid
-diagrams and five questions for Jari. Nothing is implemented and no
-production code changed.
+The decisions of 15 November 2026 approved implementation, not another design
+round. That implementation already landed in `ba4b7cf1d600c2c4ff1c49065d2e992ae0e78a3c`
+under `start-page-preview-renderer`. This run verified it and closes the stale
+design issue; it makes no production, contract or browser-spec changes.
 
-Recommendation in one sentence: a static registry in the web bundle,
-selection by path from a known root (the start page only in the editor, at
-`.agents/start-page.md`), validity from the person's daemon through a new
-check route, fallback to the generic preview with the reason, and no
-repository-provided renderer code in the app origin.
+The verification traced the approved behavior through `previewRegistry.ts`,
+`previewInput.ts`, `DocumentPreviewFrame.tsx`, `StartPagePreview.tsx` and
+`app/startPageCheck.ts`: exact workspace-root path matching, one bundled lazy
+start-page renderer, prepared Markdown/YAML/JSON input, daemon-checked content,
+special view first, plain-document fallback and inert goal navigation. Offers
+and attachments remain generic. No additional renderer or feature switch is
+needed. The completed design document is removed; its proposal and the original
+review remain in git history. Later phases in that proposal are not approved
+work for this run.
 
 ## Decisions for later review
 
-- **Selection follows the product's own identification rule.** Chosen:
-  path only, because the daemon reads the start page from one path.
-  Alternatives: a front matter discriminator, content sniffing, a
-  workspace-declared mapping. They are described and deferred or rejected
-  in the design, section 2.
-- **A failed special read does not try another special renderer.** Chosen
-  for predictability; the alternative is to continue down the registry.
-- **The switch between special and generic view is not remembered.**
-  Alternative: remember per file or per person, which would need a store.
-- **Other tools' formats get no special renderer.** Alternative: draw
-  issue files and release contracts as their tools mean them.
-- **The check route is recommended, not decided**: it is a daemon and
-  contract change and is question 1 for Jari.
+- Reuse the implementation already delivered rather than introduce a second
+  registry or refactor working code merely to produce a code diff. The only
+  approved special renderer is already registered and its existing regression
+  tests cover matching, input preparation, failed checks and stale replies.
+- No new product decision is required. The old result's claim that the daemon
+  check route awaited approval was superseded by the recorded decision.
 
-## Review
+## Checks and review
 
-Focused self-review against the code: every statement in section 1 was
-checked against the named file (`editorPreview.ts`, `MarkdownRenderer.tsx`,
-`frontmatter.ts`, `AttachmentPreview.tsx`, `OfferPanel.tsx`,
-`DocumentPreview.tsx`, `MermaidDiagram.tsx`, `app/attachments.ts`,
-`start_page_linux.go`, `workspace_icon_linux.go`, `skill_linux.go`, ADR
-0032, `web/AGENTS.md`).
+Verified production revision: `41c214dcba83b80a5d491cea5e649ce2a7aca9da`.
+Test commands ran with `umask 077`, an outer timeout and the scratch lease.
 
-Live check: nothing on the test server, because this is a design document.
-Jari reads `issues/preview-renderer-registry/design.md` in the editor's
-preview, where the three Mermaid diagrams render, and answers the five
-questions in its section 7.
+- `./scripts/test-focused.sh --area web`: passed static/type checks and all
+  257 test files / 2,176 tests.
+- `OH_BROWSER_WORKERS=2 OH_PORT_BASE=15300 ./scripts/test-focused.sh --area browser --spec start-page-preview.spec.ts`:
+  all four host-backed synthetic Chromium cases passed, covering Finnish and
+  US English at desktop and compact widths, unsaved content validation, inert
+  goals, plain/special switching, generic JSON, accessibility and Explain cards.
+- Focused self-review: compared the decisions with the existing implementation
+  and reviewed this documentation-only diff. No session, contract, daemon state
+  or authorization boundary changed, so no new independent review was required.
+  The original implementation's independent route review is recorded in
+  `issues/start-page-preview-renderer/result.md`; it was not rerun here.
+- `issuectl doctor --json`, `python3 scripts/validate-project-view.py` and
+  `git diff --check`: passed.
+
+Logs are retained outside the repository under
+`/var/tmp/agent-keep/preview-renderer-registry/` (`web.log`, `browser.log`).
+No screenshots or captured HTML were produced. Go/contracts checks, live
+installation verification and the full gate were not run: there is no runnable
+change in this run. No new test-server behavior or private testing-note update
+is introduced.
