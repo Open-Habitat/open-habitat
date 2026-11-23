@@ -4,7 +4,8 @@
     { "id": "remote-browser", "landed": true },
     { "id": "multiplayer", "landed": true },
     { "id": "own-machines-ssh-config", "landed": true },
-    { "id": "sounds-active-device", "landed": true }
+    { "id": "sounds-active-device", "landed": true },
+    { "id": "rail-state-motion", "landed": true }
   ],
   "fi": {
     "features": {
@@ -39,6 +40,14 @@
         "shows": "Jokaisesta yhteydestä osoitteen, käyttäjän, portin, avaintiedostot ja onko ne olemassa, ProxyJumpin sekä tiedoston ja rivin. Yhteys tarkistetaan vain, kun painat Tarkista yhteys.",
         "needs": "Habitat lukee tiedoston omana käyttäjänäsi eikä koskaan kirjoita siihen tai known_hostsiin. Jokeririvejä, Match-lohkoja ja Git-palveluita ei näytetä.",
         "caption": "Löytyi ~/.ssh/config:sta"
+      },
+      "rail-state-motion": {
+        "name": "Keskustelurivin siirtyminen",
+        "desc": "Keskustelun rivi liukuu uuteen osioonsa, kun sen tila muuttuu.",
+        "where": "Sivupalkin keskusteluissa ja puhelimen valikkopainikkeessa.",
+        "shows": "Näet, mihin keskustelu siirtyi. Monta muutosta liikkuu yhdessä. Piilossa olevan rivin muutoksen näyttää reunan merkki.",
+        "needs": "Jos laitteesi vähentää liikettä, muutoksesta kertoo hetkeksi jäävä reunus liikkeen sijaan.",
+        "caption": "Rivi siirtyy"
       },
       "sounds-active-device": {
         "name": "Ääni vain käyttämälläsi laitteella",
@@ -106,6 +115,14 @@
         "shows": "For each connection the address, user, port, key files and whether they exist, the ProxyJump, and the file and line. A connection is checked only when you press Check connection.",
         "needs": "Habitat reads the file as your own user and never writes to it or to known_hosts. Wildcard lines, Match blocks and Git services are not shown.",
         "caption": "Found in ~/.ssh/config"
+      },
+      "rail-state-motion": {
+        "name": "Conversation row movement",
+        "desc": "A conversation's row slides into its new section when its state changes.",
+        "where": "In the sidebar conversations and the phone's menu button.",
+        "shows": "You see where the conversation went. Several changes move together. An edge marker shows changes to rows out of sight.",
+        "needs": "If your device reduces motion, a temporary outline shows the change instead of movement.",
+        "caption": "The row moves"
       },
       "sounds-active-device": {
         "name": "Sound only on the device you use",

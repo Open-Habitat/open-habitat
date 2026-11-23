@@ -9,6 +9,13 @@
   --ah-fade: 160ms ease;
   --ah-appear: 180ms cubic-bezier(.2, .7, .3, 1);
   --ah-transition: 120ms ease;
+  /* Rail state-change round 2, A: shared travel, then a brief arrival. */
+  --ah-rail-move-ms: 620;
+  --ah-rail-edge-ms: 340;
+  --ah-rail-flight-ms: 1700;
+  --ah-rail-move-ease: cubic-bezier(.25, .75, .25, 1);
+  --ah-rail-roll: 480ms var(--ah-rail-move-ease) both;
+  --ah-rail-glow: 1.8s ease-out both;
 }
 
 @keyframes ah-title-spin { to { transform: rotate(360deg) } }

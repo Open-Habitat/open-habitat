@@ -12,7 +12,7 @@ lane_seq: 1
 preparation: ready
 ---
 
-# Prototype: how the rail shows that a conversation changed state
+# Animate rail state changes with the experimental A Siirtyy treatment
 
 ## Description
 

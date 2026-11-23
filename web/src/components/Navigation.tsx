@@ -46,6 +46,7 @@ import {
 } from "./PhoneHeaderFacts";
 import { Button, ListRow, RefreshIconButton } from "./Primitives";
 import { TooltipSide } from "./QuickTooltip";
+import { type RailMotionState, RailStateMotion } from "./RailStateMotion";
 import { relativeRecapAge, useMinuteNow } from "./RecapCard";
 import { RailBeyondChips, useRailRegions } from "./railRegions";
 import {
@@ -1491,6 +1492,7 @@ export function NowSections({
   );
 }
 export function WorkspaceRail({
+  motion,
   phoneLayout = false,
   bell,
   collapsed,
@@ -1533,6 +1535,8 @@ export function WorkspaceRail({
   /** Rows under Etusivu that lead to pages of their own (Agentin käytössä).
    * In the adaptive rail, what stays under its places (Jaettu kanssasi). */
   pages?: ReactNode;
+  /** Optional state-change presentation; no animation when absent/off. */
+  motion?: RailMotionState;
   /** The phone drawer keeps full rows; desktop shares the available height. */
   phoneLayout?: boolean;
   /** Desktop places, search and workspace filter visibility. */
@@ -1612,9 +1616,10 @@ export function WorkspaceRail({
     quietRows: crowding?.quietRows ?? 0,
     onCrowded: crowding?.onChange,
   });
-  return (
+  const rail = (
     <nav
       data-testid="workspace-navigation"
+      data-rail-motion={motion?.enabled ? "" : undefined}
       aria-label={t.railLabel}
       title={t.keyboardHint(altKey("↑/↓"), altKey("↑/↓", true))}
       aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown Alt+Shift+ArrowUp Alt+Shift+ArrowDown"
@@ -1845,6 +1850,11 @@ export function WorkspaceRail({
         ) : null}
       </TooltipSide.Provider>
     </nav>
+  );
+  return (
+    <RailStateMotion root={nav} state={motion}>
+      {rail}
+    </RailStateMotion>
   );
 }
 /** Archived (hidden) workspaces, collapsed at the end of the rail like finished conversations. */

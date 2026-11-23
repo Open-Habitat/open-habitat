@@ -1,115 +1,88 @@
-# Rail state change: prototype round 2 (motion)
+# Rail state motion: A Siirtyy
 
-## Saatesanat
+Implemented the chosen round-2 direction as `rail-state-motion`, off by
+default, under Settings → Experimental features. The chosen prototype remains
+at `design-system/prototypes/rounds/2026-11-23-rail-state-change-2/`.
 
-Tässä on kolme tapaa näyttää liikkeellä, että keskustelun tila muuttui.
-"Uusi"-merkkiä ei enää ole. Liike kestää alle kaksi sekuntia, ja sen
-jälkeen sivupalkki näyttää samalta kuin nyt. Avaamisen jälkeen ensimmäinen
-muutos soi itsestään, joten jokaisen suunnan ero näkyy heti. ▶ Yksi muutos
-ja ▶ Viisi kerralla toistavat ne erikseen. Näkymä-valinnasta saat
-puhelimen. Suosittelen A:ta: rivi liukuu näkyvästi Sinun vuorosi
--osioon. Liike kertoo, mihin keskustelu meni, ja osio kertoo, mitä se
-sinulta haluaa. Sivu toimii Habitat-näkymänä: siinä ei ole iframea,
-navigointia eikä verkkoa.
+## Verification
 
-## Round
+Synthetic evidence, not an installed-server or real-provider acceptance:
 
-`design-system/prototypes/rounds/2026-11-23-rail-state-change-2/`.
-NOTES.md describes it in full, in Finnish. Built page:
-`design-system/prototypes/dist/rail-state-change-2/offline.html`, built by
-the round's `build.mjs`. Open `offline.html` as the view, because it has
-the fonts embedded. Round 1 (`2026-11-22-rail-state-change`) stays in the
-tree until a direction is chosen.
+- `./scripts/test-focused.sh --area web`: 261 files, 2201 tests passed;
+  lint, catalog checks and TypeScript passed.
+- `./scripts/test-focused.sh --area browser --spec lab-rail-state-motion.spec.ts --spec lab-adaptive-rail.spec.ts --spec lab-rail-scroll-region.spec.ts --spec rail-now.spec.ts`:
+  20 lab cases and 4 ordinary cases passed, with two browser workers.
+  Existing rail specs include accessibility, keyboard/layout and edge scrolling.
+- The new spec alone with Playwright `--repeat-each 3`: 18/18 passed,
+  two workers, 0–60 ms reply jitter. It checks actual browser travel geometry,
+  reduced-motion outlines, off, refresh without replay, simultaneous arrivals
+  beyond the edge, cleanup, and the closed phone drawer in both motion modes.
+- `./scripts/test-focused.sh --area go --go-package ./internal/experimental`:
+  catalog package compiled; it has no Go test files. The browser cases also
+  save the new feature through the real account-preferences endpoint.
+- No whole browser suite or clean gate was run. No deployment or live-server
+  verification was performed in this worker.
 
-Axis: **which motion tells that a conversation changed state.** No
-direction leaves a persistent mark, so after the motion the rail is
-production's.
+The checked implementation is the commit carrying this result. Paired synthetic
+screenshots and static HTML, including mid-travel, reduced motion, off and phone
+cues, are kept outside git at `/var/tmp/agent-keep/rail-state-motion/`.
+Mid-travel, the desktop still and the phone still were visually inspected.
 
-| | Desktop, row in view | Out of view | Five at once | Phone (drawer closed) |
-|---|---|---|---|---|
-| **A Siirtyy** | row slides old → new place (neighbours glide), glows 1.8 s, counts roll | row slides over the edge; production's edge chip slides in or rolls, ring | all slide as one motion, no glow | the name flies into the menu button, then its count rolls |
-| B Pyyhkäisy | row jumps as now; one band of light in the state's colour | band crosses the edge chip | one band over Sinun vuorosi | band crosses the top bar |
-| C Laskuri | nothing moves; section count and row time roll, count ringed 2 s | edge chip's count rolls | counts roll once | menu button's count rolls |
+The first browser attempts found a model-shape bug (the rail also carries a
+`hints` map) and a missing edge cue when allocation changed but its count did
+not. Both were fixed before the successful runs above. Missing fixture
+packages were installed locally before running the host-backed checks.
 
-A start (Hiljaiset → Käynnissä) asks nothing, so it gets only what shows
-the row's place (A's slide, C's roll), never a glow, band or flight. With
-reduced motion (the device setting or the panel switch) nothing moves:
-the glow and the band become a still tint or outline for 4 s, and numbers
-change at once and are ringed for 4 s. A ring is a shape, so the change
-does not rest on colour alone. Every direction makes the same polite
-screen-reader announcement, so the announcement is not what tells them
-apart.
+## Focused self-review
 
-The page is a Habitat view: no iframe, no navigation, no network. The
-phone is a 390 px box instead of a frame. `build.mjs` rewrites
-production's width and height media queries into container queries on
-that box, and `window.matchMedia` answers for the box's width, so
-production's own phone layout (toolbar, badge, drawer) renders inside it.
-A real narrow window gets the phone layout directly, with the panel above.
+Presentation-only review: traced the experimental default, pre-commit capture,
+section/reply/failure detection, reduced motion, count and edge updates,
+interrupted-animation cleanup, unmount, identity/server changes and reconnect
+baselines. Reviewed the final diff and synthetic captures. No sessions, wire
+contracts, daemon state handling or authorization boundary changed; no
+independent-model review was required or run.
 
-## Recommendation
-
-**A Siirtyy.**
-
-- Jari asked to see the row move into Sinun vuorosi, and the motion
-  carries the information: where the conversation went. Arriving in Sinun
-  vuorosi says "your turn", and staying in Käynnissä with a red glow says
-  "failed".
-- The neighbours glide with it, so the rail does not jump. Production's
-  jump is the confusing part of today's rail.
-- Off-screen, production's edge chip already names the section, and
-  sliding it in or rolling its count is the smallest cue that adds
-  nothing new.
-- Five at once stay calm: one shared slide, no glow.
-- B tells *that* something happened but not where from, and five bands
-  would flicker, so it falls back to one. C is the calmest, but a rolled
-  digit is easy to miss, and on the phone it cannot show a failure at
-  all.
-
-## What the host would need
-
-Nothing new. Every direction reacts to the change of a row's section or
-state, which the browser already has from the snapshot (the same
-`readyKey` trigger as the attention sound, `railNow.ts`), so rows present
-at load or after a reconnect do not move. A's slide needs the row's
-previous box, which is presentation state measured just before React
-commits (FLIP). It needs no store.
-
-## Evidence
-
-- `check.mjs`: 158 checks green. They cover the default view of every
-  direction, the whole script in Päivä and Yö, reduced motion, the phone
-  box, a real 390 × 844 window, the two replay buttons, English and the
-  picker. The page is served with the view's sandbox CSP and an opaque
-  origin, and the run fails on any iframe, any request beyond the
-  document, any navigation or any console error.
-- Screenshots (not committed), several taken mid-motion:
-  `/var/tmp/agent-keep/rail-state-change-visual/round-2/`.
+The motion leaves native state and routing immediate. Animating row contents
+rather than the measured list items keeps the adaptive allocator and edge
+observer reading final layout throughout the slide. Timers, observers, transient
+attributes and animations are disposed when disabled or unmounted. Names enter
+the phone cue as text, never HTML. The settings card has its Finnish and English
+description beside the switch; it needs no duplicate Explain card.
 
 ## Decisions for later review
 
-- **No persistent mark in any direction.** The alternative was to keep
-  round 1's "uusi" as a fallback. Jari found it unnecessary, and
-  production's section, mark and count already persist.
-- **The motion lasts under 2 s; reduced-motion stills last 4 s.** The
-  alternatives were longer glows (round 1 had 3.5 s). Calm and brief was
-  the brief, and the still needs longer to be seen without motion.
-- **A start gets no glow, band or flight.** The alternative was to treat
-  every change alike. A start asks nothing and happens often.
-- **A failure stays in Käynnissä** (production's placement), so A has no
-  slide for it, only the glow in the error colour.
-- **Burst = three or more in one event**, the same rule as round 1.
-- **The phone is a box with rewritten container queries, not a frame.**
-  The alternative was a static mock of the phone. The view sandbox blocks
-  frames, and the box shows production's real phone layout.
-- **Same screen-reader announcement in all directions.** The alternative
-  was to vary it per direction. It is accessibility, not the axis.
+- **Follow the actual rail placement for failures.** The prototype described
+  failures in Käynnissä; the current rail may put them elsewhere. Motion shows
+  the existing classification rather than changing conversation semantics.
+- **An unseen arrival gets an edge outline even when the count is unchanged.**
+  The alternative was rolling numbers only, which misses a change when the
+  adaptive region grows and hides the same number of different rows.
+- **No replay on enable, initial listing, identity/server change, reconnect or
+  hidden-tab updates.** The alternative was animating the whole catch-up; that
+  would misrepresent old work as news. Ordinary live section changes still move.
+- **A new event replaces unfinished effects.** The alternative was queued
+  animations; those would lag behind the current rail. Three or more changes
+  in one render share travel without per-row glows, as in the round.
+- **Reduced phone cue holds for four seconds**, the same as other reduced-motion
+  stills. The prototype phone name held for three seconds; consistent still
+  timing gives this narrow, truncated cue as long to be noticed as the counts.
 
-## Questions for Jari
+## Live check
 
-1. Is A right? Should the glow on arrival stay, or is the slide alone
-   enough?
-2. Out of view, is the edge chip sliding in or rolling enough, or should
-   the row's name show briefly at the edge, as on the phone?
-3. On the phone, is the flying name welcome, or too much for every
-   finished turn?
+After deployment:
+
+1. Enable **Keskustelurivin siirtyminen / Conversation row movement** in
+   Settings → Experimental features. With it off, rows should change exactly
+   as before, without travel or arrival cues.
+2. Watch an agent finish, or raise a quiet conversation. Its row should slide
+   into Sinun vuorosi / Your turn while neighbours move aside; no mark stays.
+3. Let several conversations change together. They should move together, with
+   no individual glow for a batch of three or more.
+4. Scroll the destination past the rail edge. The existing edge chip should
+   indicate the arrival without scrolling the rail for you.
+5. On a phone with the drawer closed, let a reply arrive elsewhere: one short
+   name cue travels to the menu button, then its count rolls. The drawer stays
+   closed. With reduced motion, there is only a still cue and outline.
+6. Enable the device's reduced-motion preference and repeat on desktop: no
+   sliding or rolling; a four-second still tint/outline marks the change.
+7. Reload or reconnect: previously waiting conversations must not replay.

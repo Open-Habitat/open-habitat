@@ -29,6 +29,7 @@ import { agentResourcesText } from "../text/agentResources";
 import { navigationText } from "../text/navigation";
 import { statusText } from "../text/status";
 import { switcherText } from "../text/switcher";
+import { useExperimentalFeature } from "./accountPreferences";
 import { type CloneJobs, cloneLabel, useCloneView } from "./cloneJobs";
 import {
   type ConversationStore,
@@ -234,6 +235,7 @@ export function WorkspaceRailView({
   const searchText = useText(switcherText);
   const navText = useText(navigationText);
   const adaptive = !phoneLayout && !collapsed;
+  const motionEnabled = useExperimentalFeature("rail-state-motion");
   const cloneView = useCloneView(clones);
   const queued = cloneView.queue.filter((q) => q.state !== "present");
   const server = useServer(pathname);
@@ -274,6 +276,14 @@ export function WorkspaceRailView({
     .sort(alphabetical);
   return (
     <WorkspaceRail
+      motion={{
+        enabled: motionEnabled,
+        rows: now,
+        baseline:
+          phase === "authenticated" && source === "confirmed"
+            ? `${snapshot.identity.web_identity_id}:${snapshot.server_instance_id}`
+            : undefined,
+      }}
       bell={bell}
       phoneLayout={phoneLayout}
       collapsed={collapsed}
