@@ -1,6 +1,6 @@
 ---
 created: 2026-11-20
-updated: 2026-11-20
+updated: 2026-11-23
 type: task
 reporter: jari
 status: open
@@ -9,6 +9,7 @@ lane_seq: 1
 provenance: chat
 source_ref: chat:2026-11-20/proto-mcp-connect-dialog
 lane: mcp-connect-proto
+preparation: pending
 ---
 
 # Prototype: Atlassian and Trello connect dialog and re-consent
@@ -115,12 +116,12 @@ sivusto ja Workspacet. Suunnat erottuvat oletusnäkymässä.
 
 ## Acceptance Criteria
 
-- [ ] Prototyyppikierros, jossa dialogi ei toista tasokuvausta, ylläpitäjän
+- [x] Prototyyppikierros, jossa dialogi ei toista tasokuvausta, ylläpitäjän
       pyyntö näkyy vasta kun sitä tarvitaan, ja teksti on tavallisen
       käyttäjän kieltä.
-- [ ] Prototyypissä on polku Workspacen ja oikeuksien uudelleenvalintaan
+- [x] Prototyypissä on polku Workspacen ja oikeuksien uudelleenvalintaan
       samalla tasolla, ja se kertoo, mitä Trello/Atlassian kysyy.
-- [ ] Prototyypissä kapeampi myönnetty lupa kerrotaan Trellon ja
+- [x] Prototyypissä kapeampi myönnetty lupa kerrotaan Trellon ja
       Atlassianin omin syin, ja siinä on toimiva korjauspolku.
 - [ ] Tarkistettu oikealla tilillä, mitä Trellon suostumussivu näyttää
       kirjoitusoikeudesta (onko se oletuksena pois) ja kysyykö se Workspacen

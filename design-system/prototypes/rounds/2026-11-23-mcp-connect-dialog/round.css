@@ -1,0 +1,93 @@
+/* Review chrome above the page, clear of the floating picker. */
+html, body { margin: 0; background: var(--ah-bg); }
+.rq-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.rq-bar strong { font-weight: 600; }
+.rq-bar select, .rq-bar button { font: inherit; max-width: 100%; }
+.rq-round { flex-basis: 100%; margin: 0; font-size: 12px; }
+.rq-lines { flex-basis: 100%; margin: 0; padding-left: 0; list-style: none; color: var(--ah-ink-2); font-size: 12px; }
+.rq-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+@media (max-width: 600px) {
+  .rq-bar { padding: 6px 10px; gap: 2px 10px; }
+  .rq-bar label { font-size: 11px; }
+  .rq-round { display: none; }
+  .rq-lines { font-size: 11px; line-height: 1.3; }
+  .rq-lines li:not([aria-current]) { display: none; }
+}
+.rq-stage { padding-top: var(--review-h, 0px); padding-bottom: 80px; color: var(--ah-ink); }
+.rq-page { max-width: 760px; margin: 0 auto; padding: var(--ah-s5, 24px) var(--ah-s4, 16px); }
+.rq-h { font-size: 20px; margin: 0 0 var(--ah-s3, 12px); }
+.rq-toast {
+  position: fixed; z-index: 60; left: 50%; top: calc(var(--review-h, 0px) + 8px); transform: translateX(-50%);
+  max-width: min(92vw, 560px); margin: 0; padding: 8px 14px; border-radius: var(--ah-r-md);
+  background: var(--ah-ink); color: var(--ah-bg); font: 12.5px/1.4 var(--ah-font, system-ui); overflow-wrap: anywhere;
+}
+[data-motion="reduce"] * { animation: none !important; transition: none !important; }
+.rq-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* The directions take the focused provider's card's place. */
+.rq-replace [data-testid="integration-account-trello"],
+.rq-replace [data-testid="integration-account-atlassian"] { display: none; }
+[data-provider="trello"] .rq-replace [data-testid="integration-account-atlassian"],
+[data-provider="atlassian"] .rq-replace [data-testid="integration-account-trello"] { display: revert; }
+.rq-slot { display: contents; }
+
+/* Dialog pieces. */
+.rq-dlg .ig-flow { gap: var(--ah-s3, 12px); }
+.rq-current { font-weight: 400; color: var(--ah-ink-2); }
+.rq-again { display: grid; gap: 4px; }
+.rq-again .ig-meta svg { width: 13px; height: 13px; vertical-align: -2px; }
+.rq-open { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
+.rq-open-row { align-items: center; flex-wrap: wrap; gap: var(--ah-s2, 8px) var(--ah-s3, 12px); }
+.rq-open-row .ig-meta svg { width: 13px; height: 13px; vertical-align: -2px; }
+.rq-stuck { justify-self: start; background: none; border: 0; padding: 0; font: inherit; color: var(--ah-accent); text-decoration: underline; cursor: pointer; text-align: left; }
+.rq-admin { display: grid; gap: var(--ah-s2, 8px); padding: var(--ah-s3, 12px); border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface-2, var(--ah-surface)); }
+.rq-admin .ig-h, .rq-admin .ig-p { margin: 0; }
+.rq-request { margin: 0; padding: var(--ah-s2, 8px) var(--ah-s3, 12px); border-left: 3px solid var(--ah-line); font-size: 13px; line-height: 1.45; color: var(--ah-ink-2); overflow-wrap: anywhere; }
+.rq-narrow { display: grid; gap: var(--ah-s2, 8px); }
+.rq-narrow .ig-row { flex-wrap: wrap; }
+
+/* A: the sketch of the consent page. */
+.rq-preview { border: 1px dashed var(--ah-line); border-radius: var(--ah-r-md); padding: var(--ah-s3, 12px); display: grid; gap: var(--ah-s2, 8px); }
+.rq-preview header { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; align-items: baseline; }
+.rq-preview ol { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--ah-s2, 8px); }
+.rq-preview li { display: grid; grid-template-columns: 22px 1fr; gap: 8px; align-items: start; font-size: 14px; }
+.rq-n { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--ah-line); font-size: 12px; color: var(--ah-ink-2); }
+.rq-select { display: inline-block; margin-left: 4px; padding: 1px 8px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-sm, 4px); font-size: 13px; }
+.rq-block { display: block; margin-top: 2px; }
+.rq-perm { display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 13px; }
+.rq-perm em { font-style: normal; font-size: 12px; color: var(--ah-ink-2); margin-left: auto; padding-left: 8px; }
+.rq-perm.key { outline: 2px solid var(--ah-accent); outline-offset: 2px; border-radius: var(--ah-r-sm, 4px); }
+.rq-perm.key em { color: var(--ah-accent); font-weight: 600; }
+.rq-perm.off { color: var(--ah-ink-2); }
+.rq-box { flex: none; display: inline-grid; place-items: center; width: 16px; height: 16px; border: 1px solid var(--ah-line); border-radius: 3px; }
+.rq-box.on { background: var(--ah-accent); border-color: var(--ah-accent); color: var(--ah-bg); }
+.rq-box svg { width: 12px; height: 12px; }
+
+/* B: the steps fit four on a phone. */
+.rq-steps { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.rq-how li { margin-bottom: 4px; }
+
+/* C: the receipt. */
+.rq-receipt { display: grid; gap: 6px; }
+.rq-receipt.compact { padding: 0 var(--ah-s3, 12px) var(--ah-s2, 8px); }
+.rq-where { margin: 0; overflow-wrap: anywhere; }
+.rq-where .ig-meta, .rq-where code { display: inline; font-size: 13.5px; }
+.rq-receipt table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.rq-receipt th, .rq-receipt td { text-align: left; padding: 5px 8px; border-top: 1px solid var(--ah-line-soft, var(--ah-line)); }
+.rq-receipt thead th { font-weight: 600; color: var(--ah-ink-2); border-top: 0; font-size: 12.5px; }
+.rq-receipt tbody th { font-weight: 500; }
+.rq-receipt svg { width: 13px; height: 13px; vertical-align: -2px; }
+.rq-receipt tr[data-short] { background: color-mix(in srgb, var(--ah-warn, #b7791f) 10%, transparent); }
+.rq-no { color: var(--ah-err); font-weight: 600; }
+
+/* Cards. */
+.rq-card .rq-narrow { padding: 0 var(--ah-s3, 12px) var(--ah-s2, 8px); }
+.rq-reconsent { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0; padding: 0 var(--ah-s3, 12px) var(--ah-s2, 8px); font-size: 13px; color: var(--ah-ink-2); }
+.rq-reconsent svg { width: 14px; height: 14px; }
+.rq-dlg .ig-flow-form { min-width: 0; }
+.rq-dlg [data-testid="rq-redirect"] { box-sizing: border-box; width: 100%; max-width: 100%; }
