@@ -574,10 +574,22 @@ func (a *Auth) viewRelay(w http.ResponseWriter, r *http.Request, target Identity
 			return
 		}
 	}
+	bootstrap := ""
+	if strings.HasPrefix(kind, "text/html") {
+		bootstrap = viewBootstrap(a.cfg.Origin)
+	}
 	w.Header().Set("Content-Type", kind)
-	w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
+	if bootstrap == "" {
+		w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
+	}
+	// HTML is streamed with a bootstrap, and BOM-marked UTF-16 is decoded to
+	// the announced UTF-8. Its wire length need not equal the export's size.
 	w.WriteHeader(200)
 	if r.Method == http.MethodGet {
-		_, _ = io.Copy(w, io.LimitReader(res.Body, size))
+		if bootstrap != "" {
+			writeViewHTML(w, io.LimitReader(res.Body, size), bootstrap)
+		} else {
+			_, _ = io.Copy(w, io.LimitReader(res.Body, size))
+		}
 	}
 }

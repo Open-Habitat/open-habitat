@@ -115,7 +115,11 @@ export function ViewOpenPage() {
   if (shown.kind === "view")
     return (
       <main className="ah-view-frame ah-view-tab" data-testid="view-open-page">
-        <ViewFrame src={shown.src} title={title} />
+        <ViewFrame
+          src={shown.src}
+          title={title}
+          onReopen={() => window.location.reload()}
+        />
       </main>
     );
   if (shown.kind === "login")

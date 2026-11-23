@@ -6,7 +6,7 @@ import { ViewPanel, ViewSplit } from "./ViewPanel";
 
 // Synthetic agent content; in the product it comes from the view's own host.
 const content = `data:text/html;charset=utf-8,${encodeURIComponent(
-  "<!doctype html><meta charset=utf-8><body style='font-family:system-ui;padding:24px'><h1>Myynti kasvaa verkossa</h1><p>Jäädytetty 25.10.2026.</p><button onclick=\"this.textContent='Tilaukset'\">Eurot</button></body>",
+  "<!doctype html><meta charset=utf-8><body style='font-family:system-ui;padding:24px'><script>addEventListener('message', e => { if (e.source === parent && e.data?.type === 'oh-view-check') parent.postMessage({type:'oh-view-status',challenge:e.data.challenge,blocked:false},e.origin) });</script><h1>Myynti kasvaa verkossa</h1><p>Jäädytetty 25.10.2026.</p><button onclick=\"this.textContent='Tilaukset'\">Eurot</button></body>",
 )}`;
 
 const view = {
@@ -28,6 +28,7 @@ function PanelExample({
   failed?: boolean;
 }) {
   const [open, setOpen] = useState(true);
+  const [attempt, setAttempt] = useState(0);
   const [expanded, setExpanded] = useState(initiallyExpanded);
   const [width, setWidth] = useState(560);
   return (
@@ -43,9 +44,11 @@ function PanelExample({
         onShowConversation={() => setExpanded(false)}
         panel={
           <ViewPanel
+            key={attempt}
             title={view.title}
             src={src || undefined}
             failed={failed}
+            onReopen={() => setAttempt((n) => n + 1)}
             expanded={expanded}
             onToggleExpanded={() => setExpanded(!expanded)}
             actions={
@@ -88,6 +91,7 @@ const meta = {
     title: view.title,
     expanded: false,
     onToggleExpanded: () => {},
+    onReopen: () => {},
     onClose: () => {},
   },
   render: () => <PanelExample />,

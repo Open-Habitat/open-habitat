@@ -4,7 +4,9 @@ import {
   type ReactNode,
   type PointerEvent as ReactPointerEvent,
   type Ref,
+  useEffect,
   useRef,
+  useState,
 } from "react";
 import { liveText } from "../i18n";
 import { viewPanelText } from "../text/viewPanel";
@@ -20,10 +22,73 @@ const txt = liveText(viewPanelText);
  * cookies keys that on the top-level site, and the view's sandboxed document
  * as the top-level page would make every request it sends a third-party one,
  * so its own stylesheets and scripts would not load. */
-export function ViewFrame({ src, title }: { src: string; title: string }) {
-  return (
+type ViewFrameProps = { src: string; title: string; onReopen: () => void };
+
+export function ViewFrame(props: ViewFrameProps) {
+  return <RecoverableViewFrame key={props.src} {...props} />;
+}
+
+function RecoverableViewFrame({ src, title, onReopen }: ViewFrameProps) {
+  const frame = useRef<HTMLIFrameElement>(null);
+  const [blocked, setBlocked] = useState(false);
+  const check = useRef<{ challenge: string; timer?: number } | undefined>(
+    undefined,
+  );
+  useEffect(() => {
+    const receive = (event: MessageEvent) => {
+      if (
+        event.source !== frame.current?.contentWindow ||
+        event.origin !== "null" ||
+        !check.current ||
+        event.data?.type !== "oh-view-status" ||
+        event.data.challenge !== check.current.challenge ||
+        typeof event.data.blocked !== "boolean"
+      )
+        return;
+      window.clearTimeout(check.current.timer);
+      if (event.data.blocked) setBlocked(true);
+    };
+    window.addEventListener("message", receive);
+    return () => {
+      window.removeEventListener("message", receive);
+      window.clearTimeout(check.current?.timer);
+    };
+  }, []);
+  const loaded = () => {
+    window.clearTimeout(check.current?.timer);
+    const challenge = crypto.randomUUID();
+    check.current = {
+      challenge,
+      timer: window.setTimeout(() => setBlocked(true), 3000),
+    };
+    // An opaque document needs '*'; the payload carries no authority or data.
+    // A fresh challenge rejects queued replies from the previous document.
+    frame.current?.contentWindow?.postMessage(
+      { type: "oh-view-check", challenge },
+      "*",
+    );
+  };
+  return blocked ? (
+    <div
+      className="ah-view-frame-status"
+      data-testid="view-blocked"
+      role="status"
+    >
+      <p>{txt.navigationBlocked}</p>
+      <ControlButton
+        data-testid="reopen-view"
+        size="row"
+        onPress={onReopen}
+        autoFocus
+      >
+        {txt.reopen}
+      </ControlButton>
+    </div>
+  ) : (
+    // biome-ignore lint/a11y/noNoninteractiveElementInteractions: load observes document replacement, not user interaction.
     <iframe
-      key={src}
+      ref={frame}
+      onLoad={loaded}
       data-testid="view-frame"
       src={src}
       title={txt.frame(title)}
@@ -106,6 +171,7 @@ export function ViewPanel({
   facts,
   src,
   failed,
+  onReopen,
   expanded,
   titleRef,
   onToggleExpanded,
@@ -117,6 +183,7 @@ export function ViewPanel({
   /** The one-time URL on the view's host; absent while it is being minted. */
   src?: string;
   failed?: boolean;
+  onReopen: () => void;
   expanded: boolean;
   titleRef?: Ref<HTMLHeadingElement>;
   onToggleExpanded: () => void;
@@ -148,7 +215,7 @@ export function ViewPanel({
       />
       <div className="ah-view-frame">
         {src && !failed ? (
-          <ViewFrame key={src} src={src} title={title} />
+          <ViewFrame key={src} src={src} title={title} onReopen={onReopen} />
         ) : (
           <p className="ah-view-frame-status" role="status">
             {failed ? txt.failed : txt.opening}

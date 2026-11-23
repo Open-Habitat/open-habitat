@@ -1141,6 +1141,12 @@ const fi = {
       lead: "Agentti on pysähtynyt kysymään, saako se tehdä toimen yhdistetyllä tililläsi, esimerkiksi poistaa jotain tai jakaa kalenterin.",
       know: "Kysymys on kirjoituskentän paikalla, kunnes vastaat. Keskusteluun jää rivi, joka kertoo päätöksesi. Toimi tehdään vain, jos sallit sen.",
     },
+    V44: {
+      name: "Avaa näkymä uudelleen",
+      lead: "Avaa agentin tarjoaman näkymän uudelleen alusta.",
+      know: "Näkymässä tekemäsi valinnat nollautuvat. Sisäkkäiset sivut pysyvät estettyinä, joten sama este voi toistua.",
+      try: "Avaa näkymä uudelleen",
+    },
     V40: {
       name: "Salli",
       lead: "Antaa agentin tehdä kysytyn toimen.",
@@ -3190,6 +3196,12 @@ export const explainModeText = catalog(fi, {
       name: "The agent asks for permission",
       lead: "The agent has stopped to ask whether it may act on your connected account, for example delete something or share a calendar.",
       know: "The question takes the message field's place until you answer. A line in the conversation keeps your decision. The action runs only if you allow it.",
+    },
+    V44: {
+      name: "Reopen the view",
+      lead: "Opens the agent's original view again from the start.",
+      know: "Choices made inside the view reset. Embedded pages stay blocked, so the same problem may return.",
+      try: "Reopen the view",
     },
     V40: {
       name: "Allow",

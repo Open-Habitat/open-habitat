@@ -1,66 +1,109 @@
-# Result: navigation preservation needs a different approach
+# Result: recover the frozen view without relaxing isolation
 
-The reported loss of the document is reproducible. No sandbox or CSP was
-loosened, and no ineffective navigation guard was shipped. This issue remains
-open; the worktree is preserved rather than merged as a completed fix.
-
-## Evidence
-
-A disposable Chromium page served a view with `sandbox="allow-scripts"`, the
-matching CSP sandbox, `connect-src 'none'`, and a parent `frame-src` policy.
-The view registered a `navigation` listener that would call `preventDefault()`.
-A real button then assigned an external address to `location.href`.
-
-- `navigation.currentEntry` was null.
-- Both `window.location` and `location.href` were non-configurable.
-- No `navigate` event fired.
-- The parent CSP blocked the foreign request; zero foreign requests reached the
-  interception fixture.
-- The frame became `chrome-error://chromewebdata/`; its original document was
-  gone. This is refusal of the network load, not preservation of view state.
-- A parent `securitypolicyviolation` listener did receive an enforced
-  `frame-src` violation. This can signal a refusal for a recovery UI, but does
-  not cancel navigation or preserve state.
-
-The local probe and log are retained in `/var/tmp/agent-keep/views-jhtfx7/`.
-The existing `agent-views.spec.ts` test confirms the production parent CSP
-refuses the external load, but does not assert document preservation.
-
-The HTML Standard's Navigation API core infrastructure disables entries and
-events for opaque origins (`https://html.spec.whatwg.org/multipage/nav-history-apis.html#navigation-api-core`).
-Its Location interface marks the navigation setters LegacyUnforgeable. The
-iframe sandbox flags do not include a flag that forbids the frame navigating
-itself while retaining scripts. These explain why the suggested injected
-Navigation API guard and setter override cannot implement this requirement.
+Implemented the accepted recovery UI in Finnish and English. A refused frame
+navigation or a blocked nested-frame load replaces the frame with a message and
+**Reopen the view**. Recovery obtains a fresh grant through the existing open
+flow; it does not replay a spent handoff or depend on a surviving view cookie.
+The panel, Outputs preview and app-owned standalone page use the same fallback.
+The original view's in-memory choices are not preserved.
 
 ## Decisions for later review
 
-- **Keep the opaque sandbox and existing CSP unchanged.** Adding
-  `allow-same-origin` to make Navigation API events available is outside the
-  authorized security boundary. It is not an acceptable implementation shortcut.
-- **Do not inject a guard that claims to block arbitrary location assignments.**
-  Click interception could stop ordinary links, but not this reported JavaScript
-  assignment. Text substitution or wrapping arbitrary export JavaScript is not a
-  complete interception mechanism and could break otherwise working bundles.
-- **Recommend an explicit reopen action as the next bounded product choice.**
-  Reopening can recover the frozen view without granting new authority, but it
-  cannot preserve its in-memory state and must not be sold as prevention. A
-  parent load event alone cannot distinguish an opaque error document from a
-  legitimate same-bundle navigation. The parent CSP violation event is a
-  possible recovery trigger; it does not identify which frame navigated, and
-  destinations already permitted by `frame-src` do not trigger it. An automatic
-  recovery design would need to handle these limits and avoid reload loops.
-  Neither a manual reopen nor automatic recovery meets this task's requested
-  preservation of the live document.
+- **Keep the sandbox and CSP unchanged, including `frame-src 'none'` in view
+  responses.** Do not enable same-view URL-backed nested frames, blob frames or
+  any new frame source. A prototype should put its parts in one document rather
+  than require nested page loads. Permitting those loads would expand the
+  active-document surface and require a separate security decision. This task
+  changes the presentation of existing refusals, not the browser's permissions.
+  An attempted blocked child load replaces the whole view with recovery; reopening
+  the same prototype can encounter the same refusal again.
+- **Use an on-load challenge, not a perpetual heartbeat or a global parent CSP
+  event.** Each iframe load gets a fresh nonce. The early injected bootstrap
+  answers it and reports enforced child/frame CSP violations, retaining any
+  violation that preceded the challenge. The parent accepts only its exact
+  iframe window, opaque origin, current nonce and boolean status. A missing
+  response after three seconds shows recovery. This identifies the particular
+  frame, handles browser error documents and still allows same-bundle HTML
+  navigation. A parent CSP event alone cannot identify the offending frame or
+  cover destinations admitted by the parent's policy. A perpetual heartbeat
+  would unnecessarily depend on background-tab timer scheduling.
+- **The handshake is presentation only.** The current view can spoof or suppress
+  its own status, but messages carry no content, credentials or authority and
+  cannot mint a grant. Gateway session checks and browser CSP remain enforcement.
+  The parent's wildcard message target is necessary for the opaque child and
+  carries only the challenge; child replies target the configured app origin.
+- **Keep the panel an HTML-view surface.** Navigating the frame to a non-HTML
+  sibling (image, SVG, text) also gets recovery because it cannot answer the
+  probe. Images and other assets embedded in HTML continue working. Likewise,
+  `document.open/write/close` replacement removes the bootstrap and gets recovery;
+  ordinary DOM updates and sibling HTML navigation remain supported. These are
+  deliberate compatibility limits, not proof that the destination was foreign.
+- **Reopen explicitly, never in a reload loop.** The owner must press the button.
+  The existing open paths recheck access and mint a fresh grant, including after
+  a lost view session. If app access itself has ended, existing sign-in/failure
+  handling applies.
 
-## Limits
+The gateway bounds initial tokenization to 64 KiB, streams the rest, preserves
+ordinary doctype/UTF-8 bytes and decodes BOM-marked UTF-16 before insertion.
+Frozen exports and ZIP downloads are unchanged. `x/text v0.30.0`, already selected
+by pinned `x/net`, is now a direct import for its streaming decoder.
 
-Independent critical review (claude-fable-5-2 finder, gpt-6-astra verifier)
-confirmed the limits of the proposed guards and corrected the recovery
-recommendation to account for the parent's CSP event. `/assess-findings`
-recorded that correction. This is not a universal impossibility claim about
-every possible redesign.
+## Review and assessment
 
-No runtime fix, no preservation claim, no installed-server or other-browser
-qualification. The required preservation acceptance remains unmet. The terminal
-report must be unsuccessful and must not merge this branch as a completed fix.
+Critical independent `/llm-review`: **claude-fable-5-2** finder and
+**gpt-6-astra** verifier (two successful calls). `/assess-findings` recorded four
+confirmed fixes: bound tokenizer memory, reacquire lost view grants, preserve
+UTF-16 meaning, and place the bootstrap before a limit-truncated comment.
+The non-HTML/document-replacement cases above were assessed as product choices
+and explicitly retained under the brief's delegated product authority.
+No unresolved authorization finding or follow-up issue. Review/assessment
+artifacts and final check logs are retained with the evidence below.
+
+## Verification
+
+Final implementation checked on the worker branch based on
+`f1011f6239af3504bf8f51328c56815d2dc665a8`; the commits carrying this result identify
+its exact source tree.
+
+- `./scripts/test-focused.sh --area web`: **259 files, 2187 tests passed**,
+  including static checks, types, catalog parity and frame-message regressions.
+- `./scripts/test-focused.sh --area go --go-package ./internal/gateway`:
+  **passed**, including view serving/session/CSP tests and new streaming,
+  oversized closed-comment and UTF-16 regressions.
+- Focused Playwright: `agent-views.spec.ts`, `view-links.spec.ts`,
+  `ui-language-views.spec.ts`, `--repeat-each 3`, `OH_BROWSER_WORKERS=2`,
+  reply jitter 0–60 ms: **39 passed**. New cases prove external location
+  navigation → recovery → fresh reopening even after deleting the view cookie,
+  and a parser-time same-view nested iframe → recovery with no child request.
+  Existing cases still prove HTML sibling navigation, images, sandbox denials,
+  public links and standalone tabs. The fallback panel passed Axe and recovery
+  receives keyboard focus.
+- Synthetic visual checks: Finnish/English at 1440 and 390 CSS pixels,
+  including Explain card V44 and successful recovery. Paired PNG and offline
+  HTML snapshots are outside the repository at
+  `/var/tmp/agent-keep/view-location-href-replaces-frame/`.
+- UI-reference regeneration and `--check`, `git diff --check`, project-view
+  validation and `issuectl doctor`: passed. Regeneration also repaired pre-existing
+  drift in the access/storage reference files; that is a separate docs commit,
+  not a change to access/storage behavior.
+
+Early development checks caught fixture timing, test/lint wiring, and a unit
+focus assertion unsuitable for fake timers; these were corrected before the
+final runs. Browser focus is asserted in the real Chromium journey instead.
+No full browser suite or clean gate was run. Evidence is synthetic same-UID
+Chromium, not installed-server, Firefox/Safari or distinct-UID qualification.
+No test-server deployment was performed.
+
+## Live check
+
+After deployment, open an agent view whose button assigns an external address
+to `location.href`. Within roughly three seconds, the pane should offer
+**Näkymä yritti avata toisen sivun / Avaa näkymä uudelleen** (or the English
+counterparts). Press the button: the original frozen view, stylesheet and
+scripts should load again. Repeat in its own tab and from Outputs.
+
+Then open a prototype containing `<iframe src="part.html">`. Instead of keeping
+the child's browser error page, the whole view should offer the same recovery.
+The nested page remains refused; reopening does not make that prototype's
+nested pages supported. Check the Explain card in both languages and confirm
+that it warns that choices reset and the same refusal may recur.

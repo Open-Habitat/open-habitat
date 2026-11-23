@@ -659,10 +659,12 @@ function SharePreview({ share, csrf }: { share: Share; csrf?: string }) {
   const t = useText(sharesText);
   const offer = useFileOffer(outputItemID(share));
   const [src, setSrc] = useState<string>();
+  const [attempt, setAttempt] = useState(0);
   const [failed, setFailed] = useState(false);
   const [path, setPath] = useState<string>();
   const id =
     share.item && "view_id" in share.item ? share.item.view_id : undefined;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a reopen deliberately requests a fresh one-time grant.
   useEffect(() => {
     if (!id || !csrf) return;
     let current = true;
@@ -676,10 +678,18 @@ function SharePreview({ share, csrf }: { share: Share; csrf?: string }) {
     return () => {
       current = false;
     };
-  }, [id, csrf]);
+  }, [id, csrf, attempt]);
   if (id)
     return src ? (
-      <ViewFrame src={src} title={outputTitle(share)} />
+      <ViewFrame
+        src={src}
+        title={outputTitle(share)}
+        onReopen={() => {
+          setSrc(undefined);
+          setFailed(false);
+          setAttempt((n) => n + 1);
+        }}
+      />
     ) : (
       <p role="status">{failed ? t.failed : t.loading}</p>
     );

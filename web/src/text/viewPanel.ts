@@ -11,6 +11,8 @@ const fi = {
   panel: (title: string) => `Näkymä: ${title}`,
   failed: "Näkymää ei voitu avata. Se on ehkä poistettu, tai yhteys katkesi.",
   opening: "Avataan näkymää…",
+  navigationBlocked: "Näkymä yritti avata toisen sivun",
+  reopen: "Avaa näkymä uudelleen",
   isolated: "Sisältö on erillään Habitatista eikä pääse verkkoon.",
   showConversation: "Näytä keskustelu",
   showConversationHint: "Näytä keskustelu näkymän vieressä",
@@ -30,6 +32,8 @@ export const viewPanelText = catalog(fi, {
   failed:
     "The view could not be opened. It may have been removed, or the connection was lost.",
   opening: "Opening the view…",
+  navigationBlocked: "The view tried to open another page",
+  reopen: "Reopen the view",
   isolated:
     "The content is kept apart from Habitat and cannot reach the network.",
   showConversation: "Show conversation",

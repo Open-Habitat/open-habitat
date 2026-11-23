@@ -3,12 +3,13 @@ created: 2026-11-22
 updated: 2026-11-23
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: kokeiltavaa:2026-11-22/view-location-href-replaces-frame
 lane: unlaned
 preparation: ready
+closed: 2026-11-23
 ---
 
 # A view's location.href navigation replaces the frame with an error page

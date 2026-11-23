@@ -1,5 +1,7 @@
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
+import { snapshot } from "../lab/session.mjs";
 import { workerHostPort } from "../test-ports.mjs";
 import { createHostTest, expect, type Page } from "./worker-host";
 
@@ -8,7 +10,10 @@ import { createHostTest, expect, type Page } from "./worker-host";
 // TLS listener, and the fixture exports a synthetic site through the real
 // plan, export and export-read route. Same-UID synthetic evidence; it says
 // nothing about separate Unix users.
-const test = createHostTest(false, { BROWSER_HOST_VIEWS: "1" });
+const test = createHostTest(false, {
+  BROWSER_HOST_VIEWS: "1",
+  BROWSER_HOST_LAB: process.env.OH_VIEW_CAPTURE ? "1" : "0",
+});
 const port = workerHostPort(Number(process.env.TEST_PARALLEL_INDEX ?? 0));
 const app = `https://app.oh.localhost:${port}`;
 test.use({
@@ -18,6 +23,7 @@ test.use({
   },
   ignoreHTTPSErrors: true,
   viewport: { width: 1366, height: 800 },
+  locale: process.env.OH_VIEW_CAPTURE_LANGUAGE || "fi-FI",
 });
 
 async function conversation(page: Page): Promise<string> {
@@ -25,10 +31,18 @@ async function conversation(page: Page): Promise<string> {
   await page.goto("/workspaces");
   await page.getByTestId("github-sign-in").click();
   await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
-  await page
-    .getByRole("navigation")
-    .getByTestId("workspace-ordinary-dir")
-    .click();
+  if (process.env.OH_VIEW_CAPTURE) {
+    const state = await (await page.request.get("/api/v1/snapshot")).json();
+    const workspace = state.workspaces.find(
+      (w: { name: string }) => w.name === "aurinkokello",
+    );
+    await page.goto(`/workspaces/${workspace.workspace_id}`);
+  } else {
+    await page
+      .getByRole("navigation")
+      .getByTestId("workspace-ordinary-dir")
+      .click();
+  }
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await expect(page).toHaveURL(/conversation=pi:/);
   return new URL(page.url()).searchParams.get("conversation") ?? "";
@@ -226,7 +240,7 @@ test("a view offered again from the same folder is a newer version of one row", 
   await expect(row.getByTestId("asset-versions")).toBeVisible();
 });
 
-test("a view cannot navigate its frame to a foreign origin", async ({
+test("a refused frame navigation offers recovery of the frozen view", async ({
   page,
 }) => {
   const id = await conversation(page);
@@ -260,6 +274,81 @@ test("a view cannot navigate its frame to a foreign origin", async ({
   expect(page.frames().some((f) => f.url().includes("foreign.example"))).toBe(
     false,
   );
+  await expect(page.getByTestId("view-blocked")).toBeVisible();
+  await expect(page.getByTestId("view-frame")).toHaveCount(0);
+  await expect(page.getByTestId("reopen-view")).toBeFocused();
+  if (process.env.OH_VIEW_CAPTURE) {
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await page.getByTestId("explain-toggle").click();
+      await page.setViewportSize({ width, height: 900 });
+      await page.mouse.move(0, 0);
+      await page.getByTestId("reopen-view").hover();
+      await expect(page.getByTestId("explain-card")).toHaveAttribute(
+        "data-card",
+        "V44",
+      );
+      await expect(page.getByTestId("explain-card")).toBeInViewport();
+      await snapshot(
+        page,
+        join(
+          process.env.OH_VIEW_CAPTURE,
+          `${process.env.OH_VIEW_CAPTURE_LANGUAGE || "fi-FI"}-${width}`,
+        ),
+        { labOrigin: new URL(page.url()).origin },
+      );
+      await page.getByTestId("explain-stop").click();
+    }
+  }
+  // Recovery also works after the gateway loses its in-memory view session.
+  await page.context().clearCookies({ name: "__Host-oh-view" });
+  await page.getByTestId("reopen-view").click();
+  await expect(body).toHaveAttribute("data-script", "yes");
+  await expect(body).toHaveAttribute("data-style", "rgb(1, 2, 3)");
+  expect(foreign).toEqual([]);
+});
+
+test("nested same-view frames stay blocked and offer recovery", async ({
+  page,
+}) => {
+  const id = await conversation(page);
+  await offer(page, id);
+  await page.getByTestId("view-offer").getByTestId("offer-open").click();
+  await expect(
+    page.frameLocator('[data-testid="view-frame"]').locator("body"),
+  ).toHaveAttribute("data-script", "yes");
+  const view = page.frames().find((frame) => frame.url().includes("oh-view-"));
+  if (!view) throw new Error("missing view frame");
+  let nested = true;
+  await page.route("https://oh-view-*/index.html", async (route) => {
+    const response = await route.fetch();
+    const body = await response.text();
+    await route.fulfill({
+      response,
+      body: nested
+        ? body.replace("</body>", '<iframe src="bundle.html"></iframe></body>')
+        : body,
+    });
+  });
+  const requested: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().endsWith("/bundle.html")) requested.push(request.url());
+  });
+  await view.goto(view.url());
+  await expect(page.getByTestId("view-blocked")).toBeVisible();
+  expect(requested).toEqual([]);
+  await expect(
+    (
+      await new AxeBuilder({ page })
+        .include('[data-testid="view-panel"]')
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+  nested = false;
+  await page.getByTestId("reopen-view").click();
+  await expect(
+    page.frameLocator('[data-testid="view-frame"]').locator("body"),
+  ).toHaveAttribute("data-script", "yes");
 });
 
 test("the own tab frames the view on the app's page, with no opener", async ({

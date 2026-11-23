@@ -567,6 +567,7 @@ export function ViewHost({
                 expanded={expanded}
                 titleRef={title}
                 onToggleExpanded={() => setExpanded(!expanded)}
+                onReopen={() => openView(opened.view, opened.opener)}
                 onClose={close}
               />
             ) : opened?.kind === "file" ? (
@@ -655,9 +656,11 @@ function OpenedViewPanel({
   expanded,
   titleRef,
   onToggleExpanded,
+  onReopen,
   onClose,
 }: {
   opened: Extract<Opened, { kind: "view" }>;
+  onReopen: () => void;
   controls: OfferControls;
   expanded: boolean;
   titleRef: Ref<HTMLHeadingElement>;
@@ -678,6 +681,7 @@ function OpenedViewPanel({
       }
       src={opened.src}
       failed={opened.failed}
+      onReopen={onReopen}
       expanded={expanded}
       titleRef={titleRef}
       onToggleExpanded={onToggleExpanded}
