@@ -32,12 +32,16 @@ type fixtureAccess struct {
 	unbound map[string]bool
 	teams   []gateway.TeamSource
 	members map[string]string // id -> "member", "left" or "unconfirmed"
+	// removals are scheduled removals (ADR 0037); complete=<id> finishes
+	// one as the broker's data stage would, dropping the binding.
+	removals map[string]*gateway.RemovalState
+	removed  map[string]bool
 }
 
 var fixtureTeam = gateway.TeamSource{OrgID: "61230001", Org: "example-org", Slug: "habitat", TeamID: "61239001", Actor: "42", At: "2026-10-30T08:00:00Z"}
 
 func newFixtureAccess() *fixtureAccess {
-	return &fixtureAccess{runtime: map[string]string{"43": "admitted"}, hints: map[string]string{"43": "bob"}, at: map[string]string{"43": "2026-10-20T08:00:00Z"}, unbound: map[string]bool{}, members: map[string]string{}}
+	return &fixtureAccess{runtime: map[string]string{"43": "admitted"}, hints: map[string]string{"43": "bob"}, at: map[string]string{"43": "2026-10-20T08:00:00Z"}, unbound: map[string]bool{}, members: map[string]string{}, removals: map[string]*gateway.RemovalState{}, removed: map[string]bool{}}
 }
 
 // fixture applies /fixture/access query values; unknown values are refused.
@@ -61,6 +65,10 @@ func (b *fixtureBroker) fixture(q url.Values) error {
 			b.access.lose = true
 		case key == "unbound" && v == "43":
 			b.access.unbound[v] = true
+		case key == "complete" && v == "43":
+			delete(b.access.removals, v)
+			delete(b.access.runtime, v)
+			b.access.removed[v] = true
 		case key == "leaver" && v == "44":
 			if len(b.access.teams) == 0 {
 				b.access.teams = []gateway.TeamSource{fixtureTeam}
@@ -77,7 +85,7 @@ func (b *fixtureBroker) fixture(q url.Values) error {
 
 // bound is called under access.mu.
 func (b *fixtureBroker) bound(id string) (string, bool) {
-	if b.access.unbound[id] {
+	if b.access.unbound[id] || b.access.removed[id] {
 		return "", false
 	}
 	for _, m := range b.identities {
@@ -114,7 +122,73 @@ func (b *fixtureBroker) rowLocked(id string) []gateway.AccessRow {
 	case "withdrawn":
 		state = "withdrawn"
 	}
-	return []gateway.AccessRow{{ID: id, Source: "site_admin", State: state, Username: username, LoginHint: b.access.hints[id], Actor: "42", At: b.access.at[id], TeamState: row.TeamState, Teams: row.Teams}}
+	return []gateway.AccessRow{{ID: id, Source: "site_admin", State: state, Username: username, LoginHint: b.access.hints[id], Actor: "42", At: b.access.at[id], TeamState: row.TeamState, Teams: row.Teams, Removal: b.access.removals[id]}}
+}
+
+// ScheduleRemoval and CancelRemoval are the broker's removal: schedule
+// withdraws and records the removal 14 days out or now; cancel drops it.
+func (b *fixtureBroker) ScheduleRemoval(ctx context.Context, id, hint, actor, when string) (gateway.AccessRow, error) {
+	lose, err := b.write(ctx)
+	if err != nil {
+		return gateway.AccessRow{}, err
+	}
+	b.access.mu.Lock()
+	defer b.access.mu.Unlock()
+	switch {
+	case b.access.any:
+		return gateway.AccessRow{}, gateway.ErrAccessOpen
+	case id == "42":
+		return gateway.AccessRow{}, gateway.ErrOperatorOwned
+	}
+	if _, bound := b.bound(id); !bound {
+		delete(b.access.runtime, id)
+		return gateway.AccessRow{ID: id, Source: "site_admin", State: "removed"}, nil
+	}
+	now := time.Now().UTC().Truncate(time.Second)
+	if b.access.removals[id] == nil {
+		due := now
+		if when == "grace" {
+			due = now.Add(14 * 24 * time.Hour)
+		}
+		b.access.removals[id] = &gateway.RemovalState{Stage: "closed", Due: due.Format(time.RFC3339), Actor: actor, At: now.Format(time.RFC3339)}
+	}
+	if b.access.runtime[id] != "withdrawn" {
+		b.access.runtime[id] = "withdrawn"
+		b.access.hints[id] = hint
+		b.access.at[id] = now.Format(time.RFC3339)
+	}
+	delete(b.access.members, id)
+	if lose {
+		return gateway.AccessRow{}, gateway.ErrAccessUncertain
+	}
+	return b.rowLocked(id)[0], nil
+}
+
+func (b *fixtureBroker) CancelRemoval(ctx context.Context, id, _ string) (gateway.AccessRow, error) {
+	if _, err := b.write(ctx); err != nil {
+		return gateway.AccessRow{}, err
+	}
+	b.access.mu.Lock()
+	defer b.access.mu.Unlock()
+	if r := b.access.removals[id]; r != nil && r.Stage == "removing" {
+		return gateway.AccessRow{}, gateway.ErrRemovalStarted
+	}
+	delete(b.access.removals, id)
+	rows := b.rowLocked(id)
+	if len(rows) != 1 {
+		return gateway.AccessRow{}, gateway.ErrAccessRefused
+	}
+	return rows[0], nil
+}
+
+// removalDue is a bound person's removal due time, for the storage page.
+func (b *fixtureBroker) removalDue(id string) string {
+	b.access.mu.Lock()
+	defer b.access.mu.Unlock()
+	if r := b.access.removals[id]; r != nil {
+		return r.Due
+	}
+	return ""
 }
 
 func (b *fixtureBroker) pageLocked(ids []string) gateway.AccessPage {

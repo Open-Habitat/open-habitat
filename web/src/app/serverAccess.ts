@@ -83,6 +83,29 @@ export type AccessEntry = {
    * person was last confirmed in; for left, the teams left. */
   team_state?: "member" | "left" | "unconfirmed";
   teams?: string[];
+  /** The person's scheduled removal (ADR 0037). scheduled may still be
+   * cancelled; removing has begun deleting. reason is set while a step is
+   * held; providers are what the person's daemon answered. */
+  removal?: AccessRemoval;
+};
+export type AccessRemoval = {
+  stage: "scheduled" | "removing";
+  due: string;
+  actor: string;
+  at: string;
+  reason?:
+    | "close_failed"
+    | "admitted"
+    | "home_unsafe"
+    | "files_remain"
+    | "step_failed";
+  disconnect?: "done" | "not_reached";
+  providers?: {
+    provider: string;
+    revoked: number;
+    local_only: number;
+    failed: number;
+  }[];
 };
 /** A listed GitHub team whose active members may sign in. */
 export type AccessTeam = {
@@ -182,20 +205,34 @@ export async function lookupLogin(
  * is reported as uncertain. */
 export async function changeAccess(
   csrf: string,
-  action: "add" | "remove" | "forget" | "grant" | "revoke",
+  action:
+    | "add"
+    | "remove"
+    | "forget"
+    | "grant"
+    | "revoke"
+    | "cancel-removal"
+    | { removePerson: { login: string; when: "grace" | "now" } },
   id: string,
 ): Promise<ChangeResult> {
   let response: Response | undefined;
   try {
     response =
-      action === "grant" || action === "revoke"
+      typeof action === "object"
         ? await post(
-            `${path}/role`,
-            { id, administrator: action === "grant" },
+            `${path}/remove-person`,
+            { id, ...action.removePerson },
             csrf,
             true,
           )
-        : await post(`${path}/${action}`, { id }, csrf, true);
+        : action === "grant" || action === "revoke"
+          ? await post(
+              `${path}/role`,
+              { id, administrator: action === "grant" },
+              csrf,
+              true,
+            )
+          : await post(`${path}/${action}`, { id }, csrf, true);
   } catch {
     return { kind: "uncertain" };
   }
@@ -204,7 +241,7 @@ export async function changeAccess(
     return { kind: "refused", code: outcome.code };
   if (outcome.kind !== "ok") return outcome;
   try {
-    const value = await bounded(outcome.response, 4096);
+    const value = await bounded(outcome.response, 16384);
     if (validChanged(value))
       return {
         kind: "changed",
@@ -288,4 +325,11 @@ export function splitLogins(raw: string): string[] {
 /** A refusal in words the administrator can act on. */
 export function accessRefusal(code: string): string {
   return txt.refusals[code] ?? txt.refused;
+}
+
+/** The typed confirmation names the person: GitHub logins compare
+ * case-insensitively, with or without a leading @. */
+export function confirmsLogin(typed: string, login?: string): boolean {
+  const t = typed.trim().replace(/^@/, "");
+  return !!login && t.length > 0 && t.toLowerCase() === login.toLowerCase();
 }

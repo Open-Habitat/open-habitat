@@ -319,3 +319,61 @@ export const TeamUnavailable: Story = {
 export const Phone: Story = {
   globals: { viewport: { value: "mobile1" } },
 };
+
+/** Removing a person (ADR 0037): Poista henkilö beside Poista pääsy, a
+ * scheduled removal with its date and Peru poisto, and a removal held with
+ * its reason. Open Poista henkilö on maija-esim for the dialog. */
+export const PersonRemoval: Story = {
+  args: {
+    onRemovePerson: () => {},
+    onCancelRemoval: () => {},
+    homeSize: { "51234001": "9,69 GiB" },
+    view: {
+      ...view,
+      entries: [
+        ...entries.filter((e) => e.state !== "withdrawn"),
+        {
+          id: "51234010",
+          source: "site_admin",
+          state: "withdrawn",
+          username: "mikko",
+          login_hint: "mikko-l",
+          actor: "51234000",
+          at: "2026-11-21T09:00:00Z",
+          administrator: false,
+          denied: true,
+          removal: {
+            stage: "scheduled",
+            due: "2026-12-05T09:00:00Z",
+            actor: "51234000",
+            at: "2026-11-21T09:00:00Z",
+            disconnect: "done",
+            providers: [
+              { provider: "google", revoked: 1, local_only: 0, failed: 0 },
+              { provider: "imap", revoked: 0, local_only: 1, failed: 0 },
+            ],
+          },
+        },
+        {
+          id: "51234011",
+          source: "site_admin",
+          state: "withdrawn",
+          username: "sanna",
+          login_hint: "sanna-v",
+          actor: "51234000",
+          at: "2026-11-20T09:00:00Z",
+          administrator: false,
+          denied: true,
+          removal: {
+            stage: "removing",
+            due: "2026-11-20T09:00:00Z",
+            actor: "51234000",
+            at: "2026-11-20T09:00:00Z",
+            reason: "files_remain",
+            disconnect: "not_reached",
+          },
+        },
+      ],
+    },
+  },
+};

@@ -14,7 +14,7 @@ import {
   ServerSection,
   UsageFigure,
 } from "../components/ServerSection";
-import { textNow, useText } from "../i18n";
+import { formatDate, textNow, useText } from "../i18n";
 import { serverStorageText } from "../text/serverStorage";
 import {
   type Administration,
@@ -146,8 +146,14 @@ export function ServerStorage({ csrf }: { csrf?: string }) {
     enforced &&
     storage.overcommitted !== null &&
     storage.users.every((u) => !u.unavailable);
+  // A person under removal reserves no limit: nothing of theirs runs, so
+  // they count by what they use (ADR 0037).
   const worst = known
-    ? storage.users.reduce((sum, u) => sum + limitOf(u.id, u.limit_bytes), 0)
+    ? storage.users.reduce(
+        (sum, u) =>
+          sum + (u.removal_due ? u.usage_bytes : limitOf(u.id, u.limit_bytes)),
+        0,
+      )
     : undefined;
   const disk = storage?.filesystem;
   const used = disk ? disk.capacity_bytes - disk.free_bytes : 0;
@@ -216,6 +222,34 @@ export function ServerStorage({ csrf }: { csrf?: string }) {
         <PeopleList row="user-limits" columns={columns}>
           {data.users.map((user) => {
             const quota = quotaOf(user.id);
+            if (quota?.removal_due)
+              return (
+                <PeopleRow
+                  key={user.id}
+                  testId={`administration-user-${user.username}`}
+                  data-storage-state="removal"
+                  name={user.username}
+                  detail={
+                    <span
+                      className="s-desc"
+                      data-testid={`storage-removal-${user.username}`}
+                    >
+                      {t.removalOn(removalDay(quota.removal_due))}
+                    </span>
+                  }
+                  cells={[
+                    <span
+                      key="use"
+                      data-testid={`storage-use-${user.username}`}
+                    >
+                      {bytes(quota.usage_bytes)}
+                    </span>,
+                    <span key="limit" className="s-desc">
+                      {t.countedByUse}
+                    </span>,
+                  ]}
+                />
+              );
             const limit = quota && limitOf(user.id, quota.limit_bytes);
             const own = limit !== undefined && limit !== fallback;
             const state = !enforced
@@ -286,3 +320,11 @@ export function ServerStorage({ csrf }: { csrf?: string }) {
     </ServerSection>
   );
 }
+
+/** A removal's due day, as the access list shows it. */
+const removalDay = (iso: string) => {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime())
+    ? ""
+    : formatDate(d, { day: "numeric", month: "numeric" });
+};

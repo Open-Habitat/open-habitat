@@ -2018,7 +2018,7 @@ func (b *fixtureBroker) ListQuotas(ctx context.Context) ([]gateway.QuotaRow, gat
 			return nil, fs, err
 		}
 		fs = disk
-		rows = append(rows, gateway.QuotaRow{BoundUser: u, Quota: q})
+		rows = append(rows, gateway.QuotaRow{BoundUser: u, Quota: q, RemovalDue: b.removalDue(u.ID)})
 	}
 	return rows, fs, nil
 }

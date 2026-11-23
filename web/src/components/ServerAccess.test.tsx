@@ -690,3 +690,87 @@ it("detaches a team after confirming what ends", () => {
   fireEvent.click(screen.getByTestId("access-detach-confirm"));
   expect(onRemoveTeam).toHaveBeenCalledWith(teamView.teams[0]);
 });
+
+it("removes a person only after their login is typed, with the timing chosen", () => {
+  const onRemovePerson = vi.fn();
+  setup({ onRemovePerson, homeSize: { "43": "9,69 GiB" } });
+  // Root's people and administrators have no removal; an account does.
+  expect(button("access-remove-person-42")).toBeNull();
+  expect(button("access-remove-person-44")).toBeNull();
+  expect(button("access-remove-person-45")).toBeTruthy();
+  fireEvent.click(screen.getByTestId("access-remove-person-43"));
+  const dialog = screen.getByTestId("access-remove-person-dialog");
+  expect(dialog.textContent).toContain("9,69 GiB");
+  // Nothing from the home is named: no workspaces, accounts or files.
+  expect(dialog.textContent).not.toContain("bob/");
+  const confirm = screen.getByTestId("access-remove-person-confirm");
+  expect(confirm.hasAttribute("disabled")).toBe(true);
+  fireEvent.change(screen.getByTestId("access-remove-person-login"), {
+    target: { value: "carol" },
+  });
+  expect(confirm.hasAttribute("disabled")).toBe(true);
+  fireEvent.change(screen.getByTestId("access-remove-person-login"), {
+    target: { value: "@BOB" },
+  });
+  expect(confirm.hasAttribute("disabled")).toBe(false);
+  fireEvent.click(within(dialog).getByRole("radio", { name: /^(Heti|Now)/ }));
+  fireEvent.click(screen.getByTestId("access-remove-person-confirm"));
+  expect(onRemovePerson).toHaveBeenCalledWith(
+    expect.objectContaining({ id: "43" }),
+    "now",
+    "bob",
+  );
+});
+
+it("shows a scheduled removal with its date and Undo, and a held one with its reason", () => {
+  const onCancelRemoval = vi.fn();
+  setup({
+    onRemovePerson: vi.fn(),
+    onCancelRemoval,
+    view: {
+      ...base,
+      entries: [
+        {
+          ...entries[3],
+          removal: {
+            stage: "scheduled",
+            due: "2026-12-05T09:00:00Z",
+            actor: "42",
+            at: "2026-11-21T09:00:00Z",
+            disconnect: "done",
+            providers: [
+              { provider: "google", revoked: 1, local_only: 0, failed: 0 },
+              { provider: "imap", revoked: 0, local_only: 2, failed: 0 },
+            ],
+          },
+        },
+        {
+          ...entries[1],
+          state: "withdrawn",
+          removal: {
+            stage: "removing",
+            due: "2026-11-21T09:00:00Z",
+            actor: "42",
+            at: "2026-11-21T09:00:00Z",
+            reason: "files_remain",
+          },
+        },
+      ],
+    },
+  });
+  expect(screen.getByTestId("access-state-45").textContent).toMatch(
+    /5\.12\.|12\/5|5\/12/,
+  );
+  expect(screen.getByTestId("access-services-45").textContent).toMatch(/1.*2/);
+  expect(button("access-restore-45")).toBeNull();
+  expect(button("access-remove-person-45")).toBeNull();
+  fireEvent.click(screen.getByTestId("access-cancel-removal-45"));
+  expect(onCancelRemoval).toHaveBeenCalledWith(
+    expect.objectContaining({ id: "45" }),
+  );
+  // Once deletion has begun there is no undo; the hold says why.
+  expect(button("access-cancel-removal-43")).toBeNull();
+  expect(screen.getByTestId("access-removal-reason-43").dataset.reason).toBe(
+    "files_remain",
+  );
+});

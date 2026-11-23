@@ -181,3 +181,25 @@ it("says limits are not in use and offers no limit editing without quotas", asyn
   expect(screen.queryByTestId("storage-limit-alice")).toBeNull();
   expect(screen.queryByTestId("default-limit")).toBeNull();
 });
+
+it("counts a person under removal by use, so the warning clears", async () => {
+  const bob = {
+    id: "43",
+    username: "bob",
+    administrator: false,
+    unavailable: false,
+    usage_bytes: GiB,
+    limit_bytes: 0,
+    removal_due: "2026-12-05T09:00:00Z",
+  } as Quota & { removal_due: string };
+  host({ users: [alice(2 * GiB), bob], capacity: 4 * GiB });
+  render(<ServerStorage csrf="csrf" />);
+  expect(
+    (await screen.findByTestId("storage-removal-bob")).textContent,
+  ).toMatch(/5\.12\.|12\/5|5\/12/);
+  // 2 GiB limit + 1 GiB use, under the 4 GiB disk: no overcommit.
+  expect(
+    screen.getByTestId("server-storage").querySelector(".ah-meter-over"),
+  ).toBeNull();
+  expect(screen.queryByTestId("storage-limit-bob-input")).toBeNull();
+});

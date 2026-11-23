@@ -15,6 +15,9 @@ export type StorageAdministration = {
     username: string;
     administrator: boolean;
     unavailable: boolean;
+    /** The person's removal is scheduled: the sum counts usage, not the
+     * limit, which is 0 once the data stage cleared it. */
+    removal_due?: string;
   })[];
   filesystem: { capacity_bytes: number; free_bytes: number };
   overcommitted: boolean | null;
@@ -92,12 +95,18 @@ export async function storageAdministration(
         typeof u === "object" &&
         "unavailable" in u &&
         typeof u.unavailable === "boolean" &&
+        (!("removal_due" in u) || typeof u.removal_due === "string") &&
         (u.unavailable
           ? "usage_bytes" in u &&
             u.usage_bytes === 0 &&
             "limit_bytes" in u &&
             u.limit_bytes === 0
-          : quota(u)) &&
+          : quota(u) ||
+            ("removal_due" in u &&
+              "usage_bytes" in u &&
+              size(u.usage_bytes) &&
+              "limit_bytes" in u &&
+              u.limit_bytes === 0)) &&
         "id" in u &&
         typeof u.id === "string" &&
         "username" in u &&

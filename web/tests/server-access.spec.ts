@@ -291,3 +291,76 @@ test("@server-access @a11y a team is added in the same field, rows show their re
     .click();
   await expect(ops).toHaveCount(0);
 });
+
+test("@server-access an administrator removes a person: grace period, undo, then removal now; Levytila counts them by use", async ({
+  page,
+  browser,
+}) => {
+  const bobContext = await browser.newContext({
+    baseURL: hostOrigin,
+    ignoreHTTPSErrors: true,
+  });
+  const bob = await bobContext.newPage();
+  await signIn(bob, 1);
+  expect((await bob.request.get("/api/v1/server")).status()).toBe(200);
+
+  await signIn(page, 0);
+  await page.goto("/settings/users");
+  const row = (id: string) => page.getByTestId(`access-row-${id}`);
+  await expect(row("43")).toHaveAttribute("data-state", "joined");
+  // Root's administrator, and so the signed-in one here, has no removal.
+  await expect(page.getByTestId("access-remove-person-42")).toHaveCount(0);
+
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("access-remove-person-43"))
+    .click();
+  const dialog = page.getByTestId("access-remove-person-dialog");
+  const confirm = dialog
+    .getByRole("button")
+    .and(page.getByTestId("access-remove-person-confirm"));
+  await expect(confirm).toBeDisabled();
+  await dialog.getByTestId("access-remove-person-login").fill("@BOB");
+  await expect(confirm).toBeEnabled();
+  await confirm.click();
+  await expect(row("43")).toHaveAttribute("data-state", "withdrawn");
+  await expect(page.getByTestId("access-state-43")).toContainText("Poistetaan");
+  await expect(page.getByTestId("access-cancel-removal-43")).toBeVisible();
+  expect((await bob.request.get("/api/v1/server")).status()).toBe(401);
+
+  // Levytila: the row says when, and its limit no longer counts.
+  await page.goto("/settings/disk");
+  await expect(page.getByTestId("storage-removal-bob")).toContainText(
+    "Poistetaan",
+  );
+  await expect(page.getByTestId("storage-limit-bob-input")).toHaveCount(0);
+
+  // Undo leaves access withdrawn and offers removal again.
+  await page.goto("/settings/users");
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("access-cancel-removal-43"))
+    .click();
+  await expect(page.getByTestId("access-restore-43")).toBeVisible();
+  await expect(page.getByTestId("access-state-43")).not.toContainText(
+    "Poistetaan",
+  );
+
+  // Removal now; when the broker has deleted the data, the row is gone.
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("access-remove-person-43"))
+    .click();
+  await dialog.getByRole("radio", { name: /^Heti/ }).check({ force: true });
+  await dialog.getByTestId("access-remove-person-login").fill("bob");
+  await expect(confirm).toHaveText("Poista heti");
+  await confirm.click();
+  await expect(page.getByTestId("access-state-43")).toContainText("Poistetaan");
+  expect((await page.request.get("/fixture/access?complete=43")).status()).toBe(
+    204,
+  );
+  await page.reload();
+  await expect(row("42")).toBeVisible();
+  await expect(row("43")).toHaveCount(0);
+  await bobContext.close();
+});

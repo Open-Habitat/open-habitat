@@ -25,6 +25,7 @@ import {
   lookupLogin,
   readAccess,
 } from "./serverAccess";
+import { bytes, storageAdministration } from "./storageQuota";
 
 const txt = liveText(serverAccessText);
 
@@ -50,6 +51,24 @@ export function ServerAccessSettings({
   // that a change overtook may predate it, so it is read again rather than
   // shown; an accepted read thus postdates every settled or uncertain change.
   const changes = useRef(0);
+  // Each person's home size as Levytila shows it, for the removal dialog;
+  // a failed read only leaves the size out.
+  const [homeSize, setHomeSize] = useState<Record<string, string>>({});
+  useEffect(() => {
+    const controller = new AbortController();
+    storageAdministration(controller.signal)
+      .then((s) =>
+        setHomeSize(
+          Object.fromEntries(
+            s.users
+              .filter((u) => !u.unavailable)
+              .map((u) => [u.id, bytes(u.usage_bytes)]),
+          ),
+        ),
+      )
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
   const reload = useCallback(async (signal?: AbortSignal) => {
     try {
       let next: AccessView;
@@ -130,7 +149,7 @@ export function ServerAccessSettings({
     if (outcome.kind === "refused") setProblem({ id: key, text: outcome.text });
   };
   const change = async (
-    action: "add" | "remove" | "forget" | "grant" | "revoke",
+    action: Parameters<typeof changeAccess>[1],
     id: string,
     mark: PendingChange,
   ): Promise<AddOutcome> => {
@@ -221,6 +240,19 @@ export function ServerAccessSettings({
             login: entry.login_hint,
           })
         }
+        onRemovePerson={(entry, when, login) =>
+          void change({ removePerson: { login, when } }, entry.id, {
+            kind: "remove-person",
+            login: entry.login_hint,
+          })
+        }
+        onCancelRemoval={(entry) =>
+          void change("cancel-removal", entry.id, {
+            kind: "cancel-removal",
+            login: entry.login_hint,
+          })
+        }
+        homeSize={homeSize}
         teamPending={teamPending}
       >
         {children}
