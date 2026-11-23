@@ -53,15 +53,15 @@
     },
     {
       "target": "linux-amd64",
-      "filename": "gogcli_0.39.1_linux_amd64.tar.gz",
-      "url": "https://github.com/openclaw/gogcli/releases/download/v0.39.1/gogcli_0.39.1_linux_amd64.tar.gz",
-      "sha256": "438efa460b8291f023299ad2ed5610701cad7508db88392039c0891e2175e3b1"
+      "filename": "gogcli_0.48.0_linux_amd64.tar.gz",
+      "url": "https://github.com/openclaw/gogcli/releases/download/v0.48.0/gogcli_0.48.0_linux_amd64.tar.gz",
+      "sha256": "8809d2f4fe95a0299b1a2a5c6bc912c4aba4b90a7b5e2c1f5cf11b9945a50004"
     },
     {
       "target": "linux-arm64",
-      "filename": "gogcli_0.39.1_linux_arm64.tar.gz",
-      "url": "https://github.com/openclaw/gogcli/releases/download/v0.39.1/gogcli_0.39.1_linux_arm64.tar.gz",
-      "sha256": "7c23b402c9234ba476e84b39ac6d875444b47ec516312a99e877e1386ba28295"
+      "filename": "gogcli_0.48.0_linux_arm64.tar.gz",
+      "url": "https://github.com/openclaw/gogcli/releases/download/v0.48.0/gogcli_0.48.0_linux_arm64.tar.gz",
+      "sha256": "fc40524368d2cb6213bdfe0b736b5884e1b55c6368706d7a285542cb7e559b68"
     },
     {
       "target": "linux-amd64",
@@ -172,12 +172,12 @@
     {
       "target": "linux-amd64",
       "name": "gog",
-      "version": "0.39.1",
+      "version": "0.48.0",
       "license": "MIT",
       "source": "https://github.com/openclaw/gogcli",
-      "archive": "gogcli_0.39.1_linux_amd64.tar.gz",
+      "archive": "gogcli_0.48.0_linux_amd64.tar.gz",
       "member": "./gog",
-      "sha256": "1ae3040550d1da183838200dbe03ea764475e687284194e519d936c81c708ed4",
+      "sha256": "7d86d981714c624d5b0719040fa632b245aeb61ae53c379646524a67cf037c15",
       "license_files": [
         "gog-THIRD-PARTY-NOTICES"
       ],
@@ -186,12 +186,12 @@
     {
       "target": "linux-arm64",
       "name": "gog",
-      "version": "0.39.1",
+      "version": "0.48.0",
       "license": "MIT",
       "source": "https://github.com/openclaw/gogcli",
-      "archive": "gogcli_0.39.1_linux_arm64.tar.gz",
+      "archive": "gogcli_0.48.0_linux_arm64.tar.gz",
       "member": "./gog",
-      "sha256": "520285202d8022a662c28f6e55291f978c75eba51fc8e9ea04a71f53c1462bd1",
+      "sha256": "1137f6e970ea95ca225054ef646510d666a968e6e3a261901e0e0bc5f0f0620c",
       "license_files": [
         "gog-THIRD-PARTY-NOTICES"
       ],
