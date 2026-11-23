@@ -1,6 +1,6 @@
 ---
 created: 2026-11-23
-updated: 2026-11-23
+updated: 2026-11-24
 type: bug
 status: untriaged
 priority: normal
@@ -32,3 +32,17 @@ No clean-gate receipt could be produced for v0.1.7 tonight. Each gate round take
 ## Evidence
 
 Failure logs stay in each clone's `.git/open-habitat-gate-failure/` on the release host (not kept forever).
+
+## Comments
+
+### 2026-11-23T23:07:06Z · @release-driver
+
+More clean-gate load flakes at `e4a4e3bdd` (24.11.2026, same 8-core arm64 host, separate clone, nothing else running tests; scratch on a short path with plenty of free space):
+
+- Gate 5: ordinary `browser-conversation.spec.ts:2335` (stopped restored turn) and `recap-resting.spec.ts:178`. Each passed 3/3 alone.
+- Gate 6: ordinary `attachment-documents.spec.ts:39` (document preview not visible within 5 s; also flaked in an earlier gate). Passed 3/3 alone.
+- Gate 7: ordinary `pi-onboarding-race.spec.ts:6` (test timeout in the `finally` fixture reset at line 129), lab `lab-worktree-agent.spec.ts:26` (intro centred 30 px off the composer at line 85, expected < 2), and again `scripts/test-gate-storage.py` `test_successful_shell_cleans_before_recording_receipt` (exit 141, SIGPIPE). Each passed 3/3 alone.
+- Gate 8: died in its dependency phase on an npm registry `ETIMEDOUT` before any check ran (network, not a test); rerun at once.
+- Gate 8 rerun: ordinary `github-stream.spec.ts:34` (second clone not `confirmed` within the 5 s poll at line 90); Go/contracts, packaging and lab 344/344 green, ordinary 762/763. Passed 3/3 alone.
+
+Every gate round has had one to three different specs fail under the whole suite's own load, while each passes alone. Every gate takes about 25 minutes here, so a release needs several rounds before one comes out green by chance.
