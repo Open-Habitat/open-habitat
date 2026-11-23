@@ -27,12 +27,13 @@ creating a duplicate under a new name.
 
 Use the returned run id rather than the name from here on. Start
 `taskfleet run wait <run-id> --output json` with the process tool and turn
-notifications, then end your turn. The wait settles as soon as a round is
-reported (`round_reported: true`, its summary in `resident.last_round`), not
-only when the run ends. Then land the round with `taskfleet run land <run-id>
---output json` (a `land_conflict` lands nothing; the next message hands it to
-the helper), tell the person what the round did, and for the next round send
-`taskfleet run message <run-id> --body-file message.md` and wait again. When
+notifications, set the conversation `running`, then end your turn. The wait
+settles as soon as a round is reported (`round_reported: true`, its summary in
+`resident.last_round`), not only when the run ends. Then land the round with
+`taskfleet run land <run-id> --output json` (a `land_conflict` lands nothing;
+the next message hands it to the helper), tell the person what the round did,
+and for the next round send `taskfleet run message <run-id> --body-file
+message.md` and wait again. When
 the work is done, `taskfleet run merge <run-id>` lands the last round and
 ends the helper; `taskfleet run cancel <run-id>` ends one with nothing left
 to land. Nothing in the browser lands, messages or stops a helper for you.

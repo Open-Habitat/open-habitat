@@ -61,18 +61,19 @@ To place your own conversation in the person's rail after your reply:
 
 The rail has three sections: *Sinun vuorosi* (the person's turn), *Käynnissä*
 (work going on) and *Hiljaiset* (quiet). Without a choice a new reply waits in
-Sinun vuorosi. Choose as the last step of your turn, once you know what your
-reply says:
+Sinun vuorosi. When your turn ends with work you will report on yourself still
+running (workers, a `taskfleet run wait`, a background job) and the reply asks
+nothing of the person, set `running` as your last tool call before the final
+message. The final message ends the turn, so nothing can run after it; once
+you know what it will say, choose:
 
 - `yours`: you need or offer something to the person (a question, a decision,
   a result to read). This is also the default, so say it only to take back an
   earlier choice in the same turn.
-- `running`: you have work in flight that you will report on yourself, such as
-  workers you started or a wait or background job, and the reply asks nothing
-  of the person yet ("I started the workers and will report back"). It holds
-  only while Habitat sees that work running (a worker working, a process you
-  wait on); when the work ends without a new turn, the reply moves to Sinun
-  vuorosi like any reply.
+- `running`: the in-flight case above ("I started the workers and will report
+  back"). It holds only while Habitat sees that work running (a worker
+  working, a process you wait on); when the work ends without a new turn, the
+  reply moves to Sinun vuorosi like any reply.
 - `quiet`: only when there is a reason, usually that the person asked for it
   ("laita tämä hiljaisiin", "put this in quiet"). Never drop the conversation
   there on your own judgement that nothing is pending; a finished answer

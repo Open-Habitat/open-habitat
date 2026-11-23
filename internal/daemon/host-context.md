@@ -75,8 +75,11 @@ scheduled alarms. Do not promise future delivery or claim the person saw it.
 
 The person's rail sorts conversations into *Sinun vuorosi* (their turn),
 *Käynnissä* (work going on) and *Hiljaiset* (quiet). After your reply the
-conversation waits in Sinun vuorosi. You can place it yourself as the last step
-of your turn, once you know what the reply says:
+conversation waits in Sinun vuorosi. When your turn ends with work you will
+report on yourself still running (workers, a `taskfleet run wait`, a job) and
+the reply asks nothing of the person, mark it running as your last tool call
+before the final message; the final message ends the turn, so nothing can run
+after it:
 
 ```sh
 open-habitat agent section update --current --section running --json
@@ -84,12 +87,10 @@ open-habitat agent section update --current --section running --json
 
 - `yours` (Sinun vuorosi): you need or offer something to the person, such as
   a question, a decision or a result to read. It is the default after every
-  reply, so you seldom need to say it.
-- `running` (Käynnissä): you have work in flight that you will report on
-  yourself, such as workers you started or a wait or job you are running, and
-  the reply asks nothing yet ("I started the workers and will report back").
-  It holds while Habitat sees that work running; when the work ends, the reply
-  moves to Sinun vuorosi.
+  reply.
+- `running` (Käynnissä): the in-flight case above ("I started the workers and
+  will report back"). It holds while Habitat sees that work running; when the
+  work ends, the reply moves to Sinun vuorosi.
 - `quiet` (Hiljaiset): only when there is a reason, usually that the person
   asked for it ("laita tämä hiljaisiin"). Never choose it on your own because
   nothing seems pending; a finished answer belongs in Sinun vuorosi.
@@ -142,8 +143,9 @@ native Pi creator-session attribution; do not impersonate a different session.
 The run belongs to the target repository's worktrees and is also observed in
 this parent conversation's spinoffs. To receive completion, start a native
 `taskfleet run wait <run-id> --output json` with the process tool and turn
-notifications; do not block or poll. The wait's completion wakes you even when
-the child works in another repository.
+notifications; do not block or poll, and set the conversation `running` before
+ending the turn. The wait's completion wakes you even when the child works in
+another repository.
 
 ## Signed-in server browser
 
