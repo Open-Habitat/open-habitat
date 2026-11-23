@@ -2,12 +2,14 @@
 created: 2026-11-23
 updated: 2026-11-24
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: agent
 source_ref: taskfleet:01m84ybwhn4y53av81q1z8cwq4/observation:gate-load-flakes-v017
 originating_run: 01m84ybwhn4y53av81q1z8cwq4
 originating_run_kind: spinoff
+lane: unlaned
+preparation: ready
 ---
 
 # Clean gate flakes under its own load (gate-storage SIGPIPE, design-system, lab scroll)
@@ -46,3 +48,7 @@ More clean-gate load flakes at `e4a4e3bdd` (24.11.2026, same 8-core arm64 host, 
 - Gate 8 rerun: ordinary `github-stream.spec.ts:34` (second clone not `confirmed` within the 5 s poll at line 90); Go/contracts, packaging and lab 344/344 green, ordinary 762/763. Passed 3/3 alone.
 
 Every gate round has had one to three different specs fail under the whole suite's own load, while each passes alone. Every gate takes about 25 minutes here, so a release needs several rounds before one comes out green by chance.
+
+### 2026-11-23T23:09:40Z · @agent
+
+Conductor 24.11.2026 01:10: accepted as a gate (tooling) defect, fixed proactively per the working agreement: it blocks v0.1.7, which Jari authorized for tonight. Scope: every check that failed only under the clean gate's own load in the v0.1.7 rounds (see the notes above and /var/tmp/agent-keep/oh-v017-qualification/).
