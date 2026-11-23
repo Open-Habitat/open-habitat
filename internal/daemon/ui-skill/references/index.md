@@ -197,6 +197,7 @@ A label alone does not establish that a control is available to this person.
 - [text/recapCard.ts](text--recapCard.ts.md)
 - [text/recapSettings.tsx](text--recapSettings.tsx.md)
 - [text/refusals.ts](text--refusals.ts.md)
+- [text/replyQuote.ts](text--replyQuote.ts.md)
 - [text/repoCatalog.ts](text--repoCatalog.ts.md)
 - [text/restartNotice.ts](text--restartNotice.ts.md)
 - [text/returnView.ts](text--returnView.ts.md)

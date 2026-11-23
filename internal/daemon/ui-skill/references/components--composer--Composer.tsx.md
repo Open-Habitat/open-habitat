@@ -572,6 +572,7 @@ export function Composer({
   restoreAvailability = enabled,
   modelPicker,
   beforeField,
+  fieldQuote,
   shell,
   sources,
   onActivity,
@@ -588,6 +589,8 @@ export function Composer({
   modelPicker?: ReactNode;
   /** Conversation controls below the queue and draft accessories. */
   beforeField?: ReactNode;
+  /** The field box's first row: the agent message a reply answers. */
+  fieldQuote?: ReactNode;
   availability?: Availability;
   editorAvailability?: Availability;
   activity: "idle" | "working" | "settling";
@@ -2093,6 +2096,7 @@ export function Composer({
         ref={box}
         className={`ah-cbox${shellOn ? " ah-cbox-shell" : ""}${fieldDisabled ? " ah-cbox-disabled" : ""}${dictating ? " ah-cbox-dictating" : ""}${fieldList ? " ah-cbox-listing" : ""}`}
       >
+        {fieldQuote}
         {dictating ? <DictationLive dictation={dictation} /> : null}
         <textarea
           hidden={dictating}

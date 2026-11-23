@@ -345,7 +345,7 @@ export function SearchBand({
   onClose,
 }: {
   text: string;
-  keyHint: string;
+  keyHint?: string;
   closeLabel: string;
   onClose: () => void;
 }) {
@@ -353,7 +353,7 @@ export function SearchBand({
     <div className="ah-search-band" data-testid="jump-band" role="status">
       <Icon name="search" />
       <span className="ah-search-band-text">{text}</span>
-      <span className="ah-search-band-key">{keyHint}</span>
+      {keyHint ? <span className="ah-search-band-key">{keyHint}</span> : null}
       <button
         type="button"
         className="ah-search-band-close"

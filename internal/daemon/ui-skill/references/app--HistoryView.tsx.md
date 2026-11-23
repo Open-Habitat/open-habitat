@@ -50,6 +50,7 @@ import {
   ProcessStartCard,
 } from "../components/ProcessTray";
 import { RecapCard, useMinuteNow } from "../components/RecapCard";
+import { SentQuote } from "../components/ReplyQuote";
 import { RestartNoticeMarker } from "../components/RestartNotice";
 import { WakeLineMarker } from "../components/ScheduledWake";
 import { SessionSettingsRow } from "../components/SessionSettingsRow";
@@ -920,6 +921,14 @@ export function Entry({
           sourceText={content.text}
           onCopy={copy}
           actions={pending ? undefined : rewind?.menu(entry)}
+          quote={
+            entry.reply_to ? (
+              <SentQuote
+                entryKey={entry.reply_to.entry_key}
+                excerpt={entry.reply_to.excerpt}
+              />
+            ) : undefined
+          }
           waiting={pending?.waiting}
           delivery={pending?.delivery}
           deliveryState={pending?.label}
@@ -1327,6 +1336,11 @@ export function timelineItems(
         onLogin={onLogin}
       />
     );
+    // A reply answers the whole saved message; its first text carries the
+    // corner control (reply-to-message).
+    const firstText = blocks.findIndex(
+      (b) => b.type === "text" && (b.text?.trim() || b.readable),
+    );
     return blocks.map((block, index): TurnStep => {
       const key = `${entry.entry_key}:${index}`;
       if (block.type === "text")
@@ -1335,6 +1349,10 @@ export function timelineItems(
           key,
           text: block.text ?? "",
           readable: block.readable,
+          replyEntry:
+            entry.kind === "assistant" && index === firstText
+              ? entry.entry_key
+              : undefined,
           at,
           node: (
             <TurnText
