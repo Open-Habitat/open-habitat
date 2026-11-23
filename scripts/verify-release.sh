@@ -66,6 +66,12 @@ allowed = {'bin/open-habitat', 'bin/runtime-release', 'bin/open-habitat-mcp-rela
            'sysusers.d/open-habitat.conf', 'tmpfiles.d/open-habitat.conf'}
 if any(not (name in allowed or name.startswith('web/')) for name in actual):
     sys.exit('error: package contains unreviewed files outside web assets')
+# Pin a canonical template alphabet before parsing: Python's Unicode whitespace
+# and line splitting must not hide bytes that systemd interprets differently.
+for name in actual:
+    if name.startswith(('systemd/', 'sysusers.d/', 'tmpfiles.d/')):
+        if any(b != 0x0a and not 0x20 <= b <= 0x7e for b in (root / name).read_bytes()):
+            sys.exit('error: packaged template contains noncanonical bytes: ' + name)
 for name, digest in expected.items():
     if hashlib.sha256((root / name).read_bytes()).hexdigest() != digest:
         sys.exit('error: package checksum mismatch: ' + name)
@@ -320,11 +326,17 @@ if set(service) != {'Type','User','Group','ExecStart','NoNewPrivileges','Protect
     sys.exit('error: broker service directive inventory differs')
 for values, expected in [(socket, {'Service':'open-habitat-broker.service'}), (service, {
     'Type':'simple','NoNewPrivileges':'yes','ProtectSystem':'strict','ProtectHome':'no',
-    'ReadWritePaths':'/etc /var/lib/open-habitat /home /run/open-habitat /opt/open-habitat',
-    'PrivateTmp':'yes','PrivateDevices':'yes','UMask':'0077'})]:
+    'PrivateTmp':'no','PrivateDevices':'yes','UMask':'0077'})]:
     for key, value in expected.items():
         if values.get(key) != [value]:
             sys.exit(f'error: packaged broker {key} differs or duplicates')
+# The two additive entries separate provisioning from person-removal cleanup.
+# Pin the ordered list: resets, duplicates and extra writable paths must fail.
+if service.get('ReadWritePaths') != [
+    '/etc /var/lib/open-habitat /home /run/open-habitat /opt/open-habitat',
+    '/tmp /var/tmp -/var/spool/cron -/var/mail -/var/log/journal -/run/log/journal',
+]:
+    sys.exit('error: packaged broker ReadWritePaths differs or duplicates')
 PY
 if find "$root/web" -type f -name '*.map' | grep -q . || grep -R -E 'Synthetic-lab-fixture|Deterministinen testi: daemon|VITE_ENABLE_TEST_FIXTURES' "$root/web" >/dev/null;then echo 'error: test fixture content, control or source map in packaged web assets' >&2;exit 1;fi
 case $(uname -m) in x86_64) host=amd64;; aarch64) host=arm64;; *) host=;; esac

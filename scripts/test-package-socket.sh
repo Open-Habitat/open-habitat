@@ -27,15 +27,33 @@ for mode in 0711 0755 duplicate; do
 done
 # Even a re-signed archive must not hide a second effective systemd directive
 # behind whitespace around '=' (accepted by systemd.syntax).
-for mode in broker-listen broker-user; do
+for mode in broker-listen broker-user broker-paths-missing broker-paths-extra broker-paths-reset broker-paths-duplicate broker-paths-reversed broker-paths-required broker-tmp-private broker-tmp-duplicate; do
   mkdir -p "$tmp/$mode/stage"
   tar --same-permissions -xzf "$archive" -C "$tmp/$mode/stage"
   root=$(find "$tmp/$mode/stage" -mindepth 1 -maxdepth 1 -type d)
-  if [[ $mode == broker-listen ]]; then
-    sed -i '/^ListenStream=\/run\/open-habitat\/broker.sock$/a ListenStream = 0.0.0.0:9999' "$root/systemd/open-habitat-broker.socket"
-  else
-    sed -i '/^User=root$/a User = nobody' "$root/systemd/open-habitat-broker.service"
-  fi
+  service="$root/systemd/open-habitat-broker.service"
+  case $mode in
+    broker-listen) sed -i '/^ListenStream=\/run\/open-habitat\/broker.sock$/a ListenStream = 0.0.0.0:9999' "$root/systemd/open-habitat-broker.socket" ;;
+    broker-user) sed -i '/^User=root$/a User = nobody' "$service" ;;
+    broker-paths-missing) sed -i '\@^ReadWritePaths=/tmp @d' "$service" ;;
+    broker-paths-extra) sed -i '\@^ReadWritePaths=/tmp @s@$@ /srv@' "$service" ;;
+    broker-paths-reset) sed -i '/^ReadWritePaths=/a ReadWritePaths =' "$service" ;;
+    broker-paths-duplicate) sed -i '/^ReadWritePaths=/p' "$service" ;;
+    broker-paths-reversed)
+      python3 - "$service" <<'PY'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
+lines = p.read_text().splitlines()
+indices = [i for i, line in enumerate(lines) if line.startswith('ReadWritePaths=')]
+assert len(indices) == 2
+lines[indices[0]], lines[indices[1]] = lines[indices[1]], lines[indices[0]]
+p.write_text('\n'.join(lines) + '\n')
+PY
+      ;;
+    broker-paths-required) sed -i 's@-/var/mail@/var/mail@' "$service" ;;
+    broker-tmp-private) sed -i 's/^PrivateTmp=no$/PrivateTmp=yes/' "$service" ;;
+    broker-tmp-duplicate) sed -i '/^PrivateTmp=no$/a PrivateTmp = no' "$service" ;;
+  esac
   (cd "$root"; find . -type f ! -name MANIFEST.sha256 -print0 | sort -z | xargs -0 sha256sum > MANIFEST.sha256)
   tar -czf "$tmp/$mode/unsafe.tar.gz" -C "$tmp/$mode/stage" "$(basename "$root")"
   (cd "$tmp/$mode"; sha256sum unsafe.tar.gz > unsafe.tar.gz.sha256)
@@ -43,6 +61,30 @@ for mode in broker-listen broker-user; do
     echo "error: verifier accepted $mode" >&2; exit 1
   fi
   grep -q 'differs or duplicates' "$tmp/$mode/err" || { cat "$tmp/$mode/err" >&2; exit 1; }
+done
+# Noncanonical whitespace and line separators must not be normalized away by
+# Python while the unit manager reads different effective directives.
+for mode in broker-nbsp broker-nul; do
+  mkdir -p "$tmp/$mode/stage"
+  tar --same-permissions -xzf "$archive" -C "$tmp/$mode/stage"
+  root=$(find "$tmp/$mode/stage" -mindepth 1 -maxdepth 1 -type d)
+  python3 - "$root/systemd/open-habitat-broker.service" "$mode" <<'PY'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
+data = p.read_bytes()
+old, new = ((b'ProtectSystem=strict\n', b'ProtectSystem=strict\xc2\xa0\n')
+            if sys.argv[2] == 'broker-nbsp' else
+            (b'UMask=0077\n', b'# note\x00ExecStartPre=/bin/true\nUMask=0077\n'))
+assert data.count(old) == 1
+p.write_bytes(data.replace(old, new))
+PY
+  (cd "$root"; find . -type f ! -name MANIFEST.sha256 -print0 | sort -z | xargs -0 sha256sum > MANIFEST.sha256)
+  tar -czf "$tmp/$mode/unsafe.tar.gz" -C "$tmp/$mode/stage" "$(basename "$root")"
+  (cd "$tmp/$mode"; sha256sum unsafe.tar.gz > unsafe.tar.gz.sha256)
+  if "$repo/scripts/verify-release.sh" --archive "$tmp/$mode/unsafe.tar.gz" --json >"$tmp/$mode/out" 2>"$tmp/$mode/err"; then
+    echo "error: verifier accepted $mode" >&2; exit 1
+  fi
+  grep -q 'packaged template contains noncanonical bytes' "$tmp/$mode/err" || { cat "$tmp/$mode/err" >&2; exit 1; }
 done
 # Re-signed malicious inventories and continuation lines must also fail.
 for mode in storage-rate-limited binding-rate-limited binding-default-deps binding-cached binding-skipped binding-unordered storage-cached storage-skipped storage-private storage-unguarded extra-file omitted-manifest broker-continuation broker-prestart broker-failure-action proc-visible proc-private proc-exempt proc-members proc-unordered agent-mode agent-route agent-unordered guest-mode guest-group guest-route guest-unordered tmp-shared tmp-public tmp-unaged; do
