@@ -252,6 +252,7 @@ export function useConversationActions({
     token: string,
     choice: typeof firstChoice,
     report: boolean,
+    replyTo?: string,
   ) => {
     try {
       ownWrites.begin(command);
@@ -264,7 +265,7 @@ export function useConversationActions({
       });
       onSent({ command, text, before: userKeys(entries) });
       setReceipt(txt.awaitingAck);
-      await send(agent, text, command, token, choice);
+      await send(agent, text, command, token, choice, replyTo);
       answered(command);
       if (report) onSendOutcome?.("accepted");
       if (!alive.current) return;
@@ -336,10 +337,12 @@ export function useConversationActions({
   // not typed in the field (the editor's note) keeps the draft.
   // A message that waited for an AI sign-in brings its own command ID
   // (aiSignIn.ts). Resolves false when the view could not send it now.
+  // replyTo: the agent message this one answers (reply-to-message).
   const submit = async (
     text = draft,
     keepDraft = false,
     commandId?: string,
+    replyTo?: string,
   ): Promise<boolean> => {
     if (
       busy ||
@@ -364,13 +367,22 @@ export function useConversationActions({
     markSent();
     if (!keepDraft) changeDraft("");
     onSendOutcome?.("pending");
-    await post(current.agent_id, command, text, csrf, firstChoice, true);
+    await post(
+      current.agent_id,
+      command,
+      text,
+      csrf,
+      firstChoice,
+      true,
+      replyTo,
+    );
     return true;
   };
   const submitQueue = async (
     kind: "steer" | "follow_up",
     text = draft,
     keepDraft = false,
+    replyTo?: string,
   ) => {
     if (
       busy ||
@@ -406,7 +418,7 @@ export function useConversationActions({
       if (!keepDraft) changeDraft("");
       setReceipt(txt.awaitingAck);
       onSendOutcome?.("pending");
-      await queueMessage(current.agent_id, text, command, token, kind);
+      await queueMessage(current.agent_id, text, command, token, kind, replyTo);
       answered(command);
       onSendOutcome?.("accepted");
       if (alive.current) await refresh();

@@ -16,6 +16,7 @@ import {
   InterimMessage,
 } from "./Conversation";
 import { Markdown } from "./Markdown";
+import { ReplyCornerButton } from "./ReplyQuote";
 import { StatusMark } from "./Status";
 
 const txt = liveText(agentTurnText);
@@ -140,6 +141,9 @@ export type TurnStep = (
       text: string;
       /** Native text exists beyond the bounded history preview. */
       readable?: boolean;
+      /** The saved agent message a reply can answer: set on its first text
+       * (reply-to-message). A streamed text has none yet. */
+      replyEntry?: string;
     }
 ) & {
   /** When native history saved the step's entry, in epoch milliseconds. */
@@ -265,6 +269,21 @@ function StageReply({
   role: "interim" | "final" | "streaming" | "failed";
 }) {
   const copy = () => void navigator.clipboard?.writeText(step.text);
+  // Only a finished message is answered: a streamed one has no saved text.
+  const actions =
+    step.replyEntry && (role === "final" || role === "interim") ? (
+      <ReplyCornerButton
+        entryKey={step.replyEntry}
+        time={
+          step.at === undefined
+            ? undefined
+            : formatDate(new Date(step.at), {
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+        }
+      />
+    ) : undefined;
   return (
     <div
       data-reply-kind={role}
@@ -273,7 +292,9 @@ function StageReply({
       className={`ah-turn-reply${role === "interim" ? " ah-turn-interim" : ""}`}
     >
       {role === "interim" ? (
-        <InterimMessage onCopy={copy}>{step.node}</InterimMessage>
+        <InterimMessage onCopy={copy} actions={actions}>
+          {step.node}
+        </InterimMessage>
       ) : (
         <AssistantMessage
           streamState={
@@ -284,6 +305,7 @@ function StageReply({
                 : "streaming"
           }
           onCopy={copy}
+          actions={actions}
         >
           {step.node}
         </AssistantMessage>

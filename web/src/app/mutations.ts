@@ -332,6 +332,7 @@ const messageContentRefusals = new Set([
   "attachments_too_large",
   "invalid_attachments",
   "message_too_long",
+  "reply_target_gone",
 ]);
 export const messageContentRefused = (code: string | undefined) =>
   !!code && messageContentRefusals.has(code);
@@ -404,6 +405,8 @@ export function refusalReason(code: string, status = 409): string {
       return txt.workspaceUncertain;
     case "read_only_history":
       return txt.readOnly;
+    case "reply_target_gone":
+      return txt.replyTargetGone;
     case "history_damaged":
     case "quota_full":
     case "storage_full":

@@ -213,6 +213,7 @@ function Message({
 export function UserMessage({
   sourceText,
   skill,
+  quote,
   children,
   time,
   deliveryState,
@@ -224,6 +225,8 @@ export function UserMessage({
 }: {
   sourceText: string;
   actions?: ReactNode;
+  /** The agent message this one answers (reply-to-message). */
+  quote?: ReactNode;
   waiting?: "waiting" | "failed";
   delivery?: "pending" | "accepted";
   skill?: ReactNode;
@@ -269,6 +272,7 @@ export function UserMessage({
       onCopy={onCopy}
       actions={actions}
     >
+      {quote}
       {skill}
       <div
         ref={body}
@@ -303,7 +307,10 @@ export function AssistantMessage({
   time,
   streamState,
   onCopy,
+  actions,
 }: {
+  /** The card's own actions in its top-right corner (the reply control). */
+  actions?: ReactNode;
   sourceText?: string;
   children: ReactNode;
   time?: string;
@@ -348,6 +355,7 @@ export function AssistantMessage({
                 : "neutral"
       }
       onCopy={onCopy}
+      actions={actions}
     >
       {children}
     </Message>
@@ -360,12 +368,14 @@ export function AssistantMessage({
 export function InterimMessage({
   children,
   onCopy,
+  actions,
 }: {
   children: ReactNode;
   onCopy: () => void;
+  actions?: ReactNode;
 }) {
   return (
-    <Message speaker={txt.interim} interim onCopy={onCopy}>
+    <Message speaker={txt.interim} interim onCopy={onCopy} actions={actions}>
       {children}
     </Message>
   );

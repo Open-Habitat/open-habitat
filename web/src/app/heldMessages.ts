@@ -37,6 +37,8 @@ export type LocalHeld = {
   preexisting?: string[];
   /** The first message's model intent for a still-empty new conversation. */
   choice?: { provider?: string; model: string; thinking?: string };
+  /** The agent message it answers (reply-to-message, experimental). */
+  reply_to?: string;
 };
 
 export type WaitingView = {
@@ -219,7 +221,14 @@ export function useHeldMessages({
         );
         inFlight.current.add(next.command_id);
         try {
-          await send(agent, next.text, next.command_id, token, next.choice);
+          await send(
+            agent,
+            next.text,
+            next.command_id,
+            token,
+            next.choice,
+            next.reply_to,
+          );
           ownSends.current.get(next.command_id)?.("accepted");
         } catch (error) {
           ownSends.current.get(next.command_id)?.("failed");
@@ -258,6 +267,7 @@ export function useHeldMessages({
       choice?: LocalHeld["choice"],
       keepDraft = false,
       commandId?: string,
+      replyTo?: string,
     ) => {
       if (!text.trim()) return;
       const entry: LocalHeld = {
@@ -268,6 +278,7 @@ export function useHeldMessages({
           .filter((e) => e.kind === "user" && e.content?.text?.includes(text))
           .map((e) => e.entry_key),
         ...(choice && !readHeld(key).length ? { choice } : {}),
+        ...(replyTo ? { reply_to: replyTo } : {}),
       };
       if (onSendOutcome) {
         onSendOutcome("pending");

@@ -894,6 +894,8 @@ export async function send(
   commandId: string,
   csrf: string,
   choice?: { provider?: string; model: string; thinking?: string },
+  /** The agent message this one answers (reply-to-message, experimental). */
+  replyTo?: string,
 ): Promise<"pending" | "held"> {
   if (
     !message ||
@@ -908,6 +910,7 @@ export async function send(
       message,
       command_id: commandId,
       ...(choice ? { first_choice: choice } : {}),
+      ...(replyTo ? { reply_to: { entry_key: replyTo } } : {}),
     },
     csrf,
   );
@@ -1149,6 +1152,7 @@ export async function queueMessage(
   commandId: string,
   csrf: string,
   kind: "steer" | "follow_up",
+  replyTo?: string,
 ) {
   if (
     !message ||
@@ -1159,7 +1163,11 @@ export async function queueMessage(
   const v = await request(
     `${path(id)}/${kind}`,
     undefined,
-    { message, command_id: commandId },
+    {
+      message,
+      command_id: commandId,
+      ...(replyTo ? { reply_to: { entry_key: replyTo } } : {}),
+    },
     csrf,
   );
   if (

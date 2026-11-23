@@ -15,6 +15,7 @@ const features = [
   "sounds-active-device",
   "rail-state-motion",
   "workspace-header-c2a",
+  "reply-to-message",
 ];
 const retired = [
   "agent-instructions",

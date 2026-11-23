@@ -48,6 +48,9 @@ export interface HistoryBlock {
 }
 export interface HistoryEntry {
   skill?: { name: string; description?: string };
+  /** The agent message this message of the person's answers, and the
+   * excerpt the agent received with it (reply-to-message, experimental). */
+  reply_to?: { entry_key: string; excerpt: string };
   notice?: AgentNotice;
   restart?: RestartNotice;
   wait_reminder?: WaitReminder;

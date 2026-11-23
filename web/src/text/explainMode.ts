@@ -1078,6 +1078,22 @@ const fi = {
       know: "Rivi tiedetään, kun vuoro luki tiedoston ennen muutosta. Muuten tiedosto avautuu alusta.",
       try: "Avaa editorissa",
     },
+    K33: {
+      name: "Vastaa tähän viestiin",
+      lead: "Aloittaa vastauksen juuri tähän agentin viestiin. Lainaus tulee kirjoituskenttään.",
+      know: "Agentti saa viestisi mukana viestin ensimmäisen virkkeen, enintään 160 merkkiä, ja tietää siitä, mihin vastaat. Uusi painallus vaihtaa lainauksen.",
+      try: "Vastaa",
+    },
+    K34: {
+      name: "Lainaus",
+      lead: "Agentin viesti, johon vastaat tai vastasit. Napautus vie viestiin ja korostaa sen hetkeksi.",
+      know: "Lainauksessa näkyy sama ote, jonka agentti saa.",
+    },
+    K35: {
+      name: "Poista lainaus",
+      lead: "Poistaa lainauksen kentästä. Kirjoittamasi teksti jää.",
+      try: "Poista",
+    },
     V33: {
       name: "Muut ilmoitukset",
       lead: "Näyttää myös keskustelun ja luonnoksen muut ilmoitukset.",
@@ -3133,6 +3149,22 @@ export const explainModeText = catalog(fi, {
       lead: "Opens the file in the editor beside the conversation at its first changed line.",
       know: "The line is known when the turn read the file before changing it. Otherwise the file opens at the top.",
       try: "Open in editor",
+    },
+    K33: {
+      name: "Reply to this message",
+      lead: "Starts a reply to exactly this agent message. A quote goes into the message field.",
+      know: "With your message the agent gets the message's first sentence, at most 160 characters, so it knows what you are answering. Another press changes the quote.",
+      try: "Reply",
+    },
+    K34: {
+      name: "Quote",
+      lead: "The agent message you are replying or replied to. Tapping it takes you to the message and highlights it for a moment.",
+      know: "The quote shows the same excerpt the agent gets.",
+    },
+    K35: {
+      name: "Remove quote",
+      lead: "Removes the quote from the field. Your text stays.",
+      try: "Remove",
     },
     V33: {
       name: "More notices",

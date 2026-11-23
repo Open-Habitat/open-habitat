@@ -7,6 +7,7 @@ import {
 } from "react";
 import { SearchBand } from "../components/Switcher";
 import { useText } from "../i18n";
+import { replyQuoteText } from "../text/replyQuote";
 import { switcherText } from "../text/switcher";
 import type { HistoryEntry } from "./history";
 import { daysAgo } from "./switcherModel";
@@ -24,6 +25,9 @@ export interface SearchJump {
   at: string;
   /** Distinguishes two jumps to the same message. */
   serial: number;
+  /** A reply's quote leads to its original (reply-to-message): no band
+   * unless the original cannot be found, and the outline is brief. */
+  kind?: "reply";
 }
 
 let current: SearchJump | undefined;
@@ -36,6 +40,18 @@ const notify = () => {
 export function setSearchJump(jump: Omit<SearchJump, "serial">) {
   current = { ...jump, serial: ++serial };
   notify();
+}
+/** Shows the agent message a reply's quote answers. */
+export function jumpToReply(agentId: string, entryKey: string) {
+  setSearchJump({
+    agentId,
+    entryKey,
+    query: "",
+    terms: [],
+    role: "assistant",
+    at: "",
+    kind: "reply",
+  });
 }
 export function clearSearchJump(agentId?: string) {
   if (!current || (agentId && current.agentId !== agentId)) return;
@@ -214,7 +230,16 @@ export function SearchJumpBand({
   state: JumpState | undefined;
 }) {
   const t = useText(switcherText);
+  const r = useText(replyQuoteText);
   if (!jump) return null;
+  if (jump.kind === "reply")
+    return state === "missing" ? (
+      <SearchBand
+        text={r.missing}
+        closeLabel={t.close}
+        onClose={() => clearSearchJump(jump.agentId)}
+      />
+    ) : null;
   return (
     <SearchBand
       text={

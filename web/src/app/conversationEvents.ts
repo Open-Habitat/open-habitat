@@ -170,6 +170,7 @@ export function applyTurnEvent(
     const entry: HistoryEntry = {
       entry_key: payload.entry_key as string,
       skill: payload.skill as HistoryEntry["skill"],
+      reply_to: payload.reply_to as HistoryEntry["reply_to"],
       notice: payload.notice as HistoryEntry["notice"],
       restart: payload.restart as HistoryEntry["restart"],
       wait_reminder: payload.wait_reminder as HistoryEntry["wait_reminder"],

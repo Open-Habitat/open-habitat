@@ -63,6 +63,11 @@ import {
   useProcessView,
 } from "../components/ProcessTray";
 import { RecapCard, useMinuteNow } from "../components/RecapCard";
+import {
+  ComposerQuote,
+  ReplyContext,
+  type ReplyControl,
+} from "../components/ReplyQuote";
 import { RestCard } from "../components/RestartNotice";
 import { SpinoffContext } from "../components/Spinoffs";
 import { goalRequest } from "../components/StartHere";
@@ -199,12 +204,19 @@ import { PiQuestion } from "./PiQuestion";
 import { usePermissionQuestion } from "./permissionQuestion";
 import { useBridgeExpected } from "./processWarmup";
 import { useRecapHold, useRecapPresentationHold } from "./recapHold";
+import { replyExcerpt, replyText } from "./replyExcerpt";
 import { useRest } from "./rest";
 import { RewindContext, useRewind } from "./rewindView";
 import { SpinoffProvider } from "./SpinoffConversation";
 import { StartPageRead } from "./StartPageRead";
 import { useStoragePressure } from "./StoragePressure";
-import { SearchJumpBand, useJumpToHit, useSearchJump } from "./searchJump";
+import {
+  clearSearchJump,
+  jumpToReply,
+  SearchJumpBand,
+  useJumpToHit,
+  useSearchJump,
+} from "./searchJump";
 import { useSentMessages, shownQueue as withSentQueue } from "./sentMessages";
 import { latestSettings } from "./sessionSettings";
 import { settingsHref } from "./settingsRoute";
@@ -702,6 +714,13 @@ function BrowserConversationContent({
     feed,
     hold: holdForJump,
   });
+  // A reply quote's original is outlined for a moment, then the view is
+  // the person's own again (reply-to-message).
+  useEffect(() => {
+    if (searchJump?.kind !== "reply" || jumpState !== "shown") return;
+    const timer = setTimeout(() => clearSearchJump(searchJump.agentId), 2000);
+    return () => clearTimeout(timer);
+  }, [searchJump, jumpState]);
   useReturnToPlace({
     id,
     store,
@@ -1096,9 +1115,10 @@ function BrowserConversationContent({
     text = draft,
     keepDraft = false,
     commandId?: string,
+    replyTo?: string,
   ) => {
     held.setNotice("");
-    const sent = await submitDirect(text, keepDraft, commandId);
+    const sent = await submitDirect(text, keepDraft, commandId, replyTo);
     // A held message's lasting outcome notice is over once another send goes.
     if (sent) {
       held.release(text);
@@ -1106,9 +1126,14 @@ function BrowserConversationContent({
     }
     return sent;
   };
-  const submitQueue: typeof submitQueueDirect = (kind, text, keepDraft) => {
+  const submitQueue: typeof submitQueueDirect = (
+    kind,
+    text,
+    keepDraft,
+    replyTo,
+  ) => {
     held.setNotice("");
-    return submitQueueDirect(kind, text, keepDraft);
+    return submitQueueDirect(kind, text, keepDraft, replyTo);
   };
   const sendHeld: typeof held.submit = (text, ...rest) => {
     releaseUnknown(text);
@@ -1133,6 +1158,26 @@ function BrowserConversationContent({
   // Pi is not running: a send is held by the daemon and starts Pi. A previous
   // uncertain send does not block a new message then; it is never resent.
   const notStarted = piNotRunning(current?.state);
+  // Replying to one agent message (reply-to-message, experimental): the
+  // message the field's quote answers, for this conversation only. The next
+  // message sent takes it; a slash command goes without it, since Pi reads
+  // one only at the start of the text.
+  const replyOn = useExperimentalFeature("reply-to-message");
+  const [replyTarget, setReplyTarget] = useState<{
+    agent: string;
+    key: string;
+    excerpt: string;
+    time?: string;
+  }>();
+  const replyNow =
+    replyOn && replyTarget && replyTarget.agent === id
+      ? replyTarget
+      : undefined;
+  const takeReply = (text: string) => {
+    if (!replyNow || text.startsWith("/")) return undefined;
+    setReplyTarget(undefined);
+    return replyNow.key;
+  };
   // Habitat's card of a rest, and the wake the person's typing starts.
   const rest = useRest({
     id,
@@ -1465,6 +1510,9 @@ function BrowserConversationContent({
     });
   const keep = (text: string, mode?: "steer" | "follow_up") => {
     if (!text.trim()) return;
+    // A message kept until the view can send goes as plain text: the quote
+    // is not kept with it (reply-to-message).
+    setReplyTarget(undefined);
     setKept((items) => [...items, { id: crypto.randomUUID(), text, mode }]);
     changeDraft("");
   };
@@ -2114,6 +2162,42 @@ function BrowserConversationContent({
   // The conversation says when the agent compacts and why it did not.
   const compactionState = compactionNotice(compaction, live?.fragments);
   const rewindOn = useExperimentalFeature("rewind-conversation");
+  const replyControls = useMemo<ReplyControl>(
+    () => ({
+      active: replyNow?.key,
+      onReply:
+        replyOn && controlled
+          ? (key) => {
+              const entry = entries.find((e) => e.entry_key === key);
+              const excerpt = entry && replyExcerpt(replyText(entry));
+              if (!id || !entry || !excerpt) return;
+              const at = entry.timestamp ? Date.parse(entry.timestamp) : NaN;
+              setReplyTarget({
+                agent: id,
+                key,
+                excerpt,
+                time: Number.isNaN(at)
+                  ? undefined
+                  : formatDate(new Date(at), {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    }),
+              });
+              requestAnimationFrame(() =>
+                document
+                  .querySelector<HTMLTextAreaElement>(
+                    '[data-testid="message-input"]',
+                  )
+                  ?.focus(),
+              );
+            }
+          : undefined,
+      onJump: (key) => {
+        if (id) jumpToReply(id, key);
+      },
+    }),
+    [replyNow?.key, replyOn, controlled, entries, id],
+  );
   // Other people in this conversation (ADR 0038, experimental): the owner's
   // record and the daemon's facts, read again whenever history moves.
   const multiplayerOn = useExperimentalFeature("multiplayer");
@@ -2414,20 +2498,26 @@ function BrowserConversationContent({
               // A new conversation's first message carries the model
               // chosen in its field, as a direct first send does.
               if (canSend)
-                sendHeld(text, canChooseFirstModel ? modelChoice : undefined);
-            } else void submit(text);
+                sendHeld(
+                  text,
+                  canChooseFirstModel ? modelChoice : undefined,
+                  false,
+                  undefined,
+                  takeReply(text),
+                );
+            } else void submit(text, false, undefined, takeReply(text));
           },
           onSteer: (text = draft) => {
             if (keeps) return keep(text, "steer");
             if (text !== draft) changeDraft(text);
             if (draft.trim()) dismissRecapOnSend();
-            void submitQueue("steer", text);
+            void submitQueue("steer", text, false, takeReply(text));
           },
           onFollowUp: (text = draft) => {
             if (keeps) return keep(text, "follow_up");
             if (text !== draft) changeDraft(text);
             if (draft.trim()) dismissRecapOnSend();
-            void submitQueue("follow_up", text);
+            void submitQueue("follow_up", text, false, takeReply(text));
           },
           onModeChange: setWorkingMode,
           onInterrupt:
@@ -3037,347 +3127,353 @@ function BrowserConversationContent({
             )}
             <TurnChangesRoot.Provider value={workspace.path}>
               <RewindContext.Provider value={rewind.controls}>
-                <ConversationTimeline
-                  suppressProblem
-                  problem={{
-                    title: txt.historyUnavailable,
-                    description: txt.historyUnavailableDetail,
-                  }}
-                  emptyLabel={
-                    creating && creation ? (
-                      <CreationEmpty
-                        workspace={workspace}
-                        creation={creation}
-                        waiting={held.waiting}
-                        draft={draft}
-                        guide={guide ?? ""}
-                        snapshot={recoverySnapshot}
-                        csrf={csrf}
-                        onChange={changeDraft}
-                        onPage={(read) =>
-                          setStartPage({ key: pageKey, page: read })
-                        }
-                        onGiveBack={creationView.giveBack}
-                        onSend={(text) => {
-                          if (creationBlock(creation)) return false;
-                          composer.onSendNow?.(text);
-                          return true;
-                        }}
-                      />
-                    ) : view === "loading" ? (
-                      problem ? null : (
-                        <LoadingNotice />
-                      )
-                    ) : controlled ? (
-                      <StartPageRead
-                        key={`${identity}:${runWorkspace}:${current?.agent_id ?? ""}`}
-                        workspaceId={runWorkspace}
-                        agentId={current?.agent_id}
-                        store={store}
-                        draft={draft}
-                        onChange={changeDraft}
-                        onPage={(read) =>
-                          setStartPage({ key: pageKey, page: read })
-                        }
-                        onStarted={(started, title, prepared, immediate) => {
-                          // A goal names the conversation it starts, until the
-                          // person renames it.
-                          const name = goalConversationName(started);
-                          if (current?.agent_id && csrf && name)
-                            void renameConversation(
-                              current.agent_id,
-                              workspace.workspace_id,
-                              name,
-                              csrf,
-                            ).catch(() => {
-                              /* The automatic title then stands. */
-                            });
-                          const sending =
-                            immediate && (canSend || sendWhenReady);
-                          if (sending) composer.onSendNow?.(prepared.text);
-                          if (!guide) return sending;
-                          prepareField(guide, {
-                            text: prepared.text,
-                            start: prepared.selectionStart,
-                            end: prepared.selectionEnd,
-                          });
-                          setGuide(guide, {
-                            goal: started,
-                            page: title,
-                            open: guideOpensItself(),
-                          });
-                          return sending;
-                        }}
-                      />
-                    ) : undefined
-                  }
-                  state={
-                    visibleHistoryError
-                      ? entries.length
-                        ? "stale"
-                        : "error"
-                      : // A live turn ends the start page even before its
-                        // native history is read; otherwise the intro would stay
-                        // above it and keep the view from following the work.
-                        entries.length ||
-                          held.waiting.length ||
-                          keptItems.length ||
-                          liveRow ||
-                          ownMessage
-                        ? "ready"
-                        : "empty"
-                  }
-                  items={[
-                    ...(sharedOwner.facts && id
-                      ? withWaitingCards(
-                          timeline,
-                          sharedOwner.facts.waiting_requests,
-                          (request) => (
-                            <WaitingCard
-                              key={request.request}
-                              agentId={id}
-                              csrf={csrf}
-                              request={request}
-                              onDone={() => void sharedOwner.refresh()}
-                            />
-                          ),
-                        )
-                      : timeline),
-                    ...takeBackOffers.offers.map((offer) => ({
-                      id: `take-back:${offer.take.subject}`,
-                      kind: "question" as const,
-                      content: (
-                        <TakeBackCard
-                          offer={offer}
-                          known={takeBackOffers.known}
-                          left={takeBackOffers.isLeft(offer)}
-                          onLeave={() =>
-                            takeBackOffers.setLeft(offer.take.subject, true)
+                <ReplyContext.Provider value={replyControls}>
+                  <ConversationTimeline
+                    suppressProblem
+                    problem={{
+                      title: txt.historyUnavailable,
+                      description: txt.historyUnavailableDetail,
+                    }}
+                    emptyLabel={
+                      creating && creation ? (
+                        <CreationEmpty
+                          workspace={workspace}
+                          creation={creation}
+                          waiting={held.waiting}
+                          draft={draft}
+                          guide={guide ?? ""}
+                          snapshot={recoverySnapshot}
+                          csrf={csrf}
+                          onChange={changeDraft}
+                          onPage={(read) =>
+                            setStartPage({ key: pageKey, page: read })
                           }
-                          onReopen={() =>
-                            takeBackOffers.setLeft(offer.take.subject, false)
-                          }
-                          running={!!current?.run_active}
-                          turn={sharedOwner.facts?.turn}
-                          onStopRun={composer.onInterrupt}
-                          onClose={() =>
-                            sharedOwner.dismissTakeBack(offer.take.subject)
-                          }
+                          onGiveBack={creationView.giveBack}
+                          onSend={(text) => {
+                            if (creationBlock(creation)) return false;
+                            composer.onSendNow?.(text);
+                            return true;
+                          }}
                         />
-                      ),
-                    })),
-                    ...(restCard
-                      ? [
-                          {
-                            id: "rest-card",
-                            kind: "receipt",
-                            content: restCard,
-                          },
-                        ]
-                      : []),
-                    ...(ownMessage &&
-                    !matchedMessages.has(`sent:${ownMessage.command}`)
-                      ? [
-                          {
-                            id: `sent:${ownMessage.command}`,
-                            kind: "user",
-                            content: pendingEntry(
-                              `sent:${ownMessage.command}`,
-                              ownMessage.text,
-                              {
-                                delivery: ownMessage.pending
-                                  ? "pending"
-                                  : "accepted",
-                                label: ownMessage.pending
-                                  ? txt.sending
-                                  : undefined,
-                              },
+                      ) : view === "loading" ? (
+                        problem ? null : (
+                          <LoadingNotice />
+                        )
+                      ) : controlled ? (
+                        <StartPageRead
+                          key={`${identity}:${runWorkspace}:${current?.agent_id ?? ""}`}
+                          workspaceId={runWorkspace}
+                          agentId={current?.agent_id}
+                          store={store}
+                          draft={draft}
+                          onChange={changeDraft}
+                          onPage={(read) =>
+                            setStartPage({ key: pageKey, page: read })
+                          }
+                          onStarted={(started, title, prepared, immediate) => {
+                            // A goal names the conversation it starts, until the
+                            // person renames it.
+                            const name = goalConversationName(started);
+                            if (current?.agent_id && csrf && name)
+                              void renameConversation(
+                                current.agent_id,
+                                workspace.workspace_id,
+                                name,
+                                csrf,
+                              ).catch(() => {
+                                /* The automatic title then stands. */
+                              });
+                            const sending =
+                              immediate && (canSend || sendWhenReady);
+                            if (sending) composer.onSendNow?.(prepared.text);
+                            if (!guide) return sending;
+                            prepareField(guide, {
+                              text: prepared.text,
+                              start: prepared.selectionStart,
+                              end: prepared.selectionEnd,
+                            });
+                            setGuide(guide, {
+                              goal: started,
+                              page: title,
+                              open: guideOpensItself(),
+                            });
+                            return sending;
+                          }}
+                        />
+                      ) : undefined
+                    }
+                    state={
+                      visibleHistoryError
+                        ? entries.length
+                          ? "stale"
+                          : "error"
+                        : // A live turn ends the start page even before its
+                          // native history is read; otherwise the intro would stay
+                          // above it and keep the view from following the work.
+                          entries.length ||
+                            held.waiting.length ||
+                            keptItems.length ||
+                            liveRow ||
+                            ownMessage
+                          ? "ready"
+                          : "empty"
+                    }
+                    items={[
+                      ...(sharedOwner.facts && id
+                        ? withWaitingCards(
+                            timeline,
+                            sharedOwner.facts.waiting_requests,
+                            (request) => (
+                              <WaitingCard
+                                key={request.request}
+                                agentId={id}
+                                csrf={csrf}
+                                request={request}
+                                onDone={() => void sharedOwner.refresh()}
+                              />
                             ),
-                          },
-                        ]
-                      : sendObservation &&
-                          // The bubble or the queue card shows a message on its
-                          // way; a reload knows only that one is. An unknown
-                          // outcome is the one warning above the composer, and
-                          // its text is back in the field.
-                          sendObservation.state !== "uncertain" &&
-                          !(
-                            sendObservation.kind &&
-                            sendObservation.state === "pending"
                           )
+                        : timeline),
+                      ...takeBackOffers.offers.map((offer) => ({
+                        id: `take-back:${offer.take.subject}`,
+                        kind: "question" as const,
+                        content: (
+                          <TakeBackCard
+                            offer={offer}
+                            known={takeBackOffers.known}
+                            left={takeBackOffers.isLeft(offer)}
+                            onLeave={() =>
+                              takeBackOffers.setLeft(offer.take.subject, true)
+                            }
+                            onReopen={() =>
+                              takeBackOffers.setLeft(offer.take.subject, false)
+                            }
+                            running={!!current?.run_active}
+                            turn={sharedOwner.facts?.turn}
+                            onStopRun={composer.onInterrupt}
+                            onClose={() =>
+                              sharedOwner.dismissTakeBack(offer.take.subject)
+                            }
+                          />
+                        ),
+                      })),
+                      ...(restCard
                         ? [
                             {
-                              id: "send-observation",
+                              id: "rest-card",
+                              kind: "receipt",
+                              content: restCard,
+                            },
+                          ]
+                        : []),
+                      ...(ownMessage &&
+                      !matchedMessages.has(`sent:${ownMessage.command}`)
+                        ? [
+                            {
+                              id: `sent:${ownMessage.command}`,
+                              kind: "user",
+                              content: pendingEntry(
+                                `sent:${ownMessage.command}`,
+                                ownMessage.text,
+                                {
+                                  delivery: ownMessage.pending
+                                    ? "pending"
+                                    : "accepted",
+                                  label: ownMessage.pending
+                                    ? txt.sending
+                                    : undefined,
+                                },
+                              ),
+                            },
+                          ]
+                        : sendObservation &&
+                            // The bubble or the queue card shows a message on its
+                            // way; a reload knows only that one is. An unknown
+                            // outcome is the one warning above the composer, and
+                            // its text is back in the field.
+                            sendObservation.state !== "uncertain" &&
+                            !(
+                              sendObservation.kind &&
+                              sendObservation.state === "pending"
+                            )
+                          ? [
+                              {
+                                id: "send-observation",
+                                kind: "receipt",
+                                content: (
+                                  <SendObservation
+                                    text={sendObservation.text}
+                                    state={sendObservation.state}
+                                    showText
+                                    onCopy={() =>
+                                      void navigator.clipboard?.writeText(
+                                        sendObservation.text,
+                                      )
+                                    }
+                                  />
+                                ),
+                              },
+                            ]
+                          : []),
+                      ...held.waiting
+                        .filter(
+                          (w) => !matchedMessages.has(`held:${w.command_id}`),
+                        )
+                        .map((w) => ({
+                          id: `held:${w.command_id}`,
+                          kind: "user",
+                          content: pendingEntry(
+                            `held:${w.command_id}`,
+                            w.text,
+                            {
+                              waiting: creation?.problem ? "failed" : w.state,
+                            },
+                          ),
+                        })),
+                      ...keptItems.map((k) => ({
+                        id: `kept:${k.id}`,
+                        kind: "user",
+                        content: (
+                          <WaitingMessage
+                            text={k.text}
+                            state="waiting"
+                            onCopy={() =>
+                              void navigator.clipboard?.writeText(k.text)
+                            }
+                          />
+                        ),
+                      })),
+                      ...(startFailed
+                        ? [
+                            {
+                              id: "held-start-failure",
                               kind: "receipt",
                               content: (
-                                <SendObservation
-                                  text={sendObservation.text}
-                                  state={sendObservation.state}
-                                  showText
-                                  onCopy={() =>
-                                    void navigator.clipboard?.writeText(
-                                      sendObservation.text,
-                                    )
-                                  }
+                                <HeldStartFailure
+                                  count={held.waiting.length}
+                                  reason={startProblemReason(
+                                    current?.start_problem,
+                                  )}
+                                  onRetry={() => void held.retry()}
+                                  onEdit={() => void held.cancel()}
                                 />
                               ),
                             },
                           ]
                         : []),
-                    ...held.waiting
-                      .filter(
-                        (w) => !matchedMessages.has(`held:${w.command_id}`),
-                      )
-                      .map((w) => ({
-                        id: `held:${w.command_id}`,
-                        kind: "user",
-                        content: pendingEntry(`held:${w.command_id}`, w.text, {
-                          waiting: creation?.problem ? "failed" : w.state,
-                        }),
+                      ...permission.lines.map((line) => ({
+                        id: `permission:${line.requestId}`,
+                        kind: "question",
+                        content: (
+                          <PermissionLine
+                            action={line.action}
+                            decision={line.decision}
+                          />
+                        ),
                       })),
-                    ...keptItems.map((k) => ({
-                      id: `kept:${k.id}`,
-                      kind: "user",
-                      content: (
-                        <WaitingMessage
-                          text={k.text}
-                          state="waiting"
-                          onCopy={() =>
-                            void navigator.clipboard?.writeText(k.text)
-                          }
-                        />
-                      ),
-                    })),
-                    ...(startFailed
-                      ? [
-                          {
-                            id: "held-start-failure",
-                            kind: "receipt",
-                            content: (
-                              <HeldStartFailure
-                                count={held.waiting.length}
-                                reason={startProblemReason(
-                                  current?.start_problem,
-                                )}
-                                onRetry={() => void held.retry()}
-                                onEdit={() => void held.cancel()}
-                              />
-                            ),
-                          },
-                        ]
-                      : []),
-                    ...permission.lines.map((line) => ({
-                      id: `permission:${line.requestId}`,
-                      kind: "question",
-                      content: (
-                        <PermissionLine
-                          action={line.action}
-                          decision={line.decision}
-                        />
-                      ),
-                    })),
-                    ...(!statusStale &&
-                    current?.pending_question &&
-                    current.pending_question.question_kind !== "permission"
-                      ? [
-                          {
-                            id: `question:${current.pending_question.request_id}`,
-                            kind: "question",
-                            content:
-                              current.pending_question.question_kind ===
-                              "approval" ? (
-                                <ApprovalCard
-                                  question={current.pending_question}
-                                  facts={sharedOwner.facts}
-                                  agentId={current.agent_id}
-                                  identity={identity}
-                                  csrf={csrf}
-                                  refresh={refresh}
-                                  onLogin={onLogin}
-                                />
-                              ) : (
-                                <PiQuestion
-                                  question={current.pending_question}
-                                  agentId={current.agent_id}
-                                  identity={identity}
-                                  csrf={csrf}
-                                  refresh={refresh}
-                                  onLogin={onLogin}
-                                  onOutcome={setQuestionOutcome}
+                      ...(!statusStale &&
+                      current?.pending_question &&
+                      current.pending_question.question_kind !== "permission"
+                        ? [
+                            {
+                              id: `question:${current.pending_question.request_id}`,
+                              kind: "question",
+                              content:
+                                current.pending_question.question_kind ===
+                                "approval" ? (
+                                  <ApprovalCard
+                                    question={current.pending_question}
+                                    facts={sharedOwner.facts}
+                                    agentId={current.agent_id}
+                                    identity={identity}
+                                    csrf={csrf}
+                                    refresh={refresh}
+                                    onLogin={onLogin}
+                                  />
+                                ) : (
+                                  <PiQuestion
+                                    question={current.pending_question}
+                                    agentId={current.agent_id}
+                                    identity={identity}
+                                    csrf={csrf}
+                                    refresh={refresh}
+                                    onLogin={onLogin}
+                                    onOutcome={setQuestionOutcome}
+                                  />
+                                ),
+                            },
+                          ]
+                        : []),
+                      ...(showRun && bash
+                        ? [
+                            {
+                              id: `bash:${bash.command_id}`,
+                              kind: "bash",
+                              content: (
+                                <CommandRun
+                                  command={bash.command}
+                                  excludeFromContext={bash.exclude_from_context}
+                                  state={
+                                    bashStopState === "uncertain"
+                                      ? "uncertain"
+                                      : bash.state
+                                  }
+                                  exitCode={bash.exit_code}
+                                  startedAt={
+                                    bash.started_at
+                                      ? Date.parse(bash.started_at)
+                                      : undefined
+                                  }
+                                  output={bashOutput}
+                                  stopping={bashStopState === "pending"}
                                 />
                               ),
-                          },
-                        ]
-                      : []),
-                    ...(showRun && bash
-                      ? [
-                          {
-                            id: `bash:${bash.command_id}`,
-                            kind: "bash",
-                            content: (
-                              <CommandRun
-                                command={bash.command}
-                                excludeFromContext={bash.exclude_from_context}
-                                state={
-                                  bashStopState === "uncertain"
-                                    ? "uncertain"
-                                    : bash.state
-                                }
-                                exitCode={bash.exit_code}
-                                startedAt={
-                                  bash.started_at
-                                    ? Date.parse(bash.started_at)
-                                    : undefined
-                                }
-                                output={bashOutput}
-                                stopping={bashStopState === "pending"}
-                              />
-                            ),
-                          },
-                        ]
-                      : []),
-                    ...(liveTurn && settled.liveKey
-                      ? [
-                          {
-                            id: settled.liveKey,
-                            kind: "assistant",
-                            content: (
-                              <AgentTurn
-                                steps={liveTurn.steps}
-                                working={liveTurn.working}
-                                activity={liveTurn.activity}
-                                duration={liveTurn.duration}
-                              />
-                            ),
-                          },
-                        ]
-                      : []),
-                  ]}
-                  newContentCount={unseen}
-                  latestWorking={
-                    current?.run_active ??
-                    (current?.state === "working" ||
-                      current?.state === "accepted")
-                  }
-                  latestDuration={duration}
-                  showJumpToLatest={awayFromLatest}
-                  onJumpToLatest={() => {
-                    wasAtBottom.current = true;
-                    readingAnchor.current = undefined;
-                    if (id) store.savePosition(id);
-                    setAwayFromLatest(false);
-                    feed.current?.scrollTo({
-                      top: feed.current.scrollHeight,
-                      behavior: window.matchMedia(
-                        "(prefers-reduced-motion: reduce)",
-                      ).matches
-                        ? "instant"
-                        : "smooth",
-                    });
-                    feed.current?.focus({ preventScroll: true });
-                    setUnseen(0);
-                  }}
-                />
+                            },
+                          ]
+                        : []),
+                      ...(liveTurn && settled.liveKey
+                        ? [
+                            {
+                              id: settled.liveKey,
+                              kind: "assistant",
+                              content: (
+                                <AgentTurn
+                                  steps={liveTurn.steps}
+                                  working={liveTurn.working}
+                                  activity={liveTurn.activity}
+                                  duration={liveTurn.duration}
+                                />
+                              ),
+                            },
+                          ]
+                        : []),
+                    ]}
+                    newContentCount={unseen}
+                    latestWorking={
+                      current?.run_active ??
+                      (current?.state === "working" ||
+                        current?.state === "accepted")
+                    }
+                    latestDuration={duration}
+                    showJumpToLatest={awayFromLatest}
+                    onJumpToLatest={() => {
+                      wasAtBottom.current = true;
+                      readingAnchor.current = undefined;
+                      if (id) store.savePosition(id);
+                      setAwayFromLatest(false);
+                      feed.current?.scrollTo({
+                        top: feed.current.scrollHeight,
+                        behavior: window.matchMedia(
+                          "(prefers-reduced-motion: reduce)",
+                        ).matches
+                          ? "instant"
+                          : "smooth",
+                      });
+                      feed.current?.focus({ preventScroll: true });
+                      setUnseen(0);
+                    }}
+                  />
+                </ReplyContext.Provider>
               </RewindContext.Provider>
             </TurnChangesRoot.Provider>
             {compactionState ? (
@@ -3800,6 +3896,18 @@ function BrowserConversationContent({
                 >
                   <Composer
                     {...composer}
+                    fieldQuote={
+                      view === "opened" && controlled && replyOn && replyNow ? (
+                        <ComposerQuote
+                          excerpt={replyNow.excerpt}
+                          time={replyNow.time}
+                          onJump={() =>
+                            jumpToReply(replyNow.agent, replyNow.key)
+                          }
+                          onRemove={() => setReplyTarget(undefined)}
+                        />
+                      ) : undefined
+                    }
                     beforeField={
                       view === "opened" && controlled ? (
                         <>

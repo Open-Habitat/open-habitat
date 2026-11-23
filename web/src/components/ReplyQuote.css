@@ -1,0 +1,99 @@
+/* Replying to one agent message (round 2026-11-23-reply-to-message-3:
+   corner control A, quote A). No surface of its own: the quote is the
+   sunken block of Markdown frontmatter, the corner control Kopioi's own
+   presentation. */
+.ah-message-actions {
+  display: inline-flex;
+  margin-inline-start: auto;
+}
+.ah-reply-corner[aria-pressed="true"] {
+  background: var(--ah-surface-press);
+  --i-fg: var(--ah-ink);
+}
+
+/* The field box's first row, inset so the box's own border and focus ring
+   stay whole. */
+.ah-reply-quote {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  margin: var(--ah-s2) var(--ah-s2) 0;
+  padding: var(--ah-s1) var(--ah-s1) var(--ah-s2) var(--ah-s3);
+  border: 1px solid var(--ah-line-soft);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-sunken);
+}
+.ah-reply-quote-head {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s2);
+  min-height: 24px;
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+  font-weight: 600;
+}
+.ah-reply-quote-head svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+.ah-reply-quote-head time {
+  color: var(--ah-muted);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.ah-reply-quote-tools {
+  display: inline-flex;
+  margin-inline-start: auto;
+}
+.ah-reply-quote-tools button {
+  --i-fg: var(--ah-muted);
+}
+.ah-reply-jump,
+.ah-reply-sent {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+:is(.ah-reply-jump, .ah-reply-sent):focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-focus);
+  outline-offset: 2px;
+}
+.ah-reply-jump {
+  display: block;
+  width: 100%;
+  padding-inline-end: var(--ah-s2);
+  border-radius: var(--ah-r-sm);
+}
+.ah-reply-body {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+  line-height: var(--ah-lh-ui);
+  overflow-wrap: anywhere;
+}
+
+/* The sent reply's quote: the same sunken surface above the text. */
+.ah-reply-sent {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: var(--ah-s3);
+  padding: var(--ah-s1) var(--ah-s3) var(--ah-s2);
+  border: 1px solid var(--ah-line-soft);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-sunken);
+}
+button.ah-reply-sent:hover {
+  border-color: var(--ah-line);
+}

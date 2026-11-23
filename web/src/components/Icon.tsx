@@ -24,6 +24,7 @@ export type IconName =
   | "down"
   | "refresh"
   | "copy"
+  | "reply"
   | "check"
   | "message"
   | "cross"
@@ -453,6 +454,12 @@ export function Icon({
       </>
     ),
     check: <path d="m4 12 5 5L20 6" />,
+    reply: (
+      <>
+        <path d="M10 7 5 12l5 5" />
+        <path d="M5 12h9a5 5 0 0 1 5 5v1" />
+      </>
+    ),
     grid: (
       <>
         <rect x="4" y="4" width="6" height="6" rx="1.5" />
