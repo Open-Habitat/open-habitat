@@ -36,7 +36,10 @@ describe("settings search", () => {
     // Sound settings and dictation remain searchable without an experiment.
     const aani = searchSettings("aani", { admin: false });
     expect(aani[0]).toMatchObject({ section: "aanet" });
-    expect(aani.some((h) => h.section === "kokeelliset")).toBe(false);
+    // Only the experiment that is itself about the sound is listed there.
+    expect(
+      aani.filter((h) => h.section === "kokeelliset").map((h) => h.row),
+    ).toEqual(["sounds-active-device"]);
     expect(first("agents.md")).toMatchObject({
       section: "tili",
       row: "instructions",

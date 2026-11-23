@@ -325,6 +325,26 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
         label: "Other people in a conversation",
         desc: "Invite another person on this server into your conversation with the agent.",
       },
+      "own-machines-ssh-config": {
+        label: "Machines from ~/.ssh/config",
+        desc: "Your own machines also shows the connections you wrote in your ~/.ssh/config.",
+      },
+      "sounds-active-device": {
+        label: "Sound only on the device you use",
+        desc: "The attention sound plays only on the device you used last.",
+      },
+      "rail-state-motion": {
+        label: "Conversation row movement",
+        desc: "A conversation's row slides into its new section when its state changes.",
+      },
+      "workspace-header-c2a": {
+        label: "Workspace header: tiles and buttons",
+        desc: "The workspace icon and name as one header, with small action buttons beside the tiles.",
+      },
+      "reply-to-message": {
+        label: "Reply to an agent message",
+        desc: "Reply to an earlier agent message; the agent gets the quote with it.",
+      },
     },
   },
   palvelin: {
