@@ -1,62 +1,60 @@
 # Design result
 
-Prepared [design.md](design.md) for Jari's decision. No product, contract,
-service or harness code changed. The issue remains open with
-`preparation: pending`; implementation is not authorized by this result.
+Revised on 23.11.2026 to Jari's decisions of that day. Two parts:
 
-The proposal compares three approaches and recommends a five-minute,
-operator-owned countdown, a typed host announcement delivered through each
-user's daemon/companion and supported native worker adapter, and no automatic
-extension for a person's active turn. It distinguishes browser notices from
-model steering, timed wakes from post-upgrade continuation, and daemon-owned
-processes from surviving native workers. It includes failure/recovery behavior,
-receiver rollout, browser behavior and four approval questions.
+- [stop-behaviour.md](stop-behaviour.md) records what an upgrade's daemon stop does to a
+  person's main agent: its Pi, turn, history, background processes started in each way,
+  `/tmp` and `/var/tmp`, and what the agent can find and sees after the restart.
+  Each row names the code path or the experiment behind it.
+- [design.md](design.md) is revised to the decisions. The announcement goes only to
+  the agents of person-started conversations, two minutes ahead by default. There is no
+  worker or other-harness machinery. The pre-stop and post-restart texts are written out in full.
+  Turns cut by the stop are woken after the restart, and idle conversations are not.
+  The operator path, the fixed deadline, the advisory record and the failure behaviour are kept from the earlier design.
+  Two questions remain for Jari.
 
-## Decisions for later review
+No product code, contract, service or harness changed. `preparation` is back to
+`pending`: implementation waits for Jari's approval of the revised design.
 
-- **Five-minute lead, no automatic active-turn extension.** Alternatives are a
-  longer default or a bounded human-turn grace. A fixed deadline removes the
-  indefinite wait while leaving time to save a checkpoint; the duration is a
-  proposed product choice, not measured evidence.
-- **Host-owned advisory with per-user consumers.** Alternatives are deployment
-  scripts calling notices or an agent-readiness coordinator. Existing notices
-  do not prompt the model, and readiness cannot guarantee safe interruption.
-  The new advisory/adapter architecture is explicitly awaiting approval; no
-  listener permission or authority was changed.
-- **Receiver-first rollout and explicit unsupported-worker coverage.** A new
-  release cannot equip already running predecessors or unsupported harnesses
-  retroactively. Prefer honest limited coverage over terminal injection or
-  fake delivery claims; supported Taskfleet Pi integration still needs work.
-- **Optional resume checks, not universal automatic continuation.** Existing
-  wakes are timed and require a daemon launch context. A wake two minutes after
-  cutover is only a check of upgrade completion; an outage can delay/fail it.
-  Gate scheduled-wake delivery during cutover rather than claiming the current
-  wake machinery already understands upgrade generations.
-- **One product scheduling path for deployment callers.** An operator's deployment tooling, a test
-  watcher or a release-cut deployment should authorize and invoke the same
-  host path. Their external implementations were not inspected, so the design
-  does not assert how they currently poll or wait.
+## Key findings
 
-## Review and verification
+- Everything the agent starts from its own tools dies at the stop, however it is
+  detached (`&`, `nohup`, `setsid`, `tmux`). `KillMode=mixed` kills the daemon's
+  whole cgroup. Only work under the user manager survives: Taskfleet, the shell tab,
+  SSH, scheduled wakes, and `systemd-run --user`. From Pi, `systemd-run --user` needs
+  `XDG_RUNTIME_DIR=/run/user/$(id -u)`, because the daemon does not pass it.
+- `/tmp` is lost. `/var/tmp` is kept, but a user unit sees the host's `/var/tmp`, not
+  the conversation's, so shared logs belong under the home directory.
+- After the restart the process tool's list is empty. The catch-up names the cut-off
+  process-tool processes.
+- Today a turn cut mid-work is not woken. Only cut-off waits wake. The
+  `oh-restart-stop` mark already exists, so the new wake can work from the first
+  upgrade into a release that has it.
 
-Source baseline: `18c67cfada2cf1f2a2e1f69d62369851766410ae`; final change scope is
-this issue's design, result and preparation metadata only.
+## Decisions taken in the revision
 
-Review chosen: source-grounded self-review of the design and final diff,
-including native notice persistence, busy-wake refusal, shutdown, work census,
-upgrade approval/fencing and worker ownership. No independent LLM review was
-run: this deliverable changes no sessions, contracts, daemon state or
-implemented authorization boundary. Architectural proposals remain questions
-for Jari, not approved changes. Future implementation needs independent review
-and the native/UID evidence listed in the design.
+- **Who is told:** a running turn by steering; an idle Pi only when it has live
+  process-tool processes; a Pi started during the countdown in its first turn; no one else.
+  An idle agent with nothing running would lose nothing and is not woken, so a message
+  would only cost a turn.
+- **Wake rule:** an `oh-restart-stop` mark followed by an aborted or unfinished turn,
+  within today's wake bounds (person stop, archive, read-only history, browser origin,
+  24 h, cooldown, live limit). The wake applies to every graceful restart, which is
+  question 2 for Jari.
+- **Default lead two minutes,** for Jari's "a couple of minutes". This is question 1.
+- **Kept:** the operator-owned `host upgrade` countdown with a fixed deadline and no
+  extension; the read-only advisory record as the one new host-to-daemon signal; the
+  receiver-first rollout (the announcement starts from the second upgrade, the wake from the first);
+  the failure table.
+- **Dropped:** the worker adapter, the coverage accounting for unsupported harnesses, and
+  agent-created resume wakes. The automatic wake of cut turns replaces them.
 
-Checks (under `umask 077`, validators under the shared scratch lease):
+## Verification
 
-- `timeout 60s ... python3 scripts/validate-project-view.py` — passed, 14 pages.
-- `timeout 60s ... issuectl doctor --json` — passed, no findings or warnings.
-- `git diff --check` — passed (including final staged additions).
-
-No Go/browser/full-gate tests, live upgrade, native model delivery or external
-deployment-policy verification were run: this is a documentation-only proposal,
-not runtime acceptance. No deployment occurred and no private test-server
-try-it entry was needed. No new issues were filed.
+The experiment ran in a throwaway transient system unit with the daemon unit's process
+and tmp properties, on the agent host. No Habitat service was restarted, and the
+experiment's units and processes were removed afterwards. No real upgrade was run, and
+no daemon was restarted with a live Pi. The Pi-internal rows rest on code and the
+existing native tests. Logs are in `/var/tmp/agent-keep/upgrade-announced-to-agents/`.
+Validators: `python3 scripts/validate-project-view.py` (13 pages), `issuectl doctor --json`
+(no findings) and `git diff --check` passed.

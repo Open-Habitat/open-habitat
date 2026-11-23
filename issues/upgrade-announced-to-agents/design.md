@@ -1,265 +1,250 @@
-# Announce an upgrade, then start it on time
+# Announce an upgrade to the agents, then start it on time
 
-Proposal for Jari's approval, 2026-11-22. **Not an implementation decision.**
-Source baseline: `18c67cfada2cf1f2a2e1f69d62369851766410ae`.
+Revised proposal for Jari's approval, 2026-11-23. **Not an implementation
+decision.** Source baseline: `80b0224fe`. It follows Jari's decisions of
+23.11.2026 (item.md, Decisions) and the facts in [stop-behaviour.md](stop-behaviour.md).
 
-## Recommendation
+## In short
 
-Give an installation five minutes' advance warning, then begin its upgrade
-at the announced time even if an agent is still working. The installation
-operator chooses the release and authorizes interruption; `host upgrade`
-owns the countdown and the existing maintenance transaction. Agents get a
-Habitat-authored message they can act on, and people see the same deadline.
-Neither an agent acknowledgement nor an idle work census is permission to
-restart, and neither is required to keep the announced deadline.
+The operator starts an upgrade with a lead time, two minutes by default. `host upgrade` publishes the
+deadline and begins the stop at that time, even if an agent is still working.
+Each person's daemon gives the announcement to the agents of that person's own
+conversations: a running turn gets it as a steering message, and an idle agent gets it only when it
+has background processes to lose. After the upgrade the daemon wakes every conversation whose
+turn the stop cut off and gives it a second message saying what happened and how to
+continue. Idle conversations are not woken. Taskfleet workers and other harnesses
+get nothing. They run under the user manager and survive the upgrade.
 
-The time is **when disruption begins**, not a promise that the new release
-will be ready then. A service upgrade is not a machine reboot. Native workers,
-SSH sessions and user-manager services must not be killed for this feature.
+The deadline is **when the stop begins**, not when the new release is ready.
 
-## What exists today
+## What the stop does (from the investigation)
 
-These are source observations, not proposed behavior:
+- Pi ends. A running turn is cut off and marked as cut by a restart. The
+  history up to that point is kept.
+- Everything the agent started from its own tools dies: process-tool processes,
+  `&`, `nohup`, `setsid` and agent-started `tmux`. `KillMode=mixed` kills the whole daemon
+  cgroup however a process detached itself. Process-tool output logs go with it.
+- `/tmp` is the daemon's private tmp and is emptied. `/var/tmp`, the home
+  directory and workspaces are kept.
+- What runs under the person's user manager survives: Taskfleet workers,
+  scheduled wakes, the browser's shell tab, SSH, and
+  `XDG_RUNTIME_DIR=/run/user/$(id -u) systemd-run --user …`. Without that
+  variable `systemd-run --user` fails from Pi, because the daemon does not pass
+  it. A user unit sees the host's `/tmp` and `/var/tmp`, not the conversation's.
+- After the restart the process tool's list is empty. Survivors are found with
+  `ps -u "$USER"`, `systemctl --user list-units` and `taskfleet run list`.
+- Today the daemon wakes a cut-off conversation only when it was waiting for a
+  background process. A turn cut mid-work stays stopped until the person writes.
 
-| Area | Current behavior and source |
+## The operator's path and the deadline
+
+This part of the earlier design still holds.
+
+- `open-habitat host upgrade` gains a lead-time input (default **two minutes**) and an
+  explicit immediate mode for emergencies. The deadline does not grant
+  `--approve-interruption`: the exact-plan, maintenance and interruption approvals stay
+  as they are. Exact flag names follow approval.
+- The countdown runs in the immutable successor owner, after qualification and
+  staging and before `quiesce`. An invocation that only stages announces
+  nothing. The host's operation exclusion covers the countdown.
+- The deadline is fixed. A turn that finishes early does not bring the stop forward, and
+  a new prompt, a long tool or a person typing does not push it back. Only the operator can
+  cancel or reschedule, and a reschedule gets a fresh full lead time.
+- A caller waits for the command's terminal result, not for idle agents. An operator's
+  deployment tooling and the test-server watcher both use this path. Publishing a release is not
+  permission to restart an installation.
+- Preview validates without announcing. JSON output reports the UTC deadline,
+  the schedule identity, how many conversations the announcement reached and the upgrade
+  outcome, each separately.
+
+The fences (`publishUpgradeFences`) keep their place at the start of `quiesce`.
+They are not published during the countdown, because agents still need their tools then.
+
+## How the deadline reaches each daemon
+
+`host upgrade` (root) writes a small, versioned advisory record that anyone can read,
+under the installed product's trusted directory. It holds a random schedule ID,
+a revision, the target version, the announcement time, the UTC deadline, the
+state (`announced`, `withdrawn`) and an owner-liveness time. It names no account,
+conversation, operator text or command. Each daemon watches it (inotify, plus a
+bounded periodic reread) and acts only for its own live conversations.
+
+This is the one new architectural element: a read-only signal from host to daemon.
+No daemon gains a way to write the schedule, change the deadline,
+reach another user or restart anything. Root and the gateway still cannot use the
+agent socket. A malformed or untrusted record is ignored. A record whose owner
+stopped renewing it reads as withdrawn, never as "restart now".
+
+## Who is told
+
+Only the agents of **daemon-owned conversations**, those a person started in Habitat.
+Each one is told once per schedule revision:
+
+| Conversation's state when the record appears | What happens |
 | --- | --- |
-| Upgrade approval | `internal/cli/host_apply_linux.go:parseHostUpgrade` accepts maintenance and interruption approvals, not a deadline or grace period. `internal/host/upgrade_linux.go:executeUpgrade` verifies the approved plan, stages the successor, hands execution to the immutable owner and rechecks before beginning the journal. It contains no wait-until-idle countdown. |
-| Busy work | `internal/host/upgrade_native_linux.go:observeUpgradeWork`, `readDaemonWork` and `interruptionRequired` inspect product services and call the predecessor's `agent work show` as each user. **Every live daemon requires interruption approval**, even when its census says idle. `internal/daemon/work_census_linux.go:census` counts live/starting turns, held work, background processes and other daemon jobs, not independent Taskfleet/SSH/tmux agents. It is an observation, not an admission barrier. |
-| Disruption | `internal/host/upgrade_native_linux.go:quiesce` publishes fences, closes entry points, stops gateway/broker services, captures preservation evidence and stops product daemon services and listeners. `activate`, `verify` and `open` adopt the successor and reopen only after acceptance. User-manager units are reported but not stopped. |
-| Agent shutdown | `internal/daemon/conversation_linux.go:ConversationController.shutdown` marks conversations as restarting and closes their Pi children. `internal/daemon/rest_linux.go:stopFor`, `internal/daemon/pi_rpc_linux.go:piRPC.close` and `internal/daemon/process-extension.mjs`'s `shutdown` handler distinguish a restart from a person's stop, stop managed background processes and bound child termination. They do not offer a five-minute checkpoint interval. |
-| Notices | `internal/cli/notices_linux.go:agentNoticeCommand` reaches the own-UID listener. `internal/daemon/notices_linux.go:createNotice` requires a live owned conversation, writes an agent-origin native entry, checks persistence and emits `notice.created`. Its bridge explicitly **never prompts the model**; the companion uses `pi.appendEntry('oh-agent-notice', …)`. A notice alone does not tell a working agent to checkpoint. |
-| Scheduled wakes | `internal/cli/wake_linux.go:agentWakeCommand` creates a wake only with a validated daemon-launch `--current` context, an RFC 3339 future time and a note. `internal/daemon/scheduled_wake_linux.go` persists wakes in the person's state and arranges a user-manager timer; startup processes overdue wakes. The companion's `scheduled_wake` handler refuses a busy Pi rather than queueing a supposedly delivered wake in memory. This is not advance steering or an “after upgrade succeeds” trigger. |
-| Automatic catch-up | `internal/daemon/wake_linux.go:scanRestartWaits`, `waitOutcome` and `wakeRest` wake eligible interrupted waits, not every unfinished task. Person-stop/archive exclusions, a 24-hour horizon and cooldown bound that mechanism. `internal/daemon/restart_linux.go` and `web/src/components/RestartNotice.tsx` describe what stopped and what settled after the event, not a forthcoming upgrade. |
-| Native workers | `internal/daemon/spinoffs_linux.go` and `spinoff_history_linux.go` observe Taskfleet's records; the daemon is not the worker controller. `internal/host/upgrade_native_linux.go:quiesce` deliberately leaves user managers alone. A worker can survive while the Habitat API and its parent conversation disappear. |
+| Pi up, turn running | The companion steers the announcement into the turn (`pi.sendMessage(…, { deliverAs: 'steer' })`). Pi delivers it after the current tool call returns. |
+| Pi up, idle, with live process-tool processes | The announcement starts a short turn (`triggerTurn`). The agent has something to lose: a build or a wait that will be killed. |
+| Pi up, idle, nothing running | No message. Nothing of the agent's will be lost and it will not be woken. |
+| Pi started by the person during the countdown | Gets the announcement as a steering message in its first turn, with the time left. |
+| Pi not running (resting, archived) | Nothing. A conversation is not started just to be told. |
 
-The reported 15-minute delay motivates this issue; it is not a product grace
-constant. The inspected product entry point refuses unapproved interruption
-rather than waiting 15 minutes. An operator's deployment policy, the installation's
-test watcher and a separate release-cut orchestrator are outside the inspected
-repository; their exact polling rules have **not** been verified here. The
-handoff below is the proposed contract for those callers, not a claim about
-what their current implementations do. `scripts/prepare-release.sh` prepares
-release artifacts; it is not an installation-wide countdown owner.
+Taskfleet workers, caller-owned agents and other harnesses get no announcement and
+no adapter. They live under the user manager and outlive the daemon. While Habitat
+is down they only lose its API, which they meet as an ordinary unavailability.
 
-## Three options
+The message is a displayable native custom message (`oh-upgrade-notice`), written
+by the companion with the schedule ID and revision, so a reconnect or reread does not
+duplicate it. It is neither the person's speech nor an `agent notice`. The
+person sees it in the conversation.
 
-| Option | Benefit | Why choose or reject it |
-| --- | --- | --- |
-| Deployment script sends existing notices, sleeps, then upgrades | Smallest product change; operator can prototype the browser warning. | Reject as the final design. Notices do not steer agents; wakes cannot interrupt a busy turn. Each deployment script would own its own deadline, cancellation and recipient discovery. |
-| **One host-owned schedule, consumed by each user's daemon and supported worker adapter** | One truthful deadline; existing native writers and restart executor retain their jobs. No cross-user conversation registry. | **Recommend.** Requires a typed announcement and delivery path, but does not need a scheduler service or agent readiness protocol. |
-| Host asks every agent to checkpoint and waits for readiness | Can report cooperative readiness before stopping. | Reject. A hung tool, absent adapter or agent that never acknowledges recreates indefinite waiting. A bounded version still needs option two's deadline and adds a misleading “safe to stop” claim. |
+## The announcement text
 
-## Who schedules it
+Placeholders are filled by the daemon: `{version}`, `{minutes}`, `{deadline}`
+(HH:MM UTC and the person's local time when known).
 
-The **installation operator** chooses when a qualified release should land.
-An operator's own deployment tooling is one such caller, not a product dependency. A test-server watcher
-uses the same product path rather than restarting services directly. A release
-cut publishes artifacts; it schedules a particular installation only if its
-operator has explicitly authorized that deployment. Publishing a release is
-not permission to restart every installation.
+> [Open Habitat] Habitat will be upgraded to {version}. In about {minutes}
+> minutes, at {deadline}, Habitat stops this conversation's Pi, whatever it is
+> doing, and starts again a few minutes later. There is no need to answer this
+> message. Keep working on the person's task, but get it to a safe point.
+>
+> What the stop does:
+> - Your Pi process ends. If your turn is still running, it is cut off where it
+>   is. The conversation up to that point is kept.
+> - Every process you started from your own tools ends: process-tool processes,
+>   and anything started with `&`, `nohup`, `setsid` or `tmux` from bash. Their
+>   process-tool logs are lost.
+> - Files under /tmp are deleted. Files under /var/tmp, your home directory and
+>   the workspaces are kept.
+> - These keep running: Taskfleet workers, scheduled wakes, the person's shell tab
+>   and SSH sessions, and commands you start under your user manager with
+>   `XDG_RUNTIME_DIR=/run/user/$(id -u) systemd-run --user --unit=<name> <command>`.
+>
+> Before the stop:
+> - Do not start anything long now: builds, test suites, servers, long waits.
+> - If something you started is still running, let it finish only if it will
+>   finish in time. Otherwise stop it yourself so you know where it stopped. If it
+>   really must continue, start it again with `systemd-run --user` as above, with its
+>   output in a file under your home directory or workspace. A user unit sees a
+>   different /tmp and /var/tmp from yours.
+> - Save your work in files. Do not push, merge or call work finished just
+>   because of the deadline.
+> - If you can reach a natural stopping point in time, end your turn by telling
+>   the person where things stand.
+>
+> After the upgrade: if your turn is still running at the stop, Habitat starts you
+> again on its own with a second message about what was cut off. If you have
+> finished by then, nothing wakes you, and the person's next message continues the
+> conversation.
 
-Extend `open-habitat host upgrade`, not the gateway or provisioning broker,
-to own a bounded announcement phase after successor qualification/staging and
-before `quiesce`. Keep the existing exact-plan, maintenance and interruption
-approvals. A deadline must not implicitly grant `--approve-interruption`.
-The immutable successor owner runs the countdown; an initial invocation that
-only stages must not announce a restart it cannot execute.
+The idle variant (processes running, no turn) begins with the same first
+paragraph and lists, from the companion's inventory, the process-tool processes that
+will be killed.
 
-The proposal needs a positive lead-duration input (default five minutes), an
-explicit operator-only immediate-interruption mode, and machine-readable
-schedule/withdrawal/progress outcomes. Exact flag names are deferred until
-approval. Preview validates without announcing; JSON/JSONL reports the exact
-UTC deadline, schedule identity, target and delivery coverage separately from
-upgrade success. No interactive prompt, silent approval or arbitrary shell
-hook is added. A caller waits for this command's terminal result, not for
-`active_turns == 0`, and does not restart the countdown on each poll.
+## After the upgrade: who is woken
 
-## The announcement and its authority
+The new daemon wakes a conversation when its active branch ends in a turn **cut by
+the daemon's own stop**: an `oh-restart-stop` mark followed by an aborted or
+unfinished turn, which `branchFacts` already recognizes. The wake keeps the bounds
+of today's wake machinery (`wake_linux.go`). It is not used for a conversation the
+person stopped, an archived one, one with read-only history, or one that is not browser-started.
+The 24-hour horizon and the 30-minute cooldown apply, and a full live limit is
+retried at the next one-minute check. If the same conversation also had a cut-off wait, it is
+woken once, with both facts in one message.
 
-Propose a small, versioned, **root-written, publicly readable advisory record**
-under the installed product's trusted directory. It contains only a random
-schedule ID, revision, predecessor/target identity, announcement time, UTC
-cutover time and lifecycle state. No account, conversation, workspace, text
-from an operator, command or credential belongs in it. This is the public
-projection of one host operation's scheduling intent, not another job queue.
-Use trusted-parent checks, bounded parsing and atomic publication; a malformed
-or untrusted record can never authorize maintenance or agent execution.
+An idle conversation is not woken. Its turn was not cut, and its cut-off waits keep
+today's rule.
 
-This is a new read-only host-to-agent signal requiring Jari's architectural
-approval. It is **not** a new privileged agent-socket route: root and gateway
-remain unable to use the own-UID agent listener. No daemon writes the schedule,
-changes its deadline, chooses another user or gains restart authority. The
-existing cold/agent fences remain separate denial mechanisms
-(`internal/host/upgrade_native_linux.go:publishUpgradeFences`); do not publish
-them during the warning period, when agents still need notices and wakes.
+The wake applies to every graceful daemon stop that cuts a turn, not only to
+upgrades. The mark does not tell them apart, and an operator's manual restart cuts
+turns the same way. A crash leaves no mark and does not trigger this wake.
 
-The host's existing operation exclusion covers the countdown so two callers
-cannot announce competing successors. A pre-quiescence cancellation or owner
-loss means “withdrawn/unknown”, **not** “restart now”. The advisory needs a
-bounded owner-liveness indication so a dead owner cannot leave a countdown
-looking live forever; expiry withdraws only the advisory, never opens a
-maintenance fence. Resuming a pre-quiescence operation after owner loss must
-requalify and announce a fresh full lead time. Once quiescing has begun, retain
-the existing fail-closed recovery rules and immutable owner; do not substitute
-schedule expiry for recovery authority. This distinction needs explicit new
-journal handling: today's `executeUpgrade` cleanup is not already that design.
+The mark is already written by today's companion. A successor that carries the
+new wake rule therefore wakes the turns its predecessor cut, starting with the first
+upgrade into it.
 
-## How agents receive it
+## The post-restart text
 
-1. Each running daemon reads the trusted advisory on change, with a bounded
-   periodic reread to recover lost notifications. It uses its own live controller
-   handles, not a host's list of history files, to select recipients. Newly
-   started conversations receive the current notice too; archived/resting
-   conversations are not started merely to announce maintenance.
-2. Add a typed companion operation for a Habitat maintenance message. While a
-   turn runs it uses Pi's supported steering path; when idle it records the
-   notice for the next turn without starting paid work just to checkpoint
-   nothing. The companion writes a displayable native custom message with
-   schedule ID/revision and deterministic product-owned wording. It is neither
-   fabricated user speech nor an agent-origin `notice create` entry.
-3. Distinguish observed schedule, queued steering, native persisted delivery
-   and unknown delivery. A tool that blocks steering may never read the notice
-   before the deadline. Dedupe by schedule/revision in the native branch and
-   live pending delivery; do not blindly resend after an ambiguous reply or
-   claim a queue acknowledgement means the model read it. Preserve existing
-   participant/text-only restrictions: maintenance must not promote a shared
-   turn to the owner's tool authority.
-4. Workers outside the daemon need **their own harness integration** consuming
-   the same advisory. Recommend a small native Pi/Taskfleet adapter, not daemon
-   writes into Taskfleet sessions or history. It tells surviving workers that
-   Habitat APIs will be unavailable, not that their processes will be killed.
-   This adapter is new work and must be installed before promising coverage.
-   The locally inspected `taskfleet run message --help` offers acknowledged
-   delivery to live Taskfleet-launched Pi workers, explicitly without proving
-   they read or acted on it. That facility is a possible adapter integration,
-   not permission for Habitat's read-only worker observer to control runs.
-5. Caller-owned agents, unsupported harnesses and already running workers
-   without the adapter are explicitly uncovered. Do not paste into their tmux
-   panes, edit their JSONL or claim a broadcast reached them. Coverage gaps
-   appear in the operator result and do not silently become “all agents told”.
+It is a new variant of the companion's catch-up (`catchUpMessage`), whose news is
+the cut turn itself. Today's variant needs cut processes or settled runs as news.
+`{stopped_at}` and `{version}` are the daemon's own facts (its version after the restart). The process and
+spinoff lists are today's.
 
-Compatibility is a rollout constraint: a successor cannot retroactively add
-an announcement receiver to a running predecessor. First ship the receiving
-capability through an explicitly approved ordinary upgrade; enable scheduled
-announcements on the next upgrade. A known unsupported predecessor requires
-an explicit unannounced-maintenance choice, not a counterfeit delivery receipt.
-The same applies to workers already running an older harness generation.
+> [Open Habitat] This conversation's Pi stopped at {stopped_at} when Habitat's
+> server restarted (Habitat now runs {version}). The turn you were working on was
+> cut off: its last step above never finished. Habitat started you again on its
+> own, without a message from the person, so that you can finish it. Habitat
+> re-ran nothing.
+>
+> What the restart did:
+> - Every process you had started from your own tools ended, including anything
+>   started with `&`, `nohup`, `setsid` or `tmux`. The process tool's list is
+>   now empty.
+>   {cut-off process-tool processes, as today}
+> - Files under /tmp are gone. /var/tmp, your home directory and the workspaces
+>   are as you left them.
+> - Taskfleet workers, scheduled wakes and `systemd-run --user` units kept
+>   running. Find them with `ps -u "$USER"`,
+>   `XDG_RUNTIME_DIR=/run/user/$(id -u) systemctl --user list-units` and
+>   `taskfleet run list`.
+>   {spinoffs whose state changed, and waits to start again, as today}
+>
+> Before you continue, check what the cut-off step left behind: a command may
+> have stopped half-way, and a file may be half-written. Do not repeat a step with
+> outside effects (a push, a message, a deploy) before checking whether it
+> already happened. Then finish the work, or tell the person what is left. If the
+> work was already done, say so in one line and stop.
+>
+> The person sees this same report in the conversation.
 
-## What the agent should do
+When the person writes to a cut conversation that was not woken (beyond the
+horizon, for example), today's catch-up applies unchanged.
 
-The model-facing message states the absolute deadline as well as the remaining
-time, target and affected lifetime. Suggested content, not final copy:
+## The person's browser
 
-> Habitat käynnistyy uudelleen 5 minuutin päästä, klo 14.05 UTC. Lopeta uuden
-> pitkän työn aloittaminen. Vie nykyinen työ turvalliseen välipisteeseen ja
-> tallenna jatko-ohje. Päivitys alkaa ilmoitettuna aikana, vaikka työ olisi kesken.
+A non-modal installation banner shows the local time and the minutes left. Each
+affected live conversation shows the announcement message itself. Drafts are kept
+and sending stays possible. When the countdown runs out, the banner says "update
+starting", not "complete". During the downtime it shows reconnecting without resending an uncertain
+prompt. Cancellation replaces the countdown with "update cancelled", and an owner that
+stopped renewing the record shows as unknown status, not as an endless zero. After
+the restart the existing restart report (`RestartNotice.tsx`) shows the woken
+conversation's catch-up. Shared participants see the banner but no other person's
+work. The banner and snapshot fields are new wire, defined in `contracts/v1/`.
 
-A daemon-owned agent should finish a small safe unit, commit only coherent
-changes it owns when the task authorizes commits, and write a concise handoff
-with unfinished work, verification and uncertain external effects. It must not
-push, force a merge, stop another process or mark incomplete tests successful
-merely to satisfy the timer. Saving files is useful even when a commit is not.
+## Failure behaviour
 
-For autonomous work that should resume, it may use the **existing**
-`open-habitat agent wake create --current --at <RFC3339> --note <handoff>` with
-a stable UUID idempotency key before the fence closes. Recommend a time two
-minutes after cutover, but describe it as a **resume check**, not guaranteed
-post-upgrade execution. The note must require observing the scheduled target's
-successful availability before continuing and reconciling uncertain effects,
-not replaying a failed command. Reuse/list the wake after a lost response rather
-than creating another. A person can cancel it through the existing wake UI.
-No wake is needed when the task is finished or further work needs the person.
-
-A surviving worker cannot assume `wake --current` works: it requires a
-daemon-issued launch context (`internal/cli/wake_linux.go:currentQuery`). It
-keeps its native task and waits/rechecks Habitat availability in place, without
-retrying writes of unknown outcome. It needs no replacement worker. If an
-upgrade is cancelled, the resume check observes cancellation and follows the
-handoff rather than waiting forever for the target.
-
-**Required implementation addition:** gate scheduled-wake delivery during an
-active cutover and let overdue wakes run after entry reopens. Apply this to all
-scheduled wakes, since the existing wake record has no upgrade association;
-the agent's note carries the resume-check intent. Current
-scheduled wakes are wall-clock commitments, not generation-bound continuations;
-their retry limit and native persistence must remain visible, and an extended
-outage can still leave a failed wake. Do not promise every interrupted turn
-will automatically continue. Existing restart catch-up remains the fallback
-account of what stopped, not a substitute for the saved handoff.
-
-## Timing and the person's browser
-
-Five minutes is the recommended default on both normal and test installations.
-It is long enough to save a checkpoint without waiting for a whole task; it is
-a product choice for approval, not a measured guarantee. The operator can
-choose a longer lead, but a background worker cannot extend it.
-
-An active human conversation gets the full announced lead time, **no additional
-automatic delay**. A turn finishing early does not pull the restart earlier;
-a new prompt, typing, presence or a long tool does not push it later. The
-reported 15-minute stall is precisely what a fixed deadline avoids. No
-person-specific grace timer or all-users-idle gate is recommended. Only the
-operator can cancel/reschedule before quiescence, publishing a new revision
-and a fresh full lead time. Emergency interruption is explicit and says that
-normal notice was bypassed.
-
-Proposed UI: a non-modal installation banner with local clock time and remaining
-minutes, plus a Habitat line in each affected live conversation. Keep drafts
-and allow checkpoint-related interaction during the lead period; newly sent
-work carries the same deadline warning. Do not block all sends at announcement
-time or present an unearned “saved safely” checkmark. Countdown expiry changes
-to “update starting”, not “complete”. During downtime show reconnecting without
-resending an uncertain prompt; on return refresh the actual schedule/version
-and show the existing restart/catch-up account where relevant. Cancellation
-replaces the countdown with “update cancelled”; a stale owner says status
-unknown, never an endless zero-second countdown. No browser tab is required
-for model delivery. Shared participants see the installation warning but no
-other person's work or delivery details.
-
-The banner, snapshot/event fields and companion message are **new**; define
-wire additions in `contracts/v1/` and generate both clients only after approval.
-The existing post-restart presentation seam is
-`web/src/components/RestartNotice.tsx`; do not overload its retrospective
-report into a misleading advance-warning record.
-
-## Failure policy
-
-| Failure | Proposed outcome |
+| Failure | Outcome |
 | --- | --- |
-| Qualification, staging or explicit approval fails | Announce nothing; predecessor keeps serving. |
-| Unsupported receiver | Require explicit operator choice for unannounced maintenance; report the coverage limitation. |
-| Supported daemon/bridge does not answer, model ignores notice, or tool blocks steering | Record delivery as unknown/failed; proceed at the approved deadline. Do not convert missing acknowledgement into an unbounded wait. |
-| Native history full or unwritable | Browser may show the live host warning, but persistence is unknown/failed. Do not report checkpoint or notice durability without native evidence (`createNotice` already distinguishes these). |
-| Owner dies before quiescence, cancellation, or target changes | Withdraw/expire advisory; keep predecessor serving. Requalification and a new announcement precede another attempt. Never reuse an obsolete deadline as interruption permission. |
-| Clock changes or daemon joins late | Carry absolute UTC time, use a monotonic countdown within the live owner, and publish a revised wall-clock deadline after a material correction. A late recipient sees the remaining time; no per-recipient extension. An owner restart requires a new lead period. |
-| Daemon or browser reconnects during countdown | Reread current schedule; dedupe native messages. Browser rendering never starts Pi. |
-| Failure after quiescence | Existing fences and immutable-owner recovery remain authoritative. Show unavailable/update incomplete; do not reopen simply because the countdown expired. |
-| Wake due during outage, slow upgrade or cancelled upgrade | Process overdue wakes only when allowed; resume check verifies target/state. Retain failed/late status and person cancellation. Never silently replay external writes. |
-| Surviving workers call unavailable APIs | Fixed maintenance/unavailable outcome; reads can be retried, ambiguous writes must be reconciled. Do not terminate the user manager to make the census quiet. |
+| Qualification, staging or approval fails | Nothing is announced and the predecessor keeps serving. |
+| A predecessor without the receiver | It cannot announce. The first upgrade into the receiving release is an explicitly approved ordinary upgrade. The wake on cut turns already works for that upgrade. Announcements start with the next one. |
+| A daemon or companion does not answer, the model ignores the message, or a long tool holds the steer past the deadline | Counted as not delivered in the operator's result. The stop happens at the deadline. A missing acknowledgement never becomes a wait. |
+| Native history is full or unwritable | The banner still shows the deadline. The message is reported as not persisted. |
+| Owner dies before quiesce, the operator cancels, or the target changes | The record is withdrawn and the predecessor keeps serving. A new attempt requalifies and announces a fresh full lead time. An old deadline is never reused. |
+| Clock change or late daemon | The record carries absolute UTC time, and the owner counts down monotonically. A late conversation gets the remaining time, not an extension. |
+| Failure after quiesce began | The existing fences and the immutable-owner recovery stay authoritative. A cut turn is woken only once the daemon runs again. |
+| Many cut conversations at once | They are woken through the live limit, one check a minute, as today's wakes. Up to 64 are scanned per restart (`maxRestartWaits`). |
 
-## Approval questions for Jari
+## What implementation changes
 
-1. Approve **five minutes, fixed deadline, no automatic human-turn extension**?
-   Alternative: one bounded extra grace for turns already active when announced;
-   that makes the displayed deadline conditional and is not recommended.
-2. Approve the **root-owned advisory → per-user daemon/companion and native
-   worker adapter** architecture, with no new privileged agent-socket access?
-3. Accept explicit coverage limits and a two-release rollout? Recommend first
-   guaranteeing daemon-owned Pi conversations and supported Taskfleet Pi workers;
-   other harnesses remain visibly unsupported rather than blocking indefinitely.
-4. Approve optional agent-created resume checks rather than waking every
-   interrupted conversation automatically? Automatic universal continuation
-   would change the existing person-stop and “wake only for a reason” policy.
+- `internal/cli` and `internal/host`: lead time, the countdown phase, and the advisory
+  record (publish, renew, withdraw) with its journal handling on both sides of `quiesce`.
+- `internal/daemon`: watch the record, pick recipients from the daemon's own live
+  conversations, and the companion operation that writes `oh-upgrade-notice`. Also
+  the new wake reason for a restart-cut turn and its `catchUpMessage` variant.
+- `contracts/v1/` and `web/`: the banner and the snapshot fields.
+- Evidence: deadline enforcement with a busy turn, cancellation and owner loss on both
+  sides of `quiesce`, stale revisions, and deduplication across reconnects. A native Pi
+  test must show the steer reaching a running model. Distinct-UID tests must show that no user can
+  write the record and that root still cannot use `agent.sock`. Also: a wake of a cut turn (and
+  no wake for an idle, person-stopped or archived conversation), and the "nothing more to
+  do" answer. Then one real predecessor-to-successor upgrade on staging.
 
-## Evidence required after approval
+## Questions for Jari
 
-Implementation must test schedule exclusion, cancellation/owner death on both
-sides of quiescence, stale revisions, clock changes, deadline enforcement with a
-busy turn, late joiners, history write failure and ambiguous delivery. Native Pi
-coverage must show steering actually reaches a running model without changing
-turn authority; a fake acknowledgement is insufficient. Distinct-UID tests must
-prove users cannot publish/alter schedules or reach other users' sessions and
-that root still cannot use agent.sock. Exercise supported and unsupported native
-workers, worker survival, overdue/cancelled wakes, browser draft/reconnect and
-no-resend behavior with synthetic users. Qualify the real predecessor-to-successor
-upgrade on staging. None of these runtime claims is established by this design.
+1. **Two minutes as the default lead.** Is that the "couple of minutes" you meant?
+   It is enough to stop or move a process and save files, but not to finish a
+   long step. The operator can choose more.
+2. **Wake on any graceful restart that cut a turn, not only on upgrades.** The
+   recommendation is yes: the mark is the same, and an operator's manual restart
+   leaves the agent just as stranded. The alternative is to tie the wake to the upgrade record, which
+   would need the record to outlive the upgrade.
