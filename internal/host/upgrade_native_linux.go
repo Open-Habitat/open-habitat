@@ -105,7 +105,7 @@ func upgradeNative(ctx context.Context, req UpgradeRequest) (UpgradeResult, erro
 			return errors.Join(ErrRuntimePackages, e)
 		}
 		return nil
-	}, payloads: func() []PayloadTiming { return n.n.payloads }, isOwner: func() bool { exe, e := os.Executable(); return e == nil && exe == generationPath(s)+"/open-habitat" }, prepare: n.prepare, fence: n.failureFence, verifyComplete: n.complete, finishAccepted: n.finishAccepted, notice: upgradenotice.Path, reach: func() []upgradeUser { return n.proof.Users },
+	}, payloads: func() []PayloadTiming { return n.n.payloads }, isOwner: func() bool { exe, e := os.Executable(); return e == nil && exe == generationPath(s)+"/open-habitat" }, prepare: n.prepare, fence: n.failureFence, verifyComplete: n.complete, finishAccepted: n.finishAccepted, notice: upgradenotice.Path, reach: func() []upgradeUser { return n.proof.Users }, daemonsActive: daemonsActive,
 		steps: []upgradeStep{{"quiescing", n.quiesce}, {"activating", n.activate}, {"verifying", n.verify}, {"verified", n.open}}}
 	r, e := executeUpgrade(ctx, req, d)
 	// As in apply: after the upgrade, never inside its downtime or journal.
@@ -766,6 +766,27 @@ func observeUpgradeWork(ctx context.Context, s Site, binary string) ([]upgradeUs
 		out = append(out, u)
 	}
 	return out, nil
+}
+
+// daemonsActive says whether any person's daemon runs, from systemd alone:
+// the part of the interruption check that needs no daemon to answer.
+func daemonsActive(ctx context.Context) (bool, error) {
+	ids, e := provision.MaintenanceIdentities(ctx)
+	if e != nil {
+		return false, e
+	}
+	for _, i := range ids {
+		b, e := nativeCommand(ctx, "/usr/bin/systemctl", "show", "--value", "--property=ActiveState", "open-habitat-daemon@"+i.Username()+".service")
+		if e != nil {
+			return false, e
+		}
+		switch strings.TrimSpace(string(b)) {
+		case "inactive", "failed":
+		default:
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // observeDaemonWork reads the predecessor's work census and, from a

@@ -215,6 +215,9 @@ type upgradeDriver struct {
 	// reach is the daemons' work as the stop observed it, which carries
 	// their reports of the announcement.
 	reach func() []upgradeUser
+	// daemonsActive is the local, bounded part of the interruption check
+	// (systemd's view of the daemons, no daemon request).
+	daemonsActive func(context.Context) (bool, error)
 }
 type upgradeStep struct {
 	phase string
@@ -296,8 +299,12 @@ func executeUpgrade(ctx context.Context, req UpgradeRequest, d upgradeDriver) (r
 		// Before the stop the schedule is cancelled; once the stop has begun
 		// the restarted daemons must find nothing scheduled.
 		if closed {
+			// Without the stop's census (it failed before taking one) the
+			// reach is unknown, not zero.
 			if d.reach != nil {
-				r.Announcement.Reach = noticeReach(d.reach(), notice.rec.Key())
+				if users := d.reach(); users != nil {
+					r.Announcement.Reach = noticeReach(users, notice.rec.Key())
+				}
 			}
 			_ = notice.finish()
 			return
@@ -307,6 +314,34 @@ func executeUpgrade(ctx context.Context, req UpgradeRequest, d upgradeDriver) (r
 			resultErr = errors.Join(resultErr, e)
 		}
 	}()
+	// The announced countdown: qualified and staged under the operation
+	// lock, entry still open. The deadline is fixed: early quiet does not
+	// bring it forward, new work does not push it back, and only the
+	// operator's cancellation withdraws it.
+	announce := !req.Immediate && d.notice != ""
+	countdown := func(version string) error {
+		n, e := announceUpgrade(d.notice, d.owner, d.now, version, lead)
+		if e != nil {
+			return e
+		}
+		notice = n
+		r.Announcement = notice.view(lead)
+		if req.Announced != nil {
+			if e = req.Announced(*r.Announcement); e != nil {
+				return e
+			}
+		}
+		if req.Progress != nil {
+			if e = req.Progress("countdown"); e != nil {
+				return e
+			}
+		}
+		wait := d.wait
+		if wait == nil {
+			wait = waitDeadline
+		}
+		return wait(ctx, lead)
+	}
 	defer func() {
 		if resultErr != nil {
 			resultErr = errors.Join(resultErr, l.recordAptFailure(r.Operation, resultErr))
@@ -382,6 +417,31 @@ func executeUpgrade(ctx context.Context, req UpgradeRequest, d upgradeDriver) (r
 		if p.InterruptionRequired && !req.ApproveInterruption {
 			return r, ErrWorkBusy
 		}
+		if announce {
+			if e = countdown(p.Target.Version); e != nil {
+				return r, e
+			}
+			// Nothing at the deadline waits for an agent or requalifies the
+			// release. Only the cheap local facts are checked again before
+			// the journal records the operation: the inputs, and whether a
+			// daemon started during the lead without interruption approval.
+			current, e := d.binding(ctx, req.SitePath)
+			if e != nil {
+				return r, e
+			}
+			if current != binding {
+				return r, ErrStalePlan
+			}
+			if !req.ApproveInterruption && d.daemonsActive != nil {
+				busy, e := d.daemonsActive(ctx)
+				if e != nil {
+					return r, e
+				}
+				if busy {
+					return r, ErrWorkBusy
+				}
+			}
+		}
 		o, e = l.begin("upgrade", p.PlanID, p.Target, func(o Operation) error {
 			b, _ := json.Marshal(applyIntent{binding, o.ID, p.PlanID})
 			return replacePrivateAt(l.fd, o.ID+"-upgrade.json", b)
@@ -416,35 +476,11 @@ func executeUpgrade(ctx context.Context, req UpgradeRequest, d upgradeDriver) (r
 			return r, nil
 		}
 	}
-	// The announced countdown: qualified, staged and begun under the
-	// operation lock and the upgrade lease, entry still open. It runs for
-	// every operation that has not yet recorded quiescing intent, so a
-	// retry after a cancelled or failed countdown announces a fresh full
-	// lead. The deadline is fixed: early quiet does not bring it forward,
-	// new work does not push it back, and nothing after it waits for an
-	// agent or requalifies the release; the stop's own census tells how far
-	// the announcement reached.
-	if o.Phase == "started" && !req.Immediate && d.notice != "" {
-		if notice, e = announceUpgrade(d.notice, d.owner, d.now, o.Target.Version, lead); e != nil {
-			notice = nil
-			return r, e
-		}
-		r.Announcement = notice.view(lead)
-		if req.Announced != nil {
-			if e = req.Announced(*r.Announcement); e != nil {
-				return r, e
-			}
-		}
-		if req.Progress != nil {
-			if e = req.Progress("countdown"); e != nil {
-				return r, e
-			}
-		}
-		wait := d.wait
-		if wait == nil {
-			wait = waitDeadline
-		}
-		if e = wait(ctx, lead); e != nil {
+	// A begun operation that never recorded quiescing intent (a failure
+	// between begin and the first step) announces a fresh full lead before
+	// its stop, like a fresh one.
+	if resume && o.Phase == "started" && announce {
+		if e = countdown(o.Target.Version); e != nil {
 			return r, e
 		}
 	}

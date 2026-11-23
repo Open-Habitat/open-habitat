@@ -35,7 +35,7 @@ func noticeDriver(t *testing.T) (upgradeDriver, UpgradeRequest, *[]string, *bool
 		*events = append(*events, "countdown:"+lead.String())
 		return nil
 	}
-	d.reach = func() []upgradeUser { return nil }
+	d.reach = func() []upgradeUser { return []upgradeUser{} }
 	return d, req, events, owner, d.notice
 }
 
@@ -87,7 +87,7 @@ func TestUpgradeCountdownCancelledWithdrawsAndLeavesThePredecessor(t *testing.T)
 		return c.Err()
 	}
 	r, e := executeUpgrade(ctx, req, d)
-	if !errors.Is(e, context.Canceled) || r.Announcement.State != "withdrawn" || r.Operation == nil || r.Operation.Phase != "started" {
+	if !errors.Is(e, context.Canceled) || r.Announcement.State != "withdrawn" || r.Operation != nil {
 		t.Fatalf("%+v %v", r, e)
 	}
 	if got := strings.Join(*events, ","); got != "stage,countdown:2m0s" {
@@ -100,15 +100,18 @@ func TestUpgradeCountdownCancelledWithdrawsAndLeavesThePredecessor(t *testing.T)
 	if r.EntryClosure != "" {
 		t.Fatal("a cancelled countdown closed entry")
 	}
-	// The retry resumes the begun operation and announces a fresh schedule
-	// with a full lead before any stop.
+	if _, e := os.Stat(filepath.Join(d.journal, "active.json")); !errors.Is(e, os.ErrNotExist) {
+		t.Fatal("a cancelled countdown left an operation in the journal")
+	}
+	// A new attempt requalifies and announces a fresh schedule with a full
+	// lead before any stop.
 	d.wait = inner
 	*events = nil
 	r2, e := executeUpgrade(context.Background(), req, d)
 	if e != nil || r2.Outcome != "upgraded" || r2.Announcement.ScheduleID == r.Announcement.ScheduleID || r2.Announcement.LeadSeconds != 120 {
 		t.Fatalf("%+v %v", r2.Announcement, e)
 	}
-	if got := strings.Join(*events, ","); got != "countdown:2m0s,quiescing,activating,verifying,verified" {
+	if got := strings.Join(*events, ","); got != "stage,countdown:2m0s,quiescing,activating,verifying,verified" {
 		t.Fatal("the retry skipped its announcement:", got)
 	}
 }
@@ -126,8 +129,8 @@ func TestUpgradeFailureBeforeTheStopAnnouncesAgainOnRetry(t *testing.T) {
 	if _, e := executeUpgrade(context.Background(), req, d); e == nil {
 		t.Fatal("prepare failure succeeded")
 	}
-	if _, ok := readNotice(t, path); ok {
-		t.Fatal("published before the countdown could start")
+	if rec, ok := readNotice(t, path); !ok || rec.State != upgradenotice.Withdrawn {
+		t.Fatal("a failure before the stop left its schedule announced")
 	}
 	*events = nil
 	r, e := executeUpgrade(context.Background(), req, d)
@@ -175,11 +178,32 @@ func TestUpgradeChangedInputsAtTheDeadlineWithdraw(t *testing.T) {
 		return binding(c, s)
 	}
 	r, e := executeUpgrade(context.Background(), req, d)
-	if !errors.Is(e, ErrStalePlan) || r.Announcement.State != "withdrawn" || strings.Contains(strings.Join(*events, ","), "quiescing") {
+	if !errors.Is(e, ErrStalePlan) || r.Announcement.State != "withdrawn" || r.Operation != nil || strings.Contains(strings.Join(*events, ","), "quiescing") {
 		t.Fatalf("%+v %v %v", r, e, *events)
 	}
 	if rec, ok := readNotice(t, path); !ok || rec.State != upgradenotice.Withdrawn {
 		t.Fatal("a stale upgrade left its schedule announced")
+	}
+}
+
+// A daemon that started during the lead without interruption approval stops
+// the upgrade before entry closes, with the predecessor serving.
+func TestUpgradeDaemonStartedDuringTheLeadWithdrawsBeforeClosing(t *testing.T) {
+	d, req, events, _, path := noticeDriver(t)
+	d.daemonsActive = func(context.Context) (bool, error) {
+		return strings.Contains(strings.Join(*events, ","), "countdown"), nil
+	}
+	r, e := executeUpgrade(context.Background(), req, d)
+	if !errors.Is(e, ErrWorkBusy) || r.Announcement.State != "withdrawn" || r.Operation != nil || r.EntryClosure != "" || strings.Contains(strings.Join(*events, ","), "quiescing") {
+		t.Fatalf("%+v %v %v", r, e, *events)
+	}
+	if rec, ok := readNotice(t, path); !ok || rec.State != upgradenotice.Withdrawn {
+		t.Fatal("left its schedule announced")
+	}
+	req.ApproveInterruption = true
+	*events = nil
+	if r, e = executeUpgrade(context.Background(), req, d); e != nil || r.Outcome != "upgraded" {
+		t.Fatalf("approved %+v %v", r, e)
 	}
 }
 

@@ -322,3 +322,34 @@ func TestHistoryShowsTheAnnouncementAsHabitatsLine(t *testing.T) {
 		t.Fatalf("%+v", r.Restart)
 	}
 }
+
+// A steer still queued at the last countdown check is looked at once more
+// when the deadline passes, so one delivered just in time counts as told.
+func TestQueuedUpgradeNoticeIsCheckedOnceAtTheDeadline(t *testing.T) {
+	h := newHeldHarness(t)
+	h.setFile("background", "1")
+	h.setFile("background-state", "finished")
+	h.setFile("upgrade-outcome", "queued")
+	c, stop := h.daemon()
+	defer stop()
+	id := h.create(c)
+	h.converse(c, id, "Työskentele", activityCommand(1))
+	h.quiescent(c, id)
+	now := time.Now()
+	rec := upgradeRecord(now, 2*time.Minute)
+	c.upgradeRead = func(string) (upgradenotice.Record, error) { return rec, nil }
+	c.refreshUpgrade(context.Background(), now)
+	if census := c.upgradeCensus(); census["not_delivered"] != 1 {
+		t.Fatalf("census %v", census)
+	}
+	h.setFile("upgrade-outcome", "told")
+	rec.RenewedAt = now.Add(125 * time.Second)
+	c.refreshUpgrade(context.Background(), now.Add(2*time.Minute+time.Second))
+	if census := c.upgradeCensus(); census["told"] != 1 || census["not_delivered"] != 0 || len(h.upgradeAsks()) != 2 {
+		t.Fatalf("census %v asks %d", census, len(h.upgradeAsks()))
+	}
+	c.refreshUpgrade(context.Background(), now.Add(2*time.Minute+5*time.Second))
+	if len(h.upgradeAsks()) != 2 {
+		t.Fatal("asked again after the deadline")
+	}
+}

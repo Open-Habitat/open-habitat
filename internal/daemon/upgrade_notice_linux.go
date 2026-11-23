@@ -137,7 +137,14 @@ func (c *ConversationController) refreshUpgrade(ctx context.Context, now time.Ti
 		st.rec, st.status = rec, status
 	}
 	after := st.rec.Key() + "/" + st.status
-	held := []*conversation{}
+	held, queued := []*conversation{}, []*conversation{}
+	if status == upgradenotice.StatusStarting && before == st.rec.Key()+"/"+upgradenotice.StatusCountdown {
+		for s, o := range st.outcomes {
+			if o == "queued" {
+				queued = append(queued, s)
+			}
+		}
+	}
 	if status == upgradenotice.StatusWithdrawn || status == upgradenotice.StatusUnknown {
 		for s, o := range st.outcomes {
 			if o == "held" {
@@ -153,6 +160,13 @@ func (c *ConversationController) refreshUpgrade(ctx context.Context, now time.Ti
 	switch status {
 	case upgradenotice.StatusCountdown:
 		c.deliverUpgradeNotice(ctx, rec)
+	case upgradenotice.StatusStarting:
+		// One last look at the steers still queued at the last countdown
+		// check: the companion answers told or queued and sends nothing
+		// after the deadline.
+		c.askConversations(ctx, queued, func(s *conversation) map[string]any {
+			return map[string]any{"op": "upgrade_notice", "session_id": s.id, "generation": s.rpc.processGeneration, "notice": noticeFields(rec)}
+		}, c.recordUpgradeOutcome(rec))
 	case upgradenotice.StatusWithdrawn, upgradenotice.StatusUnknown:
 		// A held announcement must not be given for a stop that is not
 		// coming; one already given stands, as nothing is restarted.
@@ -162,8 +176,22 @@ func (c *ConversationController) refreshUpgrade(ctx context.Context, now time.Ti
 	}
 }
 
+func noticeFields(rec upgradenotice.Record) map[string]any {
+	return map[string]any{"schedule_id": rec.ScheduleID, "revision": rec.Revision, "version": rec.TargetVersion, "announced_at": rec.AnnouncedAt.UTC().Format(time.RFC3339Nano), "deadline": rec.Deadline.UTC().Format(time.RFC3339Nano)}
+}
+
+func (c *ConversationController) recordUpgradeOutcome(rec upgradenotice.Record) func(*conversation, string) {
+	return func(s *conversation, outcome string) {
+		c.upgradeMu.Lock()
+		defer c.upgradeMu.Unlock()
+		if c.upgrade.rec.Key() == rec.Key() && c.upgrade.outcomes != nil {
+			c.upgrade.outcomes[s] = outcome
+		}
+	}
+}
+
 func (c *ConversationController) deliverUpgradeNotice(ctx context.Context, rec upgradenotice.Record) {
-	notice := map[string]any{"schedule_id": rec.ScheduleID, "revision": rec.Revision, "version": rec.TargetVersion, "announced_at": rec.AnnouncedAt.UTC().Format(time.RFC3339Nano), "deadline": rec.Deadline.UTC().Format(time.RFC3339Nano)}
+	notice := noticeFields(rec)
 	c.upgradeMu.Lock()
 	told := map[*conversation]bool{}
 	for s, o := range c.upgrade.outcomes {
@@ -181,13 +209,7 @@ func (c *ConversationController) deliverUpgradeNotice(ctx context.Context, rec u
 	c.mu.Unlock()
 	c.askConversations(ctx, targets, func(s *conversation) map[string]any {
 		return map[string]any{"op": "upgrade_notice", "session_id": s.id, "generation": s.rpc.processGeneration, "notice": notice}
-	}, func(s *conversation, outcome string) {
-		c.upgradeMu.Lock()
-		defer c.upgradeMu.Unlock()
-		if c.upgrade.rec.Key() == rec.Key() && c.upgrade.outcomes != nil {
-			c.upgrade.outcomes[s] = outcome
-		}
-	})
+	}, c.recordUpgradeOutcome(rec))
 }
 
 // askConversations sends one bridge request to each conversation at once,
