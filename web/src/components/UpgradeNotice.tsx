@@ -51,15 +51,18 @@ export function UpgradeBanner({
   now?: number;
 }) {
   const t = useText(upgradeNoticeText);
-  const [tick, setTick] = useState(() => Date.now());
+  // The tick only renders the banner again; the minutes come from the clock
+  // at render. A time kept from mount would be as old as the page when a
+  // schedule first arrives, and a two-minute lead would read as more.
+  const [, setTick] = useState(0);
   const [dismissed, setDismissed] = useState<string>();
   useEffect(() => {
     if (fixedNow !== undefined || !schedule) return;
-    const timer = window.setInterval(() => setTick(Date.now()), 5000);
+    const timer = window.setInterval(() => setTick((n) => n + 1), 5000);
     return () => window.clearInterval(timer);
   }, [fixedNow, schedule]);
   if (!schedule) return null;
-  const now = fixedNow ?? tick;
+  const now = fixedNow ?? Date.now();
   const state = upgradeBannerState(schedule, now);
   const key = `${schedule.schedule_id}:${schedule.revision}:${state}`;
   if (dismissed === key) return null;

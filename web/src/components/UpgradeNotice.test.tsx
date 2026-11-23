@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   UpgradeBanner,
   UpgradeNoticeLine,
@@ -19,6 +19,9 @@ const schedule: UpgradeSchedule = {
 };
 
 describe("the installation upgrade banner", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
   it("counts down to the local time, then says the update is starting, never complete", () => {
     const { rerender } = render(
       <UpgradeBanner schedule={schedule} now={deadline.getTime() - 110000} />,
@@ -38,6 +41,17 @@ describe("the installation upgrade banner", () => {
     );
     expect(upgradeBannerState({ ...schedule, status: "unknown" }, 0)).toBe(
       "unknown",
+    );
+  });
+  it("counts the minutes from when the schedule arrives, not from when the page opened", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(deadline.getTime() - 60 * 60000);
+    const { rerender } = render(<UpgradeBanner schedule={undefined} />);
+    // The page has been open an hour when root announces a two-minute lead.
+    vi.setSystemTime(deadline.getTime() - 115000);
+    rerender(<UpgradeBanner schedule={schedule} />);
+    expect(screen.getByTestId("upgrade-banner").textContent).toContain(
+      "noin 2 minuutin kuluttua",
     );
   });
   it("shows a cancellation and an unknown owner, and lets the person close them", () => {
