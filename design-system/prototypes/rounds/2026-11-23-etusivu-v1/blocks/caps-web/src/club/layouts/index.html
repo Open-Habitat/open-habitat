@@ -1,0 +1,19 @@
+{{ define "main" }}
+{{ $hero := resources.Get "photos/hero.jpg" }}
+{{ $img := $hero.Fill "1200x900 Bottom webp q78" }}
+<section class="hero" style="background-image:url({{ $img.RelPermalink }})">
+  <div class="hero-text"><h1>{{ .Title }}</h1><p>{{ .Params.lead }}</p><a class="btn" href="/join/">Try a free session</a></div>
+</section>
+<main>
+<section class="times"><h2>This week on the water</h2>
+<ul>{{ range hugo.Data.sessions }}<li><b>{{ .day }}</b><time>{{ .time }}</time><span>{{ .what }}</span></li>{{ end }}</ul></section>
+<section class="cards">
+{{ range slice "training" "history" }}{{ with site.GetPage . }}
+  {{ $p := resources.Get (printf "photos/%s" .Params.photo) }}{{ $t := $p.Fill "600x400 Center webp q78" }}
+  <a class="card" href="{{ .RelPermalink }}"><img src="{{ $t.RelPermalink }}" alt="" width="600" height="400"><b>{{ .Title }}</b><span>{{ .Params.summary }}</span></a>
+{{ end }}{{ end }}
+</section>
+<section class="news"><h2>Regattas and news</h2>
+<ul>{{ range first 3 (where site.RegularPages "Section" "news").ByDate.Reverse }}<li><time>{{ .Date.Format "2 Jan" }}</time><a href="{{ .RelPermalink }}">{{ .Title }}</a></li>{{ end }}</ul></section>
+</main>
+{{ end }}

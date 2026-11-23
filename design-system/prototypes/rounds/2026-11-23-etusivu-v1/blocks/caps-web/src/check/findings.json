@@ -1,0 +1,811 @@
+{
+ "shop": "https://shop.example.org",
+ "before": {
+  "pages": 105,
+  "links": {
+   "total": 1763,
+   "unique": 129,
+   "ok": 1740,
+   "dead": 23,
+   "by_target": [
+    {
+     "url": "https://shop.example.org/care-guide/",
+     "code": 404,
+     "pages": 18
+    },
+    {
+     "url": "https://northside.example.org/catalogue/2019/gull-linen.html",
+     "code": 404,
+     "pages": 1
+    },
+    {
+     "url": "https://northside.example.org/catalogue/2019/pebble-linen.html",
+     "code": 404,
+     "pages": 1
+    },
+    {
+     "url": "https://northside.example.org/catalogue/2019/lichen-linen.html",
+     "code": 404,
+     "pages": 1
+    },
+    {
+     "url": "https://northside.example.org/catalogue/2019/heron-linen.html",
+     "code": 404,
+     "pages": 1
+    },
+    {
+     "url": "https://northside.example.org/catalogue/2019/herring-linen.html",
+     "code": 404,
+     "pages": 1
+    }
+   ]
+  },
+  "a11y": {
+   "pages": 105,
+   "passing": 104,
+   "issues": [
+    {
+     "page": "https://shop.example.org/basket/",
+     "runner": "axe",
+     "code": "color-contrast",
+     "message": "Elements must meet minimum color contrast ratio thresholds (https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=axeAPI)",
+     "context": "<a class=\"btn btn-checkout\" href=\"/checkout/\">Checkout</a>"
+    },
+    {
+     "page": "https://shop.example.org/basket/",
+     "runner": "htmlcs",
+     "code": "WCAG2AA.Principle1.Guideline1_4.1_4_3.G18.Fail",
+     "message": "This element has insufficient contrast at this conformance level. Expected a contrast ratio of at least 4.5:1, but text in this element has a contrast ratio of 2.92:1. Recommendation:  change background to #b65d37.",
+     "context": "<a class=\"btn btn-checkout\" href=\"/checkout/\">Checkout</a>"
+    }
+   ]
+  },
+  "speed": [
+   {
+    "page": "https://shop.example.org/tea-towels/fern-tea-towel-ochre/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 52470,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/tea-towels/herring-tea-towel-charcoal/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 50983,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/tea-towels/harbour-tea-towel-moss/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 53993,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/tea-towels/birch-tea-towel-rust/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 53143,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/tea-towels/rowan-tea-towel-indigo/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 55049,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/tea-towels/gull-tea-towel-sea-blue/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 55541,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/tea-towels/meadow-tea-towel-ochre/",
+    "score": 1,
+    "lcp_s": 1.3,
+    "bytes": 52478,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/tea-towels/lichen-tea-towel-charcoal/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 50979,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/tea-towels/tide-tea-towel-moss/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 53981,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/tea-towels/juniper-tea-towel-rust/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 53151,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/tea-towels/pebble-tea-towel-indigo/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 55053,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/tea-towels/heron-tea-towel-sea-blue/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 55545,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/tea-towels/clover-tea-towel-ochre/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 52478,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/tea-towels/kelp-tea-towel-charcoal/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 50971,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/tea-towels/thistle-tea-towel-moss/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 53993,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/tea-towels/sloe-tea-towel-rust/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 53139,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/tea-towels/willow-tea-towel-indigo/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 55053,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/tea-towels/moss-tea-towel-sea-blue/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 55541,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/totes/fern-tote-sea-blue/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 55439,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/totes/herring-tote-ochre/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 52380,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/totes/harbour-tote-charcoal/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 50881,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/totes/birch-tote-moss/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 53883,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/totes/rowan-tote-rust/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 53041,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/totes/gull-tote-indigo/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 55062,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/totes/meadow-tote-sea-blue/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 55447,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/totes/lichen-tote-ochre/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 52376,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/totes/tide-tote-charcoal/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 50869,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/totes/juniper-tote-moss/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 53891,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/totes/pebble-tote-rust/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 53166,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/totes/heron-tote-indigo/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 55067,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/totes/clover-tote-sea-blue/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 55447,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/totes/kelp-tote-ochre/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 52368,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/totes/thistle-tote-charcoal/",
+    "score": 1,
+    "lcp_s": 1.3,
+    "bytes": 50881,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/totes/sloe-tote-moss/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 53879,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/prints/fern-print-indigo/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 54948,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/prints/herring-print-sea-blue/",
+    "score": 0.75,
+    "lcp_s": 22.8,
+    "bytes": 4446681,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/prints/harbour-print-ochre/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 52385,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/prints/birch-print-charcoal/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 50878,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/prints/rowan-print-moss/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 53888,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/prints/gull-print-rust/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 53042,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/prints/meadow-print-indigo/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 54956,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/prints/lichen-print-sea-blue/",
+    "score": 0.75,
+    "lcp_s": 22.8,
+    "bytes": 4446677,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/prints/tide-print-ochre/",
+    "score": 0.75,
+    "lcp_s": 22.8,
+    "bytes": 4448545,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/prints/juniper-print-charcoal/",
+    "score": 0.75,
+    "lcp_s": 22.8,
+    "bytes": 4447242,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/prints/pebble-print-moss/",
+    "score": 0.75,
+    "lcp_s": 22.8,
+    "bytes": 4447503,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/prints/heron-print-rust/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 53046,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/prints/clover-print-indigo/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 54956,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/prints/kelp-print-sea-blue/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 55444,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/prints/thistle-print-ochre/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 52385,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/prints/sloe-print-charcoal/",
+    "score": 0.75,
+    "lcp_s": 22.8,
+    "bytes": 4447230,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/prints/willow-print-moss/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 53892,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/prints/moss-print-rust/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 53042,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/prints/barley-print-indigo/",
+    "score": 0.75,
+    "lcp_s": 22.8,
+    "bytes": 4448521,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/prints/flint-print-sea-blue/",
+    "score": 0.75,
+    "lcp_s": 22.8,
+    "bytes": 4446673,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/prints/larch-print-ochre/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 52377,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/prints/plover-print-charcoal/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 50882,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/napkins/fern-napkin-set-rust/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 53062,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/napkins/herring-napkin-set-indigo/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 54980,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/napkins/harbour-napkin-set-sea-blue/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 55476,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/napkins/birch-napkin-set-ochre/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 52397,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/napkins/rowan-napkin-set-charcoal/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 50898,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/napkins/gull-napkin-set-moss/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 53904,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/napkins/meadow-napkin-set-rust/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 53070,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/napkins/lichen-napkin-set-indigo/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 54976,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/napkins/tide-napkin-set-sea-blue/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 55464,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/napkins/juniper-napkin-set-ochre/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 52405,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/napkins/pebble-napkin-set-charcoal/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 50902,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/napkins/heron-napkin-set-moss/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 53908,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/cushions/fern-cushion-cover-moss/",
+    "score": 0.75,
+    "lcp_s": 22.8,
+    "bytes": 4447527,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/cushions/herring-cushion-cover-rust/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 53086,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/cushions/harbour-cushion-cover-indigo/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 54992,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/cushions/birch-cushion-cover-sea-blue/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 55480,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/cushions/rowan-cushion-cover-ochre/",
+    "score": 0.75,
+    "lcp_s": 22.8,
+    "bytes": 4448581,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/cushions/gull-cushion-cover-charcoal/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 50906,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/cushions/meadow-cushion-cover-moss/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 53924,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/cushions/lichen-cushion-cover-rust/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 53082,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/cushions/tide-cushion-cover-indigo/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 54980,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/cushions/juniper-cushion-cover-sea-blue/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 55488,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/cushions/pebble-cushion-cover-ochre/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 52413,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/cushions/heron-cushion-cover-charcoal/",
+    "score": 0.75,
+    "lcp_s": 22.8,
+    "bytes": 4447266,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/cushions/clover-cushion-cover-moss/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 53924,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/cushions/kelp-cushion-cover-rust/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 53074,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/aprons/fern-apron-indigo/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 54947,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/aprons/herring-apron-sea-blue/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 55577,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/aprons/harbour-apron-ochre/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 52384,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/aprons/birch-apron-charcoal/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 50877,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/aprons/rowan-apron-moss/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 53887,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/aprons/gull-apron-rust/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 53041,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/aprons/meadow-apron-indigo/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 54955,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/aprons/lichen-apron-sea-blue/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 55572,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/aprons/tide-apron-ochre/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 52372,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/aprons/juniper-apron-charcoal/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 50885,
+    "lighthouse": "13.6.0"
+   }
+  ]
+ },
+ "after": {
+  "pages": 105,
+  "links": {
+   "total": 1763,
+   "unique": 119,
+   "ok": 1763,
+   "dead": 0,
+   "by_target": []
+  },
+  "a11y": {
+   "pages": 105,
+   "passing": 105,
+   "issues": []
+  },
+  "speed": [
+   {
+    "page": "https://shop.example.org/prints/herring-print-sea-blue/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 55456,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/prints/lichen-print-sea-blue/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 55452,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/prints/tide-print-ochre/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 52373,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/prints/juniper-print-charcoal/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 50886,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/prints/pebble-print-moss/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 53892,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/prints/sloe-print-charcoal/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 50874,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/prints/barley-print-indigo/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 54956,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/prints/flint-print-sea-blue/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 55448,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/cushions/fern-cushion-cover-moss/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 53916,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/cushions/rowan-cushion-cover-ochre/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 52409,
+    "lighthouse": "13.6.0"
+   },
+   {
+    "page": "https://shop.example.org/cushions/heron-cushion-cover-charcoal/",
+    "score": 1,
+    "lcp_s": 1.2,
+    "bytes": 50910,
+    "lighthouse": "13.6.0"
+   }
+  ]
+ },
+ "versions": {
+  "lychee": "lychee 0.24.2",
+  "pa11y_ci": "4.1.1",
+  "axe_core": "4.14.0",
+  "lighthouse": "13.6.0",
+  "hugo": "v0.170.1-c8b03de9564cf846a3986e879727d638bb96ab33"
+ }
+}

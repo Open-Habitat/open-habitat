@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="{{ site.Language.Locale }}">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{ if .IsHome }}{{ site.Title }}{{ else }}{{ .Title }} · {{ site.Title }}{{ end }}</title>
+{{ with resources.Get "css/club.css" | minify }}<link rel="stylesheet" href="{{ .RelPermalink }}">{{ end }}
+</head>
+<body>
+<header class="top"><a class="mark" href="/"><span class="blade" aria-hidden="true"></span>{{ site.Title }}</a>
+<nav><a href="/training/">Training</a><a href="/news/">Regattas</a><a href="/join/" class="cta">Join</a></nav></header>
+{{ block "main" . }}{{ end }}
+<footer><span>{{ site.Params.address }}</span><span>Est. {{ site.Params.founded }}</span></footer>
+</body>
+</html>

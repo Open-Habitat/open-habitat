@@ -1,0 +1,7 @@
+baseURL = "https://riverside-rowing-club.example.org/"
+title = "Riverside Rowing Club"
+locale = "en"
+disableKinds = ["taxonomy", "term", "RSS"]
+[params]
+  founded = 1926
+  address = "The Boathouse, Mill Lane"
