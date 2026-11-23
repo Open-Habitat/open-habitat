@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 related: ['@pi-web-search-capability']
-preparation: pending
+preparation: ready
 lane: web-search-key
 lane_seq: 1
 ---
@@ -34,3 +34,7 @@ Jari 11.11.: before choosing the Settings › AI direction, design how the searc
 
 Jari 23.11.2026 on round 1: back to prototyping. The search key is first of all a server-level setting and should work the same way as the Soniox (speech) key: the administrator's site key copied to each person's native config (ADR 0030 pattern, `SpeechKeyAdministration`, `GiveSiteKey`), with the person's view following the speech key's. Consider whether the person's row belongs under Asetukset › Tiedot agenteille rather than Asetukset › Tekoäly. Round 1's three Tekoäly-page directions are not chosen.
 Next action (approved): prototype round 2 from that logic (administrator's site key first, then the person's view and its place).
+
+### 2026-11-23T14:22:44Z · @jari
+
+Jari 23.11.2026 on round 2: B (administrator: server Integrations; person: Tiedot agenteille). But the search key block is far bigger than the other, smaller rows there and looks odd. Ideas: Brave and Staan each as their own row like the other services, or prototype the whole view together so the search key sits in proportion. Next action (approved): prototype round 3 on the whole views with B.

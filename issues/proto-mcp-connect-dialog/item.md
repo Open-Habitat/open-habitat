@@ -126,3 +126,9 @@ sivusto ja Workspacet. Suunnat erottuvat oletusnäkymässä.
 - [ ] Tarkistettu oikealla tilillä, mitä Trellon suostumussivu näyttää
       kirjoitusoikeudesta (onko se oletuksena pois) ja kysyykö se Workspacen
       uudelleen; tulos kirjattu tähän.
+
+## Decisions
+
+### 2026-11-23T14:22:44Z · @jari
+
+Jari 23.11.2026 on round 1: postponed until Jari has set up a Trello connection, taken screenshots of the real consent pages and tried it. For now direction 3 Kuitti looks best; with real screenshots parts of the others may come in. Questions 1–3 stay open.
