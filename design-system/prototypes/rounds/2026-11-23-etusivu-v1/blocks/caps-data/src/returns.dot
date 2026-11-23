@@ -1,0 +1,33 @@
+// How a return goes, as Bob dictated it (two minutes, 11:05).
+// Rendered by blocks/caps-data/assets.mjs with Graphviz dot.
+digraph returns {
+  graph [rankdir=TB, nodesep=0.22, ranksep=0.34, pad=0.18, bgcolor="transparent",
+         fontname="Instrument Sans", splines=spline];
+  node  [shape=box, style="rounded,filled", fontname="Instrument Sans", fontsize=14,
+         margin="0.12,0.06", penwidth=1.3, color="#2c6e3f", fillcolor="#eef5ec", fontcolor="#17201a", height=0.42];
+  edge  [color="#6b746c", penwidth=1.2, arrowsize=0.65, fontname="Instrument Sans", fontsize=11, fontcolor="#5c675d"];
+
+  ask     [label=<<b>Customer asks</b><br/><font point-size="11" color="#185e87">mail or shop</font>>, color="#185e87", fillcolor="#e8f0f6"];
+  order   [label=<<b>Bob finds the order</b>>];
+  days    [label=<Within<br/>30 days?>, shape=diamond, style=filled, fillcolor="#ffffff", margin="0.02,0.02", height=0.82, width=1.25];
+  repair  [label=<Offer<br/>a repair>, fillcolor="#ffffff", style="rounded,filled,dashed"];
+  label   [label=<<b>Bob sends a label</b>>];
+  check   [label=<<b>Dave checks it</b><br/><font point-size="11" color="#8a4b16">when it arrives</font>>, color="#8a4b16", fillcolor="#f7efe6"];
+  ok      [label=<Item<br/>as sold?>, shape=diamond, style=filled, fillcolor="#ffffff", margin="0.02,0.02", height=0.82, width=1.25];
+  call    [label=<Call the<br/>customer>, fillcolor="#ffffff", style="rounded,filled,dashed"];
+  amount  [label=<Over<br/>€100?>, shape=diamond, style=filled, fillcolor="#ffffff", margin="0.02,0.02", height=0.82, width=1.25];
+  refund  [label=<<b>Bob refunds</b><br/><font point-size="11" color="#3a453c">same day</font>>];
+  who     [label=<<b>Who approves?</b><br/><font point-size="11">nobody named</font>>, color="#b4532a", fillcolor="#fbeee6", fontcolor="#7a2f12", style="rounded,filled,dashed", penwidth=1.8];
+
+  ask -> order -> days;
+  days -> label  [label=" yes"];
+  days -> repair [label=" no"];
+  label -> check -> ok;
+  ok -> amount [label=" yes"];
+  ok -> call   [label=" no"];
+  amount -> refund [label=" no"];
+  amount -> who    [label=" yes", color="#b4532a", fontcolor="#b4532a"];
+  { rank=same; days; repair; }
+  { rank=same; ok; call; }
+  { rank=same; refund; who; }
+}

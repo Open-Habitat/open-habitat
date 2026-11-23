@@ -1,0 +1,20 @@
+{
+  "title": "Riverside Rowing Club · Results",
+  "description_html": "Every race since 1998, from the club spreadsheet. Search for your name.",
+  "extra_css_urls": ["/static/club.css"],
+  "databases": {
+    "results": {
+      "tables": {
+        "results": {
+          "title": "Results since 1998",
+          "description": "214 races at five regattas. Search a name, a regatta or a boat.",
+          "sort_desc": "date",
+          "searchmode": "raw",
+          "facets": ["regatta", "place"],
+          "columns": {"event": "Boat class: W women, M men, Mas masters; 1x single scull, 8+ eight with cox"}
+        },
+        "results_fts": {"hidden": true}
+      }
+    }
+  }
+}

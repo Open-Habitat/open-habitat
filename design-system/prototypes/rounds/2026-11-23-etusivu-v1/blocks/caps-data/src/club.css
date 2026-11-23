@@ -1,0 +1,42 @@
+/* Riverside Rowing Club: the members' results page on Datasette. */
+body.club { margin: 0; background: #f3f6f8; color: #10242f; font: 15px/1.4 "Instrument Sans", system-ui, sans-serif; }
+body.club section.content { padding: 0 16px 20px; max-width: 640px; margin: 0 auto; }
+.club-hd { display: flex; align-items: center; gap: 12px; padding: 16px 18px 26px; background: linear-gradient(160deg, #0f3a52 0%, #145a6e 70%, #1b7183 100%); color: #fff; }
+.club-hd b { display: block; font-size: 19px; letter-spacing: -0.01em; }
+.club-hd span { display: block; font-size: 13px; color: #bfe0e6; }
+.club-mark { width: 38px; height: 38px; color: #ffd27a; flex: none; }
+.club-search { display: flex; gap: 8px; margin: -16px 0 14px; padding: 8px; background: #fff; border-radius: 12px; box-shadow: 0 2px 10px rgba(16, 36, 47, 0.14); }
+.club-search input { flex: 1; min-width: 0; border: 0; font: 600 16px "Instrument Sans", system-ui, sans-serif; color: #10242f; padding: 6px 8px; outline: none; background: transparent; }
+.club-search button { border: 0; border-radius: 8px; background: #145a6e; color: #fff; font: 600 14px "Instrument Sans", system-ui, sans-serif; padding: 8px 14px; }
+.club-sum { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin: 0 2px 10px; }
+.club-n { margin: 0; font-size: 14px; color: #3d5560; }
+.club-n b { font-size: 22px; color: #10242f; }
+.club-n q { font-weight: 600; color: #10242f; }
+.club-medals { display: flex; gap: 6px; margin: 0; padding: 0; list-style: none; font-size: 12.5px; color: #3d5560; }
+.club-medals li { padding: 3px 9px; border-radius: 999px; background: #fff; border: 1px solid #d6e1e6; }
+.club-medals li b { color: #10242f; }
+.club-medals .m1 { background: #fff4d9; border-color: #e9c46a; }
+.club-rows { margin: 0; padding: 0; list-style: none; background: #fff; border-radius: 12px; border: 1px solid #dbe5ea; overflow: hidden; }
+.club-rows li { display: grid; grid-template-columns: 30px 1fr auto; gap: 10px; align-items: center; padding: 9px 12px; border-top: 1px solid #edf2f4; }
+.club-rows li:first-child { border-top: 0; }
+.club-pl { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 13px; background: #eef3f5; color: #3d5560; }
+.p1 .club-pl { background: #f2c14e; color: #4a3200; }
+.p2 .club-pl { background: #cfd8dc; color: #263238; }
+.p3 .club-pl { background: #dba77a; color: #3e2410; }
+.club-race { min-width: 0; }
+.club-race > b { display: block; font-size: 14.5px; font-weight: 600; }
+.club-race i { font-style: normal; font-weight: 500; font-size: 12px; color: #145a6e; background: #e3f1f3; border-radius: 4px; padding: 1px 5px; margin-left: 3px; }
+.club-race small { display: block; font-size: 12px; color: #5d727b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.club-when { text-align: right; font-size: 12px; color: #5d727b; }
+.club-when time, .club-when span { display: block; }
+.club-when span { font: 500 12.5px "JetBrains Mono", ui-monospace, monospace; color: #10242f; }
+.club-more { text-align: center; }
+body.club footer.ft { font-size: 12px; color: #5d727b; text-align: center; padding: 12px; background: none; border: 0; }
+body.club footer.ft a { color: #145a6e; }
+@font-face { font-family: "Instrument Sans"; src: url(instrument-sans-latin.woff2) format("woff2"); font-weight: 400 700; }
+@font-face { font-family: "JetBrains Mono"; src: url(jetbrains-mono-latin.woff2) format("woff2"); font-weight: 400 700; }
+body.club .not-footer > header { padding: 0; background: none; border: 0; }
+body.club .not-footer > header nav { padding: 0; }
+body.club .club-search input[type=search] { border: 0; box-shadow: none; -webkit-appearance: none; }
+.club-race small b { display: inline; font-weight: 600; color: #10242f; }
+body.club .club-search input, body.club .club-search button { font-family: "Instrument Sans", system-ui, sans-serif; }

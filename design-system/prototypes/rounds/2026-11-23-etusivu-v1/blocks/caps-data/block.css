@@ -1,0 +1,8 @@
+/* caps-data: the Graphviz chart and the Datasette site in their views. */
+[data-block="caps-data"] .cd-chart { margin: 0; padding: 14px 12px 10px; background: var(--ah-content-canvas); border: 1px solid var(--ah-line); border-radius: 10px; }
+[data-block="caps-data"] .cd-chart .m-img { max-width: 360px; margin: 0 auto; background: none; border-radius: 0; }
+[data-block="caps-data"] .cd-chart figcaption { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 10px; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--ah-line-soft); font: 400 11px/1.4 var(--ah-mono); color: var(--ah-muted); }
+[data-block="caps-data"] .cd-br { max-width: 380px; margin: 0 auto; border: 1px solid var(--ah-line); border-radius: 10px; overflow: hidden; background: var(--ah-content-canvas); box-shadow: 0 1px 2px rgba(20, 40, 20, 0.06); }
+[data-block="caps-data"] .cd-url { display: flex; align-items: center; gap: 7px; margin: 0; padding: 7px 10px; background: var(--ah-surface-2); border-bottom: 1px solid var(--ah-line); font: 400 11.5px var(--ah-mono); color: var(--ah-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[data-block="caps-data"] .cd-lock { flex: none; width: 8px; height: 8px; border: 1.5px solid var(--ah-muted); border-radius: 2px; }
+[data-block="caps-data"] .cd-br .m-img { border-radius: 0; }

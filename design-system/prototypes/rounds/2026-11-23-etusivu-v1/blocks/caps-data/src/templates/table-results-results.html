@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{# The members' page for the results table: Datasette's own query, facets and
+   search, drawn as a list a phone can read. #}
+{% block title %}Riverside Rowing Club · Results{% endblock %}
+{% block body_class %}club{% endblock %}
+{% block nav %}
+<header class="club-hd">
+  <svg class="club-mark" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="19" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 29 L31 11 M9 11 L31 29" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M27 8.5 l6 1 -1 6 z M13 8.5 l-6 1 1 6 z" fill="currentColor"/><path d="M6 31 q3.5 -2.5 7 0 t7 0 t7 0 t7 0" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+  <div><b>Riverside Rowing Club</b><span>Results since 1998</span></div>
+</header>
+{% endblock %}
+{% block content %}
+<form class="club-search" action="{{ urls.table(database, table) }}" method="get" role="search">
+  <input id="_search" type="search" name="_search" value="{{ search }}" placeholder="Your name, a regatta or a boat" aria-label="Search races">
+  <button type="submit">Search</button>
+</form>
+{% set place = facet_results.get('place') %}
+{% set wins = namespace(n1=0, n2=0, n3=0) %}
+{% if place %}{% for f in place.results %}{% if f.value == 1 %}{% set wins.n1 = f.count %}{% elif f.value == 2 %}{% set wins.n2 = f.count %}{% elif f.value == 3 %}{% set wins.n3 = f.count %}{% endif %}{% endfor %}{% endif %}
+<section class="club-sum">
+  <p class="club-n"><b>{{ "{:,}".format(filtered_table_rows_count) }}</b> races{% if search %} for <q>{{ search }}</q>{% endif %}</p>
+  <ul class="club-medals">
+    <li class="m1"><b>{{ wins.n1 }}</b> wins</li><li class="m2"><b>{{ wins.n2 }}</b> seconds</li><li class="m3"><b>{{ wins.n3 }}</b> thirds</li>
+  </ul>
+</section>
+<ol class="club-rows">
+{% for row in display_rows %}{% set r = {} %}{% for cell in row %}{% set _ = r.update({cell.column: cell.value}) %}{% endfor %}
+  <li class="p{{ r['place'] }}">
+    <span class="club-pl">{{ r['place'] }}</span>
+    <div class="club-race"><b>{{ r['regatta'] }} <i>{{ r['event'] }}</i></b><small>{% if search %}{% for part in (r['crew']|string).split(search) %}{{ part }}{% if not loop.last %}<b>{{ search }}</b>{% endif %}{% endfor %}{% else %}{{ r['crew'] }}{% endif %}</small></div>
+    <div class="club-when"><time>{{ r['date'] }}</time><span>{{ r['time'] }}</span></div>
+  </li>
+{% endfor %}
+</ol>
+{% if next_url %}<p class="club-more"><a href="{{ next_url }}">Older races</a></p>{% endif %}
+{% endblock %}
