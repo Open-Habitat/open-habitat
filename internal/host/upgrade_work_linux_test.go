@@ -270,3 +270,24 @@ func TestBoundedStderrNeverFails(t *testing.T) {
 		t.Fatalf("kept %d bytes", len(b.data))
 	}
 }
+
+// The daemon's report of the announcement's reach is read from its census;
+// a malformed one is left out rather than guessed.
+func TestUpgradeWorkCensusCarriesTheAnnouncementsReach(t *testing.T) {
+	example, err := os.ReadFile("../../contracts/v1/examples/agent-work.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	reply := []byte(`{"schema_version":1,"data":{"result":` + string(example) + `}}`)
+	u := upgradeUser{Name: "a", Daemon: true}
+	readDaemonWork(&u, func(...string) ([]byte, []byte, error) { return reply, nil, nil })
+	if u.Notice == nil || *u.Notice != (upgradeWorkNotice{Key: "0123456789abcdef0123456789abcdef:1", Told: 2, Held: 1}) {
+		t.Fatalf("%+v", u.Notice)
+	}
+	bad := []byte(strings.Replace(string(reply), `"told": 2`, `"told": -2`, 1))
+	u = upgradeUser{Name: "a", Daemon: true}
+	readDaemonWork(&u, func(...string) ([]byte, []byte, error) { return bad, nil, nil })
+	if u.Notice != nil || u.WorkCensus != "daemon" {
+		t.Fatalf("%+v %s", u.Notice, u.WorkCensus)
+	}
+}

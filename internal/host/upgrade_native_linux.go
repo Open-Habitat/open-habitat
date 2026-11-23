@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -21,6 +22,7 @@ import (
 	"github.com/open-habitat/open-habitat/internal/bootguard"
 	"github.com/open-habitat/open-habitat/internal/entryfence"
 	"github.com/open-habitat/open-habitat/internal/provision"
+	"github.com/open-habitat/open-habitat/internal/upgradenotice"
 	"golang.org/x/sys/unix"
 )
 
@@ -56,6 +58,16 @@ type upgradeUser struct {
 	// list, which sees only controller states) or "unavailable".
 	WorkCensus string             `json:"work_census,omitempty"`
 	ActiveWork []upgradeWorkEntry `json:"active_work,omitempty"`
+	// Notice is the daemon's own report of the announced schedule it
+	// delivered, absent from a daemon without the receiver.
+	Notice *upgradeWorkNotice `json:"upgrade_notice,omitempty"`
+}
+
+type upgradeWorkNotice struct {
+	Key          string `json:"schedule"`
+	Told         int    `json:"told"`
+	Held         int    `json:"held"`
+	NotDelivered int    `json:"not_delivered"`
 }
 
 // upgradeWorkEntry names one piece of daemon work in the plan: a
@@ -93,7 +105,7 @@ func upgradeNative(ctx context.Context, req UpgradeRequest) (UpgradeResult, erro
 			return errors.Join(ErrRuntimePackages, e)
 		}
 		return nil
-	}, payloads: func() []PayloadTiming { return n.n.payloads }, isOwner: func() bool { exe, e := os.Executable(); return e == nil && exe == generationPath(s)+"/open-habitat" }, prepare: n.prepare, fence: n.failureFence, verifyComplete: n.complete, finishAccepted: n.finishAccepted,
+	}, payloads: func() []PayloadTiming { return n.n.payloads }, isOwner: func() bool { exe, e := os.Executable(); return e == nil && exe == generationPath(s)+"/open-habitat" }, prepare: n.prepare, fence: n.failureFence, verifyComplete: n.complete, finishAccepted: n.finishAccepted, notice: upgradenotice.Path,
 		steps: []upgradeStep{{"quiescing", n.quiesce}, {"activating", n.activate}, {"verifying", n.verify}, {"verified", n.open}}}
 	r, e := executeUpgrade(ctx, req, d)
 	// As in apply: after the upgrade, never inside its downtime or journal.
@@ -770,6 +782,9 @@ func readDaemonWork(u *upgradeUser, run func(...string) ([]byte, []byte, error))
 	if e == nil {
 		if census, ok := parseWorkCensus(data); ok {
 			u.ActiveTurns, u.BackgroundProcesses, u.ActiveWork = census.counts()
+			if n := census.UpgradeNotice; n != nil && scheduleKeyRE.MatchString(n.ScheduleID) && n.Revision > 0 && n.Told >= 0 && n.Held >= 0 && n.NotDelivered >= 0 {
+				u.Notice = &upgradeWorkNotice{Key: n.ScheduleID + ":" + strconv.Itoa(n.Revision), Told: n.Told, Held: n.Held, NotDelivered: n.NotDelivered}
+			}
 			u.TurnsObservable, u.WorkCensus = true, "daemon"
 		}
 		return
@@ -813,7 +828,16 @@ type workCensus struct {
 		Kind    string `json:"kind"`
 		AgentID string `json:"agent_id"`
 	} `json:"jobs"`
+	UpgradeNotice *struct {
+		ScheduleID   string `json:"schedule_id"`
+		Revision     int    `json:"revision"`
+		Told         int    `json:"told"`
+		Held         int    `json:"held"`
+		NotDelivered int    `json:"not_delivered"`
+	} `json:"upgrade_notice"`
 }
+
+var scheduleKeyRE = regexp.MustCompile(`^[0-9a-f]{32}$`)
 
 // parseWorkCensus reads the predecessor's `agent work show --json` reply. A
 // reply without the census schema is unobservable.

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/open-habitat/open-habitat/internal/provision"
+	"github.com/open-habitat/open-habitat/internal/upgradenotice"
 )
 
 var ErrUpgradeBlocked = errors.New("host_upgrade_blocked: successor qualification is incomplete")
@@ -27,7 +28,14 @@ type UpgradeRequest struct {
 	DryRun              bool
 	ApproveMaintenance  bool
 	ApproveInterruption bool
-	Progress            func(string) error
+	// LeadTime is how long before the stop begins the daemons are told;
+	// zero is upgradenotice.DefaultLead. Immediate announces nothing, for
+	// emergencies. Neither grants an approval.
+	LeadTime  time.Duration
+	Immediate bool
+	Progress  func(string) error
+	// Announced receives the published schedule as the countdown starts.
+	Announced func(UpgradeAnnouncement) error
 }
 type UpgradePlan struct {
 	Protocol             string        `json:"protocol"`
@@ -54,6 +62,9 @@ type UpgradeResult struct {
 	RuntimePayloads []PayloadTiming `json:"runtime_payloads,omitempty"`
 	// ServerBrowser: as ApplyResult's.
 	ServerBrowser *ServerBrowserOutcome `json:"server_browser,omitempty"`
+	// Announcement is the countdown before the stop, reported apart from
+	// Outcome.
+	Announcement *UpgradeAnnouncement `json:"announcement,omitempty"`
 }
 
 func BuildUpgradePlan(ctx context.Context, sitePath string) (UpgradePlan, error) {
@@ -174,6 +185,9 @@ func Upgrade(ctx context.Context, req UpgradeRequest) (UpgradeResult, error) {
 	if !req.DryRun && !req.ApproveMaintenance {
 		return UpgradeResult{}, ErrMaintenanceApproval
 	}
+	if req.Immediate && req.LeadTime != 0 || req.LeadTime != 0 && (req.LeadTime < upgradenotice.MinLead || req.LeadTime > upgradenotice.MaxLead) {
+		return UpgradeResult{}, siteError("--lead-time", "require a duration from 1m to 60m, and not with --immediate")
+	}
 	return upgradeNative(ctx, req)
 }
 
@@ -193,6 +207,11 @@ type upgradeDriver struct {
 	fence          func(context.Context) error
 	verifyComplete func(context.Context, *Lock, Operation) (bool, error)
 	finishAccepted func(context.Context, *Lock, Operation) (bool, error)
+	// notice is the advisory record's path; empty announces nothing (unit
+	// drivers that do not exercise the countdown). wait counts the lead
+	// down.
+	notice string
+	wait   func(context.Context, time.Duration) error
 }
 type upgradeStep struct {
 	phase string
@@ -206,6 +225,17 @@ func executeUpgrade(ctx context.Context, req UpgradeRequest, d upgradeDriver) (r
 		}
 	}()
 	r.DryRun = req.DryRun
+	lead := req.LeadTime
+	if lead == 0 {
+		lead = upgradenotice.DefaultLead
+	}
+	r.Announcement = &UpgradeAnnouncement{Mode: "countdown", LeadSeconds: int(lead / time.Second), State: "not_announced"}
+	if req.Immediate {
+		r.Announcement = &UpgradeAnnouncement{Mode: "immediate", State: "not_announced"}
+	}
+	if req.DryRun && !req.Immediate {
+		r.Announcement.State = "previewed"
+	}
 	p, e := d.plan(ctx, req.SitePath)
 	r.Plan = p
 	r.Would = p.Actions
@@ -253,6 +283,22 @@ func executeUpgrade(ctx context.Context, req UpgradeRequest, d upgradeDriver) (r
 		return r, e
 	}
 	closed := resume
+	var notice *upgradeNotice
+	defer func() {
+		if notice == nil {
+			return
+		}
+		// Before the stop the schedule is cancelled; once the stop has begun
+		// the restarted daemons must find nothing scheduled.
+		if closed {
+			_ = notice.finish()
+			return
+		}
+		r.Announcement.State = "withdrawn"
+		if e := notice.withdraw(); e != nil {
+			resultErr = errors.Join(resultErr, e)
+		}
+	}()
 	defer func() {
 		if resultErr != nil {
 			resultErr = errors.Join(resultErr, l.recordAptFailure(r.Operation, resultErr))
@@ -327,6 +373,51 @@ func executeUpgrade(ctx context.Context, req UpgradeRequest, d upgradeDriver) (r
 		}
 		if p.InterruptionRequired && !req.ApproveInterruption {
 			return r, ErrWorkBusy
+		}
+		// The announced countdown: qualified and staged, entry still open,
+		// under the operation lock. The deadline is fixed: early quiet does
+		// not bring it forward and new work does not push it back. Only the
+		// operator's cancellation withdraws it.
+		if !req.Immediate && d.notice != "" {
+			if notice, e = announceUpgrade(d.notice, d.owner, d.now, p.Target.Version, lead); e != nil {
+				notice = nil
+				return r, e
+			}
+			r.Announcement = notice.view(lead)
+			if req.Announced != nil {
+				if e = req.Announced(*r.Announcement); e != nil {
+					return r, e
+				}
+			}
+			if req.Progress != nil {
+				if e = req.Progress("countdown"); e != nil {
+					return r, e
+				}
+			}
+			wait := d.wait
+			if wait == nil {
+				wait = waitDeadline
+			}
+			if e = wait(ctx, lead); e != nil {
+				return r, e
+			}
+			// Requalify at the deadline; the census also carries how far
+			// the announcement reached. Nothing here waits for an agent.
+			p, e = d.plan(ctx, req.SitePath)
+			r.Plan = p
+			if e != nil {
+				return r, e
+			}
+			r.Announcement.Reach = noticeReach(p.Work, notice.rec.Key())
+			if p.PlanID != req.ApprovedPlan {
+				return r, ErrStalePlan
+			}
+			if !p.Approvable {
+				return r, ErrUpgradeBlocked
+			}
+			if p.InterruptionRequired && !req.ApproveInterruption {
+				return r, ErrWorkBusy
+			}
 		}
 		o, e = l.begin("upgrade", p.PlanID, p.Target, func(o Operation) error {
 			b, _ := json.Marshal(applyIntent{binding, o.ID, p.PlanID})

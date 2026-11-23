@@ -19,7 +19,7 @@ var helpSpecs = []helpSpec{
 	{"host check", "Read-only site/host checks; blocked exit 1 has error.result.data; unavailable is not pass", "host check --site /etc/open-habitat/site.json --json", []string{"--site"}},
 	{"host plan", "Read-only observation fingerprint and typed qualification checks; approve only an approvable plan", "host plan --site /etc/open-habitat/site.json --json", []string{"--site"}},
 	{"host apply", "Install or converge the qualified declared site under the operation lock; same-input continuation and verified no-op repeat; live form requires --approved-plan and --output=jsonl (not --json)", "host apply --site /etc/open-habitat/site.json --dry-run --json", []string{"--site", "--approved-plan", "--dry-run", "--output=jsonl"}},
-	{"host upgrade", "Stage an authenticated named successor, then invoke its immutable owner_binary to perform explicitly approved maintenance; fixed-forward only", "host upgrade --site /etc/open-habitat/site.json --dry-run --json", []string{"--site", "--approved-plan", "--approve-maintenance", "--approve-interruption", "--dry-run", "--output=jsonl"}},
+	{"host upgrade", "Stage an authenticated named successor, then invoke its immutable owner_binary to perform explicitly approved maintenance; fixed-forward only", "host upgrade --site /etc/open-habitat/site.json --dry-run --json", []string{"--site", "--approved-plan", "--approve-maintenance", "--approve-interruption", "--lead-time", "--immediate", "--dry-run", "--output=jsonl"}},
 	{"host prepare", "Plan and execute bounded EDQUOT preparation, numeric-GID policy files and disruptive proc/logind/polkit restarts; verified session_restarting continuation uses a fresh preview approval; no listener instance or host activation; real form requires --approved-plan, --approve-disruption and --output=jsonl", "host prepare --site /etc/open-habitat/site.json --dry-run --json", []string{"--site", "--approved-plan", "--approve-disruption", "--dry-run", "--output=jsonl"}},
 	{"host operation show", "Read root-only durable phase intent, not proof of host action completion", "host operation show 00000000000000000000000000000001 --json", nil},
 	{"agent history list", "Discover native histories, or read/export one explicit conversation", "agent history list --output histories.jsonl --json", []string{"--conversation", "--output"}},
@@ -311,6 +311,12 @@ func helpFlag(name string) map[string]any {
 		v["default"] = false
 	case "--approve-interruption":
 		v["description"] = "Additionally approve interruption of observed native work and persistent service activators; does not override unavailable inventory"
+		v["default"] = false
+	case "--lead-time":
+		v["description"] = "How long before the stop begins its time is announced to running agents and browsers, 1m..60m; the stop begins at that deadline whatever agents are doing; grants no approval"
+		v["default"] = "2m"
+	case "--immediate":
+		v["description"] = "Emergency: begin the stop without announcing a countdown; mutually exclusive with --lead-time; grants no approval"
 		v["default"] = false
 	case "--approved-plan":
 		v["description"] = "Exact current 64-character lowercase observation plan ID; required without --dry-run; never bypasses qualification; stale IDs are refused"

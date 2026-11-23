@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/open-habitat/open-habitat/internal/host"
+	"github.com/open-habitat/open-habitat/internal/upgradenotice"
 )
 
 type hostMaintenanceOptions struct {
@@ -24,6 +25,8 @@ type hostMaintenanceOptions struct {
 	upgrade             bool
 	approveInterruption bool
 	approveDisruption   bool
+	leadTime            time.Duration
+	immediate           bool
 }
 
 func parseHostApply(args []string, jsonMode bool) (hostMaintenanceOptions, error) {
@@ -122,7 +125,10 @@ func hostMaintenanceMode(args []string, opts options, stdout, stderr io.Writer, 
 		// A union release can spend minutes authenticating/extracting archives
 		// before its offline package transaction even begins (notably on TCG).
 		// Do not make that transaction borrow a nearly exhausted preview budget.
-		budget = 90 * time.Minute
+		budget = 90*time.Minute + o.leadTime
+		if o.upgrade && o.leadTime == 0 && !o.immediate {
+			budget += upgradenotice.DefaultLead
+		}
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), budget)
 	defer cancel()
@@ -147,7 +153,17 @@ func hostMaintenanceMode(args []string, opts options, stdout, stderr io.Writer, 
 		seq++
 		return json.NewEncoder(stdout).Encode(hostMaintenanceEvent{SchemaVersion: 1, Event: "progress", Seq: seq, Component: "host", Phase: phase})
 	}
-	result, err := runHostMaintenance(ctx, o, stdout, progress)
+	// The schedule is told as soon as it is published, so a caller knows
+	// the deadline long before the terminal result.
+	announced := func(a host.UpgradeAnnouncement) error {
+		phase = "announced"
+		if !o.stream {
+			return nil
+		}
+		seq++
+		return json.NewEncoder(stdout).Encode(hostMaintenanceEvent{SchemaVersion: 1, Event: "progress", Seq: seq, Component: "host", Phase: phase, Data: a})
+	}
+	result, err := runHostMaintenance(ctx, o, stdout, progress, announced)
 	if err == nil {
 		if o.stream {
 			if e := json.NewEncoder(stdout).Encode(hostMaintenanceEvent{SchemaVersion: 1, Event: "result", Seq: seq + 1, Component: "host", Phase: "completed", Data: result}); e != nil {
@@ -197,14 +213,14 @@ func hostMaintenanceMode(args []string, opts options, stdout, stderr io.Writer, 
 	return emitError(ce, opts, stderr)
 }
 
-func runHostMaintenance(ctx context.Context, o hostMaintenanceOptions, w io.Writer, progress func(string) error) (any, error) {
+func runHostMaintenance(ctx context.Context, o hostMaintenanceOptions, w io.Writer, progress func(string) error, announced func(host.UpgradeAnnouncement) error) (any, error) {
 	if o.stream {
 		if err := json.NewEncoder(w).Encode(hostMaintenanceEvent{SchemaVersion: 1, Event: "progress", Seq: 1, Component: "host", Phase: "preflight"}); err != nil {
 			return nil, err
 		}
 	}
 	if o.upgrade {
-		r, e := host.Upgrade(ctx, host.UpgradeRequest{SitePath: o.request.SitePath, ApprovedPlan: o.request.ApprovedPlan, DryRun: o.request.DryRun, ApproveMaintenance: o.approveDisruption, ApproveInterruption: o.approveInterruption, Progress: progress})
+		r, e := host.Upgrade(ctx, host.UpgradeRequest{SitePath: o.request.SitePath, ApprovedPlan: o.request.ApprovedPlan, DryRun: o.request.DryRun, ApproveMaintenance: o.approveDisruption, ApproveInterruption: o.approveInterruption, LeadTime: o.leadTime, Immediate: o.immediate, Progress: progress, Announced: announced})
 		return r, e
 	}
 	if o.prepare {
@@ -226,8 +242,30 @@ func parseHostUpgrade(args []string, jsonMode bool) (hostMaintenanceOptions, err
 	filtered := []string{}
 	seen := map[string]bool{}
 	maintenance, interruption := false, false
+	var lead time.Duration
+	immediate := false
 	for i := 0; i < len(args); i++ {
 		k := args[i]
+		if k == "--lead-time" || k == "--immediate" {
+			if seen[k] {
+				return hostMaintenanceOptions{}, usage("duplicate host upgrade countdown flag")
+			}
+			seen[k] = true
+			if k == "--immediate" {
+				immediate = true
+				continue
+			}
+			i++
+			if i >= len(args) {
+				return hostMaintenanceOptions{}, usage("--lead-time requires a duration such as 2m")
+			}
+			d, err := time.ParseDuration(args[i])
+			if err != nil || d < upgradenotice.MinLead || d > upgradenotice.MaxLead || d%time.Second != 0 {
+				return hostMaintenanceOptions{}, usage("--lead-time requires whole seconds from 1m to 60m, such as 2m or 10m")
+			}
+			lead = d
+			continue
+		}
 		if k == "--approve-maintenance" || k == "--approve-interruption" {
 			if seen[k] {
 				return hostMaintenanceOptions{}, usage("duplicate host upgrade approval flag")
@@ -259,6 +297,10 @@ func parseHostUpgrade(args []string, jsonMode bool) (hostMaintenanceOptions, err
 	o.upgrade = true
 	o.approveDisruption = maintenance
 	o.approveInterruption = interruption
+	if immediate && seen["--lead-time"] {
+		return o, usage("--immediate starts the stop without a countdown; it cannot be combined with --lead-time")
+	}
+	o.leadTime, o.immediate = lead, immediate
 	if !o.request.DryRun && !maintenance {
 		return o, usage("host upgrade requires --approve-maintenance; busy/unobservable work additionally requires --approve-interruption")
 	}

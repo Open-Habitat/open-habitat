@@ -265,6 +265,16 @@ switching anything or installing packages. Run that exact binary with the
 same arguments to enter maintenance, and use it, never the `current`
 selector, for any recovery of that upgrade.
 
+Before stopping anything, the owner announces the stop, two minutes ahead by
+default (`--lead-time`, up to 60m; `--immediate` skips it in an emergency).
+People's browsers show the time and running agents are told what the stop
+does to them, so they can save their work. The stop then begins at that
+deadline whatever the agents are doing: there is no waiting for quiet, and
+none is needed. Interrupting the command during the countdown withdraws the
+announcement and leaves the old release serving. The result's
+`announcement` gives the deadline and how many conversations were told,
+apart from `outcome`.
+
 `--approve-interruption` additionally lets the upgrade interrupt observed
 work in product daemons, not people's user-manager services. A live daemon
 counts as unobservable even when it lists nothing running, because the list is not a
