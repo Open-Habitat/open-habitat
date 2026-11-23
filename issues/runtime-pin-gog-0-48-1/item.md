@@ -3,12 +3,15 @@ created: 2026-11-23
 updated: 2026-11-23
 type: chore
 reporter: runtime-pin-watch
-status: untriaged
+status: open
 priority: normal
 labels: [runtime-pin]
 provenance: other
 provenance_detail: runtime pin watch
 source_ref: runtime-pin:gog@0.48.1
+lane: runtime-pins
+lane_seq: 19
+preparation: ready
 ---
 
 # Runtime pin: gog 0.48.1 is available (pinned 0.48.0)
