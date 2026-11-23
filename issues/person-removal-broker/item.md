@@ -1,8 +1,8 @@
 ---
 created: 2026-11-21
-updated: 2026-11-21
+updated: 2026-11-23
 type: feature
-status: open
+status: done
 priority: normal
 provenance: other
 provenance_detail: ADR 0037 implementation (technical decision run)
@@ -13,6 +13,11 @@ preparation: ready
 related: ['@person-removal']
 lane: person-removal
 lane_seq: 2
+closed: 2026-11-23
+closed_by: agent
+commits:
+- hash: 5e0f057ab
+  summary: broker removal lifecycle
 ---
 
 # Broker: person removal lifecycle (close-out, scheduled data removal, UID reuse proof)
@@ -31,3 +36,9 @@ Implements sections 1, 5 and 6 of ADR 0037 (`docs/decisions/adr-0037-person-remo
 - The allocator's availability check additionally requires zero kernel quota usage for a candidate UID under user quotas.
 - Tests: fake executor covering every interruption point being repeated to completion; a privileged lab check on a disposable host.
 - `docs/operations.md`: replace "no supported … deprovision" with the removal description in the same commit; move the rules the code cannot show into `internal/AGENTS.md`.
+
+## Resolution
+
+### 2026-11-23T04:21:02Z · @agent
+
+Broker removal lifecycle landed; decisions and the unrun privileged lab check are in result.md.
