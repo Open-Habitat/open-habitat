@@ -3,13 +3,14 @@ created: 2026-11-23
 updated: 2026-11-23
 type: improvement
 reporter: jari
-status: untriaged
+status: done
 priority: normal
 provenance: chat
 source_ref: taskfleet:01m84cm6yjvpv30zvsak1mh5ex/rethink-start-page-skill
 originating_run: 01m84cm6yjvpv30zvsak1mh5ex
 originating_run_kind: spinoff
 preparation: ready
+closed: 2026-11-23
 ---
 
 # Rethink the start page skill
