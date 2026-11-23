@@ -10,7 +10,12 @@ import {
 } from "./activeDevice";
 import { plays, setDeviceMuted, useAttentionSound } from "./attentionSound";
 
-type Sent = { tab: string; visible: boolean; idle_ms?: number; left?: true };
+type Sent = {
+  tab: string;
+  visible: boolean;
+  idle_ms?: number;
+  left?: true;
+};
 
 let answer: () => Promise<Response>;
 let sent: Sent[];
@@ -84,6 +89,28 @@ describe("active device reports", () => {
     await settle();
     expect(sent).toHaveLength(4);
     expect(new Set(sent.map((s) => s.tab)).size).toBe(1);
+  });
+
+  it("a slow answer does not let typing pile up reports", async () => {
+    stop = startActiveDevice("csrf");
+    await settle();
+    let release: () => void = () => undefined;
+    answer = () =>
+      new Promise<Response>((resolve) => {
+        release = () => void reply(true).then(resolve);
+      });
+    for (let i = 0; i < 30; i++) {
+      window.dispatchEvent(new KeyboardEvent("keydown"));
+      await vi.advanceTimersByTimeAsync(100);
+    }
+    answer = () => reply(true);
+    release();
+    await settle();
+    // The leading report, then nothing until the interval's trailing one.
+    expect(sent).toHaveLength(2);
+    await vi.advanceTimersByTimeAsync(inputReportMs);
+    await settle();
+    expect(sent).toHaveLength(3);
   });
 
   it("asks at sound time and follows the answer", async () => {

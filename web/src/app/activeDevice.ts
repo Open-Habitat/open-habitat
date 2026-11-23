@@ -64,9 +64,13 @@ type Running = {
   csrf: string;
   /** performance.now() of the latest input, undefined before any. */
   input?: number;
-  /** The input the daemon last heard of. */
+  /** The latest input a report was sent for, by when it was sent: the
+   * throttle counts from sending, not from an answer that may be slow. */
   reported?: number;
   trailing?: ReturnType<typeof setTimeout>;
+  /** A background report waits in the queue; it reads the state when its
+   * turn comes, so another one adds nothing. */
+  waiting: boolean;
   /** Reports go one at a time so the daemon hears them in order. */
   queue: Promise<unknown>;
 };
@@ -91,11 +95,12 @@ function body(r: Running, left = false) {
 /** A report that has not been answered in this long is given up. */
 const reportWaitMs = 10_000;
 
-function send(r: Running): Promise<boolean> {
+function send(r: Running, background = false): Promise<boolean> {
+  if (background) r.waiting = true;
   const next = r.queue.then(async () => {
+    if (background) r.waiting = false;
     if (running !== r) throw new Error("stopped");
     const value = body(r);
-    const input = r.input;
     const response = await jsonWrite(
       "account.active_device",
       url,
@@ -106,7 +111,6 @@ function send(r: Running): Promise<boolean> {
     if (!response.ok) throw new Error("active device unavailable");
     const reply = await readJSON(response, 1024);
     if (!validate(reply)) throw new Error("active device unavailable");
-    if (input !== undefined) r.reported = Math.max(r.reported ?? 0, input);
     return reply.play;
   });
   r.queue = next.catch(() => undefined);
@@ -116,7 +120,9 @@ function send(r: Running): Promise<boolean> {
 function report(r: Running) {
   clearTimeout(r.trailing);
   r.trailing = undefined;
-  void send(r).catch(() => undefined);
+  if (r.input !== undefined) r.reported = r.input;
+  if (r.waiting) return;
+  void send(r, true).catch(() => undefined);
 }
 
 function onInput() {
@@ -138,7 +144,7 @@ const inputs = ["keydown", "pointerdown", "touchstart", "wheel"] as const;
 
 /** Starts this tab's reports for the session; returns their stop. */
 export function startActiveDevice(csrf: string): () => void {
-  const r: Running = { csrf, queue: Promise.resolve() };
+  const r: Running = { csrf, queue: Promise.resolve(), waiting: false };
   running = r;
   const visibility = () => report(r);
   const leave = () => {
