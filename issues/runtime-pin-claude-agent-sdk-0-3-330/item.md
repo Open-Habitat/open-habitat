@@ -1,9 +1,9 @@
 ---
 created: 2026-11-23
-updated: 2026-11-23
+updated: 2026-11-24
 type: chore
 reporter: runtime-pin-watch
-status: open
+status: obsolete
 priority: normal
 labels:
 - runtime-pin
@@ -14,6 +14,8 @@ source_ref: runtime-pin:@anthropic-ai/claude-agent-sdk@0.3.330
 lane: runtime-pins
 lane_seq: 13
 preparation: pending
+closed: 2026-11-24
+closed_by: runtime-pin-watch
 ---
 
 # Runtime pin: @anthropic-ai/claude-agent-sdk 0.3.330 is available (pinned 0.3.321)
@@ -38,3 +40,9 @@ else stays here for the conductor.
 ### 2026-11-23T12:40:17Z · @runtime-pin-watch
 
 Research verdict: needs-work; this release stays for the conductor.
+
+## Resolution
+
+### 2026-11-23T22:04:43Z · @runtime-pin-watch
+
+Runtime pin watch: superseded.
