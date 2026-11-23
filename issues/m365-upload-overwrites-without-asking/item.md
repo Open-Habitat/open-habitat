@@ -3,12 +3,13 @@ created: 2026-11-22
 updated: 2026-11-23
 type: improvement
 reporter: conductor
-status: open
+status: wontfix
 priority: normal
 provenance: chat
 source_ref: conductor:2026-11-22:sharepoint-live
 lane: unlaned
 preparation: ready
+closed: 2026-11-23
 ---
 
 # Microsoft files: an agent upload silently overwrites an existing file
@@ -22,3 +23,7 @@ Live check on a pilot installation's SharePoint test site (22.11.2026, full leve
 ### 2026-11-23T04:20:14Z · @jari
 
 Jari 23.11.2026: yes, the agent asks before an upload replaces an existing file, through the same browser permission question as delete (read the target's metadata first; a new name does not ask).
+
+### 2026-11-23T04:27:11Z · @jari
+
+Jari 23.11.2026 (later the same morning): no confirmation after all — replacing a file is the normal operation for practically every change in SharePoint. Closed as wontfix; the cancelled implementation run was discarded.
