@@ -10,7 +10,7 @@ source_ref: chat:2026-11-18/pi-rewind-own-repo
 lane: pi-extension-repos
 lane_seq: 3
 blocked_by: ['@pi-web-search-own-repo', '@rewind-tracks-all-changes']
-preparation: pending
+preparation: ready
 ---
 
 # Rewind extension moves to its own repository, Open-Habitat/pi-rewind
@@ -42,3 +42,9 @@ Set `preparation: pending` for Jari's review. His 22 November 2026 decision in `
 - [ ] The extension works in a plain Pi, including the terminal TUI, or the README says plainly which modes it supports; nothing in it is worded for the browser only.
 - [ ] The daemon's side of rewind (`rewind_linux.go`) drives the packaged extension through the same interface as now, and the browser's "return here" behaves as before, file restoration included.
 - [ ] The core runtime takes the extension at a pinned version with its licence recorded, and `internal/daemon/rewind-extension.mjs` is gone from this repository.
+
+## Decisions
+
+### 2026-11-23T05:51:12Z · @jari
+
+Jari 23.11.2026: no separate pi-rewind package, but there must be a repository from which we make the pull request to Raine: an Open-Habitat fork of better-pi-rewind carrying our changes on a branch, kept in sync with Habitat's embedded copy. The pull request itself is opened later, after a couple of weeks of real use (22.11. decision).
