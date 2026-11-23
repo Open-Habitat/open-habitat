@@ -10,6 +10,7 @@ import {
   type AccessTeam,
   type AccessView,
   accessRefusal,
+  confirmsLogin,
   type GitHubAccount,
   type LookupResult,
   loginShape,
@@ -19,6 +20,7 @@ import {
 } from "../app/serverAccess";
 import { ControlButton, Segmented } from "./ControlElements";
 import { Icon, type IconName } from "./Icon";
+import { RadioGroup, TextField } from "./Primitives";
 import {
   PeopleList,
   PeopleRow,
@@ -50,6 +52,8 @@ export type PendingChange = {
     | "forget"
     | "grant"
     | "revoke"
+    | "remove-person"
+    | "cancel-removal"
     | "uncertain";
   login?: string;
   name?: string;
@@ -128,6 +132,25 @@ function StateMark({ r }: { r: Row }) {
         label={txt.pending[r.pending.kind]}
       />
     );
+  if (r.removal?.reason)
+    return <StatusMark data-testid={id} tone="danger" label={txt.removing} />;
+  if (r.removal?.stage === "removing")
+    return (
+      <StatusMark
+        data-testid={id}
+        tone="info"
+        animated="running"
+        label={txt.runningMark}
+      />
+    );
+  if (r.removal)
+    return (
+      <StatusMark
+        data-testid={id}
+        tone="warning"
+        label={txt.scheduledMark(day(r.removal.due))}
+      />
+    );
   if (unfinished(r))
     return <StatusMark data-testid={id} tone="warning" label={txt.removing} />;
   if (r.state === "unlisted")
@@ -180,7 +203,7 @@ function Facts({ r }: { r: Row }) {
         {role.at && ` ${day(role.at)}`}
       </span>,
     );
-  if (r.state === "withdrawn" && r.at)
+  if (r.state === "withdrawn" && r.at && !r.removal)
     items.push(<span key="w">{txt.removedOn(day(r.at))}</span>);
   if (r.state === "left" && r.at)
     items.push(<span key="l">{txt.leftOn(day(r.at))}</span>);
@@ -293,21 +316,103 @@ function Receipt({ id, r }: { id: string; r: OnboardingReceipt }) {
   );
 }
 
+// What the row says about a scheduled removal: the services the person's
+// daemon disconnected, and while a step is held, why and that the server
+// tries again.
+function RemovalFacts({ r }: { r: Row }) {
+  const m = r.removal;
+  if (!m || r.pending) return null;
+  const sum = (k: "revoked" | "local_only" | "failed") =>
+    (m.providers ?? []).reduce((n, p) => n + p[k], 0);
+  return (
+    <>
+      {!m.reason && m.stage === "scheduled" && (
+        <span className="sa-muted" data-testid={`access-removal-${r.id}`}>
+          {txt.scheduledNote}
+        </span>
+      )}
+      {m.disconnect === "done" && (m.providers ?? []).length > 0 && (
+        <span className="sa-muted" data-testid={`access-services-${r.id}`}>
+          {txt.servicesFact(sum("revoked"), sum("local_only"), sum("failed"))}
+        </span>
+      )}
+      {m.disconnect === "not_reached" && (
+        <span className="sa-muted" data-testid={`access-services-${r.id}`}>
+          {txt.servicesNotReached}
+        </span>
+      )}
+      {m.reason && (
+        <span
+          className="sa-bad"
+          data-testid={`access-removal-reason-${r.id}`}
+          data-reason={m.reason}
+        >
+          <Icon name="warning" />
+          {txt.removalReasons[m.reason] ?? txt.removing} {txt.retryHourly}
+        </span>
+      )}
+    </>
+  );
+}
+
 function RowAction({
   r,
   locked,
   addLocked,
+  self,
   onRemove,
+  onRemovePerson,
+  onCancelRemoval,
   onRestore,
   onRefresh,
 }: {
   r: Row;
   locked: boolean;
   addLocked: boolean;
+  /** The signed-in administrator, who has no removal action on themselves. */
+  self?: string;
   onRemove: (r: Row) => void;
+  onRemovePerson?: (r: Row) => void;
+  onCancelRemoval?: (r: Row) => void;
   onRestore: (r: Row) => void;
   onRefresh: () => void;
 }) {
+  if (r.removal && r.pending?.kind !== "uncertain") {
+    if (r.removal.stage !== "scheduled" || !onCancelRemoval) return null;
+    return (
+      <ControlButton
+        data-testid={`access-cancel-removal-${r.id}`}
+        size="row"
+        variant="secondary"
+        isDisabled={!!r.pending || locked}
+        aria-label={txt.cancelRemovalNamed(who(r))}
+        onPress={() => onCancelRemoval(r)}
+      >
+        {txt.cancelRemoval}
+      </ControlButton>
+    );
+  }
+  // Removing a person: a separate, final action beside withdrawal, on an
+  // account that exists, never on oneself or someone site.json admits.
+  const removable =
+    !!onRemovePerson &&
+    !!r.username &&
+    r.id !== self &&
+    r.source !== "operator" &&
+    r.administrator_role?.source !== "operator" &&
+    (r.state === "joined" || r.state === "withdrawn");
+  const removePerson = removable && (
+    <ControlButton
+      data-testid={`access-remove-person-${r.id}`}
+      size="row"
+      variant="quiet"
+      isDisabled={!!r.pending || locked}
+      aria-label={txt.removePersonNamed(who(r))}
+      onPress={() => onRemovePerson?.(r)}
+    >
+      {txt.removePerson}
+    </ControlButton>
+  );
   if (r.pending?.kind === "uncertain")
     return (
       <ControlButton
@@ -337,30 +442,36 @@ function RowAction({
     );
   if (r.state === "withdrawn")
     return (
-      <ControlButton
-        data-testid={`access-restore-${r.id}`}
-        size="row"
-        variant="secondary"
-        isDisabled={!!r.pending || locked || addLocked}
-        onPress={() => onRestore(r)}
-      >
-        {txt.restore}
-      </ControlButton>
+      <>
+        <ControlButton
+          data-testid={`access-restore-${r.id}`}
+          size="row"
+          variant="secondary"
+          isDisabled={!!r.pending || locked || addLocked}
+          onPress={() => onRestore(r)}
+        >
+          {txt.restore}
+        </ControlButton>
+        {removePerson}
+      </>
     );
   // A deny with no admission row: there is nothing here to remove or restore.
   if (r.source === "none") return null;
   return (
-    <ControlButton
-      data-testid={`access-remove-${r.id}`}
-      size="row"
-      variant="quiet"
-      isDisabled={!!r.pending || locked}
-      aria-label={txt.removeNamed(who(r))}
-      onPress={() => onRemove(r)}
-    >
-      <Icon name="cross" />
-      {r.state === "joined" ? txt.removeAccess : txt.remove}
-    </ControlButton>
+    <>
+      <ControlButton
+        data-testid={`access-remove-${r.id}`}
+        size="row"
+        variant="quiet"
+        isDisabled={!!r.pending || locked}
+        aria-label={txt.removeNamed(who(r))}
+        onPress={() => onRemove(r)}
+      >
+        <Icon name="cross" />
+        {r.state === "joined" ? txt.removeAccess : txt.remove}
+      </ControlButton>
+      {removePerson}
+    </>
   );
 }
 
@@ -883,6 +994,104 @@ function RemoveDialog({
   );
 }
 
+/** The removal's due day in 14 days, as the broker will set it. */
+const graceDay = () => day(new Date(Date.now() + 14 * 864e5).toISOString());
+
+function RemovePersonDialog({
+  r,
+  size,
+  onConfirm,
+  onClose,
+}: {
+  r: Row;
+  /** The home's size, as Levytila shows it; empty when unknown. */
+  size: string;
+  onConfirm: (when: "grace" | "now", login: string) => void;
+  onClose: () => void;
+}) {
+  const [when, setWhen] = useState<"grace" | "now">("grace");
+  const [typed, setTyped] = useState("");
+  const due = graceDay();
+  const login = r.login_hint;
+  const ready = confirmsLogin(typed, login);
+  return (
+    <ModalOverlay
+      className="ah-overlay"
+      isOpen
+      isDismissable
+      onOpenChange={(open) => !open && onClose()}
+    >
+      <Modal className="ah-modal">
+        <Dialog
+          className="ah-dialog sa-dialog"
+          data-testid="access-remove-person-dialog"
+        >
+          <Heading slot="title">{txt.personQuestion(who(r))}</Heading>
+          <ul className="sa-consequences">
+            <li>
+              <Icon name="cross" />
+              <span>
+                {r.state === "withdrawn" ? txt.accessGone : txt.accessNow}
+              </span>
+            </li>
+            <li>
+              <Icon name="plug" />
+              <span>{txt.servicesNow}</span>
+            </li>
+            <li>
+              <Icon name="link" />
+              <span>{txt.linksNow}</span>
+            </li>
+            <li>
+              <Icon name="trash" />
+              <span data-testid="access-remove-person-home">
+                {when === "now" ? txt.homeNow(size) : txt.homeOn(due, size)}
+              </span>
+            </li>
+          </ul>
+          <p className="sa-muted">{txt.tellThem}</p>
+          <RadioGroup
+            label={txt.when}
+            value={when}
+            onChange={setWhen}
+            options={[
+              { value: "grace", label: txt.whenGrace(due) },
+              { value: "now", label: txt.whenNow },
+            ]}
+          />
+          {login && (
+            <TextField
+              data-testid="access-remove-person-login"
+              label={txt.typeLogin(login)}
+              value={typed}
+              onChange={setTyped}
+              mono
+            />
+          )}
+          <div className="ah-dialog-actions">
+            <ControlButton size="page" variant="secondary" onPress={onClose}>
+              {txt.cancel}
+            </ControlButton>
+            <ControlButton
+              data-testid="access-remove-person-confirm"
+              size="page"
+              variant="danger"
+              isDisabled={!ready || !login}
+              onPress={() => {
+                if (!login) return;
+                onConfirm(when, login);
+                onClose();
+              }}
+            >
+              {when === "now" ? txt.confirmNow : txt.confirmOn(due)}
+            </ControlButton>
+          </div>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
+  );
+}
+
 function GrantDialog({
   r,
   onConfirm,
@@ -1062,6 +1271,10 @@ export function ServerAccess({
   onAddTeam,
   onRemoveTeam,
   onForget,
+  onRemovePerson,
+  onCancelRemoval,
+  self,
+  homeSize,
   teamPending = {},
   children,
 }: {
@@ -1081,6 +1294,18 @@ export function ServerAccess({
   onRemoveTeam?: (team: AccessTeam) => void;
   /** Dismiss a leaver's notice. */
   onForget?: (entry: AccessEntry) => void;
+  /** Remove a person for good (ADR 0037): after the grace period or now,
+   * confirmed with their typed login. */
+  onRemovePerson?: (
+    entry: AccessEntry,
+    when: "grace" | "now",
+    login: string,
+  ) => void;
+  onCancelRemoval?: (entry: AccessEntry) => void;
+  /** The signed-in administrator's GitHub id. */
+  self?: string;
+  /** A person's home size as the storage view shows it, by GitHub id. */
+  homeSize?: Record<string, string>;
   /** Team removals in flight, by org_id/slug. */
   teamPending?: Record<string, "remove" | "uncertain">;
   /** Further rows of the section's first card, such as shared links. */
@@ -1088,6 +1313,7 @@ export function ServerAccess({
 }) {
   const [filter, setFilter] = useState<Filter>("all");
   const [removing, setRemoving] = useState<Row>();
+  const [removingPerson, setRemovingPerson] = useState<Row>();
   const [granting, setGranting] = useState<Row>();
   const [detaching, setDetaching] = useState<AccessTeam>();
   const open = view.mode === "any";
@@ -1252,6 +1478,7 @@ export function ServerAccess({
                   {r.name && <span className="sa-muted">{r.name}</span>}
                   {reasons && <Reasons r={r} />}
                   <Facts r={r} />
+                  <RemovalFacts r={r} />
                   {r.onboarding && <Receipt id={r.id} r={r.onboarding} />}
                   {r.site_key_copy && (
                     <span
@@ -1262,11 +1489,14 @@ export function ServerAccess({
                       {!r.site_key_copy.current && txt.earlierKey}
                     </span>
                   )}
-                  {r.state === "withdrawn" && r.username && !r.pending && (
-                    <span className="sa-muted">
-                      {txt.unixRemains(<code>{r.username}</code>)}
-                    </span>
-                  )}
+                  {r.state === "withdrawn" &&
+                    r.username &&
+                    !r.pending &&
+                    !r.removal && (
+                      <span className="sa-muted">
+                        {txt.unixRemains(<code>{r.username}</code>)}
+                      </span>
+                    )}
                   {problem?.id === r.id && !r.pending && (
                     <span className="sa-bad" role="alert">
                       <Icon name="warning" />
@@ -1290,7 +1520,10 @@ export function ServerAccess({
                     r={r}
                     locked={open || !canWrite}
                     addLocked={!view.runtime_admission}
+                    self={self}
                     onRemove={setRemoving}
+                    onRemovePerson={onRemovePerson && setRemovingPerson}
+                    onCancelRemoval={onCancelRemoval}
                     onRestore={(x) =>
                       void onAdd(
                         {
@@ -1323,6 +1556,16 @@ export function ServerAccess({
           r={removing}
           onConfirm={() => onRemove(removing)}
           onClose={() => setRemoving(undefined)}
+        />
+      )}
+      {removingPerson && onRemovePerson && (
+        <RemovePersonDialog
+          r={removingPerson}
+          size={homeSize?.[removingPerson.id] ?? ""}
+          onConfirm={(when, login) =>
+            onRemovePerson(removingPerson, when, login)
+          }
+          onClose={() => setRemovingPerson(undefined)}
         />
       )}
       {detaching && onRemoveTeam && (

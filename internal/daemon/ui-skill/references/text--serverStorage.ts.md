@@ -51,6 +51,8 @@ const fi = {
     `Palauta oletukseen (${limit}): ${name}`,
   saving: "Tallennetaan…",
   loading: "Ladataan levytilaa…",
+  removalOn: (day: string) => `Poistetaan ${day}`,
+  countedByUse: "Ei varaa rajaa: lasketaan käytön mukaan",
 };
 
 export const serverStorageText = catalog(fi, {
@@ -91,6 +93,8 @@ export const serverStorageText = catalog(fi, {
   toDefault: (limit) => `Reset to default (${limit})`,
   toDefaultFor: (name, limit) => `Reset to default (${limit}): ${name}`,
   saving: "Saving…",
+  removalOn: (day) => `Removed on ${day}`,
+  countedByUse: "Reserves no limit: counted by use",
   loading: "Loading disk space…",
 });
 
