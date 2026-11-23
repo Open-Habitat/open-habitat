@@ -505,3 +505,102 @@ orpojen rivien käsittely.
    agentille? Suositus C.
 3. Ote: a 280 merkkiä, b ensimmäinen virke vai c alku rakenteineen?
    Suositus c.
+
+## Toteutus (kokeellinen `reply-to-message`, 23.11.2026)
+
+Toteutettu vaihtoehto 1 kierroksen 3 kulmapainikkeella A ja lainauksella A
+sekä Jarin lyhyellä otteella.
+
+- **Sopimus.** `pi-message.schema.json`: valinnainen `reply_to: {entry_key}`
+  (send, steer, follow_up). `history.schema.json` `$defs/replyTo`
+  `{entry_key, excerpt}` käyttäjän merkinnälle, sama `event.schema.json`:n
+  `history.entry`-tapahtumassa. Virhekoodi `reply_target_gone` (409).
+- **Daemon** (`internal/daemon/reply_linux.go`, `admitMessage`): lukee
+  kohteen natiivista istunnosta (nykyinen haara lehdestä juureen, myös
+  tiivistetty osa), vaatii `assistant`-viestin, jossa on tekstiä, ja liittää
+  `<reply-to entry="…">`-lohkon ennen liitteiden laajennusta. Lohkon muoto
+  ja otesääntö ovat `internal/replyblock`issa.
+- **Ote**: viestin tekstilohkojen (ei ajattelua eikä työkalukutsuja)
+  ensimmäisen rivin ensimmäinen virke, enintään 160 merkkiä ` …` mukaan
+  lukien, katkaistuna sanan kohdalta. Lista pitää ensimmäisen kohdan
+  merkkeineen, koodilohko aitansa ja ensimmäisen koodirivin suljettuna.
+  ` …` kertoo, että viesti jatkuu. Selaimen kopio säännöstä
+  (`web/src/app/replyExcerpt.ts`) ja Go lukevat samat testitapaukset
+  (`internal/replyblock/testdata/excerpts.json`), joten kentän lainaus on
+  sama ote, jonka agentti saa.
+- **Projektio**: historia, tapahtumat, lohkojen luku, otsikko ja hakuindeksi
+  näyttävät ihmisen oman tekstin ilman lohkoa; Pi:n jono ja pidätetyt
+  viestit samoin.
+- **Selain**: ↩ Kopioin parina valmiin agentin viestin kulmassa (aria-pressed
+  vastattaessa), lainaus kentän laatikon ensimmäisenä rivinä kahdella
+  rivillä, ✕ poistaa ja luonnos jää, napautus vie alkuperäiseen.
+  Lähetetyn viestin yllä on agentin saama ote; napautus vierittää
+  alkuperäisen näkyviin ja rajaa sen kahdeksi sekunniksi (haun hypyn
+  mekanismi). Selitä-tila: K33–K35.
+
+### Tarkistukset
+
+- Go: `./internal/replyblock`, `./internal/daemon` (koko paketti, 289 s),
+  `./internal/searchindex`, `./internal/gateway`; sopimukset ja generoidut
+  tiedostot (`test-focused.sh --area contracts`, `check-generated.sh`).
+- Web: `test-focused.sh --area web` (261 tiedostoa, 2215 testiä).
+- Selain: `reply-to-message.spec.ts` (1280 ja 390 px sekä kytkin pois),
+  `--repeat-each 3`, `OH_BROWSER_WORKERS=2`: 9/9; lisäksi
+  `settings-experimental.spec.ts` ja `switcher-search.spec.ts`.
+  Synteettinen Pi vastaa saamallaan tekstillä, joten spec näkee, että
+  daemonin lohko meni Pi:lle.
+
+## Päätökset myöhempään katselmointiin (toteutus)
+
+- **Kenttä vain kytkin päällä**: `reply_to` hylätään 400 `invalid_request`,
+  kun ihmisen kokeellinen kytkin on pois (saman komennon toisto vastataan
+  silti viestinä, joka se on). Vaihtoehto oli hyväksyä aina ja
+  piilottaa vain painike; kytkin on kuitenkin ominaisuuden raja, ja pois
+  kytketty ominaisuus ei saa muuttaa sitä, mitä agentti saa.
+- **Kauttaviivakomento**: lohko ei mene `/`-alkuisen viestin eteen, koska
+  Pi lukee komennon vain tekstin alusta. Daemon hylkää yhdistelmän 400:lla;
+  selain lähettää komennon ilman lainausta ja jättää lainauksen kenttään
+  seuraavaa viestiä varten.
+- **Pidätetyt viestit**: vastaus ei liity muiden pidätettyjen perään (409
+  `control_uncertain`, teksti palaa kenttään), koska lohko luetaan vain
+  viestin alusta. Vastauksen perään pidätetty viesti liittyy normaalisti.
+  Harvinainen: kaksi viestiä Pi:n käynnistyessä, joista jälkimmäinen on
+  vastaus.
+- **Jono ja pidätetyt näkyvät ilman lainausta**: Pi:n jonon rivit ja
+  pidätetyn viestin kupla näyttävät kirjoitetun tekstin; lainaus näkyy, kun
+  viesti on historiassa. Jonon palautus kenttään palauttaa tekstin ilman
+  lainausta. Jonon rivien muuttaminen olioiksi olisi ollut suurempi
+  sopimusmuutos.
+- **Lainaus ei palaa hylkäyksen jälkeen**: kun lähetys hylätään, teksti
+  palaa kenttään mutta lainaus ei; sen saa takaisin yhdellä painalluksella.
+  Näkymän avautumista odottava viesti ja kadonneen lähetyksen automaattinen
+  uusinta kantavat lainauksen mukanaan. Kirjautumisen odotuksen jälkeinen
+  lähetys lähtee ilman lainausta (harvinainen, tekstiä ei menetetä).
+- **Itse kirjoitettu lohko**: jos ihminen kirjoittaa viestinsä alkuun
+  `<reply-to entry="…">`-lohkon, näkymä näyttää sen lainauksena, kuten
+  Pi:n `<skill>`-kääre tulkitaan. Se harhauttaa vain kirjoittajan omaa
+  näkymää, koska vain hän kirjoittaa omat viestinsä omalle agentilleen
+  (osallistujien viestit kulkevat erillistä polkua). Hylkääminen
+  muuttaisi ihmisen tekstiä tai hylkäisi liitetyn tekstin.
+- **Mihin painike tulee**: tallennetun agentin merkinnän ensimmäiseen
+  tekstiin, myös välivastaukseen; virtaavassa vastauksessa ei ole painiketta,
+  koska sillä ei vielä ole tallennettua tekstiä.
+- **Virkkeen loppu**: `.`, `!` tai `?`, jota seuraa rivin loppu tai välilyönti
+  ja iso kirjain tai avaava merkki. Pieni kirjain jatkaa virkettä
+  (*esim. tämä*), joten kierroksen 3 b:n lyhenneongelma ei toistu. Jos
+  viesti jatkuu otteen jälkeen, loppuun tulee ` …`.
+- **Otteen siivous**: `</reply-to` poistetaan toistuvasti (jaettu merkki ei
+  voi koota itseään), ja liiteosoite `/api/v1/attachments/<uuid>` muuttuu
+  muotoon `[attachment]`, jotta agentin lainattu teksti ei liitä tiedostoja
+  ihmisen viestiin.
+- **Lainauksen esitys**: kierroksen 3 A:n tapaan pelkkä teksti kahdella
+  rivillä (Markdownin merkit pois). Kentän lainauksessa on kellonaika;
+  lähetetyn viestin lainauksessa ei, koska alkuperäinen ei välttämättä ole
+  ladattuna.
+- **Hyppy**: haun hyppymekanismi (lukee vanhempia sivuja, kunnes viesti
+  löytyy), ilman hakunauhaa; jos viestiä ei löydy, nauha kertoo sen.
+- **Kytkin pois**: kulmapainiketta ja kentän lainausta ei piirretä, mutta
+  jo lähetetyn vastauksen lainaus näkyy ja hyppää, koska se on natiivia
+  historiaa.
+- **Osallistujat**: jaetun keskustelun osallistujan viesti ei kanna
+  vastausta (osallistujan polku on erillinen), kuten suunnitelmassa.
