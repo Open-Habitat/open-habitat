@@ -10,8 +10,8 @@ schema_version: 1
 user. Nearly everything the person does in the browser's rail and Settings has
 a command here, and it writes the same native files the browser does.
 `open-habitat agent --help` lists what this installation has, and each
-subcommand's `--help` gives its flags, limits and input format. This guide adds
-what the help cannot: which capability fits which situation, and how the
+subcommand's `--help` lists its flags and describes inputs and limits. This guide
+puts them in context: which capability fits which situation, and how the
 commands behave when something is uncertain.
 
 ## How every command behaves
@@ -20,9 +20,10 @@ commands behave when something is uncertain.
 for; the daemon verifies it. A child worktree run inherits its parent's context
 until the daemon launches it itself. Outside a daemon launch there is no
 current conversation (`current_context_unavailable`), and after the launch has
-ended or been replaced it is `current_context_stale`; then name the target
-with `--conversation pi:UUID`. The working directory, the newest history and
-the process tree say nothing reliable about which conversation you are in.
+ended or been replaced it is `current_context_stale`; where the command allows
+it, name the target with `--conversation pi:UUID`. The working directory, the
+newest history and the process tree say nothing reliable about which
+conversation you are in.
 
 **Reads are observations.** A read never starts Pi. "Unavailable" or "unknown"
 in a result means the daemon could not see, which is different from empty,
@@ -51,13 +52,13 @@ checks everything again and may still refuse.
 with what was observed in `error.result` (what remains, what was kept and
 why). Read it before deciding what to do next.
 
-**`--dry-run`** previews a notice, a view or file offer and their removal.
-Elsewhere it is refused with `dry_run_unsupported`, because native state
-cannot be reserved between a plan and its execution.
+**`--dry-run`** previews a notice, a view or file offer, or view/file removal.
+Other writes that accept the flag refuse it with `dry_run_unsupported`, because
+native state cannot be reserved between a plan and its execution.
 
-**Large output.** Every list takes `--output FILE.jsonl`; the file is private
-(0600), never overwrites an existing one and is removed if the export fails
-half way. Stdout then reports only the path and count. In worktree, Trash,
+**Large output.** Lists that advertise `--output` take `FILE.jsonl`; the file
+is private (0600), never overwrites an existing one and is removed if the
+export fails half way. Stdout then reports only the path and count. In worktree, Trash,
 repository and clone exports the first line is the observation with its
 listing tokens (`record_type: observation`) and the entries follow.
 
@@ -128,9 +129,10 @@ when it is unclear, since `--at` wants an explicit offset. While it waits the
 conversation sits in Hiljaiset by itself, and your reply at the wake rises to
 Sinun vuorosi. There is no recurrence: set the next wake when you wake. Tell
 the person what you set and for when, and only promise a reminder the command
-confirmed (it needs a working user manager; `wake_limit_reached` at 100
-pending means none was set). `wake list|update|delete` manage them; the person
-can move or cancel one too, and archiving the conversation cancels its wakes.
+confirmed (waking while the daemon is stopped needs a working user manager;
+`wake_limit_reached` at 100 pending means none was set). `wake list|update|delete`
+manage them; the person can move or cancel one too, and archiving the
+conversation cancels its wakes.
 
 **A view** (`view offer`) shows an HTML report or a static prototype. You
 cannot open the person's browser or show them a dev server; the offer puts a
@@ -145,9 +147,9 @@ without network, so everything it needs is inline or in the offered directory
 and referenced by relative path (no CDN, `fetch`, forms, popups or storage).
 Where `site.views` is false the offer fails with `views_unavailable`; say the
 page cannot be shown here and hand it over as a file offer. The person can
-share a view with others through *Jaa linkillä* on its card where the site
-allows; links are theirs alone to make and revoke. After a new version, tell
-them they can point the link at it (*Vaihda sisältö*). Under a link the files
+share a view with others through the globe on its card where the site
+allows; publication is theirs alone to change. A new version has its own
+address: an existing address cannot be pointed at it. Under a link the files
 sit below the link's key, which is one more reason for relative paths.
 Removing a view (`view remove`) ends its link.
 
@@ -159,10 +161,11 @@ is wrong or outdated (`file remove`); its card then says so.
 
 For both, the title is what the person reads on the card, so give `--title` in
 their language naming the content and, when useful, the iteration
-("Viimeisimmät sivupalkissa – prototyyppi, kierros 2"); without it the card
-shows a file name. Offered copies stay until removed and count against the
-person's storage. Names starting with a dot are skipped inside a directory and
-a symlink anywhere in the path refuses the offer (`unsafe_view_source`,
+("Viimeisimmät sivupalkissa – prototyyppi, kierros 2"); without it a single-source
+card shows a file name; several file sources require a title. Offered copies
+stay until removed and count against the person's storage. Names starting
+with a dot are skipped inside a directory and a symlink anywhere in the path
+refuses the offer (`unsafe_view_source`,
 `unsafe_file_source`: check the ancestors too). That skipping is not a secret
 detector, so offer only what you mean to share.
 
@@ -172,10 +175,10 @@ their editor there. You cannot drive the editor.
 
 ## The person's other conversations
 
-You can read and steer the person's other conversations. Targets are always
-explicit (`--conversation pi:UUID`); nothing here acts on `--current`.
+You can read and steer the person's other conversations. Targets are
+explicit (`--conversation pi:UUID`); `conversation show` also accepts `--current`.
 
-`conversation list` is the rail: every conversation including archived ones,
+`conversation list` is the rail: workspace conversations including archived ones,
 each with the `title` the rail shows and a `lifecycle` of `live` (a running
 Pi), `resting` or `archived`. Titles are not unique, so pick by `agent_id`.
 `conversation show --conversation` gives a held conversation's status, queue
@@ -190,8 +193,8 @@ and pending question. Sessions started in a terminal can be read through
   acknowledgement, which says the message was taken, not that the turn is
   done. To attach a file, register it with `attachment create` and put the
   returned `/api/v1/attachments/UUID` in the message text.
-- `queue show|delete` (with `--held` for messages the daemon still holds),
-  `turn interrupt`, `conversation stop` (ends Pi but not its detached tools),
+- `queue show|delete` (`delete --held` for messages the daemon still holds),
+  `turn interrupt`, `conversation stop` (ends Pi and its managed background tools),
   `continuation show` and `conversation resume`.
 - Archive and restore: read `archive show`, then `conversation update
   --archived true|false` with its token and the previous value.
@@ -207,14 +210,14 @@ and pending question. Sessions started in a terminal can be read through
   conversation instead of answering again. The answer is the person's to
   give or to delegate.
 
-**History.** `history list` discovers every native Pi history the person owns;
-`history list --conversation pi:UUID` returns the latest page (up to 200
-entries) of the current branch, and with `--output history.jsonl` the whole
-conversation, one page per line with its `entries` (pages newest first,
-entries in order within a page). An export aborts if the history changes
+**History.** `history list` discovers native histories under `~/.pi/agent/sessions`;
+`history list --conversation pi:UUID` returns the latest page (up to 1000
+entries, also byte-bounded) of the current branch, and with
+`--output history.jsonl` the whole conversation, one page per line with its
+`entries` (pages newest first, entries in order within a page). An export aborts if the history changes
 under it. Large blocks are truncated in these previews; `history-block show`
-with the entry's key, block index and revision reads one in full, and with
-`--output` every chunk, one per line as `chunk.text` (or base64 `chunk.data`
+with the entry's key, block index and revision reads an untruncated chunk, and
+`--output` exports every chunk, one per line as `chunk.text` (or base64 `chunk.data`
 for images).
 
 **Detached tool processes.** `process list --conversation` shows a
@@ -283,9 +286,10 @@ token. Nothing is purged automatically, and Trash counts against the quota.
 and their sync health; `credential list` shows which model-provider keys
 exist. Neither returns a secret. Read them instead of assuming a connection.
 
-**How secrets travel.** A secret typed into the conversation, a command line
-or the environment ends up in Pi's history, in process listings and at the
-model provider. So secrets go into these commands only through
+**How secrets travel.** A secret typed into the conversation goes into Pi's
+history and to the model provider; command lines and environment variables
+can also expose secrets through tool history or process inspection. So secrets
+go into these commands only through
 `--secret-file -` or `--input-file -`, piped from where they already are: a
 secret manager, a 0600 file of the person's, or the command that creates the
 token. Do not print them or ask the person to paste one; if they have no such
@@ -359,7 +363,7 @@ key at `~/.config/sops/age/keys.txt` without configuration.
 A key is made when the person asks for one and never over an existing file,
 because the old key may be the only way into something:
 `ssh-keygen -t ed25519 -N "" -f ~/.ssh/<name>` and
-`age-keygen -o ~/.config/sops/age/keys.txt`. The account has no SSH agent, so
+`age-keygen -o ~/.config/sops/age/keys.txt`. Habitat starts no SSH agent, so
 keys have no passphrase and stay `0600`. Settings → *Avaimet*
 (`<origin>/settings/keys`) makes the default keys too.
 
@@ -406,6 +410,6 @@ not reconfigured, shields not lowered, no SOCKS or HTTP proxy opened to the
 tailnet. Other people have accounts on this server, and any of those changes
 could let them into the person's home network.
 
-On a Windows machine `ssh <name>` runs the command in `cmd.exe`; for
-PowerShell send `powershell -NoProfile -Command "..."`. Paths are Windows
-paths (`C:\Users\...`), not `~`.
+On a Windows machine `ssh <name>` uses its configured shell, initially
+`cmd.exe`; for PowerShell send `powershell -NoProfile -Command "..."`. Paths are
+Windows paths (`C:\Users\...`), not `~`.
