@@ -44,7 +44,10 @@ func legacyApplyUnitPolicies() []policyFile {
 // from: its saved policy list may lack exactly these, and nothing else.
 var predecessorOptionalPolicies = map[string]bool{"/etc/systemd/system/open-habitat-guest@.socket": true}
 
-const unitDir = "/etc/systemd/system"
+const (
+	unitDir       = "/etc/systemd/system"
+	probeInstance = "0-host-qualification"
+)
 
 var productUnitFragments = []string{"open-habitat-proc.service", "open-habitat-storage.service", "open-habitat-binding@.service", "open-habitat-broker.service", "open-habitat-broker.socket", "open-habitat-revoke.socket", "open-habitat-gateway.service", "open-habitat-daemon@.service", "open-habitat-daemon@.socket", "open-habitat-agent@.socket", "open-habitat-guest@.socket"}
 
@@ -208,7 +211,9 @@ func verifyUnitPolicies(ctx context.Context, policies []policyFile) error {
 		if path := "/etc/systemd/system/" + base; predecessorOptionalPolicies[path] && !listed[path] {
 			continue
 		}
-		name := strings.ReplaceAll(base, "@.", "@host-qualification.")
+		// The probe instance is no possible account name (those start with a
+		// letter), so no person's own slice drop-in can attach to it.
+		name := strings.ReplaceAll(base, "@.", "@"+probeInstance+".")
 		b, e := nativeCommand(ctx, "/usr/bin/systemctl", "show", "--property=FragmentPath,DropInPaths", name)
 		if e != nil {
 			return e

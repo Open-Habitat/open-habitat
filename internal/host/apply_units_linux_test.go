@@ -198,6 +198,9 @@ func TestApplyAcceptsOnlyTheBrokerDaemonSliceDropIn(t *testing.T) {
 		return root, owner
 	}
 	exact := provision.DaemonSliceContent("person", 32000)
+	if _, ok := provision.ParseDaemonSlice(probeInstance, []byte(provision.DaemonSliceContent(probeInstance, 32000))); ok {
+		t.Fatal("a person could own the verifier's probe instance")
+	}
 	root, owner := setup(t, "open-habitat-daemon@person.service.d", exact)
 	if e := unitOverridesSafe([]string{root}, root, owner); e != nil {
 		t.Fatal("broker drop-in refused", e)
