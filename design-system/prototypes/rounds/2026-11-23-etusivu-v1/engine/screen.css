@@ -69,3 +69,40 @@
   .has-view .scr-main { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
   .scr-view { border-top: 0; border-left: 1px solid var(--ah-line); }
 }
+
+/* ---------- Scrolling: "Yläreuna" (Jari, 23.11.2026; round 2026-11-23-vieritys) ----------
+   A step is active once its text reaches the line where the sticky screen's
+   top edge rests (phone: the status bar's bottom, --vr-bar measured by
+   client.js). Appended here so it wins over page.css's .s1 rules. */
+:root { --vr-top: 20px; --vr-bar: 49px; }
+/* ---------- Shared by all three ---------- */
+@media (min-width: 901px) {
+  .s1-app { top: var(--vr-top); }
+  /* Steps start with their text at the top of their box (v1 centred it). */
+  .s1 > .s1-steps > .s1-step { justify-content: flex-start; padding: 0; scroll-margin-top: var(--vr-top); }
+  /* The last step holds the screen pinned until its text has reached the line. */
+  .s1 > .s1-steps > .s1-step:last-child { min-height: calc(100vh - var(--vr-top) - 64px); }
+}
+@media (max-width: 900px) {
+  .s1 > .s1-steps > .s1-step { padding: 16px 0 36px; scroll-margin-top: var(--vr-bar); }
+  .s1 > .s1-steps > .s1-step:first-child { padding-top: 16px; }
+}
+
+/* ---------- 3 Yläreunan aktivointi: free scrolling, activation at the top line ----------
+   Each text is sticky at the line inside its own step box (no overlap): it
+   rises with the page, rests beside the screen's top while its step lasts, and
+   is pushed off by the next text rising beneath it. The active step is the one
+   whose text has come within 64px of the line. Every text's opacity follows
+   its distance from the line (client.js sets --vr-o), so the next one brightens
+   as it comes up and the old one dims as it leaves. */
+@media (min-width: 901px) {
+  .s1 > .s1-steps > .s1-step { min-height: 0; height: 87.5vh; opacity: 1; transition: none; }
+  .s1 > .s1-steps > .s1-step:last-child { height: auto; min-height: 87.5vh; }
+  .s1-txt { position: sticky; top: var(--vr-top); opacity: var(--vr-o, 1); }
+}
+/* 2 and 3: the last text is as tall as the screen, so the two are let go by
+   the section's end at the same moment and leave together. */
+@media (min-width: 901px) {
+  .s1 > .s1-steps > .s1-step:last-child > .s1-txt { min-height: calc(100vh - var(--vr-top) - 84px); }
+}
+

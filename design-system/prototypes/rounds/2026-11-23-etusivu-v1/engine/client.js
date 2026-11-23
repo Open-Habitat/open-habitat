@@ -2,7 +2,14 @@
 // It holds no content: everything comes from the HTML that build.mjs wrote
 // (story.mjs). A block's own behaviour is its blocks/<id>/client.js, which
 // build.mjs appends after this file, each in its own scope.
+//
+// Scrolling (Jari chose "Yläreuna" on 23.11.2026, round 2026-11-23-vieritys):
+// free scrolling; a step is active once its text has come within 64px of the
+// line where the sticky screen's top edge rests (on the phone: the status
+// bar's bottom edge). Each text is sticky at that line inside its step and
+// fades with its distance from it.
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+const wide = () => matchMedia('(min-width: 901px)').matches; // the engine's own breakpoint (page.css)
 
 // ---------- Shared interactions (delegated, so a cloned screen works too) ----------
 document.addEventListener('click', (e) => {
@@ -37,6 +44,7 @@ document.addEventListener('click', (e) => {
 });
 
 // ---------- Story sections ----------
+const stories = [];
 function initStory(sec) {
   const els = [...sec.querySelectorAll(':scope > .s1-steps > .s1-step')];
   const rail = sec.querySelector('.s1-rail');
@@ -51,6 +59,15 @@ function initStory(sec) {
     if (!k || k === 'own') return els[i].querySelector('.s1-inline').innerHTML;
     return sec.querySelector(`template.s1-scr[data-k="${k}"]`).innerHTML;
   };
+  // SCROLL: the step's text (time, ask, story, hand, count) in one box, so it
+  // can be pinned beside the screen as a unit. In the port, story.mjs writes
+  // this <div class="s1-txt"> itself.
+  for (const s of els) {
+    const txt = document.createElement('div');
+    txt.className = 's1-txt';
+    s.prepend(txt);
+    for (const c of [...s.children]) if (c !== txt && !c.matches('.s1-inline, template')) txt.append(c);
+  }
   let cur = -1;
   // The screen opens at its newest content, as a conversation does.
   const anchor = () => { main.scrollTop = main.scrollHeight; };
@@ -69,7 +86,7 @@ function initStory(sec) {
   const show = (i) => {
     if (i === cur) return;
     cur = i;
-    els.forEach((s, j) => s.classList.toggle('on', j === i));
+    els.forEach((s, j) => { s.classList.toggle('on', j === i); s.classList.toggle('past', j < i); }); // SCROLL: .past
     top.innerHTML = part(i, 'top');
     if (rail) flip(rail, part(i, 'rail'));
     main.innerHTML = screenOf(i);
@@ -97,17 +114,99 @@ function initStory(sec) {
     }
     if (tog && e.target.closest('.s1-tog') === tog) { const open = drop.hidden; drop.hidden = !open; tog.setAttribute('aria-expanded', String(open)); }
   });
-  const io = new IntersectionObserver((es) => es.forEach((e) => e.isIntersecting && show(+e.target.dataset.i)), { rootMargin: '-45% 0px -45% 0px' });
-  els.forEach((s) => io.observe(s));
+  // SCROLL: the v1 IntersectionObserver is gone; activation is in update().
+  stories.push({ sec, els, bar, show, cur: () => cur });
 }
 document.querySelectorAll('.s1[data-story]').forEach(initStory);
 
-// A capability line that points at someone's day scrolls there smoothly.
+// ---------- SCROLL: activation at the screen's top line ----------
+// The line where a step's box rests when it is "in place": the sticky
+// screen's top (its CSS `top`) on the desktop, the status bar's bottom on the
+// phone. A step is active once its top is within `band` of that line. Each
+// variant's band (px, or a fraction of the viewport when < 1):
+//   1 Napsahdus   0.3   (phone 48, no snap there) snapping brings the step to the line; while the reader
+//                       is between snap points the screen follows the step
+//                       about to snap in
+//   2 Kiinnitetty 2     the text swaps exactly when the next one pins
+//   3 Yläreuna    64    a short activation band just under the line
+const BAND = [64, 48]; // desktop, phone: px under the line
+const px = (b) => (b < 1 ? b * innerHeight : b);
+function restLine(st) {
+  if (wide()) return parseFloat(getComputedStyle(st.sec.querySelector('.s1-app')).top) || 0;
+  return st.bar ? st.bar.getBoundingClientRect().bottom : 0;
+}
+function update() {
+  const [bd, bp] = BAND;
+  // The phone's step is placed below the bar by scroll-margin; keep it measured.
+  const b0 = stories.find((s) => s.bar)?.bar;
+  if (b0) document.documentElement.style.setProperty('--vr-bar', `${Math.round(b0.offsetHeight)}px`);
+  for (const st of stories) {
+    const r = st.sec.getBoundingClientRect();
+    if (r.bottom < 0 || r.top > innerHeight) continue;
+    const line = restLine(st) + px(wide() ? bd : bp);
+    let i = 0;
+    st.els.forEach((s, j) => { if (s.getBoundingClientRect().top <= line) i = j; });
+    // Desktop: once more than half of the active text has been pushed above
+    // the line by the next one, the next one takes over, so the text in focus
+    // is never the one leaving.
+    if (wide() && i + 1 < st.els.length) {
+      const t = st.els[i].firstElementChild.getBoundingClientRect();
+      const rl = restLine(st);
+      if (t.height > 0 && (t.bottom - rl) / t.height < 0.5) i += 1;
+    }
+    st.show(i);
+    // Variant 3: inactive text fades with its distance from the line, not all at once.
+    if (wide()) {
+      const rl = restLine(st);
+      for (const s of st.els) {
+        const t = s.firstElementChild.getBoundingClientRect().top;
+        const d = Math.abs(t - rl) / (innerHeight * 0.6);
+        s.style.setProperty('--vr-o', String(Math.max(0.2, 1 - 0.8 * Math.min(1, d)).toFixed(3)));
+      }
+    } else st.els.forEach((s) => s.style.removeProperty('--vr-o'));
+  }
+}
+let queued = false;
+const queue = () => { if (!queued) { queued = true; requestAnimationFrame(() => { queued = false; update(); }); } };
+addEventListener('scroll', queue, { passive: true });
+addEventListener('resize', queue);
+update();
+
+// ---------- SCROLL: landing ----------
+// A scroll the reader did not drive with the wheel, keys or a finger is a jump
+// made for them: find-in-page, a screen reader moving its cursor. The browser
+// centres what it found, which leaves the found step's text in the middle and
+// (variant 2) invisible; when such a scroll ends with a step's top in the
+// upper middle of the viewport, that step is moved to the line.
+let lastInput = 0; let selfScroll = false;
+for (const ev of ['wheel', 'keydown', 'touchstart', 'pointerdown']) addEventListener(ev, () => { lastInput = performance.now(); }, { passive: true, capture: true });
+function placeStep(st, i, smooth) {
+  const s = st.els[i];
+  const y = scrollY + s.getBoundingClientRect().top - restLine(st);
+  selfScroll = true;
+  scrollTo({ top: y, behavior: smooth && !reduced() ? 'smooth' : 'auto' });
+  if (!smooth || reduced()) { selfScroll = false; queue(); }
+}
+addEventListener('scrollend', () => {
+  if (selfScroll) { selfScroll = false; return; }
+  if (performance.now() - lastInput < 700) return;
+  for (const st of stories) {
+    const rl = restLine(st);
+    const hit = st.els.findIndex((s) => { const t = s.getBoundingClientRect().top; return t > rl + 8 && t < innerHeight * 0.62; });
+    if (hit >= 0) { placeStep(st, hit, true); return; }
+  }
+});
+
+// A capability line that points at someone's day scrolls there: SCROLL: to
+// the step's place at the line (scroll-margin-top in scroll.css), not the centre.
 document.addEventListener('click', (e) => {
   const a = e.target.closest('a.cap-role');
   if (!a) return;
   const el = document.getElementById(a.getAttribute('href').slice(1));
   if (!el) return;
   e.preventDefault();
-  el.scrollIntoView({ block: 'center', behavior: reduced() ? 'auto' : 'smooth' });
+  history.pushState(null, '', a.getAttribute('href'));
+  selfScroll = true;
+  el.scrollIntoView({ block: 'start', behavior: reduced() ? 'auto' : 'smooth' });
+  if (reduced()) { selfScroll = false; queue(); }
 });
