@@ -1599,8 +1599,10 @@ as interrupted with the reason:
 
 - `close_failed`: something of the person still runs or the account could
   not be expired; look at `user@<uid>.service` and the UID's processes.
-- `admitted`: `site.json` admits the person again; remove them there or
-  cancel the removal.
+- `admitted`: the person is admitted again; cancel the removal or end that
+  admission. `host apply` itself refuses to add a person whose removal is
+  scheduled (`admission_removal_pending`, nothing is published): cancel the
+  removal first or leave the id out of `identities.admission`.
 - `home_unsafe`: the home is not a directory of the committed UID on
   `/home`'s filesystem, or a mount (such as a stale FUSE mount) is inside
   it; unmount it or inspect the home.

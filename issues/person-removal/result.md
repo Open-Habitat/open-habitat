@@ -41,3 +41,25 @@ acceptance of the ADR's authority changes): `person-removal-broker`,
   native credential. Its only copy goes with the home.
 - **The product sends the person no notice**; that is left to the
   administrator, whom the dialog reminds.
+
+# Lane outcome (2026-11-23)
+
+The reported case is fixed: removing a person (Käyttäjät ja pääsy › Poista
+henkilö, or `admin access remove-person`) closes them out at once, and from
+that moment Levytila marks their row "Poistetaan pp.kk." and counts their use
+instead of their limit, so the sum of limits drops below the disk and the
+warning clears without lowering anyone's quota by hand. After the grace
+period (or at once) the broker deletes the home and account and the row
+goes. The four implementation issues carry their own results and decisions:
+`person-removal-broker`, `-daemon`, `-gateway`, `-browser`. ADR 0037 and the
+prototype round are removed now that the code carries them; the rules the code
+cannot show are in `internal/AGENTS.md`.
+
+An independent review (GPT Astra finder, Claude Fable verifier, critical
+rigor) found six defects, all confirmed and fixed with tests: bind mounts
+inside a home, an interrupted binding drop, the gateway record race, host
+apply re-admitting a person under removal, an interrupted cancel, and root's
+control deadlines.
+
+Not run: a privileged lab check of the native steps on a disposable host. The
+build host has no KVM, and the pilot installation is not disposable.
