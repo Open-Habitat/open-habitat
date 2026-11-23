@@ -36,3 +36,9 @@ person's Mac.
   being on.
 
 Material for a design discussion with Jari, not an implementation plan.
+
+## Decisions
+
+### 2026-11-23T18:53:42Z · @jari
+
+Jari 23.11.2026: approved the recommended bounded trial (approach 1: existing Mac tools over Omat koneet, synthetic data). Questions 1–3 not answered; trial defaults: the Mac awake and logged in is enough, Notes read + new plain notes, existing Omat koneet trust with per-app consent. Next action (approved): the trial on Jari's desktop Mac.
