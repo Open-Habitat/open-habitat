@@ -141,7 +141,7 @@ export default {
   ask: 'Here’s this morning’s planning. A memo and the tasks, please.',
   did: 'She recorded the planning meeting on her phone. Back at her desk she drops in the hour of talk. It is transcribed on the studio’s own server, each voice gets its name, and the memo comes back with every decision tied to its minute. Each task lands in its owner’s list. Nothing is sent: Bob and Carol find theirs in the team folder.',
   screen: () => screen('Planning memo',
-    you('11:05', 'Here’s this morning’s planning. A memo and the tasks, please.', att('planning-2026-11-19.m4a', 'Recording · 58 min · 54 MB')) +
+    you('11:15', 'Here’s this morning’s planning. A memo and the tasks, please.', att('planning-2026-11-19.m4a', 'Recording · 58 min · 54 MB')) +
     turn({
       thoughts: [
         'An hour of speech. Transcribing it here on the server, then telling the voices apart.',
@@ -156,7 +156,7 @@ export default {
         tool('edit', 'team/tasks.md', MEMO.tasks.filter((t) => t[0] !== 'Alice').map(([who, , what, by, t]) => `+ - [ ] ${who}: ${what} (by ${by})  [planning 19 Nov, ${t}]`).join('\n'), '+5'),
         tool('edit', 'notes/open.md', MEMO.tasks.filter((t) => t[0] === 'Alice').map(([, , what, by, t]) => `+ - [ ] ${what} (by ${by})  [planning 19 Nov, ${t}]`).join('\n'), '+2'),
       ],
-      time: '19 min 04 s',
+      time: '8 min 51 s',
       reply: 'The memo is beside this, and as a Word file. **Three decisions and seven tasks**, each with the minute it was agreed, so you can listen to that spot.\n\nTwo tasks are yours and went into *notes/open.md*; three for Bob and two for Carol are in *team/tasks.md*. I named the voices from the invite and from who answers to which name. Nothing was sent.',
       extra: offer('memo-2026-11-19.docx', 'Word · 1 page · 11 KB'),
     }),

@@ -46,7 +46,7 @@ const bracketView = () => `<div class="c3" data-view data-state="sizes">${toggle
 const caps = [
   [5, '3d', 'A turning 3D film of a product', 'Blender', 'Carol', 'Example Studio', 'The new wall shelf exists only as the carpenter’s drawing. A slow spin of it in oak and in black, on a light background.', 'Two eight-second clips and six stills for the product page, rendered on the server over lunch.'],
   [10, '3d', 'An explainer animation for a lesson', 'Manim', 'Erin', 'Example Studio', 'Show why the angles of a triangle add up to 180 degrees.', 'A forty-second animation in which the three corners are torn off and laid along a line.'],
-  [14, '3d', 'A spare part from five measurements, ready for the printer', 'OpenSCAD, PrusaSlicer, Blender', 'Bob', 'Example Studio', 'The bracket on the display rail snapped, and nobody sells it any more. I measured the old one.', 'A picture with the measurements on it and a print file already tried in a slicer. The library’s printer has a new bracket the next day.'],
+  [14, '3d', 'A spare part from five measurements, ready for the printer', 'OpenSCAD, PrusaSlicer, Blender', 'Bob', 'Example Studio', 'The bracket on the display rail snapped, and nobody sells it any more. I measured the old one.', 'A picture with the measurements on it and a print file already tried in a slicer. The studio’s printer has a new one ready by morning.'],
 ];
 const capOf = Object.fromEntries(caps.map((c) => [c[0], c]));
 const capScreen = (n, title, body, v) => screen(title, body, v, capOf[n][5]);
