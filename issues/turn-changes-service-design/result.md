@@ -1,3 +1,81 @@
+# Verification: shared recorder delivered
+
+**Close as done for the accepted Habitat capability.** Verified against main
+at `41c214dcba83b80a5d491cea5e649ce2a7aca9da`. The decision of 22 November
+2026 supersedes waiting for upstream: the recorder is embedded in Habitat,
+and the upstream offer remains Jari's later action, not a missing product
+implementation. Nothing was posted or pushed upstream; `upstream-pr.md` is
+unchanged. The earlier results below are historical, including superseded
+switch proposals and statements that no implementation existed.
+
+## Acceptance verification
+
+- **One record, both readers:** `turn-snapshots/extensions/snapshots.ts`
+  records start/settle boundaries and counts. The read/restore module is in
+  `turn-snapshots/src/turn-snapshots/`. `turn_snapshots_linux.go` reads the
+  same session entries/store for Muutokset; `rewind-extension.mjs` uses them
+  for Palaa tähän. There is no new service process or authority owner.
+- **Same experimental feature:** `turnSnapshotArgs` in `rewind_linux.go`,
+  wired through `recap_linux.go`, loads the recorder under
+  `rewind-conversation`. Its process-wide slot prevents duplicate recording.
+  No separate switch or agent tool was added.
+- **Retention:** `retention.ts` defaults to 90 days and sweeps daily at
+  session startup. Missing-session stores are removed, with active/recent
+  stores and surviving fork referrers protected. Habitat has no conversation
+  deletion operation to wire to immediate cleanup; this is sweep-based
+  cleanup, not a claim of immediate deletion.
+- **User-visible shared data:** `web/tests/turn-snapshots.spec.ts` uses real
+  snapshot data for a Python/`sed -i`/deletion turn, checks the file list and
+  diff, then checks disk contents after Palaa tähän. The pinned-Pi daemon
+  test separately exercises the actual recorder hooks and rewind extension.
+
+The fallback restore-scope defects reproduced during verification remain in
+`issues/rewind-tracks-all-changes/result.md`. They prevent closing that
+feature issue, but do not negate delivery of this shared recorder. The old
+upstream draft's `/rewind` integration and the eventual upstream offer are
+not claimed complete.
+
+## Fresh checks and review
+
+All checks below ran on the revision above with `umask 077`, scratch lease
+and outer timeouts:
+
+- `./scripts/test-focused.sh --area web`: passed typecheck/lint and 2,176
+  tests in 257 files.
+- `OH_BROWSER_WORKERS=2 OH_LAB_WORKERS=2 OH_PORT_BASE=15300
+  ./scripts/test-focused.sh --area browser --spec rewind-conversation.spec.ts
+  --spec turn-changes.spec.ts --spec turn-snapshots.spec.ts`: 11 passed,
+  one intentionally disabled screenshot-only case skipped. No spec changed;
+  this was one run, not the whole suite.
+- `./scripts/test-focused.sh --area go --go-package ./internal/daemon`:
+  passed, including the native pinned-Pi snapshot/restore journey.
+- `node --test internal/daemon/pi-device-test/turn-snapshots.test.mjs
+  internal/daemon/pi-device-test/rewind.test.mjs`: 37 passed, no skips,
+  with TMPDIR in leased scratch. Includes recording, duplicate suppression,
+  retention, ignored-path snapshot protection and undo safety.
+
+Issue-only checks also passed: `issuectl doctor --json` (no findings),
+`python3 scripts/validate-project-view.py` (14 pages) and `git diff --check`.
+
+Logs: `/var/tmp/agent-keep/close-recorder-delivered-issues/` (`web.log`,
+`browser.log`, `daemon.log`, `recorder.log`, `doctor.json`, `project-view.log`).
+Focused self-review was chosen because the final diff changes only issue evidence/status, not session,
+contract, daemon or authorization code. No live verification, full browser
+suite or clean gate was run or required. No user-visible change was deployed.
+
+## Decisions for later review
+
+1. **Separate delivered Habitat capability from the upstream offer.**
+   Alternative: keep the implementation issue open until a PR is submitted.
+   The latest decision deliberately puts real use before the upstream offer;
+   closing here records delivery without claiming that offer happened.
+   The upstream draft and durable bundle below are retained unchanged.
+2. **Track restore-scope gaps in the existing rewind issue.** Alternative:
+   duplicate them here or file another issue. They concern fallback restore
+   selection rather than the shared record, and already have an owner issue.
+
+---
+
 # Result: the recorder runs in Habitat (22.11.2026)
 
 Following Jari's decision of 22.11.2026, the recorder from the branch below is

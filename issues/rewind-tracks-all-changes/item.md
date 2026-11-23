@@ -1,6 +1,6 @@
 ---
 created: 2026-11-15
-updated: 2026-11-21
+updated: 2026-11-23
 type: feature
 reporter: jari
 status: open
@@ -40,3 +40,14 @@ Jari 15.11.2026: sent the snapshot proposal to the maintainer of better-pi-rewin
 ### 2026-11-21T07:47:50Z · @jari
 
 Jari 21.11.2026: Palaa tähän restores only files the agent changed (option b). Ignored files are not touched. Git state: never written (7.11. decision stands). Folders that are not Git repositories: no such functionality (snapshots only for Git workspaces).
+
+## Acceptance Criteria
+
+Verification and synthetic reproductions are in `result.md`. The later recorded decisions take precedence over the design draft.
+
+- [x] Git-workspace shell/script edits and deletions appear in Muutokset and restore through Palaa tähän.
+- [x] Snapshots do not restore Git state and are limited to Git workspaces.
+- [ ] Files changed only by the person since the selected message remain untouched, even if an older turn tracked them through edit/write.
+- [ ] Ignored files remain untouched by the edit/write fallback as well as by snapshots.
+
+The remaining work is to align fallback selection with this scope across preview, restore, continuation switching and undo, with regressions and preservation of older histories without snapshots.

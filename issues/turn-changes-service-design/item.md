@@ -1,9 +1,9 @@
 ---
 created: 2026-11-15
-updated: 2026-11-22
+updated: 2026-11-23
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-15/turn-changes-service
@@ -11,6 +11,7 @@ lane: turn-changes-service
 lane_seq: 1
 preparation: ready
 related: ['@turn-snapshot-reader-migration']
+closed: 2026-11-23
 ---
 
 # Design: one shared turn-changes service for turn summaries, rewind and the upstream extension
@@ -36,3 +37,12 @@ Jari 21.11.2026: no new switch — snapshot recording belongs to the same experi
 ### 2026-11-22T17:31:09Z · @jari
 
 Jari 22.11.2026: build the git-based turn-snapshot recorder into Habitat's own code (Habitat's embedded better-pi-rewind derivative) rather than waiting for upstream; after a couple of weeks of real use, offer it to the upstream maintainer as a PR with that experience. The upstream-shaped branch from run 01m8231bnf8pqh3n9z7skcdp20 is the source to port.
+
+## Acceptance Criteria
+
+Scope follows the recorded decisions of 21–22 November 2026; upstream submission remains a later maintainer action. Evidence and limits are in `result.md`.
+
+- [x] Habitat carries one turn-snapshot recorder whose record serves Muutokset and Palaa tähän, including shell/script changes.
+- [x] Recording uses the existing rewind experimental switch, without a separate service or first-step agent tool.
+- [x] The recorder sweeps deleted-session stores and snapshots older than 90 days, retaining active stores and fork references safely.
+- [x] Recorder, pinned-Pi integration, web unit and focused rewind/turn-changes browser checks pass.
