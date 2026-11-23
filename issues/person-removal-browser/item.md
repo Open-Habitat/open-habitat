@@ -1,8 +1,8 @@
 ---
 created: 2026-11-21
-updated: 2026-11-21
+updated: 2026-11-23
 type: feature
-status: open
+status: done
 priority: normal
 provenance: other
 provenance_detail: ADR 0037 implementation (technical decision run)
@@ -13,6 +13,11 @@ preparation: ready
 related: ['@person-removal-gateway', '@person-removal']
 lane: person-removal
 lane_seq: 5
+closed: 2026-11-23
+closed_by: agent
+commits:
+- hash: ca10b6e3a
+  summary: browser removal flow
 ---
 
 # Browser: administrator's person removal flow (prototype first)
@@ -27,3 +32,9 @@ Implements the administrator-facing parts of ADR 0037 (`docs/decisions/adr-0037-
 - Dialog in the person's terms: access ends and sessions end now, services are disconnected now, shared links stop now, the home (size shown) is deleted for good on the due date; typed GitHub login confirmation; grace period vs immediate removal; a reminder that telling the person and letting them take their data (cancel + restore) is the administrator's job. No workspace, conversation or account names.
 - Scheduled state with due date and Cancel; "Poisto kesken" with its reason; "Poistettu" record rows that can be cleared.
 - Levytila: "Poistetaan pp.kk." on the row and the sum counting usage instead of the limit.
+
+## Resolution
+
+### 2026-11-23T04:53:32Z · @agent
+
+Browser removal flow landed; decisions in result.md.
