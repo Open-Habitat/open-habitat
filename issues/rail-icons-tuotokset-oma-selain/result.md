@@ -121,3 +121,26 @@ sivupalkki ei näytä sitä nyt.
    jo täyden oikeuden merkki samalla sivulla?
 3. Saako Selitä oman kuvakkeen sivupalkkiin, vai pysyykö se vain
    henkilövalikossa?
+
+## Production implementation — 2026-11-23
+
+The decision in item.md supersedes the prototype questions above. Home keeps A's house; Outputs uses B's layers, Your browser B's pointer, Agent access B's hub, and Explain B's question bubble. All are unfilled 24-unit, 1.8-stroke icons. The shared browser glyph also updates conversation marks and browser cards. Both adaptive and legacy rail paths use the new place icons; the phone drawer shares them. Explain's top-bar and account-menu entries use the same glyph. No switch or new entry point was added; public-link globes and permission shields retain their distinct meanings.
+
+### Checks and review
+
+- Focused web checks passed: lint, TypeScript and 2,185 tests in 258 files.
+- Focused browser run: `account-sound-reasons.spec.ts`, `attention-sound.spec.ts`, `dictation-bar.spec.ts`, `rail-place-toggle.spec.ts` — 22 passed; `lab-dictation-hour.spec.ts` — 4 passed. Two workers and reply jitter throughout.
+- Changed browser specs also passed `--repeat-each 3`: 12 account-menu cases and 12 dictation cases.
+- `generate-ui-reference.py --check`, `git diff --check` and issue metadata validation passed. Regeneration also refreshed pre-existing ServerAccess/serverStorage reference drift in a separate commit; no corresponding runtime change was made here.
+- Focused self-review traced every changed icon's callers, menu focus and navigation, persistent sound fixes, and the dictation timer/provider boundaries. No independent model review: this is presentation plus a browser timer, with no session ownership, daemon state implementation, wire contract or authority change.
+- One initial combined browser run had a transient `dictation-bar.spec.ts` layout helper `no box`; its focused rerun and the final combined run passed. No test was weakened.
+
+Synthetic paired PNG/HTML evidence and logs are outside git at `/var/tmp/agent-keep/rail-icons-dictation-sounds/`. The `rail-*` captures show all place icons at 1440 and 390 pixels in Finnish and English; the menu and dictation captures also show Explain cards. These are synthetic browser checks, not a deployment or live-provider test.
+
+### Decisions for later review (implementation)
+
+Keep general-purpose globe and shield glyphs unchanged: those still mean a public link or permission, not these navigation places. Use dedicated outputs/access/explain names instead. Home already matched the approved A path, so it needed no change.
+
+## Live check
+
+Compare Home, Outputs, Your browser and Agent access in the desktop rail and phone drawer. Enable the existing browser experiment to see its pointer, then check its conversation-row mark. Open Explain from the top bar and account menu: both use the question bubble. No duotone or new experiment is involved.

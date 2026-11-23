@@ -222,4 +222,24 @@ them and writes them through the existing setters.
   screen and no sideways scroll. The console is clean.
 - Evidence (not committed): screenshots at
   `/var/tmp/agent-keep/attention-sound-night-visible/shots-2/`.
-- No production code changed.
+- No production code changed in that prototype round.
+
+## Account-menu implementation — 2026-11-23
+
+Jari approved the remaining account-menu question on 23 November: the same words and fixes as Settings. The menu now renders the shared SoundStatus component, with all independent causes, their permanent fixes and the night-hours destination. Fixing one cause preserves the others. Pending account writes disable the account-wide fixes, failures are visible, and focus moves to the persistent menu row before a reason disappears. The night-hours action closes the menu and focuses the corresponding Settings row. Existing Explain mappings also cover the reused controls and prevent lasting changes.
+
+### Decisions for later review
+
+- The local mute selector remains usable while sounds are globally off, matching Settings and the independent-fix model; keeping it disabled would conflict with the active Unmute fix beside it.
+- Reuse the whole status component rather than copy its text: this keeps the all-reasons semantics and fixes identical. Compact spacing makes it fit the menu; no separate status policy or preference store was added.
+- Keep the account-picture mute badge's existing precedence unchanged. This request changes the row, not the badge policy.
+
+### Checks
+
+Final web checks: 258 files / 2,185 tests passed, lint and TypeScript passed. The final focused browser selection passed 22 ordinary and 4 lab cases (account menu, sound settings, rail navigation and dictation). The new account-menu spec additionally passed 12/12 with `--repeat-each 3`, two workers and reply jitter. It covers 1440/390 px, Finnish/English, identical Settings/menu status text, all three causes, independent fixes and readback, focus, reload persistence, the night-hours destination, Axe and Explain-mode refusal. Existing sound settings and playback tests passed unchanged. No Go/server implementation changed.
+
+Paired screenshots/HTML and logs: `/var/tmp/agent-keep/rail-icons-dictation-sounds/menu-*`. Inspected the synthetic menu and Explain card on both widths and in both languages. No live installation was changed. Focused self-review was proportionate because the menu calls existing preference mutations without changing their authority, session or storage contracts.
+
+## Live check
+
+At night, turn sounds off globally and mute this device. Open the account menu: it should list the same three causes as Settings. Clear them in different orders, reload, and try Change hours. Each fix changes only its own cause; night-hours navigation closes the menu and focuses the settings row. Try phone width and English too.

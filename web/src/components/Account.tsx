@@ -1,24 +1,34 @@
-import { type KeyboardEvent, useEffect, useRef, useState } from "react";
+import {
+  type KeyboardEvent,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   Dialog as AriaDialog,
   Heading,
   Modal,
   ModalOverlay,
+  RootMenuTriggerStateContext,
 } from "react-aria-components";
 import { createPortal } from "react-dom";
 import { AccountKeys } from "../app/AccountKeys";
 import { AgentInstructionsSettings } from "../app/AgentInstructionsSettings";
 import { useAISignIn } from "../app/AISignIn";
-import { useSessionPreferences } from "../app/accountPreferences";
+import {
+  chooseSound,
+  type SoundChoice,
+  useSessionPreferences,
+} from "../app/accountPreferences";
 import { announceSignedIn } from "../app/aiSignIn";
 import { EditorSettings } from "../app/EditorSettings";
 import { ExperimentalFeatures } from "../app/ExperimentalFeatures";
 import { OwnMachines } from "../app/OwnMachines";
+import { SoundStatus } from "../app/SoundStatus";
 import { serverSettingsText } from "../text/serverSettings";
 import "./Settings.css";
 import {
-  nightHourLabel,
-  type Silence,
   setDeviceMuted,
   silence,
   useDeviceNight,
@@ -157,7 +167,7 @@ export function AccountShelf({
 }: {
   profile?: AccountProfile;
   name?: string;
-  onSettings: () => void;
+  onSettings: (path?: string) => void;
   onAdministration?: () => void;
   onLogout: () => void;
 }) {
@@ -266,10 +276,7 @@ export function AccountShelf({
                 onChange={setWorkPreference}
               />
             </div>
-            <SoundMenuRow
-              status={soundStatus}
-              nightEnd={soundPreferences.sound.night_end}
-            />
+            <SoundMenuRow onSettings={onSettings} />
           </section>
         }
         popoverClassName="ah-account-menu"
@@ -296,11 +303,7 @@ export function AccountShelf({
                 {
                   id: explain.id,
                   label: explain.label,
-                  icon: (
-                    <span className="ah-explain-q" aria-hidden="true">
-                      ?
-                    </span>
-                  ),
+                  icon: <Icon name="explain" />,
                   section: t.groupHelp,
                 },
               ]
@@ -365,29 +368,29 @@ function Speaker({ muted }: { muted?: boolean }) {
   );
 }
 
-/** Äänet in the account menu (attention-sound): this
- * device's Soi | Hiljaa, and under it what reaches this device now. The
- * row says before a press that Hiljaa is this device's alone. */
-function SoundMenuRow({
-  status,
-  nightEnd,
-}: {
-  status: Silence | undefined;
-  nightEnd: number;
-}) {
+/** The same reasons and permanent fixes as Settings, beside device mute. */
+function SoundMenuRow({ onSettings }: { onSettings: (path?: string) => void }) {
   const t = useText(attentionSoundText);
+  const preferences = useSessionPreferences();
+  const { sound, identity, csrf } = preferences;
   const deviceSound = useDeviceSound();
-  const off = status === "off";
-  const text =
-    status === "off"
-      ? t.stateOff
-      : status === "muted"
-        ? t.stateMuted
-        : status === "night"
-          ? t.stateNight(nightHourLabel(nightEnd))
-          : t.menuScope;
+  const night = useDeviceNight(sound);
+  const menu = useContext(RootMenuTriggerStateContext);
+  const row = useRef<HTMLDivElement>(null);
+  const confirmed = preferences.loaded && preferences.error !== "read";
+  const writable = confirmed && !!identity && !!csrf && !preferences.busy;
+  const status = silence({ sound, muted: deviceSound.muted, night });
+  const choose = (choice: SoundChoice) => {
+    row.current?.focus();
+    if (identity && csrf) void chooseSound(identity, choice, csrf);
+  };
   return (
-    <div className="ah-sound-menu" data-testid="sound-menu-row">
+    <div
+      className="ah-sound-menu"
+      data-testid="sound-menu-row"
+      ref={row}
+      tabIndex={-1}
+    >
       <div className="ah-account-menu-theme-row">
         <span className="ah-account-row-label">
           <Speaker muted={!!status} />
@@ -397,7 +400,6 @@ function SoundMenuRow({
           data-testid="sound-menu-mute"
           label={`${t.menuRow}, ${t.menuScope}`}
           className="ah-account-menu-theme"
-          isDisabled={off}
           options={[
             { id: "plays", label: t.plays },
             { id: "quiet", label: t.quiet },
@@ -406,23 +408,34 @@ function SoundMenuRow({
           onChange={(v) => setDeviceMuted(v === "quiet")}
         />
       </div>
-      <p
-        className="ah-sound-state"
-        data-testid="sound-menu-state"
-        data-status={status ?? "plays"}
-      >
-        {status === "night" ? (
-          <Icon name="moon" />
-        ) : (
-          <Speaker muted={!!status} />
-        )}
-        <span>
-          {text}
-          {off ? (
-            <span className="ah-sound-why"> · {t.stateOffWhy}</span>
-          ) : null}
-        </span>
-      </p>
+      <div data-testid="sound-menu-state" data-status={status ?? "plays"}>
+        {confirmed ? (
+          <SoundStatus
+            off={!sound.enabled}
+            muted={deviceSound.muted}
+            night={sound.night && night}
+            nightStart={sound.night_start}
+            nightEnd={sound.night_end}
+            writable={writable}
+            onEnable={() => choose({ enabled: true })}
+            onUnmute={() => {
+              row.current?.focus();
+              setDeviceMuted(false);
+            }}
+            onDisableNight={() => choose({ night: false })}
+            onEditNight={() => {
+              menu?.close();
+              onSettings(settingsHref("aanet", "attention-sound-night"));
+            }}
+          />
+        ) : null}
+        {!status ? <p className="ah-sound-state">{t.menuScope}</p> : null}
+        {preferences.error?.startsWith("sound.") ? (
+          <p className="ah-sound-state" role="alert">
+            {t.writeError}
+          </p>
+        ) : null}
+      </div>
     </div>
   );
 }

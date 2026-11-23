@@ -224,7 +224,7 @@ export function WorkspaceRailView({
   onFilter: (value: string) => void;
   onToggle: () => void;
   onRefresh: () => void;
-  onSettings: () => void;
+  onSettings: (path?: string) => void;
   onLogout: () => void;
   onAdministration: () => void;
   pathname: string;
@@ -342,7 +342,7 @@ export function WorkspaceRailView({
                 className="ah-rail-home ar-rail-link"
                 aria-label={collapsed ? resourcesText.railLabel : undefined}
               >
-                <Icon name="shield" />
+                <Icon name="access" />
                 <span className="ah-rail-home-label">
                   {resourcesText.railLabel}
                 </span>

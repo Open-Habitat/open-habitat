@@ -96,6 +96,9 @@ export type IconName =
   | "recap"
   | "spark"
   | "globe"
+  | "outputs"
+  | "access"
+  | "explain"
   | "browser";
 
 /** Decorative icon only: the adjacent control supplies its accessible name. */
@@ -571,26 +574,35 @@ export function Icon({
         <circle cx="12" cy="12" r="3" />
       </>
     ),
-    // Tuotokset: public addresses on the web. It was the server browser's
-    // icon first; the browser now has its own window below.
+    outputs: (
+      <>
+        <path d="M12 3.5 21 8l-9 4.5L3 8z" />
+        <path d="m3 12 9 4.5 9-4.5" />
+        <path d="m3 16 9 4.5 9-4.5" />
+      </>
+    ),
+    access: (
+      <>
+        <circle cx="12" cy="12" r="2.6" />
+        <circle cx="5" cy="5.5" r="2" />
+        <circle cx="19" cy="5.5" r="2" />
+        <circle cx="12" cy="20" r="2" />
+        <path d="m6.5 7 3.6 3.4M17.5 7l-3.6 3.4M12 14.6V18" />
+      </>
+    ),
+    explain: (
+      <>
+        <path d="M5 4.5h14A1.5 1.5 0 0 1 20.5 6v9a1.5 1.5 0 0 1-1.5 1.5h-7l-4.5 3.5v-3.5H5A1.5 1.5 0 0 1 3.5 15V6A1.5 1.5 0 0 1 5 4.5z" />
+        <path d="M10 8.6a2 2 0 1 1 2.8 1.8c-.5.3-.8.7-.8 1.3M12 13.6h.01" />
+      </>
+    ),
     globe: (
       <>
         <circle cx="12" cy="12" r="9" />
         <path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
       </>
     ),
-    // The person's own server browser: a window with its tab bar and an
-    // address line (server-browser-entry-points round 3). Oma selain, the
-    // conversation row's browser mark and the Selain card all use it; the
-    // rail icon round (rail-icons-tuotokset-oma-selain) replaces it here.
-    browser: (
-      <>
-        <rect x="3" y="4" width="18" height="16" rx="2.5" />
-        <path d="M3 9h18" />
-        <path d="M6.5 6.5h.01M9 6.5h.01" />
-        <path d="M7 13.5h6" />
-      </>
-    ),
+    browser: <path d="M6 3v15l4-3.8 2.8 6.3 2.6-1.2-2.8-6.2 5.4-.5z" />,
     // A model's suggestion (proto-workspace-icon-setting round 2).
     spark: (
       <>

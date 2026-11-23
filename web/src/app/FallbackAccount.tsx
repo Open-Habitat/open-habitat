@@ -12,7 +12,7 @@ export function FallbackAccount({
   onLogout,
 }: {
   profile: AccountProfile;
-  onSettings: () => void;
+  onSettings: (path?: string) => void;
   onAdministration: () => void;
   onLogout: () => void;
 }) {

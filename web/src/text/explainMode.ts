@@ -1134,7 +1134,7 @@ const fi = {
     V38: {
       name: "Saneluaikaa jäljellä",
       lead: "Näyttää viimeisellä minuutilla, kauanko mikrofoni vielä kuuntelee.",
-      know: "Äänimerkki kuuluu minuutti ja kymmenen sekuntia ennen tunnin rajaa sekä rajalla. Teksti jää kenttään; voit jatkaa sen perään.",
+      know: "Äänimerkki kuuluu minuutti ja kymmenen sekuntia ennen kahden tunnin rajaa sekä rajalla. Teksti jää kenttään; voit jatkaa sen perään.",
     },
     V39: {
       name: "Agentti pyytää lupaa",
@@ -1813,12 +1813,12 @@ const fi = {
     AS11: {
       name: "Poista mykistys",
       lead: "Poistaa mykistyksen vain tältä laitteelta.",
-      know: "Yöhiljaisuus ja kaikkien laitteiden Äänet-valinta eivät muutu. Voit mykistää laitteen uudelleen alempana.",
+      know: "Yöhiljaisuus ja kaikkien laitteiden Äänet-valinta eivät muutu. Voit mykistää laitteen uudelleen Äänet-riviltä.",
     },
     AS01: {
       name: "Äänet tällä laitteella",
       lead: "Hiljentää huomioäänen vain tässä selaimessa tai palauttaa sen.",
-      know: "Muut laitteesi soivat edelleen. Rivin alla lukee, mitä tälle laitteelle nyt kuuluu: soi, hiljaa, yö tai pois kaikilta laitteilta.",
+      know: "Rivin alla näet kaikki hiljaisuuden syyt ja niiden korjaukset. Laitteen mykistys koskee vain tätä selainta; äänten ja yöhiljaisuuden valinnat koskevat kaikkia laitteitasi.",
     },
     AS02: {
       name: "Laite hiljaa",
@@ -3184,7 +3184,7 @@ export const explainModeText = catalog(fi, {
     V38: {
       name: "Dictation time left",
       lead: "Shows how much longer the microphone listens during the final minute.",
-      know: "A tone sounds one minute and ten seconds before the hour limit, and at the limit. Your text stays; you can continue after it.",
+      know: "A tone sounds one minute and ten seconds before the two-hour limit, and at the limit. Your text stays; you can continue after it.",
     },
     V39: {
       name: "The agent asks for permission",
@@ -3860,12 +3860,12 @@ export const explainModeText = catalog(fi, {
     AS11: {
       name: "Unmute",
       lead: "Unmutes this device only.",
-      know: "Night quiet and the all-device Sounds choice stay unchanged. You can mute this device again below.",
+      know: "Night quiet and the all-device Sounds choice stay unchanged. You can mute this device again on the Sounds row.",
     },
     AS01: {
       name: "Sounds on this device",
       lead: "Mutes the attention sound in this browser only, or brings it back.",
-      know: "Your other devices still play. The line below says what reaches this device now: plays, quiet, night, or off on every device.",
+      know: "Below the row are all reasons for silence and their fixes. Device mute affects only this browser; sounds and night quiet choices affect all your devices.",
     },
     AS02: {
       name: "Device quiet",

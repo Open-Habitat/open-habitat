@@ -1,15 +1,16 @@
 ---
 created: 2026-11-22
-updated: 2026-11-22
+updated: 2026-11-23
 type: improvement
 reporter: jari
-status: testing
+status: done
 priority: normal
 provenance: chat
 source_ref: habitat:pi-current/2026-11-22-night-visible
 lane: attention-night
 lane_seq: 1
 preparation: ready
+closed: 2026-11-23
 ---
 
 # Prototype: show clearly when sounds are off because of night quiet
@@ -27,3 +28,9 @@ Jari 22.11.2026 on round 1: C (A's status line at the top of Sounds, night defin
 ### 2026-11-22T17:31:09Z · @jari
 
 Jari 22.11.2026 on round 2: B Kaikki syyt — the top status line lists every active reason (all devices off, this device muted, night) each with its own permanent fix; drop 'Kuuntelu toimii silti' from the off line. Account menu wording: pending (question re-explained). Implementation: attention-sound-status-all-reasons.
+
+## Resolution
+
+### 2026-11-23T06:07:19Z · @issuectl
+
+The remaining account-menu question was approved on 2026-11-23 and is implemented: shared all-reasons status and permanent fixes, verified in Finnish/English at desktop and phone widths.

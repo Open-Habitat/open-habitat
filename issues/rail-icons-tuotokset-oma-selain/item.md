@@ -3,13 +3,14 @@ created: 2026-11-22
 updated: 2026-11-23
 type: improvement
 reporter: jari
-status: testing
+status: done
 priority: normal
 provenance: chat
 source_ref: habitat:pi-current/2026-11-22-rail-icons
 lane: rail-icons
 lane_seq: 1
 preparation: ready
+closed: 2026-11-23
 ---
 
 # Rail: Tuotokset and Oma selain share an icon, and only Oma selain is a bordered card
@@ -36,3 +37,9 @@ Jari 22.11.2026: the icons get their own prototype round: Tuotokset vs Oma selai
 ### 2026-11-23T05:43:12Z · @jari
 
 Jari 23.11.2026: Etusivu (home) uses A Esineet's icon; the other places (Tuotokset, Oma selain, Agentin käytössä, Selitä) use B Merkitykset's icons. No duotone (C) now; all icons get a duotone review together later. Next action: implement directly (no experimental switch).
+
+## Resolution
+
+### 2026-11-23T06:07:19Z · @issuectl
+
+Implemented the approved A home and B place icons without duotone or a new switch; synthetic desktop/phone checks passed.

@@ -265,9 +265,7 @@ export function ExplainToggle() {
       title={t.toggle}
       onPress={mode.toggle}
     >
-      <span className="ah-explain-q" aria-hidden="true">
-        ?
-      </span>
+      <Icon name="explain" />
     </ControlButton>
   );
 }

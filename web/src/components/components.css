@@ -2019,14 +2019,15 @@ details[open] > summary:not([class])::before {
   font-size: var(--ah-size-meta, 12px);
   line-height: 1.4;
 }
-.ah-sound-state > svg {
-  flex: none;
-  width: 14px;
-  height: 14px;
-  margin-top: 1px;
+.ah-sound-menu .ss-status {
+  margin: var(--ah-s2) 6px;
+  padding: var(--ah-s2);
+  gap: var(--ah-s2);
+  font-size: var(--ah-size-meta);
 }
-.ah-sound-state[data-status="muted"] {
-  color: var(--ah-ink);
+.ah-sound-menu .ss-reasons li {
+  gap: var(--ah-s2);
+  padding: var(--ah-s2) 0;
 }
 @media (max-width: 800px) {
   /* Keep all observed status words, but put them alongside the title rather

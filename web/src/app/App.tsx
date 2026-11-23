@@ -610,9 +610,9 @@ export function App() {
     }
     if (identity) priorIdentity.current = identity;
   }, [identity, clearPerson]);
-  const openSettings = () => {
+  const openSettings = (path = "/settings") => {
     setSettingsFromMenu(true);
-    navigate("/settings");
+    navigate(path);
   };
   const syntheticDemo = import.meta.env.VITE_SYNTHETIC_DEMO === "true";
   const fixtureName =

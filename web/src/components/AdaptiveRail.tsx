@@ -35,9 +35,9 @@ export type RailPlaceId = "home" | "shares" | "browser" | "resources";
  * and its choice is a change here. */
 export const PLACE_ICONS: Record<RailPlaceId | "search", IconName> = {
   home: "home",
-  shares: "globe",
+  shares: "outputs",
   browser: "browser",
-  resources: "shield",
+  resources: "access",
   search: "search",
 };
 
