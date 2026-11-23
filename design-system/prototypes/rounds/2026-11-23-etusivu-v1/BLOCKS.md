@@ -201,3 +201,7 @@ preferences.
 - Scratch under `/var/tmp/agent-scratch/<unique>` with `TMPDIR` set there,
   never `/tmp`. Never commit binaries or anything under `worker-results/`.
 - Do not touch shared files (above). Engine needs go into your NOTES.md.
+- Run everything on the host you were started on. Never use another machine
+  (no `ssh` to a server for a render or a build): other machines run other
+  people's services. If a program has no build for this host, use another
+  tool that does, or say so in NOTES.md.
