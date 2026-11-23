@@ -35,6 +35,8 @@ const fi = {
     settled: ", koska ajot, joita se odotti, päättyivät",
     cut_off:
       ", koska taustatyö, jota se odotti, katkesi eikä enää kerro päättymisestään",
+    turn_cut:
+      ", jotta se saa uudelleenkäynnistyksen katkaiseman työnsä valmiiksi",
   },
   wake: {
     asleep:
@@ -94,6 +96,7 @@ export const restartNoticeText = catalog(
       settled: ", because the runs it was waiting for ended",
       cut_off:
         ", because the background job it was waiting for was cut off and will no longer report its end",
+      turn_cut: ", so that it can finish the work the restart cut off",
     },
     wake: {
       asleep:

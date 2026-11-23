@@ -17,6 +17,9 @@ it carries. To upgrade, deliver the successor release and change only
 
 ### Added
 
+- `host upgrade` announces the stop before it begins (two minutes by default, `--lead-time` up to 60 minutes, `--immediate` for emergencies) and begins it at that time instead of waiting for agents to go quiet. Each person's browser shows a banner with the time; agents in running conversations are told what the stop does to them, and a turn the stop cut is started again afterwards to finish its work. The first upgrade into this release cannot announce yet; the next one can.
+- After any graceful restart of a person's Habitat service, a conversation whose running turn it cut is started again with a message saying what was cut off.
+
 ### Changed
 
 ### Fixed

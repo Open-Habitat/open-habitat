@@ -16,6 +16,7 @@ import viewSchema from "../../../contracts/v1/view.schema.json";
 import workspaceChange from "../../../contracts/v1/workspace-change.schema.json";
 import workspaceIconSuggestions from "../../../contracts/v1/workspace-icon-suggestions.schema.json";
 import type { GitSummaryFacts } from "../components/GitStatus";
+import type { UpgradeSchedule } from "../components/UpgradeNotice";
 import type { AIProvider } from "./aiSignIn";
 import { LazyAjv } from "./lazyAjv";
 
@@ -239,6 +240,8 @@ export interface Snapshot {
   workspaces: Workspace[];
   agents: Agent[];
   write_state: string;
+  /** An installation upgrade root has announced (components/UpgradeNotice.tsx). */
+  upgrade?: UpgradeSchedule;
   auth?: {
     provider: "github" | "google";
     /** AI providers refusing the person's sign-in now (aiSignIn.ts). */

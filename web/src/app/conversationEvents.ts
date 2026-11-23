@@ -175,6 +175,7 @@ export function applyTurnEvent(
       restart: payload.restart as HistoryEntry["restart"],
       wait_reminder: payload.wait_reminder as HistoryEntry["wait_reminder"],
       scheduled_wake: payload.scheduled_wake as HistoryEntry["scheduled_wake"],
+      upgrade_notice: payload.upgrade_notice as HistoryEntry["upgrade_notice"],
       participant_message:
         payload.participant_message as HistoryEntry["participant_message"],
       conversation_line:

@@ -8,6 +8,7 @@ import viewSchema from "../../../contracts/v1/view.schema.json";
 import type { AgentNotice } from "../components/AgentNotice";
 import type { RestartNotice } from "../components/RestartNotice";
 import type { WakeLine } from "../components/ScheduledWake";
+import type { UpgradeNoticeLineModel } from "../components/UpgradeNotice";
 import type { WaitReminder } from "../components/WaitReminder";
 import type { AIProvider } from "./aiSignIn";
 import type { BashFailure } from "./bashFailure";
@@ -56,6 +57,8 @@ export interface HistoryEntry {
   wait_reminder?: WaitReminder;
   /** Habitat's line on a scheduled wake (scheduled-wake). */
   scheduled_wake?: WakeLine;
+  /** Habitat's line where the agent got an upgrade announcement. */
+  upgrade_notice?: UpgradeNoticeLineModel;
   entry_key: string;
   timestamp?: string;
   /** A participant's message in a shared conversation, attributed by the

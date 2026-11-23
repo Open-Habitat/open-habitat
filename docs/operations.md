@@ -456,7 +456,7 @@ needs it: immutability of its bytes does not replace source availability.
 ```sh
 /path/to/successor/bin/open-habitat host upgrade --site /etc/open-habitat/site.json --dry-run --json
 /path/to/successor/bin/open-habitat host upgrade --site /etc/open-habitat/site.json \
-  --approved-plan <upgrade-plan-id> --approve-maintenance --output=jsonl
+  --approved-plan <upgrade-plan-id> --approve-maintenance --output=jsonl [--lead-time 2m | --immediate]
 ```
 
 The first real invocation stages the complete immutable generation and preflights
@@ -484,6 +484,29 @@ If neither `/opt/open-habitat/core` nor a profile link points into it, remove
 that entry directory and repeat the same command, which extracts it again; if
 the running installation uses it, the installed runtime itself is damaged and
 needs diagnosis before any upgrade.
+
+The invocation that enters maintenance first announces it. After the successor
+is staged and requalified, the owner publishes when the stop begins, by default
+two minutes ahead (`--lead-time 10m` for up to 60 minutes; `--immediate` skips
+the announcement in an emergency). Neither flag grants an approval. Each
+person's browser shows a banner with the local time, and every running
+conversation's agent is told what the stop will do to it: its Pi ends, what it
+started from its own tools ends, `/tmp` is emptied, and only work under the
+person's user manager keeps running. At the deadline the stop begins whatever
+the agents are doing; a turn that finishes early does not bring it forward and
+new work does not push it back. The JSONL stream reports the schedule as soon
+as it is published (`phase: "announced"`), and the result's `announcement`
+gives the UTC deadline, the schedule ID and how many conversations were told
+(`reach`), separately from the upgrade's `outcome`. Interrupting the command
+during the countdown withdraws the announcement and leaves the predecessor
+serving; a new attempt announces a fresh full lead time. The first upgrade into
+the release that brings this cannot announce, because its predecessor's
+daemons do not read the schedule. A turn the stop cut is started again after
+the restart with a message saying what was cut off, as after any graceful
+restart of a person's daemon. Do not wait for agents to go quiet before
+upgrading, and let the operator's tooling wait for the command's terminal
+result instead; a published release is not permission to restart an
+installation.
 
 Schedule the maintenance window explicitly. Add `--approve-interruption` only
 when interruption of daemon work is approved; the preview's `work` lists each

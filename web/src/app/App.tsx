@@ -36,6 +36,10 @@ import { PageNotice } from "../components/PageNotice";
 import type { ReturnConversation } from "../components/ReturnView";
 import type { SectionChoice } from "../components/SectionFilter";
 import { StatusBell } from "../components/StatusBell";
+import {
+  UpgradeBanner,
+  type UpgradeSchedule,
+} from "../components/UpgradeNotice";
 import { setPersonalLanguage, textNow, useLanguage } from "../i18n";
 import { agentResourcesText } from "../text/agentResources";
 import { appText } from "../text/app";
@@ -554,6 +558,13 @@ export function App() {
     () => overlaid(hostSnapshot, mutations),
     [hostSnapshot, mutations, mutationVersion],
   );
+  // The announced upgrade outlives the snapshot that carried it: while the
+  // daemon is down for the upgrade the page keeps the last schedule, so the
+  // banner reads "starting" until a restarted daemon says nothing is due.
+  const [upgradeSchedule, setUpgradeSchedule] = useState<UpgradeSchedule>();
+  useEffect(() => {
+    if (hostSnapshot) setUpgradeSchedule(hostSnapshot.upgrade);
+  }, [hostSnapshot]);
   const priorIdentity = useRef<string | undefined>(undefined);
   const identityGeneration = useRef(0);
   const owned = useRef<{
@@ -3478,6 +3489,9 @@ export function App() {
                         : "SYNTEETTINEN DEMO · Simuloitu identiteetti ja workspace-data · Ei oikeaa kirjautumista, agentteja eikä host-yhteyttä"}
                     </div>
                   ) : null}
+                  {phase === "authentication_required" ? null : (
+                    <UpgradeBanner schedule={upgradeSchedule} />
+                  )}
                   {phase === "authentication_required" ||
                   phase === "pi_required" ||
                   phase === "daemon_unavailable" ||

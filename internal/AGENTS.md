@@ -188,6 +188,15 @@ The packages divide the work as follows.
   another host command holding the shared operation lock grants no such authority.
   An unpublished deny marker is denial, not absence or readiness; an interrupted
   publication must not reopen entry merely because its final name is missing.
+  The upgrade announcement (`upgradenotice/`) is the one signal from host
+  maintenance to the daemons: root's upgrade owner publishes a world-readable
+  advisory record of when it begins stopping them, renews it while it lives
+  and withdraws or removes it. Daemons only read it, and only to tell their
+  own person's conversations and browser. It must never name an account,
+  conversation, operator text or command, never become writable by a mapped
+  user or the gateway, and never grant anything: an untrusted or lapsed record
+  is no schedule, never "restart now", and no acknowledgement or idle agent
+  ever moves the deadline. Waiting for agents is not a way to choose the stop.
   Upgrade stops and restarts only the product's system units. It never stops,
   restarts or requires an exact set of a person's user-manager units: shells,
   editors and Taskfleet runs there are the person's work, outlive the upgrade on

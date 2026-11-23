@@ -21,7 +21,7 @@ export type RestRunState =
 export type RestartNotice = {
   stopped?: RestStop;
   /** Habitat woke the agent itself because what it waited for ended. */
-  woke?: "settled" | "cut_off";
+  woke?: "settled" | "cut_off" | "turn_cut";
   /** The turn Pi was working on never finished. */
   interrupted_turn?: boolean;
   processes: { process_id: string; name: string }[];
