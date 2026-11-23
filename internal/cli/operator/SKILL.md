@@ -1,419 +1,386 @@
 ---
 name: operator
-description: Install, converge and diagnose Open Habitat hosts through the shipped privileged operator and native administrative APIs.
+description: Install, upgrade and administer an Open Habitat host as root with the shipped `open-habitat host` and `admin` commands. Use for a first installation, host apply, a release upgrade, TLS rotation, a stopped host operation, and for who may sign in, site onboarding, the site AI key and integration app credentials.
 cli_version: "0.0.0-dev"
 schema_version: 1
 ---
 # Open Habitat operator
 
-Extract the independently authenticated product package as root, in a trusted
-non-user-writable directory, preserving its 0755 executable/search modes.
-Use it on Ubuntu 24.04 amd64,
-with a separately mounted journaled-quota ext4 /home. The customer owns the
-machine, persistent volume/mount configuration, OS updates, ingress, TLS and
-OAuth registration. Never format a disk, convert a mounted filesystem or
-supply cloud/account repair hooks through this operator.
+You are operating a host that several people work on. Each has a Linux
+account, a home, credentials and running agents there, and the separation
+between them is the product. What you change as root reaches all of them: a
+restarted session service ends everyone's running work, a wrong permission
+can expose one person's secrets to another, and broker state repaired by hand
+can hand one person's UID to someone else. The work is done when an admitted
+person has signed in through their own browser and their own Pi has reached
+its provider, not when a command returns.
 
-Read site/schema.json and adapt site/example.json. The site and its secret-file
-references require root-owned non-writable parents and mode 0600 single-link
-regular files. The shared /etc/open-habitat parent must be root:root 0711
-(or 0755), with no access/default ACLs, NOT 0700: the gateway must traverse it.
-Keep source secrets in a separate root:root 0700 directory such as
-/etc/open-habitat/secrets; the site/key themselves stay root-only 0600.
-Generated /etc/open-habitat/gateway is root:gateway-group 0750 with 0640 files;
-ordinary users can traverse the shared parent but cannot read those files.
-Create bootstrap parents before delivering inputs:
+This text matches the binary that printed it. Every command and subcommand
+answers `--help` with its flags, refusals and an example, and
+`site/schema.json` with `site/example.json` in the product package define the
+site file; that detail is not repeated here. The longer operator guide, with
+step-by-step recoveries and the app registrations at Google, Microsoft and
+Dropbox, is `docs/operations.md` in the Open-Habitat/open-habitat repository
+on GitHub. Read it at the tag of this release (`v` and the version above),
+because the main branch can describe a newer release.
 
-    install -d -o root -g root -m 0711 /etc/open-habitat
-    install -d -o root -g root -m 0700 /etc/open-habitat/secrets
+## How host maintenance works
 
-Check/plan reject unusable existing bootstrap metadata with
-`gateway_parent_requires_root_0711_or_0755_no_acl`. After inspecting stat/getfacl,
-an otherwise root:root, ACL-free 0700 parent is repaired by the operator with
-`chmod 0711 /etc/open-habitat`. Do not chmod source secrets or generated files,
-add an ACL, or recursively change ownership. Apply refuses rather than rewriting
-customer bootstrap permissions. No environment expansion or includes apply. Keep secrets out of
-argv, environment, receipts and the release tree. The site declares numeric
-GitHub admission/admin subjects, the reserved empty UID/GID pool, gateway IDs,
-home UUID, nonzero default quota, exact runtime manifest target and profiles;
-profiles always include core and integrations.
-For editor, select the editor profile and set editor.origin_template to a
-separate wildcard HTTPS origin such as https://oh-code-*.example.org. The *
-must occur once in the first DNS label and leave room for a 52-character
-identity (at most 11 other characters in that label). No {identity} placeholder
-is accepted. It must not match the application origin.
-Do not precreate the gateway account/group, broker files or user bindings.
-Gateway IDs must be unused initially; its service identity must remain exclusive
-and non-login. Named/default ACLs on its generated secret parent are refused,
-not cleared. Product service/socket fragments are fixed: foreign overrides and
-full instance units refuse, including privilege-changing hooks/capabilities.
-Put resource budgets on user slices rather than actor-unit overrides.
-Undelivered site integration declarations are blockers, not fictitious app setup.
-Apply writes only the tools section of /opt/open-habitat/integrations.json and
-keeps every other section's bytes; add Google, Microsoft or Dropbox app
-registrations there as root (root:root 0644), never in the site or argv.
-Identity/mount choices become immutable; personal bindings and native data are
-not desired-state records.
-
-Inspect before mutation:
+The administrator declares the installation in one root-owned file,
+`/etc/open-habitat/site.json`, and the `host` commands converge the machine
+to it. Nothing is changed on a guess:
 
     open-habitat host config path --json
     open-habitat host config show --site /etc/open-habitat/site.json --json
     open-habitat host check --site /etc/open-habitat/site.json --json
-
-The fixed incoming runtime directory is /var/lib/open-habitat/release; place
-the release's `release-linux-<arch>.json` there as `release.json`, with the
-selected archives, as trusted root-owned files. The trust pin is
-site.release.manifest_sha256: the SHA-256 GitHub states for that manifest asset
-(`assets[].digest` from `gh api repos/Open-Habitat/open-habitat/releases/tags/<tag>`),
-never a checksum file from the same download. site.release.version is the
-manifest's version. The operator accepts exactly the manifest bytes that hash
-to the pin and checks every archive and product file against that manifest;
-releases are unsigned, and the pin is the whole trust. Check the product package's bytes
-against GitHub's stated digest too before running it as root; its own checksums
-are integrity, not authenticity.
-
-The product package includes `bin/runtime-release`, which checks a runtime
-release unprivileged before installation and always emits JSON (`--json` is
-optional; omit it for older binaries):
-
-```sh
-/path/to/product/bin/runtime-release verify \
-  --directory /srv/incoming/runtime \
-  --version <exact-runtime-version> \
-  --manifest-sha256 <GitHub-stated 64-hex manifest digest>
-```
-
-The directory must contain `release.json` and **every** archive named by the
-manifest. The version is the **runtime** version, which may differ from the
-product version when a newer product reuses unchanged runtime bytes. Exit 0
-with `data.status=verified` means the manifest matches the digest and the
-complete archive closure matches the manifest; it is not installed-host
-qualification.
-
-Prepare explicitly in a maintenance window:
-
-    open-habitat host prepare --site /etc/open-habitat/site.json --dry-run --json
-    open-habitat host prepare --site /etc/open-habitat/site.json --approved-plan <prepare-id> --approve-disruption --output=jsonl
-
-Use the returned plan ID. Preparation proves real disposable-UID EDQUOT and
-cleanup, installs the home/storage and broker-owned binding gates, creates the
-empty proc exemption group and restarts proc/logind/polkit policy. It never
-creates per-user bindings or enables sign-in. Accounting without enforcement,
-wrong/missing home UUID, unsafe membership and incomplete preparation refuse.
-
-Ensure the host's apt package indexes are current before planning. Ubuntu owns
-all its packages, dependency closure and security updates. Manifest schema 2
-`packages[].version` means qualified minimum, not an exact pin. Newer installed
-Ubuntu versions satisfy checks. Plans list unmet `ubuntu.package.<name>` actions
-and simulate apt; unavailable or too-old candidates refuse. Refresh customer
-repositories or resolve holds/pins, then obtain a fresh approval. The operator
-does not update indexes, impose holds or ship Ubuntu debs. Non-Ubuntu archives
-remain exact and pinned by the manifest; Ubuntu installation needs repository/network access.
-
-Then inspect and approve apply separately:
-
     open-habitat host plan --site /etc/open-habitat/site.json --json
     open-habitat host apply --site /etc/open-habitat/site.json --dry-run --json
-    open-habitat host apply --site /etc/open-habitat/site.json --approved-plan <apply-id> --output=jsonl
 
-Apply revalidates approval under the root operation lock. It stages verified
-immutable generations, installs unmet Ubuntu minimum-version requirements through
-the host apt without removals, downgrades or held-package changes, installs numeric gateway sysusers and systemd
-units, and seeds only an empty broker. HTTP entry points stay behind a durable
-root-owned fence while the gateway starts. Default quota and roles use the
-private gateway administrative API with readback; root never edits its settings.
-Admission removals revoke under the old admission before monotonic publication;
-the broker alone observes its high-water mark. No committed binding or personal
-file is reset. Requested unbound administrator grants are deferred_until_bound:
-apply records them as pending in the gateway, which grants the role at the
-sign-in that creates that person's binding, with no further apply. Roles a
-browser administrator designated (designated_administrators in admin settings
-show) are not site.json's: apply neither removes nor requires them. Per-user
-quota overrides are preserved.
+These, and `--dry-run` of `prepare` and `upgrade`, only read. They take no
+operation lock, change no quota, start no service and install no file (reads
+may change access times), so run them freely. A blocked read exits 1 with its
+document on stderr under `error.result.data` and an empty stdout; a check
+reported unavailable has not passed.
 
-An exact repeat verifies native postconditions and returns no_change without
-rewriting a receipt or restarting services. Before an operation starts,
-stale_plan requires a fresh approved observation. After it starts, changed
-protected inputs block continuation: a new approval cannot supersede the
-incomplete operation. Restoring bytes alone does not restore reference identity.
-Inspect operation evidence and entry_closure; there is no force/supersede route.
-Keep declaration and protected inputs unchanged during maintenance; the binding
-is rechecked around actions.
-Interrupted apply continuation accepts only the same protected
-inputs and original approval and reobserves native steps. Foreign/partial broker
-state and malformed journals stay closed for diagnosis, never force/reset.
-Ordinary apply performs neither preparation nor a release upgrade implicitly.
+A dry run returns a plan ID that fingerprints what was observed. The live
+command takes that ID as `--approved-plan` and streams with `--output=jsonl`
+(not `--json`): versioned progress and exactly one terminal result, error or
+cancelled event. The approval belongs to the administrator. Show them the
+plan and what it will interrupt, and run the live command on their yes, at a
+time they chose when it disrupts people. `host prepare` restarts proc, logind
+and polkit policy and so disturbs every session on the machine; `host apply`
+restarts the gateway when its configuration changes, which drops browser
+connections; `host upgrade` can interrupt people's running agents.
 
-Check/plan/dry-run never create the operation lock, change quotas, start services
-or install files. Filesystem reads may change access times. Blocked reads exit 1
-with their document under stderr error.result.data; stdout is empty. Live
-maintenance requires --output=jsonl, not --json: versioned progress plus exactly
-one terminal result/error/cancelled event. A crash has no terminal event: its outcome and entry state are unknown, not
-a promise that nothing changed or that HTTP is closed. A returned apply failure
-after maintenance starts reports entry_closure=verified_closed or unavailable.
-For unavailable keep external ingress closed and inspect the gateway; the
-operator attempts to stop that gateway if it cannot persist closure. Signals
-exit 130/143. System/native action failures exit 2; inspect before retrying.
+There is no force, reset or supersede route, by design: the fences below are
+what keeps a half-finished operation from being papered over. If a route is
+refused, the refusal names what to diagnose.
 
-    open-habitat host operation show <32-lowercase-hex-operation-id> --json
-    open-habitat admin settings show --json
-    open-habitat admin users list --json
+- Before an operation starts, `stale_plan` means the host changed since the
+  observation; take a fresh dry run and a fresh approval.
+- Once an operation has started, it continues only with the same protected
+  inputs (site file, secret files, release) and its original approval. A new
+  approval cannot replace it, and restoring a changed file's bytes does not
+  restore its identity. So keep the declaration and everything it references
+  unchanged, and external delivery tooling quiet, for the whole window.
+- An exact repeat of a finished apply verifies the native postconditions and
+  returns `no_change` without rewriting a receipt or restarting anything.
+- A run that ends without a terminal event has an unknown outcome. It is not
+  evidence that nothing changed or that HTTP is closed. Read `host operation
+  show <operation-id> --json` before anything else; a journal phase there is
+  durable intent, not proof the step completed.
+- A failure returned after maintenance began reports `entry_closure`. With
+  `verified_closed` the HTTP entry points are fenced. With `unavailable` the
+  closure could not be persisted (the binary tries to stop the gateway as a
+  last resort): keep external ingress closed and inspect the gateway.
+- Exit 2 is a system or native action failure: inspect before retrying.
+  Signals exit 130 and 143.
+- Foreign or partial broker state and malformed journals stay closed for
+  diagnosis. Deleting or editing them is how a UID gets reassigned.
 
-The site onboarding (default repositories and their mode, integration steps,
-AI offer) is gateway administration state, not site.json: host apply never
-sets or resets it, and a browser administrator edits the same record. Read it
-with `admin onboarding show --json`, change the data, then replace the whole
-document with `admin onboarding update --file FILE|- --expected-version N`,
-first with `--dry-run`. version_conflict means someone saved in between: read
-again and merge rather than reusing the old version. A change applies only to
-onboardings that start afterwards.
+## What the installation needs
 
-The site AI key lets new people skip the AI step: `admin ai-key set --provider
-openai|anthropic|deepseek --key-file -` (stdin, never argv) stores it in the
-gateway's own file and makes the onboarding offer `site_key`; `admin ai-key
-delete --offer OFFER` removes it and sets what new people get instead; `admin
-ai-key show` names only the provider and last four characters. Each new
-person's Pi gets a copy at the sign-in that creates their account, and never
-over a key they have. `admin ai-key seed --github-id ID` gives it to someone
-who joined earlier: run it with `--dry-run` first, which asks that person's own
-daemon for one word (`absent`, `earlier`, `current`, `own` or `unknown`) and
-writes nothing; the write is decided again under Pi's lock and never replaces
-the person's own key or subscription. `admin ai-key copies` lists who was given
-which key. Setting a new key replaces every copy the site gave of an earlier
-key of the same provider (`replaced` in the reply says per person how it went;
-`not_reached` people keep the old key until seeded again); deleting the key
-leaves copies where they are. The key's account pays for all of them, and a
-copy cannot be recalled: only revoking the key at the provider stops it. Tell
-the operator this, and that seeding writes into another person's credentials,
-before doing either.
+The supported host is Ubuntu 24.04 amd64 with `/home` on a separately mounted
+ext4 filesystem with journaled quotas. The customer owns the machine, its
+volumes and mounts, OS updates, ingress, the TLS certificate and the GitHub
+OAuth registration. The product does not format disks, convert a mounted
+filesystem or accept cloud or account repair hooks; those stay the
+customer's own work.
 
-Who may sign in has two sources, both kept by the broker. site.json
-`identities.admission` is root's (host apply converges it, as before).
-Runtime entries are admitted and withdrawn by a browser administrator or
-`admin access add|remove --github-id ID`, only while site.json sets
-`identities.runtime_admission: true`; host apply never removes them, and host
-plan reports them with actor and time under `runtime_admission`. Resolve a
-login first with `admin access lookup --login LOGIN`, then pass the id; run
-each change with `--dry-run` first. `remove` ends web access only (the Unix
-account, files, SSH and processes stay) and refuses a site.json id: edit
-site.json instead. `add` on a withdrawn id returns the person to the same
-account. outcome_uncertain (exit 2) means the change may have committed: read
-`admin access list` and decide; nothing retries it. A `denied` entry that is
-not withdrawn is such an unconfirmed withdrawal; repeat remove or add.
+**Trust.** Releases are unsigned. The whole trust is the SHA-256 that GitHub
+states for an asset (`assets[].digest` from `gh api
+repos/Open-Habitat/open-habitat/releases/tags/<tag>`). A checksum file from
+the same download proves integrity, not authenticity. Check the product
+package against GitHub's digest before running anything from it as root, and
+extract it as root into a trusted directory no user can write, keeping its
+0755 executable and directory modes. The runtime release goes to the fixed
+directory `/var/lib/open-habitat/release` as trusted root-owned files: the
+release's `release-linux-<arch>.json` saved as `release.json`, with every
+archive the manifest names for the selected profiles. `site.release.version`
+is the manifest's version and `site.release.manifest_sha256` is GitHub's
+digest of that manifest; the binary accepts exactly those bytes and checks
+every archive and product file against them. The runtime version can differ
+from the product version, when a newer product reuses unchanged runtime
+bytes. `bin/runtime-release` in the package checks a downloaded runtime
+release unprivileged, before anything is installed:
 
-Google, Microsoft and Dropbox app credentials live in
-/opt/open-habitat/integrations.json beside the tools host apply owns. While
-site.json `integrations.browser_setup` is true (the default), a browser
-administrator or `admin integrations set|clear --provider P` has the broker
-write one provider's section; host apply keeps those bytes. Give the secret on
-stdin (`--client-secret-file -`), never in argv; Microsoft takes `--tenant-id`
-instead of a secret. `admin integrations list` and host plan's `integrations`
-show the client id and who set it when (source `operator` for a section root
-edited by hand); secrets are never shown. host_busy means host maintenance
-holds the lock and nothing was written; outcome_uncertain (exit 2) means read
-the list before repeating. Set browser_setup false and run host apply to make
-the file root's alone again.
+    /path/to/product/bin/runtime-release verify \
+      --directory /srv/incoming/runtime \
+      --version <exact-runtime-version> \
+      --manifest-sha256 <GitHub-stated 64-hex manifest digest>
 
-A journal phase is durable intent, not proof of completion. Runtime process
-liveness is not readiness. Generated gateway config and TLS copies are under
-/etc/open-habitat/gateway/; per-user bindings remain separately under
-/etc/open-habitat-daemon/daemon/user-mappings/. Inspect the installed unit
-ExecStart for explicit component configuration instead of guessing a default. After installation/reboot verify gates, broker,
-gateway, per-user listener ACLs and production daemon startup as distinct kernel
-UIDs. Keep ingress closed until an admitted browser GitHub callback and that
-person's own Pi/provider authorization succeed. No shared provider credentials
-are installed unless an administrator sets the site AI key. Native two-UID startup alone does not prove browser sign-in or
-provider entitlement.
+The directory holds `release.json` and every archive the manifest names.
+Output is always JSON. Exit 0 with `data.status=verified` says the manifest
+matches the digest and the complete archive closure matches the manifest,
+not that a host is qualified.
 
+**The site file.** Adapt `site/example.json`. No environment expansion or
+includes apply. What the schema cannot tell you:
 
-## Explicit named successor upgrade
+- The site file and each secret file it references are root-owned 0600
+  single-link regular files under root-owned parents nobody else can write.
+  Secrets stay out of argv, the environment, receipts and the release tree;
+  have the administrator place them in their files instead of passing them
+  through the conversation.
+- `/etc/open-habitat` is root:root 0711 (or 0755) without access or default
+  ACLs. 0700 fails because the gateway has to traverse it to its own
+  generated directory. Source secrets live in a separate root:root 0700
+  directory. Create both before delivering inputs:
 
-A product-only replacement still requires a distinct release version and
-manifest digest, naming the exact predecessor and every successor binary/web
-file. Reuse unchanged runtime archives/descriptors; leaving site.release on the
-old runtime manifest cannot install new product bytes. Publish the new manifest
-with the product.
+      install -d -o root -g root -m 0711 /etc/open-habitat
+      install -d -o root -g root -m 0700 /etc/open-habitat/secrets
 
-Change only the declared release; converge other desired state separately.
-Pin the successor's manifest by its GitHub-stated digest in
-site.release.manifest_sha256. Deliver the successor naming its exact predecessor and complete product
-inventory, with its runtime archives and root-owned verified package. Preview
-using that successor's `host upgrade --site /etc/open-habitat/site.json --dry-run
---json`. A real invocation requires `--approved-plan ID --approve-maintenance
---output=jsonl`. It first returns `staged` and `plan.owner_binary` without
-switching selectors or installing packages. Invoke that exact immutable binary
-with the same arguments to enter maintenance; never recover through `current`.
+  Check and plan report a wrong parent as
+  `gateway_parent_requires_root_0711_or_0755_no_acl`. Apply refuses instead
+  of rewriting the customer's permissions, so after looking at `stat` and
+  `getfacl`, an otherwise root:root, ACL-free 0700 parent is repaired by
+  hand with `chmod 0711 /etc/open-habitat` and nothing wider: no recursive
+  change, no ACL, no chmod of secrets or generated files.
+- Generated gateway configuration and TLS copies are written to
+  `/etc/open-habitat/gateway` (root:gateway-group 0750, files 0640); per-user
+  bindings are separate, under
+  `/etc/open-habitat-daemon/daemon/user-mappings/`. Both are the product's
+  to write. ACLs found on the generated secret parent are refused, not
+  cleared.
+- The gateway UID/GID and the reserved UID/GID pool must be unused, and the
+  pool kept away from other account creators. The product creates the gateway
+  account, broker files and user bindings itself; precreated ones are
+  refused. The gateway's service identity stays exclusive and non-login,
+  since another member of its group could read OAuth and TLS secrets.
+- GitHub admission and administrator subjects are numeric ids. Profiles
+  always include `core` and `integrations`. The default quota is nonzero.
+- With the `editor` profile, `editor.origin_template` is a separate wildcard
+  HTTPS origin such as `https://oh-code-*.example.org`: one `*` in the first
+  DNS label, at most 11 other characters in that label (a 52-character
+  identity replaces the `*`), no `{identity}` placeholder, and not matching
+  the application origin.
+- Identity and mount choices become immutable once made.
+  People's bindings and native data are not desired state: no apply resets
+  a committed binding, a personal file or a per-user quota override.
+- An integration the site declares but whose inputs were not delivered is a
+  blocker, not something to work around with made-up app setup.
 
-`--approve-interruption` additionally authorizes interruption of observed native
-work and persistent user services. A live daemon is conservatively unobservable
-even when its current list is idle: list is not an in-flight request barrier.
-Without approval it refuses, rather than claiming drain. No unrelated SSH/tmux
-session is killed. Failure after quiescence retains closed HTTP/native entry and
-cold-start fences. Inspect the versioned generation-owned journal and actual
-postconditions; matching continuation only, never a new approval over uncertain
-state. Split/malformed publications require diagnosis, not deletion/reset.
-No downgrade, automatic rollback or ledger restore exists.
+**Units.** The product's service and socket units are fixed. Foreign
+overrides and full instance units are refused, because a drop-in can add a
+root hook or a capability under correct base bytes. Resource budgets
+therefore go on user slices, not on the product's units.
 
+**Packages.** Ubuntu owns its packages and their security updates. The
+manifest's `packages[].version` is a qualified minimum, so newer installed
+versions pass. Plans list unmet `ubuntu.package.<name>` actions and simulate
+apt, and refuse on an unavailable or too-old candidate. The binary does not
+update indexes, set holds or ship Ubuntu debs, so bring the apt indexes up to
+date before planning, resolve holds or pins on the customer's side, then take
+a fresh plan. Installing needs repository access. Non-Ubuntu archives are
+exact and pinned by the manifest.
 
-### Rotating the TLS certificate and key
+## Preparing, applying, verifying
 
-Renew externally before expiry, covering the app hostname and every configured
-editor hostname/wildcard. The operator owns renewal scheduling and any DNS
-provider credentials; do not put DNS administration credentials on the host.
-Read `gateway.tls_cert_file` and `gateway.tls_key_file` from the protected site
-file for the **source** paths. The serving copies are
-`/etc/open-habitat/gateway/tls.crt` and `tls.key`; do not edit those generated
-copies or `gateway.json` directly.
+Preparation, apply and upgrade are three separate operations with separate
+approvals; apply never prepares or upgrades implicitly.
 
-1. Finish any incomplete host operation first. During a maintenance window,
-   obtain a valid renewed PEM chain/key, check expiry/SANs and verify that their
-   public keys match (for example compare `openssl x509 -pubkey -noout -in
-   NEW_CHAIN` with `openssl pkey -pubout -in NEW_KEY`). Keep private-key bytes
-   out of command arguments and logs.
-2. Stage each new source file beside its configured path, owned by root with
-   mode `0600`, no symlinks or hardlinks, under protected root-owned parents;
-   atomically rename it over the old source. Replace both files before planning
-   and retain a protected recoverable copy until verification succeeds. Keep
-   the site declaration and runtime version/manifest digest unchanged.
-   For example, after setting `cert` and `key` to the exact source paths
-   declared by the site (not the generated copies), and `newcert`/`newkey`
-   to protected renewal files:
+`host prepare` (live form: `--approved-plan <prepare-id>
+--approve-disruption --output=jsonl`) proves with a disposable UID that the
+quota really refuses writes and cleans up, installs the home, storage and
+binding boot gates, creates the empty proc exemption group and restarts the
+session policy services. It creates no per-user binding and does not enable
+sign-in. It refuses quota accounting without enforcement, a wrong or missing
+home UUID and unsafe group membership.
 
-   ```sh
-   install -o root -g root -m 0600 "$newcert" "$cert.renewing"
-   install -o root -g root -m 0600 "$newkey" "$key.renewing"
-   mv -T "$cert.renewing" "$cert"
-   mv -T "$key.renewing" "$key"
-   ```
+`host apply` (live form: `--approved-plan <apply-id> --output=jsonl`)
+rechecks the approval under the root operation lock, stages verified
+immutable runtime generations, installs unmet Ubuntu minimums through apt
+without removals, downgrades or held-package changes, installs the gateway
+account and units, and seeds only an empty broker. HTTP entry
+stays behind a root-owned fence while the gateway starts. It writes only the
+`tools` section of `/opt/open-habitat/integrations.json` and keeps every
+other section's bytes.
 
-   Refuse preexisting `.renewing` paths/symlinks before staging. Keep backup
-   copies root-only. These commands run as root in a maintenance window with
-   no concurrent operator; never print the private key.
-3. Use the installed product's ordinary `host apply --site
-   /etc/open-habitat/site.json --dry-run --json`, inspect its plan and approve
-   its **new** plan ID with `--output=jsonl`:
+Apply sets the default quota and administrator roles through the gateway's
+private administrative API and reads them back; root does not edit the
+gateway's settings files. A requested administrator who has not signed in yet
+comes back `deferred_until_bound`: the gateway holds the grant and applies it
+at the sign-in that creates that person's account, with no further apply.
+Administrators a browser administrator designated
+(`designated_administrators` in `admin settings show`) are not site.json's;
+apply neither removes nor requires them. An admission removed from site.json
+is revoked before the new admission list is published.
 
-   ```sh
-   "$oh" host apply --site /etc/open-habitat/site.json --dry-run --json
-   "$oh" host apply --site /etc/open-habitat/site.json \
-     --approved-plan <NEW_PLAN_ID> --output=jsonl
-   ```
+After installation, and again after a reboot, look at what actually runs: the
+boot gates, broker, gateway, per-user listener ACLs, and daemons starting as
+distinct kernel UIDs. A live process is not readiness, and two daemons
+starting under two UIDs does not prove browser sign-in or provider
+entitlement. Read a component's configuration path from the installed unit's
+`ExecStart`, not from an assumed default. Keep ingress closed until an
+admitted person's GitHub callback in the browser and their own Pi provider
+authorization have succeeded. No provider credential is shared between
+people unless an administrator sets the site AI key.
 
-   Here `oh` is the authenticated product executable. Apply copies the source TLS files
-   into the generated gateway directory with root:gateway-group `0640` under
-   `0750`, then **restarts `open-habitat-gateway.service`** when configuration
-   bytes change. There is no TLS hot reload or `systemctl reload` path. The
-   restart interrupts browser connections; it does not replace personal homes
-   or native credentials. Do not change source files again mid-operation; an
-   interrupted apply continues only with its original protected inputs and
-   original approval.
-4. Require successful apply, `systemctl is-active open-habitat-gateway.service`
-   and `host check --site /etc/open-habitat/site.json --json`. From outside,
-   use CA-validating `curl --fail https://APP_HOST/healthz` (never `-k`) and
-   inspect the presented certificate with `openssl s_client -connect
-   APP_HOST:443 -servername APP_HOST -verify_hostname APP_HOST -verify_return_error`, checking the new
-   serial/expiry/SANs. Verify editor hosts too. When an ingress proxy terminates
-   TLS, rotate/verify that edge independently and check the origin hop's new
-   certificate using its verified TLS server name and appropriate CA.
+`host check` starts nothing. After a cold boot Ubuntu may leave the
+D-Bus-activated polkit inactive until its first request, and check accepts
+exactly that state with the configured proc exemption group; a running polkit
+or logind has to carry the group in its kernel status, and logind has to be
+running. Failed, masked or misconfigured services still block, so there is no
+reason to start polkit by hand or add a boot unit to get a passing check.
 
+The gateway binds its TCP port itself, as a non-root service. Any port
+1–65535 on a local or wildcard address works. Check and plan verify the
+address belongs to the host and, for a port below 1024, that systemd can
+grant `CAP_NET_BIND_SERVICE`; the unit gets that one capability only for
+such ports and none above them. Where the customer raised
+`ip_unprivileged_port_start` above 1024, a higher port below that threshold
+is rejected, because the product does not change the sysctl. No file
+capability, sysctl change, reverse proxy or drop-in is needed or accepted.
+The checks are point-in-time: keep the port free and the address configured
+through activation.
 
+## Upgrading to a named release
 
-### Continuing an activated apply after gateway config_io
+An upgrade moves the host from one exact release to a successor that names
+it. Even a product-only change needs a release with its own version and
+manifest digest, naming the exact predecessor and every successor binary and
+web file; unchanged runtime archives are reused. Leaving `site.release` on
+the old manifest cannot install new product bytes. There is no downgrade,
+automatic rollback or ledger restore, so the move is forward only.
 
-If a running apply stopped at `converging` because `/etc/open-habitat` was
-root:root 0700 without ACLs, keep ingress closed and use the independently
-verified corrected product package. Inspect `stat`/`getfacl` first, then as
-root run only `chmod 0711 /etc/open-habitat`. Keep site, secret source files,
-runtime pins and installed generation unchanged. This is a
-customer bootstrap-permission repair, not permission to rewrite generated
-files, reset journals or reseed identities.
+Deliver the successor's manifest and archives and its verified product
+package, change only `site.release` (converge any other desired state
+separately, before or after), and preview with the successor's own binary:
+`host upgrade --site /etc/open-habitat/site.json --dry-run --json`. The live
+form adds `--approved-plan ID --approve-maintenance --output=jsonl`. Its
+first run only stages: it returns `staged` and `plan.owner_binary` without
+switching anything or installing packages. Run that exact binary with the
+same arguments to enter maintenance, and use it, never the `current`
+selector, for any recovery of that upgrade.
 
-Inspect the original journal with `host operation show <id> --json`, then use
-the new product's `host check --site /etc/open-habitat/site.json --json`.
-The parent error must disappear; `operation.fence / recovery_required` and
-unready gateway/control checks remain expected until continuation. Do not take
-a new plan ID over that fence. Invoke:
+`--approve-interruption` additionally lets the upgrade interrupt observed
+native work and people's persistent services. A live daemon counts as
+unobservable even when it lists nothing running, because the list is not a
+barrier against a request arriving; without this approval the upgrade refuses
+instead of claiming a drain. Unrelated SSH and tmux sessions are not killed.
+A failure after quiescence leaves HTTP and native entry fenced: inspect the
+generation-owned journal and the actual postconditions, and continue the
+same operation.
 
-```sh
-"$oh" host apply --site /etc/open-habitat/site.json \
-  --approved-plan <ORIGINAL_APPLY_APPROVAL> --output=jsonl
-```
+After an apply that a corrected binary finished (below), the next upgrade
+names the installed generation's release and executable digest as its
+predecessor, not the repairing binary's version.
 
-The successor may finish only late apply phases (`converging`, `verifying`,
-`verified`) with matching durable receipt/fence and original approval. It
-reconstructs the original protected-input binding using the trusted installed
-executable's digest; changed site values, trust-key bytes or protected
-secret-file identity still refuse.
-It does not publish the successor binary or rerun apt/initialization/activation:
-it verifies installed config/generation, closes HTTP entry, applies only the
-bounded gateway unit policy repair described below, verifies units, clears
-the two failed gateway/revoke unit start limits, starts their fixed units,
-converges settings and verifies native postconditions before reopening entry.
-The same operation ID/approval must complete with a higher sequence; an exact
-retry verifies completion without restarting services. Split or unknown state,
-earlier phases and changed inputs remain fenced. The installed service binary
-stays the original approved product; the corrected operator is used for future
-maintenance. An installed product replacement requires a separately qualified
-successor upgrade, not this repair.
+## Administration while the host runs
 
-Require successful terminal `applied` (or verified `no_change` on repeat),
-completed operation, `host check`, active broker/gateway/revoke units and
-CA-validating public `/healthz` before the normal reboot/post-boot checks.
-Do not reboot first or claim browser OAuth/provider authorization from this
-recovery; those still require the admitted person's browser.
+The `admin` commands talk to the running gateway and broker. This state is
+not site.json's: host apply does not set or reset it, and a browser
+administrator edits the same records, so read before writing. `admin --help`
+lists everything, including roles, storage limits and removing a person for
+good; the mutating commands take `--dry-run`, which is the way to see a
+change before making it. Secrets are given on stdin (`--key-file -`,
+`--client-secret-file -`). Two replies deserve care where they appear:
+`host_busy` means host maintenance holds the lock and nothing was written,
+and `outcome_uncertain` (exit 2) means the change may have committed and
+nothing retries it, so read the current state and decide.
 
+**Who may sign in** has two sources, both kept by the broker. site.json
+`identities.admission` is root's and host apply converges it; such an id is
+changed in site.json. Runtime entries are added and withdrawn by a browser
+administrator or `admin access add|remove`, only while site.json sets
+`identities.runtime_admission: true`; apply never removes them, and host plan
+reports them under `runtime_admission` with actor and time. The commands take
+the numeric id, which `admin access lookup --login LOGIN` resolves.
+Withdrawing ends web access only: the Unix account, files, SSH and processes
+stay, and adding the id again returns the person to the same account. In
+`admin access list`, a `denied` entry that is not withdrawn is a withdrawal
+that was never confirmed: repeat the remove or the add.
 
-### Gateway listen ports and low-port recovery
+**Site onboarding** (default repositories and their mode, integration steps,
+the AI offer) is one versioned document, read with `admin onboarding show`
+and replaced whole with `admin onboarding update`. `version_conflict` means
+someone saved in between: read again and merge instead of reusing the old
+version.
 
-The declared gateway TCP port supports 1–65535, on a local address or wildcard
-(`0.0.0.0`/`[::]`). Check/plan resolve the address and verify it belongs to this
-host; low ports additionally require systemd PID 1's permitted and bounding sets to
-include `CAP_NET_BIND_SERVICE`. Unavailable observations block before mutation.
-If the customer's `ip_unprivileged_port_start` is raised above 1024, a
-high port below that threshold is rejected too: high-port policy stays
-capability-free and the product never changes the sysctl.
-These are point-in-time checks, not port reservations: keep the declared port
-free of other services and keep the address configured through activation.
+**The site AI key** (`admin ai-key`) lets new people skip the AI step: each
+new person's Pi gets a copy at the sign-in that creates their account, and
+`seed` gives one to someone who joined earlier. No path writes over a
+person's own key or subscription. The dry run of `seed` asks that person's
+own daemon what would happen (`absent`, `earlier`, `current`, `own` or
+`unknown`). Setting a new key replaces the copies of an earlier key of the
+same provider; `replaced` in the reply says how it went per person, and
+`not_reached` people keep the old key until seeded again. Deleting the key
+leaves the copies where they are. Two consequences are the administrator's to
+accept, so tell them before setting or seeding: the key's account pays for
+everyone holding a copy, and a copy cannot be recalled, only revoked at the
+provider; and seeding writes into another person's credentials.
 
-The gateway currently binds TCP directly; its inherited socket is the private
-Unix administration listener, not a public TCP listener. The installer therefore
-renders `AmbientCapabilities=CAP_NET_BIND_SERVICE` and
-`CapabilityBoundingSet=CAP_NET_BIND_SERVICE` **only for ports below 1024**.
-At higher ports both sets are empty. The service remains non-root with
-`NoNewPrivileges=yes`; no file capability, sysctl relaxation, reverse proxy or
-operator drop-in is needed or permitted.
+**Integration app credentials** for Google, Microsoft and Dropbox live in
+`/opt/open-habitat/integrations.json`, beside the `tools` section apply owns,
+and never in the site file or argv. While site.json
+`integrations.browser_setup` is true (the default), a browser administrator
+or `admin integrations set|clear` has the broker write one provider's
+section. `admin integrations list` and host plan's `integrations` show the
+client id and who set it when, never the secret; source `operator` marks a
+section root edited by hand (root:root 0644). Setting `browser_setup` false
+and applying makes the file root's alone again.
 
-For an already activated apply stopped at `converging` with `listen_failed`
-on port 443, use this corrected operator and the **original approval** exactly
-as in the activated-apply continuation above. Keep runtime, protected inputs,
-selectors, generation, and installed executable unchanged; do not prepare again,
-reset a journal, or obtain a replacement approval. Under the operation lock the
-operator recognizes only the exact prior product unit (or its already repaired
-bytes), installs the declared-port capability policy, reloads systemd, clears
-the gateway/revoke start limits, starts broker/revoke and restarts the gateway
-before converging and
-reading back quota/administrator settings. Foreign unit bytes or overrides
-remain blockers. Interrupted policy publication/reload can be retried with the
-same approval. Immutable generation snapshots remain unchanged; a later upgrade
-recognizes this exact repaired live gateway policy when qualifying its predecessor.
+## Rotating the TLS certificate
 
-Require the same operation ID to complete at a higher sequence, successful host
-check, active gateway/broker/revoke, and external CA-validating `/healthz` after
-HTTP entry reopens. Until then HTTP stays fenced; an active process or private
-control success alone is not public HTTPS acceptance. Only then perform the
-normal reboot and repeat the checks. No human OAuth/provider consent is implied.
+The certificate and key the site file names (`gateway.tls_cert_file`,
+`gateway.tls_key_file`) are the sources; `/etc/open-habitat/gateway/tls.crt`
+and `tls.key` are copies apply generates; neither they nor `gateway.json`
+are edited by hand. Renewal, its schedule and any DNS credentials are the
+customer's, and DNS administration credentials do not belong on the host. The
+new certificate covers the application hostname and every editor hostname or
+wildcard.
 
-### Cold-boot session-policy observation
+Rotation is an ordinary apply with changed sources, so it follows the rules
+above: finish any incomplete operation first, and replace both sources before
+planning, not during the operation. Check the new chain's expiry and names
+and that it matches the key (compare `openssl x509 -pubkey -noout` with
+`openssl pkey -pubout`). Stage each file beside its source as root-owned
+0600, with no stale `.renewing` path or link in the way, and rename it over
+the source, keeping a protected copy of the old pair until the new one is
+verified:
 
-Ubuntu may leave its static, D-Bus-activated polkit service inactive until the
-first authorization request. Host check accepts only loaded/inactive/dead with
-MainPID=0 and the exact configured proc exemption group; it does not start the
-service as a side effect. A running polkit or logind process must have that group
-in its actual kernel status, and logind must be running. Failed, masked or
-misconfigured services still block. Do not add a customer boot unit or manually
-start polkit merely to obtain a passing read-only check.
+    install -o root -g root -m 0600 "$newcert" "$cert.renewing"
+    install -o root -g root -m 0600 "$newkey" "$key.renewing"
+    mv -T "$cert.renewing" "$cert"
+    mv -T "$key.renewing" "$key"
 
-After a maintenance-only apply repair, a later upgrade must pin the
-installed generation's release and executable digest as its predecessor, not
-the repairing operator's version.
+Then take a new `host apply --dry-run` plan and approve it. There is no hot
+reload: apply copies the files and restarts `open-habitat-gateway.service`,
+which interrupts browser connections and touches no home or credential.
+Afterwards the apply has succeeded, the gateway unit is active and `host
+check` passes; from outside, `curl --fail https://APP_HOST/healthz` without
+`-k`, and `openssl s_client -connect APP_HOST:443 -servername APP_HOST
+-verify_hostname APP_HOST -verify_return_error` shows the new serial, expiry
+and names, for editor hosts too. Where an ingress proxy terminates TLS, that
+edge is rotated and verified on its own and the hop to the origin is checked
+with its own server name and CA.
+
+## Finishing a stopped apply with a corrected binary
+
+Two known situations stop an activated apply at `converging`, with HTTP
+fenced: the gateway failing with `config_io` because `/etc/open-habitat` was
+0700, and `listen_failed` on a port below 1024 under a product whose unit
+lacked the bind capability. Both are finished, not restarted: an
+independently verified corrected product package continues the same
+operation with the original approval.
+
+    "$oh" host apply --site /etc/open-habitat/site.json \
+      --approved-plan <ORIGINAL_APPLY_APPROVAL> --output=jsonl
+
+Until then keep ingress closed and the site, secret files, release pins,
+selectors and installed generation unchanged (for `config_io`, the single
+`chmod 0711` above is the whole repair), and do not prepare again or take a
+new plan over the fence; `operation.fence / recovery_required` in the
+corrected package's `host check` is expected until the continuation. The
+corrected binary finishes only the late phases of that operation. It does
+not publish itself, rerun apt or reinitialize anything, so the installed
+service binary stays the originally approved product, and replacing it is a
+separate named upgrade. Foreign unit bytes or overrides, earlier phases,
+changed inputs and split or unknown state stay fenced.
+
+It is finished when the same operation ID completes at a higher sequence
+with terminal `applied` (a repeat gives `no_change`), `host check` passes,
+the broker, gateway and revoke units are active and a CA-validating
+`/healthz` answers from outside; reboot and repeat the checks only after
+that. The guide's sections on continuing an activated apply and on low-port
+recovery walk through each case.
