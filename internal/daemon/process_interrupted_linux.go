@@ -279,8 +279,11 @@ func scanBranchStream(r io.Reader) branchScan {
 		}
 		// An automatic wake opens its run with Habitat's catch-up, not with
 		// the person's message: the mark belongs to the run before it.
-		if f.catchUp {
+		// A catch-up told the agent of the cut, and the person's own stop
+		// overrules it: neither leaves the cut for a later wake.
+		if f.catchUp || f.personStop {
 			restarted = false
+			scan.restartCut = false
 		}
 		scan.last = max(scan.last, f.at)
 		if f.refused {

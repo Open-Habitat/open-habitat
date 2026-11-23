@@ -35,6 +35,7 @@ func noticeDriver(t *testing.T) (upgradeDriver, UpgradeRequest, *[]string, *bool
 		*events = append(*events, "countdown:"+lead.String())
 		return nil
 	}
+	d.reach = func() []upgradeUser { return nil }
 	return d, req, events, owner, d.notice
 }
 
@@ -86,7 +87,7 @@ func TestUpgradeCountdownCancelledWithdrawsAndLeavesThePredecessor(t *testing.T)
 		return c.Err()
 	}
 	r, e := executeUpgrade(ctx, req, d)
-	if !errors.Is(e, context.Canceled) || r.Announcement.State != "withdrawn" || r.Operation != nil {
+	if !errors.Is(e, context.Canceled) || r.Announcement.State != "withdrawn" || r.Operation == nil || r.Operation.Phase != "started" {
 		t.Fatalf("%+v %v", r, e)
 	}
 	if got := strings.Join(*events, ","); got != "stage,countdown:2m0s" {
@@ -96,60 +97,89 @@ func TestUpgradeCountdownCancelledWithdrawsAndLeavesThePredecessor(t *testing.T)
 	if !ok || rec.State != upgradenotice.Withdrawn || rec.ScheduleID != r.Announcement.ScheduleID {
 		t.Fatalf("%+v %v", rec, ok)
 	}
-	if _, e := os.Stat(filepath.Join(d.journal, "active.json")); !errors.Is(e, os.ErrNotExist) {
-		t.Fatal("a cancelled countdown began maintenance")
+	if r.EntryClosure != "" {
+		t.Fatal("a cancelled countdown closed entry")
 	}
-	// A new attempt announces a fresh schedule with a full lead.
+	// The retry resumes the begun operation and announces a fresh schedule
+	// with a full lead before any stop.
 	d.wait = inner
+	*events = nil
 	r2, e := executeUpgrade(context.Background(), req, d)
-	if e != nil || r2.Announcement.ScheduleID == r.Announcement.ScheduleID || r2.Announcement.LeadSeconds != 120 {
+	if e != nil || r2.Outcome != "upgraded" || r2.Announcement.ScheduleID == r.Announcement.ScheduleID || r2.Announcement.LeadSeconds != 120 {
 		t.Fatalf("%+v %v", r2.Announcement, e)
+	}
+	if got := strings.Join(*events, ","); got != "countdown:2m0s,quiescing,activating,verifying,verified" {
+		t.Fatal("the retry skipped its announcement:", got)
 	}
 }
 
-func TestUpgradeRequalifiesAtTheDeadlineWithoutWaitingForAgents(t *testing.T) {
+func TestUpgradeFailureBeforeTheStopAnnouncesAgainOnRetry(t *testing.T) {
+	d, req, events, _, path := noticeDriver(t)
+	failed := false
+	d.prepare = func(context.Context, *Lock, Operation) error {
+		if !failed {
+			failed = true
+			return errors.New("prepare failed")
+		}
+		return nil
+	}
+	if _, e := executeUpgrade(context.Background(), req, d); e == nil {
+		t.Fatal("prepare failure succeeded")
+	}
+	if _, ok := readNotice(t, path); ok {
+		t.Fatal("published before the countdown could start")
+	}
+	*events = nil
+	r, e := executeUpgrade(context.Background(), req, d)
+	if e != nil || r.Outcome != "upgraded" || strings.Join(*events, ",") != "countdown:2m0s,quiescing,activating,verifying,verified" {
+		t.Fatalf("%+v %v %v", r, e, *events)
+	}
+}
+
+// Reach comes from the stop's own census; nothing after the deadline
+// requalifies the release or asks the daemons again.
+func TestUpgradeReachComesFromTheStopWithoutWaitingForAgents(t *testing.T) {
 	d, req, events, _, path := noticeDriver(t)
 	calls := 0
 	plan := d.plan
+	d.plan = func(c context.Context, s string) (UpgradePlan, error) { calls++; return plan(c, s) }
 	key := ""
-	d.plan = func(c context.Context, s string) (UpgradePlan, error) {
-		p, e := plan(c, s)
-		calls++
-		if calls == 4 {
-			// At the deadline: one daemon is busy and reports its delivery,
-			// another runs a predecessor without the receiver.
-			rec, _ := readNotice(t, path)
-			key = rec.Key()
-			p.Work = []upgradeUser{{Name: "a", Daemon: true, ActiveTurns: 2, Notice: &upgradeWorkNotice{Key: key, Told: 2, Held: 1, NotDelivered: 1}}, {Name: "b", Daemon: true}, {Name: "c"}}
-		}
-		return p, e
+	d.steps[0].run = func(_ context.Context, _ *Lock, o Operation) error {
+		*events = append(*events, o.Phase)
+		rec, _ := readNotice(t, path)
+		key = rec.Key()
+		return nil
+	}
+	d.reach = func() []upgradeUser {
+		return []upgradeUser{{Name: "a", Daemon: true, ActiveTurns: 2, Notice: &upgradeWorkNotice{Key: key, Told: 2, Held: 1, NotDelivered: 1}}, {Name: "b", Daemon: true}, {Name: "c"}}
 	}
 	r, e := executeUpgrade(context.Background(), req, d)
 	if e != nil || r.Outcome != "upgraded" {
 		t.Fatalf("%+v %v %v", r, e, *events)
+	}
+	if calls != 3 {
+		t.Fatalf("plan read %d times; the deadline must not requalify", calls)
 	}
 	if got := *r.Announcement.Reach; got != (UpgradeNoticeReach{Told: 2, Held: 1, NotDelivered: 1, DaemonsUnreported: 1}) || key == "" {
 		t.Fatalf("%+v", got)
 	}
 }
 
-func TestUpgradeBlockedAtTheDeadlineWithdraws(t *testing.T) {
+func TestUpgradeChangedInputsAtTheDeadlineWithdraw(t *testing.T) {
 	d, req, events, _, path := noticeDriver(t)
-	calls := 0
-	plan := d.plan
-	d.plan = func(c context.Context, s string) (UpgradePlan, error) {
-		p, e := plan(c, s)
-		if calls++; calls == 4 {
-			p.Approvable = false
+	binding := d.binding
+	d.binding = func(c context.Context, s string) (string, error) {
+		if strings.Contains(strings.Join(*events, ","), "countdown") {
+			return strings.Repeat("9", 64), nil
 		}
-		return p, e
+		return binding(c, s)
 	}
 	r, e := executeUpgrade(context.Background(), req, d)
-	if !errors.Is(e, ErrUpgradeBlocked) || r.Announcement.State != "withdrawn" || strings.Contains(strings.Join(*events, ","), "quiescing") {
+	if !errors.Is(e, ErrStalePlan) || r.Announcement.State != "withdrawn" || strings.Contains(strings.Join(*events, ","), "quiescing") {
 		t.Fatalf("%+v %v %v", r, e, *events)
 	}
 	if rec, ok := readNotice(t, path); !ok || rec.State != upgradenotice.Withdrawn {
-		t.Fatal("blocked upgrade left its schedule announced")
+		t.Fatal("a stale upgrade left its schedule announced")
 	}
 }
 

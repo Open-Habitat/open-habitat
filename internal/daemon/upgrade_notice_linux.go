@@ -40,7 +40,9 @@ const (
 type upgradeState struct {
 	rec    upgradenotice.Record
 	status string // upgradenotice.Status*; "" means no schedule
-	// outcome per handle for rec's key: told, held or not_delivered.
+	// outcome per handle for rec's key: told (it reached the model), queued
+	// (sent, waiting for a tool call to return), held or not_delivered. Only
+	// told stops the asking; queued counts as not delivered while it lasts.
 	outcomes map[*conversation]string
 	// untrusted: the last read found a record it must ignore (logged once).
 	untrusted bool
@@ -202,7 +204,7 @@ func (c *ConversationController) askConversations(ctx context.Context, targets [
 				Outcome string `json:"outcome"`
 			}
 			outcome := "not_delivered"
-			if err := s.rpc.processRequest(askCtx, request(s), &out); err == nil && (out.Outcome == "told" || out.Outcome == "held") {
+			if err := s.rpc.processRequest(askCtx, request(s), &out); err == nil && (out.Outcome == "told" || out.Outcome == "held" || out.Outcome == "queued") {
 				outcome = out.Outcome
 			}
 			if done != nil {
@@ -229,7 +231,7 @@ func (c *ConversationController) upgradeCensus() map[string]any {
 			told++
 		case "held":
 			held++
-		case "not_delivered":
+		case "not_delivered", "queued":
 			failed++
 		}
 	}

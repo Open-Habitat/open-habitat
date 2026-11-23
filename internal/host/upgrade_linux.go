@@ -212,6 +212,9 @@ type upgradeDriver struct {
 	// down.
 	notice string
 	wait   func(context.Context, time.Duration) error
+	// reach is the daemons' work as the stop observed it, which carries
+	// their reports of the announcement.
+	reach func() []upgradeUser
 }
 type upgradeStep struct {
 	phase string
@@ -282,7 +285,9 @@ func executeUpgrade(ctx context.Context, req UpgradeRequest, d upgradeDriver) (r
 	if e != nil {
 		return r, e
 	}
-	closed := resume
+	// A resumed operation that never recorded quiescing intent has closed
+	// nothing: like a fresh one it leaves the predecessor serving on failure.
+	closed := resume && o.Phase != "started"
 	var notice *upgradeNotice
 	defer func() {
 		if notice == nil {
@@ -291,6 +296,9 @@ func executeUpgrade(ctx context.Context, req UpgradeRequest, d upgradeDriver) (r
 		// Before the stop the schedule is cancelled; once the stop has begun
 		// the restarted daemons must find nothing scheduled.
 		if closed {
+			if d.reach != nil {
+				r.Announcement.Reach = noticeReach(d.reach(), notice.rec.Key())
+			}
 			_ = notice.finish()
 			return
 		}
@@ -374,51 +382,6 @@ func executeUpgrade(ctx context.Context, req UpgradeRequest, d upgradeDriver) (r
 		if p.InterruptionRequired && !req.ApproveInterruption {
 			return r, ErrWorkBusy
 		}
-		// The announced countdown: qualified and staged, entry still open,
-		// under the operation lock. The deadline is fixed: early quiet does
-		// not bring it forward and new work does not push it back. Only the
-		// operator's cancellation withdraws it.
-		if !req.Immediate && d.notice != "" {
-			if notice, e = announceUpgrade(d.notice, d.owner, d.now, p.Target.Version, lead); e != nil {
-				notice = nil
-				return r, e
-			}
-			r.Announcement = notice.view(lead)
-			if req.Announced != nil {
-				if e = req.Announced(*r.Announcement); e != nil {
-					return r, e
-				}
-			}
-			if req.Progress != nil {
-				if e = req.Progress("countdown"); e != nil {
-					return r, e
-				}
-			}
-			wait := d.wait
-			if wait == nil {
-				wait = waitDeadline
-			}
-			if e = wait(ctx, lead); e != nil {
-				return r, e
-			}
-			// Requalify at the deadline; the census also carries how far
-			// the announcement reached. Nothing here waits for an agent.
-			p, e = d.plan(ctx, req.SitePath)
-			r.Plan = p
-			if e != nil {
-				return r, e
-			}
-			r.Announcement.Reach = noticeReach(p.Work, notice.rec.Key())
-			if p.PlanID != req.ApprovedPlan {
-				return r, ErrStalePlan
-			}
-			if !p.Approvable {
-				return r, ErrUpgradeBlocked
-			}
-			if p.InterruptionRequired && !req.ApproveInterruption {
-				return r, ErrWorkBusy
-			}
-		}
 		o, e = l.begin("upgrade", p.PlanID, p.Target, func(o Operation) error {
 			b, _ := json.Marshal(applyIntent{binding, o.ID, p.PlanID})
 			return replacePrivateAt(l.fd, o.ID+"-upgrade.json", b)
@@ -451,6 +414,38 @@ func executeUpgrade(ctx context.Context, req UpgradeRequest, d upgradeDriver) (r
 			r.Outcome = "upgraded"
 			r.Would = []Action{}
 			return r, nil
+		}
+	}
+	// The announced countdown: qualified, staged and begun under the
+	// operation lock and the upgrade lease, entry still open. It runs for
+	// every operation that has not yet recorded quiescing intent, so a
+	// retry after a cancelled or failed countdown announces a fresh full
+	// lead. The deadline is fixed: early quiet does not bring it forward,
+	// new work does not push it back, and nothing after it waits for an
+	// agent or requalifies the release; the stop's own census tells how far
+	// the announcement reached.
+	if o.Phase == "started" && !req.Immediate && d.notice != "" {
+		if notice, e = announceUpgrade(d.notice, d.owner, d.now, o.Target.Version, lead); e != nil {
+			notice = nil
+			return r, e
+		}
+		r.Announcement = notice.view(lead)
+		if req.Announced != nil {
+			if e = req.Announced(*r.Announcement); e != nil {
+				return r, e
+			}
+		}
+		if req.Progress != nil {
+			if e = req.Progress("countdown"); e != nil {
+				return r, e
+			}
+		}
+		wait := d.wait
+		if wait == nil {
+			wait = waitDeadline
+		}
+		if e = wait(ctx, lead); e != nil {
+			return r, e
 		}
 	}
 	for _, step := range d.steps {

@@ -32,7 +32,7 @@
     "upgrade_notice": {
       "type": "object", "additionalProperties": false,
       "required": ["schedule_id", "revision", "told", "held", "not_delivered"],
-      "description": "Present while root's host upgrade has announced a stop: how far this daemon's announcement reached. told: conversations whose agent got it; held: idle conversations with nothing to lose, holding it for a turn that did not start; not_delivered: conversations whose Pi did not take it. The upgrade sums these into its result and never waits for them.",
+      "description": "Present while root's host upgrade has announced a stop: how far this daemon's announcement reached. told: conversations whose agent got it; held: idle conversations with nothing to lose, holding it for a turn that did not start; not_delivered: conversations whose Pi did not take it, or took it but has not yet given it to the model (a steer waiting for a long tool call). The upgrade sums these into its result and never waits for them.",
       "properties": {
         "schedule_id": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
         "revision": {"type": "integer", "minimum": 1, "maximum": 1000000},

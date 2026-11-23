@@ -162,7 +162,18 @@ func TestHeldUpgradeNoticeIsWithdrawnWithTheSchedule(t *testing.T) {
 	if census := c.upgradeCensus(); census["held"] != 1 || census["told"] != 0 {
 		t.Fatalf("census %v", census)
 	}
+	// A steer a long tool holds is not delivered until it reaches the model.
+	h.setFile("upgrade-outcome", "queued")
+	c.refreshUpgrade(context.Background(), now.Add(7*time.Second))
+	if census := c.upgradeCensus(); census["not_delivered"] != 1 || census["told"] != 0 || len(h.upgradeAsks()) != 3 {
+		t.Fatalf("census %v", census)
+	}
+	h.setFile("upgrade-outcome", "held")
+	c.refreshUpgrade(context.Background(), now.Add(8*time.Second))
 	rec.State, rec.RenewedAt = upgradenotice.Withdrawn, now.Add(10*time.Second)
+	if n := len(h.upgradeAsks()); n != 4 {
+		t.Fatalf("asks before the withdrawal: %d", n)
+	}
 	c.refreshUpgrade(context.Background(), now.Add(10*time.Second))
 	asks := h.upgradeAsks()
 	if last := asks[len(asks)-1]; last["op"] != "upgrade_notice_withdraw" || last["schedule_id"] != rec.ScheduleID {
@@ -264,6 +275,8 @@ func TestBranchScanTellsARestartCutFromOtherStops(t *testing.T) {
 		{"the person's stop", []map[string]any{msg("user", ""), msg("assistant", "aborted")}, false},
 		{"finished", []map[string]any{msg("user", ""), msg("assistant", "stop")}, false},
 		{"woken and finished", []map[string]any{msg("user", ""), mark(), msg("assistant", "aborted"), catchUp(), msg("assistant", "stop")}, false},
+		{"told, then Pi ended", []map[string]any{msg("user", ""), mark(), msg("assistant", "aborted"), catchUp()}, false},
+		{"the person stopped it afterwards", []map[string]any{msg("user", ""), mark(), msg("assistant", "aborted"), {"type": "custom", "customType": personStopType}}, false},
 	} {
 		n = 0
 		var lines []string

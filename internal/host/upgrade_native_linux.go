@@ -105,7 +105,7 @@ func upgradeNative(ctx context.Context, req UpgradeRequest) (UpgradeResult, erro
 			return errors.Join(ErrRuntimePackages, e)
 		}
 		return nil
-	}, payloads: func() []PayloadTiming { return n.n.payloads }, isOwner: func() bool { exe, e := os.Executable(); return e == nil && exe == generationPath(s)+"/open-habitat" }, prepare: n.prepare, fence: n.failureFence, verifyComplete: n.complete, finishAccepted: n.finishAccepted, notice: upgradenotice.Path,
+	}, payloads: func() []PayloadTiming { return n.n.payloads }, isOwner: func() bool { exe, e := os.Executable(); return e == nil && exe == generationPath(s)+"/open-habitat" }, prepare: n.prepare, fence: n.failureFence, verifyComplete: n.complete, finishAccepted: n.finishAccepted, notice: upgradenotice.Path, reach: func() []upgradeUser { return n.proof.Users },
 		steps: []upgradeStep{{"quiescing", n.quiesce}, {"activating", n.activate}, {"verifying", n.verify}, {"verified", n.open}}}
 	r, e := executeUpgrade(ctx, req, d)
 	// As in apply: after the upgrade, never inside its downtime or journal.

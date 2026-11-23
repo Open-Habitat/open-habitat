@@ -49,32 +49,43 @@ async function withCompanion(env, body) {
   }
 }
 
-function fakePi({ idle, processes = [] }) {
+// deliver: Pi delivers a sent message at once (an idle prompt); otherwise
+// it stays queued until the test delivers it with message_end, as a steer
+// waits for the running tool call.
+function fakePi({ idle, processes = [], deliver = true }) {
   const hooks = new Map(), sent = [], branch = [];
   const pi = {
     on: (k, f) => hooks.set(k, f),
     events: { on() {}, emit(channel, q) { if (channel === 'processes:request:list') q.reply(processes); } },
-    sendMessage: (m, o) => { sent.push([m, o]); branch.push({ type: 'custom_message', ...m }); },
+    sendMessage: (m, o) => {
+      sent.push([m, o]);
+      if (deliver) { branch.push({ type: 'custom_message', ...m }); hooks.get('message_end')({ message: { role: 'custom', ...m } }); }
+    },
   };
   companion(pi);
   const ctx = { cwd: undefined, isIdle: () => idle.value, sessionManager: { _persist() {}, getBranch: () => branch, getSessionId: () => 's1' } };
   return { hooks, sent, branch, ctx };
 }
 
-test('a running turn is steered once; reconnects and rereads do not repeat it', () => withCompanion({}, async path => {
+test('a running turn is steered once, counted as told only once it reaches the model, and never repeated', () => withCompanion({}, async path => {
   const idle = { value: false };
-  const { hooks, sent, ctx } = fakePi({ idle });
+  const { hooks, sent, ctx, branch } = fakePi({ idle, deliver: false });
   await hooks.get('session_start')({}, ctx);
   const future = { ...notice, announced_at: new Date(Date.now()).toISOString(), deadline: new Date(Date.now() + 120000).toISOString() };
   const tell = (extra = {}) => ask(path, { op: 'upgrade_notice', session_id: 's1', generation: 'g1', notice: future, ...extra });
   assert.deepEqual((await tell({ generation: 'g0' })).data, { outcome: 'not_delivered', reason: 'conversation_mismatch' });
   assert.equal((await tell({ notice: { ...future, revision: 'x' } })).error, 'invalid_request');
-  assert.deepEqual((await tell()).data, { outcome: 'told', variant: 'busy' });
+  assert.deepEqual((await tell()).data, { outcome: 'queued', variant: 'busy' });
   assert.deepEqual(sent.map(([m, o]) => [m.details.variant, o]), [['busy', { deliverAs: 'steer' }]]);
+  // A long tool holds the steer: still queued, not sent again.
+  assert.deepEqual((await tell()).data, { outcome: 'queued' });
+  assert.equal(sent.length, 1);
+  hooks.get('message_end')({ message: { role: 'custom', ...sent[0][0] } });
+  branch.push({ type: 'custom_message', ...sent[0][0] });
   assert.deepEqual((await tell()).data, { outcome: 'told' });
   assert.equal(sent.length, 1, 'told once per schedule revision');
   // A new revision of the schedule is told again.
-  assert.deepEqual((await tell({ notice: { ...future, revision: 2 } })).data, { outcome: 'told', variant: 'busy' });
+  assert.deepEqual((await tell({ notice: { ...future, revision: 2 } })).data, { outcome: 'queued', variant: 'busy' });
   hooks.get('session_shutdown')();
 }));
 
@@ -85,7 +96,8 @@ test('an idle agent is woken only when it has processes to lose; otherwise it he
     const { hooks, sent, ctx } = fakePi({ idle, processes: running });
     await hooks.get('session_start')({}, ctx);
     const future = { ...notice, announced_at: new Date().toISOString(), deadline: new Date(Date.now() + 120000).toISOString() };
-    assert.deepEqual((await ask(path, { op: 'upgrade_notice', session_id: 's1', generation: 'g1', notice: future })).data, { outcome: 'told', variant: 'idle' });
+    assert.deepEqual((await ask(path, { op: 'upgrade_notice', session_id: 's1', generation: 'g1', notice: future })).data, { outcome: 'queued', variant: 'idle' });
+    assert.deepEqual((await ask(path, { op: 'upgrade_notice', session_id: 's1', generation: 'g1', notice: future })).data, { outcome: 'told' });
     assert.deepEqual(sent[0][1], { triggerTurn: true });
     assert.match(sent[0][0].content, /proc_aaaa "build": make/);
     hooks.get('session_shutdown')();
@@ -125,6 +137,8 @@ test('a turn the restart cut is woken with its own catch-up, and only then', () 
   assert.equal(branchFacts([prompt, call]).restartCut, false, 'a crash leaves no mark');
   assert.equal(branchFacts([prompt, aborted]).restartCut, false, 'the person\'s stop');
   assert.equal(branchFacts([prompt, call, mark, aborted, { type: 'custom_message', customType: 'oh-resume-catch-up', details: {} }, answer]).restartCut, false, 'already woken and finished');
+  assert.equal(branchFacts([prompt, call, mark, aborted, { type: 'custom_message', customType: 'oh-resume-catch-up', details: {} }]).restartCut, false, 'already told, even if Pi ended before answering');
+  assert.equal(branchFacts([prompt, call, mark, aborted, { type: 'custom', customType: 'oh-person-stop', data: { schema_version: 1 } }]).restartCut, false, 'the person stopped it afterwards');
   const stopped = { cause: 'restart', at: '2026-11-23T12:03:10Z' };
   const none = { settled: [], rearm: [], available: true };
   const m = catchUpMessage([], none, stopped, true, 'turn_cut', '0.9.0');

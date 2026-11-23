@@ -151,7 +151,9 @@ export function branchFacts(branch) {
     const custom = entry?.type === 'custom_message' ? entry : m?.role === 'custom' ? m : null;
     if (entry?.type === 'custom' && entry.customType === restartStopType) restartStop = true;
     // An automatic wake opens its run with the catch-up, not a person's message.
-    if (custom?.customType === catchUpType) restartStop = false;
+    if (custom?.customType === catchUpType) { restartStop = false; restartCut = false; }
+    // The person's own stop overrules a cut for any later wake.
+    if (entry?.type === 'custom' && entry.customType === 'oh-person-stop') { restartStop = false; restartCut = false; }
     // Only the turn's own messages decide, not a `!command` or a custom message.
     // A reply Pi aborted or failed after the daemon's restart mark was cut by
     // the restart, not stopped by the person.
@@ -1137,8 +1139,13 @@ export default function (pi) {
   // Upgrade announcements this Pi has given (schedule:revision), and the one
   // an idle agent with nothing to lose holds for the turn that may start
   // before the deadline.
+  // queuedNotices are sent but not yet delivered: a steer waits for the
+  // running tool call to return, and only Pi's message_end says it reached
+  // the model.
   const toldNotices = new Set();
+  const queuedNotices = new Set();
   let heldNotice = null;
+  const noticeKeyOf = n => `${n.schedule_id}:${n.revision}`;
   const grants = new Map(); // subject -> newest { role, generation } the daemon told this Pi
   // The membership record the daemon keeps (membership_linux.go), read at
   // each call of a full-rights run. Not left for tools and nested Pis.
@@ -1307,23 +1314,25 @@ export default function (pi) {
       }
       const n = q.notice;
       if (!validUpgradeNotice(n)) throw new Error('invalid_request');
-      const noticeKey = `${n.schedule_id}:${n.revision}`;
-      if (toldNotices.has(noticeKey) || upgradeNoticeInBranch(context, n)) { toldNotices.add(noticeKey); if (heldNotice && `${heldNotice.schedule_id}:${heldNotice.revision}` === noticeKey) heldNotice = null; return { outcome: 'told' }; }
+      const noticeKey = noticeKeyOf(n);
+      if (toldNotices.has(noticeKey) || upgradeNoticeInBranch(context, n)) { toldNotices.add(noticeKey); queuedNotices.delete(noticeKey); if (heldNotice && noticeKeyOf(heldNotice) === noticeKey) heldNotice = null; return { outcome: 'told' }; }
+      // Sent and still waiting for delivery: not sent again, not yet told.
+      if (queuedNotices.has(noticeKey)) return { outcome: 'queued' };
       if (Date.now() >= Date.parse(n.deadline)) return { outcome: 'not_delivered', reason: 'deadline_passed' };
       // A running turn hears it after its current tool call returns.
       if (context.isIdle?.() === false) {
-        toldNotices.add(noticeKey); heldNotice = null;
+        queuedNotices.add(noticeKey); heldNotice = null;
         pi.sendMessage(upgradeNoticeMessage(n, 'busy'), { deliverAs: 'steer' });
-        return { outcome: 'told', variant: 'busy' };
+        return { outcome: 'queued', variant: 'busy' };
       }
       // Idle: an agent whose processes will be killed has something to save.
       let records;
       try { records = await ask('request:list'); } catch { records = null; }
       const running = Array.isArray(records) ? records.filter(live) : [];
       if (running.length) {
-        toldNotices.add(noticeKey); heldNotice = null;
+        queuedNotices.add(noticeKey); heldNotice = null;
         pi.sendMessage(upgradeNoticeMessage(n, 'idle', running), { triggerTurn: true });
-        return { outcome: 'told', variant: 'idle' };
+        return { outcome: 'queued', variant: 'idle' };
       }
       // Nothing to lose: no turn is started for it. Should one start before
       // the deadline, it hears the announcement then (agent_start).
@@ -1517,6 +1526,12 @@ export default function (pi) {
   // through the input event is not taken for the owner's.
   pi.on('message_end', event => {
     const m = event?.message;
+    // An upgrade announcement reached the model: told, not merely queued.
+    if (m?.role === 'custom' && m.customType === upgradeNoticeType && schedulePattern.test(m.details?.schedule_id ?? '')) {
+      const delivered = `${m.details.schedule_id}:${m.details.revision}`;
+      queuedNotices.delete(delivered); toldNotices.add(delivered);
+      return;
+    }
     if (m?.role !== 'user') return;
     if (startPending) { startPending = false; return; }
     const text = typeof m.content === 'string' ? m.content : Array.isArray(m.content) ? m.content.filter(b => b?.type === 'text').map(b => b.text).join('\n') : '';
@@ -1565,9 +1580,9 @@ export default function (pi) {
     const n = heldNotice;
     heldNotice = null;
     if (!n || shuttingDown || Date.now() >= Date.parse(n.deadline)) return;
-    const noticeKey = `${n.schedule_id}:${n.revision}`;
-    if (toldNotices.has(noticeKey)) return;
-    toldNotices.add(noticeKey);
+    const noticeKey = noticeKeyOf(n);
+    if (toldNotices.has(noticeKey) || queuedNotices.has(noticeKey)) return;
+    queuedNotices.add(noticeKey);
     pi.sendMessage(upgradeNoticeMessage(n, 'busy'), { deliverAs: 'steer' });
   });
   pi.on('tool_execution_start', event => {
