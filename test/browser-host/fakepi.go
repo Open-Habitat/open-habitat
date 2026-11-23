@@ -814,7 +814,11 @@ func (s *fakeSession) turn(prompt string, run chan struct{}, emit func(any)) {
 		s.append(message("toolResult", []map[string]any{{"type": "text", "text": "Command aborted"}}, map[string]any{"toolCallId": callID, "toolName": "bash", "isError": true}))
 		emit(map[string]any{"type": "tool_execution_end", "toolName": "bash", "toolCallId": callID, "isError": true, "result": map[string]any{"content": []map[string]any{{"type": "text", "text": "Command aborted"}}}})
 		s.append(message("assistant", []map[string]any{}, map[string]any{"provider": "synthetic", "model": "fake-pi", "stopReason": "error", "errorMessage": "This operation was aborted"}))
-		emit(map[string]any{"type": "message_end", "message": map[string]any{"role": "assistant", "stopReason": "error"}})
+		// Pi's message_end carries the message it saved, abort text included:
+		// without it the daemon reads a failed reply and the page flashes an
+		// error notice until agent_end, for as many frames as a loaded host
+		// takes between the two events.
+		emit(map[string]any{"type": "message_end", "message": map[string]any{"role": "assistant", "stopReason": "error", "errorMessage": "This operation was aborted"}})
 		emit(map[string]any{"type": "agent_end"})
 		return
 	}

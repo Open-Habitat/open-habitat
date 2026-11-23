@@ -37,13 +37,29 @@ async function status(page: Page, id: string) {
   return reply.ok() ? await reply.json() : { state: `http_${reply.status()}` };
 }
 
+type NativeRecap = {
+  recap: { through: string; trigger: string } | null;
+  latest_message: string;
+};
+
 async function nativeRecap(page: Page, id: string) {
   const reply = await page.request.get(`/api/v1/agents/${id}/recap`);
   expect(reply.ok()).toBe(true);
-  return (await reply.json()) as {
-    recap: { through: string; trigger: string } | null;
-    latest_message: string;
-  };
+  return (await reply.json()) as NativeRecap;
+}
+
+/** The written recap's trigger once it covers the latest message, for a poll.
+ * While Pi appends to its session (the recap itself, or a restarted Pi's
+ * first entries), a read can meet the unfinished line and answers
+ * native_source_unavailable; that is "not yet", and the next look reads it
+ * whole. An assertion thrown here would end the poll at the first one. */
+async function recapThroughLatest(page: Page, id: string) {
+  const reply = await page.request.get(`/api/v1/agents/${id}/recap`);
+  if (!reply.ok()) return `http_${reply.status()}`;
+  const native = (await reply.json()) as NativeRecap;
+  return native.recap?.through === native.latest_message
+    ? native.recap.trigger
+    : "";
 }
 
 async function answeredConversation(page: Page, text: string) {
@@ -86,14 +102,9 @@ test("@recap a recap written before Pi rested is shown while it rests", async ({
     await scenario(page, "pi-recap");
     const id = await answeredConversation(page, "ennen lepoa");
     await expect
-      .poll(
-        async () => {
-          const native = await nativeRecap(page, id);
-          return native.recap?.through === native.latest_message;
-        },
-        { timeout: 20000 },
-      )
-      .toBe(true);
+      .poll(() => recapThroughLatest(page, id), { timeout: 20000 })
+      // Written through the latest message, by whichever trigger.
+      .toMatch(/^[a-z]+$/);
     // The recap scenario restarts the daemon with its own owed-recap pass;
     // this recap is already written, so nothing starts Pi.
     expect((await page.request.get("/fixture/daemon-restart")).status()).toBe(
@@ -137,15 +148,7 @@ test("@recap an automatic recap a daemon restart cut off is made after the resta
     await page.reload();
     // The restarted daemon starts Pi only for the recap and stops it again.
     await expect
-      .poll(
-        async () => {
-          const native = await nativeRecap(page, id);
-          return native.recap?.through === native.latest_message
-            ? native.recap.trigger
-            : "";
-        },
-        { timeout: 30000 },
-      )
+      .poll(() => recapThroughLatest(page, id), { timeout: 30000 })
       .toBe("automatic");
     await expect(card(page)).toHaveAttribute("data-trigger", "automatic", {
       timeout: 20000,
@@ -215,14 +218,9 @@ test("@recap interrupted generation leaves a card when restart recovery cannot s
     );
     await page.reload();
     await expect
-      .poll(
-        async () => {
-          const native = await nativeRecap(page, id);
-          return native.recap?.through === native.latest_message;
-        },
-        { timeout: 30000 },
-      )
-      .toBe(true);
+      .poll(() => recapThroughLatest(page, id), { timeout: 30000 })
+      // Written through the latest message, by whichever trigger.
+      .toMatch(/^[a-z]+$/);
     await expect(page.getByTestId("recap-failure")).not.toBeVisible();
     await expect(card(page)).toHaveAttribute("data-trigger", "automatic");
   } finally {
@@ -264,15 +262,7 @@ test("@recap an automatic recap whose delay outlasts the idle stop is made on th
       .toBe("stopped");
     expect((await nativeRecap(page, id)).recap).toBeNull();
     await expect
-      .poll(
-        async () => {
-          const native = await nativeRecap(page, id);
-          return native.recap?.through === native.latest_message
-            ? native.recap.trigger
-            : "";
-        },
-        { timeout: 40000 },
-      )
+      .poll(() => recapThroughLatest(page, id), { timeout: 40000 })
       .toBe("automatic");
     await expect
       .poll(async () => (await status(page, id)).state, { timeout: 20000 })
