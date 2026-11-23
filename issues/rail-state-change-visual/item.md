@@ -9,7 +9,7 @@ provenance: chat
 source_ref: habitat:pi-current/2026-11-22-rail-state-change
 lane: rail-state-change
 lane_seq: 1
-preparation: pending
+preparation: ready
 ---
 
 # Prototype: how the rail shows that a conversation changed state
@@ -23,3 +23,7 @@ Jari (22.11.2026): prototype different visual ways for the left rail to show tha
 ### 2026-11-23T05:43:12Z · @jari
 
 Jari 23.11.2026: round 1 feels confusing; the 'uusi' tag is probably unnecessary. He wants rather some animation or similar to show the change. Next action: a riff round focused on motion (no 'uusi' tag as the main device).
+
+### 2026-11-23T07:08:12Z · @jari
+
+Jari 23.11.2026, round 2: A Siirtyy (the row slides into its new section) chosen, with round 2's reduced-motion still. Next action: implement as an experimental feature.

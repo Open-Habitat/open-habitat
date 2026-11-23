@@ -35,3 +35,7 @@ Jari 23.11.2026: direction A (quote card above the composer) is the base, but th
 ### 2026-11-23T05:50:40Z · @jari
 
 Jari 23.11.2026, round 2: the reply control goes in the message's top-right corner (definitely). Riff its shape (e.g. the copy-button style), size, border and tint. The quote sits inside the composer (round 2 B). Riff how a long message's quote looks. Architecture option 1 (daemon-built <reply-to entry> block, browser sends only reply_to.entry_key) approved. Excerpt length (280 characters vs first sentence vs other) needs its own riff so the difference in how each works is visible.
+
+### 2026-11-23T07:08:12Z · @jari
+
+Jari 23.11.2026, round 3: corner control A (pair of the copy button) and long quote A (two lines). Excerpt: open — Jari questioned round 3's 'C: the field shows exactly what the agent gets' because the browser sends only the entry key; conductor explained that the daemon adds the excerpt to the text Pi receives (option 1). Awaiting his answer on the excerpt before implementation.

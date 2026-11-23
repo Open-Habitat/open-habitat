@@ -9,7 +9,7 @@ provenance: chat
 source_ref: habitat:pi-current/2026-11-22-account-menu-phone
 lane: account-menu-phone
 lane_seq: 1
-preparation: pending
+preparation: ready
 ---
 
 # Prototype: the account menu on the phone (sheet vs popover)
@@ -23,3 +23,7 @@ Jari 22.11.2026: prototype the account menu on the phone: a bottom sheet (round 
 ### 2026-11-23T05:43:12Z · @jari
 
 Jari 23.11.2026: could not evaluate round 1 — every phone frame shows 'This content is blocked' when opened as a Habitat view (the round loads phones in iframes, which the view sandbox blocks). Next action: rebuild the round without iframes so it works as a view; then Jari chooses.
+
+### 2026-11-23T07:08:12Z · @jari
+
+Jari 23.11.2026: A (sheet) chosen. The feedback panel opens over the menu and Back returns to the menu; dismissing the menu returns to the open drawer. Next action: implement.
