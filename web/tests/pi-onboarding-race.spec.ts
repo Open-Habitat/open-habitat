@@ -45,6 +45,19 @@ test("@pi-onboarding delayed old-session response cannot restore code after focu
     await a.evaluate(() => window.dispatchEvent(new Event("focus")));
     await capturedPromise;
     await b.goto("/workspaces");
+    // The route opens on the Git step, whose panel grows once the Git
+    // settings are read and moves the abort below it: a click aimed while it
+    // reads lands where the button was. Wait for the step's action first.
+    const gitPanel = b.getByTestId("git-identity");
+    await expect(
+      gitPanel
+        .getByRole("button")
+        .and(
+          b
+            .getByTestId("git-identity-confirm")
+            .or(b.getByTestId("git-identity-continue")),
+        ),
+    ).toBeVisible();
     await b.getByRole("button").and(b.getByTestId("onboarding-abort")).click();
     await b.getByRole("button").and(b.getByTestId("logout-confirm")).click();
     await b.getByRole("button").and(b.getByTestId("github-sign-in")).click();
