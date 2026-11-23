@@ -120,7 +120,7 @@ def build(work, out, release_target, inputs=Path('/inputs')):
     # The agents' page reader and the headless shell it renders with, which
     # every installation gets (Jari, 2026-11-10); the browser profile's QA
     # Playwright uses the same shell.
-    put(inputs / 'page-reader.mjs', 'runtime/page-reader/extension.mjs', 'agent-launcher')
+    put(inputs / 'page-reader-loader.mjs', 'runtime/page-reader/extension.mjs', 'agent-launcher')
     browser_builder.add_headless_shell(inputs / 'browser-lock.json', work / 'browser',
                                        lambda data, path, owner, mode: put_bytes(data, path, owner, mode == 0o755),
                                        components, digest, release_target)

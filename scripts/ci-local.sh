@@ -171,7 +171,7 @@ export GOPROXY=off
 npm ci --prefix web --prefer-offline --no-audit --no-fund
 # The mapped-UID Pi helper runs the pinned native SDK against a network-trapped synthetic provider.
 npm ci --prefix internal/daemon/pi-device-test --ignore-scripts --prefer-offline --no-audit --no-fund
-# The page-reader device test launches the headless shell from this gate's cache.
+# Browser checks launch Chromium from this gate's private cache.
 npm exec --prefix web playwright install chromium chromium-headless-shell
 node --test internal/daemon/pi-device-test/*.test.mjs
 if ! $reuse_phases; then

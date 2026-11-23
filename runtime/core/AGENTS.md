@@ -44,7 +44,16 @@ the npm component, with the upstream LICENSE. Run upstream tests and plain-Pi
 git-package installation, then the product closure tests and core build. Pin
 changes require new core archives; never reuse an old core for that release.
 
-Agents read JavaScript-rendered pages with `page-reader.mjs` and the headless
+The page-reader source and device tests live in the public
+`Open-Habitat/pi-page-reader` repository, released and pinned in the npm lock
+like web search. Keep its own dependency layout: the product's
+`page-reader-loader.mjs` imports the installed package and supplies the locked
+browser directory and product-specific sandbox guidance. The loader remains
+an `agent-launcher` file; the implementation and its licence belong to the npm
+component. Test both plain-Pi package discovery and the built core's loader
+when changing the pin.
+
+Agents read JavaScript-rendered pages with that package and the headless
 Chromium in `browser-lock.json`, which every installation gets (Jari,
 2026-11-10). The browser profile's QA Playwright uses the same shell, so its
 wheel must name the core lock's browser revision. Chromium never runs without

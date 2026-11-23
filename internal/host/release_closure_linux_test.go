@@ -143,7 +143,7 @@ func TestReleaseOptionalClosureRequiresLocks(t *testing.T) {
 func coreClosure(mutate func(files map[string]RuntimeFile, versions map[string]string)) ReleaseArtifact {
 	files := map[string]RuntimeFile{"runtime/bin/node": {Component: "node", Mode: 0755}}
 	versions := map[string]string{"node": "22.21.1", "taskfleet": "0.20.0", "workmux": "0.1.278", "agent-launcher": "1", "chromium-headless-shell": "145.0.7632.6"}
-	for name, version := range map[string]string{"@earendil-works/pi-coding-agent": "1.5.2", "@aliou/pi-processes": "0.10.9", "@open-habitat/pi-web-search": "0.1.0", "pi-claude-bridge": "0.12.0", "@anthropic-ai/claude-agent-sdk": "0.3.321", "@aliou/sh": "0.3.4", "playwright-core": "1.58.0", "@mozilla/readability": "0.6.0", "turndown": "7.2.0"} {
+	for name, version := range map[string]string{"@earendil-works/pi-coding-agent": "1.5.2", "@aliou/pi-processes": "0.10.9", "@open-habitat/pi-web-search": "0.1.0", "@open-habitat/pi-page-reader": "0.1.0", "pi-claude-bridge": "0.12.0", "@anthropic-ai/claude-agent-sdk": "0.3.321", "@aliou/sh": "0.3.4", "playwright-core": "1.58.0", "@mozilla/readability": "0.6.0", "turndown": "7.2.0"} {
 		files["runtime/node_modules/"+name+"/package.json"] = RuntimeFile{Component: "npm:node_modules/" + name, Mode: 0644}
 		versions["npm:node_modules/"+name] = version
 	}
@@ -154,6 +154,7 @@ func coreClosure(mutate func(files map[string]RuntimeFile, versions map[string]s
 	files["runtime/taskfleet/extension.mjs"] = RuntimeFile{Component: "agent-launcher", Mode: 0644}
 	files["runtime/web-search/extension.mjs"] = RuntimeFile{Component: "npm:node_modules/@open-habitat/pi-web-search", Mode: 0644}
 	files["runtime/page-reader/extension.mjs"] = RuntimeFile{Component: "agent-launcher", Mode: 0644}
+	files["runtime/node_modules/@open-habitat/pi-page-reader/extension.mjs"] = RuntimeFile{Component: "npm:node_modules/@open-habitat/pi-page-reader", Mode: 0644}
 	files["runtime/browsers/chromium_headless_shell-1208/chrome-linux/headless_shell"] = RuntimeFile{Component: "chromium-headless-shell", Mode: 0755}
 	files["runtime/browsers/chromium_headless_shell-1208/chrome-linux/LICENSE.headless_shell"] = RuntimeFile{Component: "chromium-headless-shell", Mode: 0644}
 	if mutate != nil {
@@ -208,6 +209,15 @@ func TestReleaseClosureCoreAgentTools(t *testing.T) {
 			f["runtime/web-search/extension.mjs"] = RuntimeFile{Component: "agent-launcher", Mode: 0644}
 		},
 		"page reader missing": func(f map[string]RuntimeFile, _ map[string]string) { delete(f, "runtime/page-reader/extension.mjs") },
+		"page reader package missing": func(f map[string]RuntimeFile, _ map[string]string) {
+			delete(f, "runtime/node_modules/@open-habitat/pi-page-reader/extension.mjs")
+		},
+		"page reader package version": func(_ map[string]RuntimeFile, v map[string]string) {
+			v["npm:node_modules/@open-habitat/pi-page-reader"] = "0.2.0"
+		},
+		"page reader package owner": func(f map[string]RuntimeFile, _ map[string]string) {
+			f["runtime/node_modules/@open-habitat/pi-page-reader/extension.mjs"] = RuntimeFile{Component: "agent-launcher", Mode: 0644}
+		},
 		"playwright unpinned": func(_ map[string]RuntimeFile, v map[string]string) { v["npm:node_modules/playwright-core"] = "1.59.0" },
 		"headless shell missing": func(f map[string]RuntimeFile, _ map[string]string) {
 			delete(f, "runtime/browsers/chromium_headless_shell-1208/chrome-linux/headless_shell")

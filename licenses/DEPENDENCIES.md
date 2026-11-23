@@ -34,8 +34,11 @@ provider path gives Claude Code the WebSearch and WebFetch tools
 (`BRIDGE_PATCH` in `scripts/core-runtime-build.py`). The package keeps its
 LICENSE in the closure.
 
-The core runtime's page reader (`runtime/core/page-reader.mjs`) is original
-code. Its extraction follows `pi-web-access` 0.47.0 (Nico Bailon, MIT): Mozilla
+The core runtime's page reader is `@open-habitat/pi-page-reader` (MIT),
+released from `Open-Habitat/pi-page-reader` and integrity-pinned in the core
+npm lock, with its LICENSE in the closure. The product's loader supplies only
+its locked browser directory and sandbox setup advice. The original code's
+extraction follows `pi-web-access` 0.47.0 (Nico Bailon, MIT): Mozilla
 Readability, then Turndown. No code is copied from it, and it is not
 installed. The core runtime installs `playwright-core` 1.58.0 (Microsoft,
 Apache-2.0), `@mozilla/readability` 0.6.0 (Apache-2.0) and `turndown` 7.2.0
