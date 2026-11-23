@@ -1,0 +1,36 @@
+/* caps-3d: the bracket, measured, plain, and on the printer. */
+[data-block="caps-3d"] .c3-stage { position: relative; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: #f1ede4; box-shadow: 0 1px 2px rgba(16, 24, 40, .14), 0 8px 24px -12px rgba(16, 24, 40, .35); }
+[data-block="caps-3d"] .c3-pic { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
+[data-block="caps-3d"] .c3-sizes { opacity: 0; transition: opacity 200ms ease-out; }
+[data-block="caps-3d"] .c3[data-state="sizes"] .c3-sizes { opacity: 1; }
+[data-block="caps-3d"] .c3-print { position: absolute; inset: 0; opacity: 0; visibility: hidden; transition: opacity 200ms ease-out, visibility 0s 200ms; }
+[data-block="caps-3d"] .c3[data-state="print"] .c3-print { opacity: 1; visibility: visible; transition: opacity 200ms ease-out; }
+[data-block="caps-3d"] .c3-layer { opacity: 0; }
+[data-block="caps-3d"] .c3-layer.on { opacity: 1; }
+
+/* Under the picture: the named numbers, or the print and its slider. */
+[data-block="caps-3d"] .c3-under { margin-top: 12px; }
+[data-block="caps-3d"] .c3[data-state="print"] .c3-under-part, [data-block="caps-3d"] .c3:not([data-state="print"]) .c3-under-print { display: none; }
+[data-block="caps-3d"] .c3-sz { list-style: none; margin: 0; padding: 8px 12px; border-radius: 8px; background: var(--ah-surface); box-shadow: 0 0 0 1px var(--ah-line); display: grid; grid-template-columns: auto 1fr; gap: 3px 16px; align-items: baseline; }
+[data-block="caps-3d"] .c3-sz li { display: contents; }
+[data-block="caps-3d"] .c3-sz code { font: 400 12.5px var(--ah-mono); color: var(--ah-ink-2); white-space: pre; background: none; padding: 0; }
+[data-block="caps-3d"] .c3-sz code b { font-weight: 600; color: var(--ah-syntax-number); }
+[data-block="caps-3d"] .c3-sz span { font-size: 12.5px; color: var(--ah-muted); }
+[data-block="caps-3d"] .c3-scrub { display: flex; align-items: center; gap: 12px; }
+[data-block="caps-3d"] .c3-scrub span { flex: none; min-width: 108px; font: 400 12.5px var(--ah-mono); color: var(--ah-muted); }
+[data-block="caps-3d"] .c3-scrub b { font-weight: 600; color: var(--ah-ink); }
+[data-block="caps-3d"] .c3-range { flex: 1; min-width: 0; margin: 0; height: 24px; accent-color: var(--ah-accent); cursor: ew-resize; }
+[data-block="caps-3d"] .c3-facts { list-style: none; margin: 10px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+[data-block="caps-3d"] .c3-facts li { padding: 7px 10px 8px; border-radius: 8px; background: var(--ah-surface); box-shadow: 0 0 0 1px var(--ah-line); font-size: 12px; line-height: 1.3; color: var(--ah-muted); }
+[data-block="caps-3d"] .c3-facts b { display: block; font: 600 15px var(--ah-font); color: var(--ah-ink); }
+[data-block="caps-3d"] .c3-key { display: flex; flex-wrap: wrap; gap: 3px 14px; margin: 10px 0 0 !important; font-size: 12px; color: var(--ah-ink-2); }
+[data-block="caps-3d"] .c3-key span { display: inline-flex; align-items: center; gap: 6px; }
+[data-block="caps-3d"] .c3-key i { width: 14px; height: 6px; border-radius: 3px; }
+[data-block="caps-3d"] .k-out { background: #ff7d38; }
+[data-block="caps-3d"] .k-in { background: #ffe64d; box-shadow: inset 0 0 0 1px rgba(23, 32, 26, .25); }
+[data-block="caps-3d"] .k-fill { background: #b03029; }
+[data-block="caps-3d"] .k-solid { background: #9654cc; }
+[data-block="caps-3d"] .c3-n { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; margin-top: 12px !important; padding-top: 9px; border-top: 1px solid var(--ah-line); font: 400 11.5px var(--ah-mono); color: var(--ah-muted); }
+@media (prefers-reduced-motion: reduce) {
+  [data-block="caps-3d"] .c3-sizes, [data-block="caps-3d"] .c3-print, [data-block="caps-3d"] .c3[data-state="print"] .c3-print { transition: none; }
+}
