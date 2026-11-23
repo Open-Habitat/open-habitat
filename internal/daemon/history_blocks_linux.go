@@ -5,6 +5,8 @@ package daemon
 import (
 	"encoding/json"
 	"strings"
+
+	"github.com/open-habitat/open-habitat/internal/replyblock"
 )
 
 // A bounded, explicitly selected projection of native message structure. Raw
@@ -85,6 +87,9 @@ func nativeBlocksBase(e nativeEntry) (out historyEntry) {
 			out.Skill = &recordedSkill{Name: skill.name}
 			out.skillLocation = skill.location
 			out.full = skill.arguments
+		} else if reply, ok := projectUserReply(e.Message); ok {
+			out.ReplyTo = reply
+			out.full = replyblock.Strip(out.full)
 		}
 	}
 
@@ -248,7 +253,7 @@ func nativeBlocksBase(e nativeEntry) (out historyEntry) {
 	var plain string
 	if json.Unmarshal(m.Content, &plain) == nil {
 		if m.Role == "user" {
-			plain = skillInstruction(plain)
+			plain = userText(plain)
 		}
 		out.Blocks = []historyBlock{{Type: "text", Text: prefixBytes(plain, 16384), Readable: len(plain) > 16384}}
 		out.TruncatedBlocks = len(plain) > 16384
@@ -286,6 +291,9 @@ func nativeBlocksBase(e nativeEntry) (out historyEntry) {
 			text := b.Text
 			if out.Skill != nil && index == 0 && b.Type == "text" {
 				text = skillInstruction(text)
+			}
+			if out.ReplyTo != nil && index == 0 && b.Type == "text" {
+				text = replyblock.Strip(text)
 			}
 			if b.Type == "thinking" {
 				text = b.Thinking

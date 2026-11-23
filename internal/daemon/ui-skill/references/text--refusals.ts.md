@@ -51,6 +51,8 @@ const fi = {
   workspaceExists: "Samanniminen työtila on jo olemassa.",
   workspaceUncertain: "Työtilojen tilaa ei voitu lukea varmasti.",
   readOnly: "Historia on vain luettavissa.",
+  replyTargetGone:
+    "Viesti, johon vastasit, ei ole enää tässä keskustelussa. Lähetä ilman lainausta tai valitse toinen viesti.",
   worktreeBase:
     "Työtilassa ei ole haaraa, josta worktree tehtäisiin (irrotettu HEAD tai ei vielä committeja).",
   worktreeUnavailable:
@@ -106,6 +108,8 @@ export const refusalsText = catalog(fi, {
   workspaceExists: "A workspace with the same name already exists.",
   workspaceUncertain: "The workspaces' state could not be read reliably.",
   readOnly: "The history is read only.",
+  replyTargetGone:
+    "The message you replied to is no longer in this conversation. Send without the quote or choose another message.",
   worktreeBase:
     "The workspace has no branch to make a worktree from (a detached HEAD or no commits yet).",
   worktreeUnavailable:

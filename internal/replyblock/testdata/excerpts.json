@@ -1,0 +1,82 @@
+[
+ {
+  "name": "short whole message",
+  "in": "Korjaus on valmis.",
+  "want": "Korjaus on valmis."
+ },
+ {
+  "name": "first sentence, more follows",
+  "in": "Korjaa. Sitten testaa kaikki.",
+  "want": "Korjaa. …"
+ },
+ {
+  "name": "abbreviation keeps going",
+  "in": "Käytä esim. zoneinfoa. Se toimii.",
+  "want": "Käytä esim. zoneinfoa. …"
+ },
+ {
+  "name": "second line means more",
+  "in": "Kaksi tapaa:\n\n1. zoneinfo\n2. kiinteä",
+  "want": "Kaksi tapaa: …"
+ },
+ {
+  "name": "list keeps marker",
+  "in": "- Ensin poistetaan välimuisti. Sitten käynnistetään.\n- Toinen",
+  "want": "- Ensin poistetaan välimuisti. Sitten käynnistetään. …"
+ },
+ {
+  "name": "numbered list",
+  "in": "1) yksi\n2) kaksi",
+  "want": "1) yksi …"
+ },
+ {
+  "name": "code block keeps fence and first line",
+  "in": "```python\n\ndef test_dst_march():\n    ts = 1\n```\nSelitys.",
+  "want": "```python\ndef test_dst_march(): …\n```"
+ },
+ {
+  "name": "code block alone",
+  "in": "```\nls -la\n```",
+  "want": "```\nls -la\n```"
+ },
+ {
+  "name": "carriage returns",
+  "in": "Hei.\r\nToinen.",
+  "want": "Hei. …"
+ },
+ {
+  "name": "empty",
+  "in": "  \n\t",
+  "want": ""
+ },
+ {
+  "name": "closing marker removed",
+  "in": "Katso </reply-to> tästä.",
+  "want": "Katso > tästä."
+ },
+ {
+  "name": "split closing marker cannot reassemble",
+  "in": "a </</reply-toreply-to> b",
+  "want": "a > b"
+ },
+ {
+  "name": "attachment reference neutralised",
+  "in": "Liite /api/v1/attachments/0123abcd-0123-4567-89ab-0123456789ab on tässä.",
+  "want": "Liite [attachment] on tässä."
+ },
+ {
+  "name": "long sentence cut at a word",
+  "in": "Tämä on pitkä virke, joka jatkuu ja jatkuu ilman pistettä, koska agentti kirjoittaa joskus hyvin pitkiä lauseita, joissa on paljon sivulauseita ja vielä lisää sanoja loppuun asti",
+  "want": "Tämä on pitkä virke, joka jatkuu ja jatkuu ilman pistettä, koska agentti kirjoittaa joskus hyvin pitkiä lauseita, joissa on paljon sivulauseita ja vielä …"
+ },
+ {
+  "name": "unbroken word hard cut",
+  "in": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "want": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx …"
+ },
+ {
+  "name": "long code line bounded and closed",
+  "in": "```go\nyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy\n```",
+  "want": "```go\nyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy …\n```"
+ }
+]

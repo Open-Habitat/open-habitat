@@ -6,7 +6,8 @@
     { "id": "own-machines-ssh-config", "landed": true },
     { "id": "sounds-active-device", "landed": true },
     { "id": "rail-state-motion", "landed": true },
-    { "id": "workspace-header-c2a", "landed": true }
+    { "id": "workspace-header-c2a", "landed": true },
+    { "id": "reply-to-message", "landed": true }
   ],
   "fi": {
     "features": {
@@ -65,6 +66,14 @@
         "shows": "Muut avoimet välilehdet ja laitteet ovat hiljaa. Jos mitään laitetta ei ole käytetty viiteen minuuttiin, ääni soi kaikilla kuten ennen.",
         "needs": "Jokainen avoin välilehti kertoo omalle palvelimellesi, onko se näkyvissä ja milloin sitä viimeksi käytettiin. Tieto on vain muistissa, eikä sitä näe kukaan muu. Välilehti, joka ei saa palvelimeen yhteyttä, soittaa äänen.",
         "caption": "Vain tällä laitteella"
+      },
+      "reply-to-message": {
+        "name": "Vastaa agentin viestiin",
+        "desc": "Vastaa johonkin agentin aiempaan viestiin. Agentti saa viestisi mukana lainauksen, josta se tietää, mihin vastaat.",
+        "where": "Agentin viestin oikeassa yläkulmassa Kopioi-painikkeen vieressä. Lainaus tulee kirjoituskentän ylimmäksi riviksi, ja ✕ poistaa sen.",
+        "shows": "Lähetetyn viestisi yllä näkyy lainaus. Lainauksen napautus vie alkuperäiseen viestiin ja korostaa sen hetkeksi.",
+        "needs": "Agentti saa viestin ensimmäisen virkkeen, enintään 160 merkkiä. Viestin pitää olla yhä tässä keskustelussa; Palaa tähän -toiminnolla sivuun jäänyttä viestiä ei voi lainata.",
+        "caption": "Vastaat agentin viestiin"
       }
     },
     "picture": {
@@ -148,6 +157,14 @@
         "shows": "Your other open tabs and devices stay quiet. If no device has been used for five minutes, the sound plays on all of them as before.",
         "needs": "Each open tab tells your own server whether it is visible and when it was last used. This is kept in memory only, and nobody else sees it. A tab that cannot reach the server plays the sound.",
         "caption": "Only on this device"
+      },
+      "reply-to-message": {
+        "name": "Reply to an agent message",
+        "desc": "Reply to one of the agent's earlier messages. The agent gets a quote with your message, so it knows what you are answering.",
+        "where": "In the top-right corner of the agent's message, next to Copy. The quote becomes the first row of the message field, and ✕ removes it.",
+        "shows": "The quote shows above your sent message. Tapping the quote takes you to the original message and highlights it for a moment.",
+        "needs": "The agent gets the message's first sentence, at most 160 characters. The message must still be in this conversation; a message set aside with Go back here cannot be quoted.",
+        "caption": "Replying to the agent's message"
       }
     },
     "picture": {

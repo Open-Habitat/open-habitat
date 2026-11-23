@@ -83,6 +83,7 @@ checks = {
     "workspace-worktrees-cleaned.json": "workspace-worktrees.schema.json",
     "attachments.json": "attachments.schema.json",
     "pi-message.json": "pi-message.schema.json",
+    "pi-message-reply.json": "pi-message.schema.json",
     "pi-held.json": "pi-held.schema.json",
     "conversation-members.json": "conversation-members.schema.json",
     "conversation-shares.json": "conversation-shares.schema.json",

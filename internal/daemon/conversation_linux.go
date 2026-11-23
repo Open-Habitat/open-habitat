@@ -18,6 +18,7 @@ import (
 
 	"github.com/open-habitat/open-habitat/internal/core"
 	"github.com/open-habitat/open-habitat/internal/diagnostic"
+	"github.com/open-habitat/open-habitat/internal/replyblock"
 	"github.com/open-habitat/open-habitat/internal/transport"
 	"golang.org/x/sys/unix"
 )
@@ -918,10 +919,27 @@ func (c *ConversationController) admitMessage(w http.ResponseWriter, r *http.Req
 		Message     string           `json:"message"`
 		CommandID   string           `json:"command_id"`
 		FirstChoice *piStartupChoice `json:"first_choice,omitempty"`
+		ReplyTo     *struct {
+			EntryKey string `json:"entry_key"`
+		} `json:"reply_to,omitempty"`
 	}
 	if decodeControl(r, &body, 66000) != nil || body.Message == "" || len(body.Message) > 65536 || !sessionIDPattern.MatchString(body.CommandID) {
 		snapshotError(w, 400, "invalid_request")
 		return
+	}
+	// A reply to one agent message (reply-to-message, experimental): only
+	// while the switch is on, and never in front of a slash command, which
+	// Pi reads only at the very start of the text.
+	excerpt := ""
+	if body.ReplyTo != nil {
+		if !replyblock.ValidKey(body.ReplyTo.EntryKey) || !replyEnabled(c.home) || strings.HasPrefix(body.Message, "/") {
+			snapshotError(w, 400, "invalid_request")
+			return
+		}
+		// Read from the native file before taking the lock. A target that is
+		// gone is refused only below, after a repeat has been answered as
+		// the message it is.
+		excerpt, _ = c.replyExcerpt(id, body.ReplyTo.EntryKey)
 	}
 	if body.FirstChoice != nil {
 		if kind != "send" || !c.validFirstChoice(r.Context(), body.FirstChoice) {
@@ -980,6 +998,22 @@ func (c *ConversationController) admitMessage(w http.ResponseWriter, r *http.Req
 		diagnostic.New(os.Stderr, "daemon").Info("conversation_message_repeated", "agent_id", "pi:"+id, "kind", kind, "command_id", body.CommandID, "receipt", receipt, "request_id", diagnostic.RequestID(r.Context()))
 		historyJSON(w, map[string]any{"schema_version": 1, "command_id": body.CommandID, "state": state})
 		return
+	}
+	reply := body.ReplyTo != nil
+	if reply {
+		if excerpt == "" {
+			c.mu.Unlock()
+			snapshotError(w, 409, "reply_target_gone")
+			return
+		}
+		body.Message = replyblock.Build(body.ReplyTo.EntryKey, excerpt, body.Message)
+		// Held messages reach Pi joined as one prompt, and the block is read
+		// only at the start of a message: a reply never joins behind others.
+		if kind == "send" && len(s.held) > 0 {
+			c.mu.Unlock()
+			snapshotError(w, 409, "control_uncertain")
+			return
+		}
 	}
 	archiveState := "active"
 	if c.home != "" {
@@ -1233,13 +1267,15 @@ func (c *ConversationController) finishPrompt(s *conversation, kind string, ids 
 		}
 		if s.ack == "accepted" {
 			s.acceptedMessages++
+			// The title reads what the person wrote, not a reply's quote.
+			written := replyblock.Strip(message)
 			if s.acceptedMessages == 1 {
-				s.firstText = prefixBytes(message, 2048)
+				s.firstText = prefixBytes(written, 2048)
 			}
 			if s.acceptedMessages == 3 {
-				s.thirdText = prefixBytes(message, 2048)
+				s.thirdText = prefixBytes(written, 2048)
 			}
-			s.latestText = prefixBytes(message, 2048)
+			s.latestText = prefixBytes(written, 2048)
 			c.startAutomaticTitle(s)
 		}
 	} else if c.journal != nil {

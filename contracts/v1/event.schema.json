@@ -213,6 +213,9 @@
               "skill": {
                 "$ref": "history.schema.json#/$defs/recordedSkill"
               },
+              "reply_to": {
+                "$ref": "history.schema.json#/$defs/replyTo"
+              },
               "participant_message": {
                 "$ref": "history.schema.json#/$defs/participantMessage"
               },

@@ -135,6 +135,9 @@
         "skill": {
           "$ref": "#/$defs/recordedSkill"
         },
+        "reply_to": {
+          "$ref": "#/$defs/replyTo"
+        },
         "participant_message": {
           "$ref": "#/$defs/participantMessage"
         },
@@ -480,6 +483,25 @@
           }
         }
       ]
+    },
+    "replyTo": {
+      "description": "A person's message that answers one agent message (reply-to-message, experimental). The daemon reads a leading <reply-to entry=\"…\"> block from the native user text: entry_key is the answered agent entry and excerpt the text the agent received with the message. content and the first text block omit the block; block reads use the same projection.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entry_key",
+        "excerpt"
+      ],
+      "properties": {
+        "entry_key": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,128}$"
+        },
+        "excerpt": {
+          "type": "string",
+          "maxLength": 2048
+        }
+      }
     },
     "recordedSkill": {
       "description": "Recorded Pi skill invocation. content is the trailing user text; the first text block is the instruction, with generated source metadata omitted. Block reads use the same projection before pagination.",

@@ -22,6 +22,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/open-habitat/open-habitat/internal/diagnostic"
+	"github.com/open-habitat/open-habitat/internal/replyblock"
 	"github.com/open-habitat/open-habitat/internal/transport"
 )
 
@@ -80,6 +81,7 @@ type recapData struct {
 
 type historyEntry struct {
 	Skill         *recordedSkill `json:"skill,omitempty"`
+	ReplyTo       *replyRef      `json:"reply_to,omitempty"`
 	Notice        *agentNotice   `json:"notice,omitempty"`
 	FailureCause  *bashFailure   `json:"failure_cause,omitempty"`
 	Recap         *recapData     `json:"recap,omitempty"`
@@ -976,6 +978,7 @@ func firstPrompt(s nativeSession, uid int) string {
 		}
 		kind, text := nativeText(entry)
 		if kind == "user" && strings.TrimSpace(text) != "" {
+			text = replyblock.Strip(text)
 			if skill, ok := projectUserSkill(entry.Message); ok {
 				text = skill.name
 				if skill.arguments != "" {

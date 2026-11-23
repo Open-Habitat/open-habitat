@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/open-habitat/open-habitat/internal/replyblock"
 	"github.com/open-habitat/open-habitat/internal/transport"
 	"golang.org/x/sys/unix"
 )
@@ -222,10 +223,9 @@ func writtenText(home, text string) string {
 			suffix += "\nAttachment path: " + filepath.Join(home, "attachments", match[1])
 		}
 	}
-	if suffix == "" {
-		return text
-	}
-	return strings.TrimSuffix(text, suffix)
+	// A reply's block is the daemon's addition too: the person gets back
+	// what they wrote (the quote itself is not given back with it).
+	return replyblock.Strip(strings.TrimSuffix(text, suffix))
 }
 
 // writtenTexts is writtenText over Pi's queue. Pi queues the expanded text; the

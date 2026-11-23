@@ -25,6 +25,8 @@ import (
 	"time"
 
 	_ "modernc.org/sqlite"
+
+	"github.com/open-habitat/open-habitat/internal/replyblock"
 )
 
 // schemaVersion is PRAGMA user_version. A file with another version is
@@ -327,6 +329,10 @@ func readMessage(e entryLine) (message, bool) {
 			}
 		}
 		text = strings.Join(parts, "\n\n")
+	}
+	if m.Role == "user" {
+		// A reply's quote is the agent's words, already indexed as theirs.
+		text = replyblock.Strip(text)
 	}
 	if strings.TrimSpace(text) == "" {
 		return message{}, false

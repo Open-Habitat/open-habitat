@@ -13,6 +13,19 @@
       }
     },
     {
+      "entry_key": "entry-redacted-reply",
+      "kind": "user",
+      "content": {
+        "media_type": "text/plain",
+        "text": "Synthetic reply text.",
+        "complete": true
+      },
+      "reply_to": {
+        "entry_key": "entry-redacted-answer",
+        "excerpt": "A synthetic first sentence of the agent's message. …"
+      }
+    },
+    {
       "entry_key": "entry-redacted-2",
       "kind": "tool",
       "content": {
