@@ -3,7 +3,7 @@ created: 2026-11-23
 updated: 2026-11-23
 type: chore
 reporter: runtime-pin-watch
-status: untriaged
+status: open
 priority: normal
 labels:
 - runtime-pin
@@ -11,6 +11,9 @@ labels:
 provenance: other
 provenance_detail: runtime pin watch
 source_ref: runtime-pin:@azure/msal-node@7.2.3
+lane: runtime-pins
+lane_seq: 14
+preparation: pending
 ---
 
 # Runtime pin: @azure/msal-node 7.2.3 is available (pinned 5.6.0)
