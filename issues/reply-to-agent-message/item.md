@@ -9,7 +9,7 @@ provenance: chat
 source_ref: habitat:pi-current/2026-11-22-reply-to-message
 lane: reply-to-message
 lane_seq: 1
-preparation: pending
+preparation: ready
 ---
 
 # Prototype: reply to a specific agent message (quote in the composer)
@@ -39,3 +39,7 @@ Jari 23.11.2026, round 2: the reply control goes in the message's top-right corn
 ### 2026-11-23T07:08:12Z · @jari
 
 Jari 23.11.2026, round 3: corner control A (pair of the copy button) and long quote A (two lines). Excerpt: open — Jari questioned round 3's 'C: the field shows exactly what the agent gets' because the browser sends only the entry key; conductor explained that the daemon adds the excerpt to the text Pi receives (option 1). Awaiting his answer on the excerpt before implementation.
+
+### 2026-11-23T07:19:10Z · @jari
+
+Jari 23.11.2026: the excerpt goes with the message, short. Conductor's reading: the first sentence of the agent message's text, at most 160 characters, cut at a word with ' …'; when the message starts with a code block or list, its first line with the block marker kept (round 3's c rule, shortened). Next action: implement option 1 with corner control A and two-line quote A, as an experimental feature.
