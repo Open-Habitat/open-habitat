@@ -360,11 +360,16 @@ export function Menu({
           className="ah-overlay ah-account-sheet-overlay"
           isDismissable
         >
-          <Modal className="ah-modal ah-account-sheet" style={drag.style}>
+          {/* The id names the sheet's surface, which stays within the
+              viewport and scrolls a menu taller than it. */}
+          <Modal
+            className="ah-modal ah-account-sheet"
+            style={drag.style}
+            data-testid="account-menu-sheet"
+          >
             <AriaDialog
               className={`ah-account-sheet-dialog ${popoverClassName ?? ""}`}
               aria-label={label}
-              data-testid="account-menu-sheet"
             >
               <div className="ah-account-sheet-head" {...drag.head}>
                 <div className="ah-account-sheet-grip" aria-hidden="true" />

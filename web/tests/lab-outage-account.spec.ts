@@ -71,15 +71,21 @@ for (const situation of ["outage", "pi-onboarding"] as const) {
             .and(page.getByTestId("account-menu-trigger"));
           await expect(account).toBeVisible();
           await expect(account).not.toContainText("Bob");
-          const box = await account.boundingBox();
-          if (!box) throw new Error("Account button has no visible rectangle");
-          if (width === 390) {
-            expect(box.y).toBeLessThan(60);
-            expect(box.x).toBeGreaterThan(280);
-          } else {
-            expect(box.y).toBeGreaterThan(620);
-            expect(box.x).toBeLessThan(296);
-          }
+          // Crossing the phone width swaps the menu for a sheet, which
+          // replaces the trigger once after the resize; measure the one
+          // that stays rather than the one on its way out.
+          await expect(async () => {
+            const box = await account.boundingBox();
+            if (!box)
+              throw new Error("Account button has no visible rectangle");
+            if (width === 390) {
+              expect(box.y).toBeLessThan(60);
+              expect(box.x).toBeGreaterThan(280);
+            } else {
+              expect(box.y).toBeGreaterThan(620);
+              expect(box.x).toBeLessThan(296);
+            }
+          }).toPass({ timeout: 5000 });
           await account.click();
           await expect(page.locator(".ah-account-menu")).toContainText("Alice");
           await expect(page.locator(".ah-account-menu")).toContainText(

@@ -36,6 +36,11 @@ for (const width of [320, 390]) {
     expect(box.width).toBe(width);
     expect(box.y).toBeGreaterThan(0);
     expect(box.y + box.height).toBeCloseTo(height, 0);
+    // A menu taller than a small phone scrolls inside the sheet, so its last
+    // action is still within reach.
+    const logout = sheet.getByTestId("menu-logout");
+    await logout.scrollIntoViewIfNeeded();
+    await expect(logout).toBeInViewport();
     expect(
       (
         await new AxeBuilder({ page })
