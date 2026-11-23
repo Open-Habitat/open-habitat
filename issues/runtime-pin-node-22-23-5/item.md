@@ -1,11 +1,13 @@
 ---
 created: 2026-11-13
-updated: 2026-11-14
+updated: 2026-11-23
 type: chore
 reporter: runtime-pin-watch
 status: open
 priority: normal
-labels: [runtime-pin]
+labels:
+- runtime-pin
+- runtime-pin:bump-prepared
 provenance: other
 provenance_detail: runtime pin watch
 source_ref: runtime-pin:node@22.23.5
@@ -29,3 +31,9 @@ A research run assesses this release before it is scheduled and writes its
 findings and a verdict (safe-to-bump, needs-work or hold) to research.md in
 this issue directory. A safe-to-bump release is raised automatically; anything
 else stays here for the conductor.
+
+## Comments
+
+### 2026-11-23T11:49:55Z · @runtime-pin-watch
+
+An automatic bump of this release stopped before landing (run 01m7azx2syyqq2ax2t2kw619t6); its prepared branch stays in the runtime pin watch's own checkout for the conductor. The note recording this earlier never reached main.
