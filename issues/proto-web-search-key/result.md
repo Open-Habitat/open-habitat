@@ -1,4 +1,203 @@
-# Verkkohaun avain Asetukset › Tekoäly -sivulla
+# Verkkohaun avain: palvelimen yhteinen avain ja henkilön rivi
+
+## Kierros 2: hakuavain toimii kuin saneluavain
+
+Kierros: `design-system/prototypes/rounds/2026-11-23-hakuavain-2/`
+(`NOTES.md` kertoo sivun rakenteen ja tarkistuksen). Lähtökohta on Jarin
+päätös 23.11.: hakuavain on ensi sijassa palvelimen asetus, ja se toimii
+kuten Soniox-avain. Kierroksen 1 kolme Tekoäly-suuntaa eivät ole tässä
+mukana.
+
+Sivu on tuotannon asetussivu muuttamattomana. Yläpalkin *Näkymä* vaihtaa
+ylläpitäjän ja henkilön välillä, ja jokainen suunta avautuu ylläpitäjän
+näkymään. *Tilanne* vaihtaa tilannetta:
+
+- ylläpitäjällä: ei yhteistä avainta, tai yhteinen Brave-avain, joka on jo
+  annettu liittyneille;
+- henkilöllä: ylläpitäjän avain käytössä, oma Brave-avain, oma Staan-avain
+  ja ylläpitäjän avain (oma voittaa), ei avainta ja DeepSeek ei hae itse,
+  ei avainta ja ChatGPT ja Claude hakevat itse, Brave torjui oman avaimen.
+
+*Teema*, *Liike* ja *Kieli* vaihtavat vaalean ja tumman, vähennetyn liikkeen
+sekä suomen ja englannin. Kaikki kulut toimivat painamalla: tallennus
+torjutulla ja kelpaavalla avaimella, Brave- ja Staan-valinta, vaihto ja
+poisto.
+
+Akseli: **mihin perheeseen hakuavain kuuluu**, eli missä se on
+ylläpitäjällä ja henkilöllä. Avaimen rivit ovat kaikissa suunnissa samat,
+saneluavaimen rivien kopiot. Sivun yläreunassa on jokaisesta suunnasta yksi
+rivi.
+
+0. **Nyt**: saneluavain tänään. Ylläpitäjällä on *Saneluavain*-sivu ja
+   henkilöllä *Asetukset › Sanelu*. Verkkohausta ei ole mitään.
+1. **A Oma osio** (kuten sanelu): ylläpitäjä saa oman *Hakuavain*-sivun
+   *Saneluavaimen* viereen, ja henkilö oman *Verkkohaku*-osion *Sanelun*
+   viereen. Saneluavaimen kirjaimellinen kopio.
+2. **B Tiedot agenteille** (kuten integraatio): ylläpitäjä antaa avaimen
+   palvelimen *Integraatiot*-sivun ylimmässä kortissa (*Verkkohaku*).
+   Henkilön rivi on *Asetukset › Tiedot agenteille* -sivulla sivun johdannon
+   jälkeen, ennen tilejä.
+3. **C Tekoäly** (tekoälyn osana): ylläpitäjän avain on *AI-avain*-sivulla
+   yhteisen AI-avaimen ja liittyneiden luettelon alla. Henkilön rivi on
+   *Asetukset › Tekoäly* -sivulla API-avainten alla.
+
+**Suositus: B Tiedot agenteille.** Verkkohaku antaa agentille tietoa
+samalla tavalla kuin sähköposti tai Drive, ja *Tiedot agenteille* on se
+sivu, jolta henkilö etsii agenttiensa tietolähteitä. Ylläpitäjän puolella
+on sama pari jo valmiina: palvelimen *Integraatiot* kertoo, mitä on
+tarjolla, ja henkilö ottaa sen käyttöön *Tiedot agenteille* -sivulla.
+Hakuavain sopii tähän pariin ilman uutta käsitettä. Lisäksi molemmat rivit
+näkyvät heti sivulle tultaessa, ja asetusten sivupalkkiin ei tule uutta
+kohtaa.
+
+Muiden suuntien heikkoudet:
+
+- A on mekaanisesti uskollisin, mutta se lisää kumpaankin sivupalkkiin
+  kohdan, jossa on yksi rivi. Henkilön sivupalkissa on jo 15 kohtaa.
+  Saneluavaimella on oma osio, koska sanelu on oma ominaisuutensa
+  viestikentässä. Verkkohaku taas on agentin kyky, jota henkilö ei käytä
+  suoraan.
+- C:ssä ylläpitäjän rivi jää pitkän AI-avain-sivun alle, liittyneiden
+  luettelon jälkeen. Sivulle tultaessa se näkyy vain siksi, että prototyyppi
+  vierittää sen esiin. Tekoäly-sivulla hakuavain näyttää malliavaimelta,
+  vaikka se ei ole sellainen. Siksi kierroksen 1 suunnat eivät kelvanneet.
+
+Kuvia ei ole tallennettu issueen, kuten kierroksellakaan 1, koska puussa ei
+ole sen kuvia. `check.mjs` kirjoittaa kuvat
+(`r2-<n>-<suunta>-<näkymä>-<tapaus>-<leveys>-<teema>`) annettuun
+hakemistoon: kaikki tilanteet kaikissa suunnissa 1440 vaaleana, yksi
+tilanne kummastakin näkymästä 1440 tummana ja 390 vaaleana ja tummana,
+kulut sekä englanti.
+
+### Miten tämä vastaa saneluavainta
+
+Sama kuin saneluavaimessa, sekä ylläpitäjän että henkilön puolella:
+
+- **Ylläpitäjän rivi** on `SpeechKeyAdministration`: johdanto (*Kaikki,
+  joilla ei ole omaa hakuavainta, hakevat verkosta tällä. Käyttö
+  laskutetaan sinulta.*), *Yhteinen hakuavain*, palvelu ja loppuosa,
+  käyttöönottopäivä, *Vaihda avain* ja *Poista* sekä lomake auki, kun
+  avainta ei ole.
+- **Tallennus kokeilee avaimen** ylläpitäjän omalla daemonilla ennen kuin
+  gateway tallentaa sen, ja torjuttua avainta ei tallenneta. Tallennuksen
+  aikana lukee *Kokeillaan avainta ja annetaan sitä jo liittyneille…*.
+- **Kopion saaneet** näkyvät samoilla sanoilla ja lukumäärinä: *4 sai
+  avaimen, 1 käyttää omaa avaintaan, 1 ei tavoitettu. Tavoittamattomat
+  saavat avaimen, kun tallennat sen uudelleen.* Uusi avain korvaa aiemmat
+  kopiot (*sai uuden avaimen aiemman tilalle*), mutta ei koskaan henkilön
+  omaa avainta.
+- **Poisto ei peru kopioita.** Rivillä lukee *Jo annetut kopiot jäivät
+  ennalleen*, ja *Käyttö ja säilytys* kertoo, että kopion voi perua vain
+  vaihtamalla avaimen hakupalvelun sivulla.
+- **Henkilön rivi** on `SpeechSettings`: *Ylläpitäjän avain Brave …k7q2.* /
+  *Oma avain Brave …a1b2.* / *Ei avainta…*, *Lisää oma avain* ylläpitäjän
+  avaimen päällä, muuten *Vaihda avain*, ja *Poista* ilman vahvistusta.
+- **Oma avain voittaa, eikä henkilölle kerrota yhteisestä avaimesta.**
+  Tilanteessa *molemmat* rivi näyttää vain oman avaimen. Ylläpitäjä näkee
+  henkilön kohdassa *käyttää omaa avaintaan*.
+- **Oman avaimen poisto jättää tyhjän.** Ylläpitäjän avain tulee vasta
+  ylläpitäjän seuraavalla tallennuksella, aivan kuten sanelussa.
+
+Poikkeamat, joihin on syy:
+
+1. **Hakupalvelu valitaan (Brave tai Staan).** Saneluavaimessa aluetta ei
+   kysytä, koska tallennus kokeilee avainta kummallakin alueella. Hakuavainta
+   ei voi kokeilla kummassakin palvelussa, koska Braven avain lähtisi silloin
+   Staanille ja päinvastoin, eli taholle, jolle sitä ei annettu. Valinta on
+   lomakkeen yläosassa ja vaihdettaessa valmiiksi tallennetun avaimen
+   palvelu.
+2. **Rivi kertoo, mitkä mallit avainta käyttävät** (*DeepSeek-mallit hakevat
+   tällä avaimella. ChatGPT hakee itse.*). Lisäksi lomake on kiinni ja
+   tilalla on *Lisää avain*, kun kaikki henkilön mallit hakevat itse.
+   Saneluavainta tarvitsee jokainen sanelu, mutta hakuavainta vain mallit,
+   joilla omaa hakua ei ole. Lomake auki ilman tarvetta näyttäisi
+   tehtävältä, jota ei ole.
+3. **Myöhempi torjunta näkyy henkilön rivillä** (*Brave torjui avaimen
+   viimeksi haettaessa 9.11.…*, *Ei vastaa*, ja *Vaihda avain* on
+   ensisijainen). Sanelun torjunnan henkilö näkee itse samalla hetkellä
+   sanelun yhteydessä. Haun torjunta osuu agentin vuoroon, usein ilman ketään
+   katsomassa, joten muuten siitä ei jäisi jälkeä.
+4. **Paikka.** Suositettu B ei ole saneluavaimen tapainen oma osio, vaan
+   rivi integraatioiden joukossa kummallakin puolella. Toiminta on silti
+   sama.
+
+### Host-tiedot tuotantoa varten
+
+**Mitä on nyt**
+
+- Saneluavaimen ketju on mallina koko matkalta: gatewayn oma
+  `0600`-tiedosto, josta luetaan takaisin vain alue, loppuosa ja päiväys;
+  `/api/v1/server/speech-key` (luku, `set`, `delete`); tarkistus ylläpitäjän
+  omalla daemonilla (`/internal/v1/speech/key-check`); kopio jokaisen
+  daemonille (`/internal/v1/speech/site-key`, `GiveSiteKey`: `seeded`,
+  `replaced`, `already_current`, `kept`) tilin luovalla kirjautumisella ja
+  ylläpitäjän tallennuksessa. Henkilön tiedosto
+  `~/.config/soniox/key.json` kertoo itse, onko se kopio (`source:
+  own|site`), joten kopioista ei pidetä kirjaa. Poisto ei peru mitään.
+- Palvelun oma haku tulee laajennuksesta, jota `web-search-native`
+  rakentaa.
+
+**Mitä tuotanto tarvitsisi** (kaikki saneluavaimen kopioina, ellei toisin
+sanota)
+
+- **Gateway**: yhteinen hakuavain gateway-UID:n omassa `0600`-tiedostossa
+  (`backend`, `api_key`, `set_at`); luettavissa vain `backend`, loppuosa ja
+  `set_at`. Reitti `/api/v1/server/search-key` (luku, `set`, `delete`) ja
+  uusi skeema `contracts/v1/server-search-key.schema.json`, jossa on samat
+  `given`-sanat. Torjuntakoodit `search_key_rejected`,
+  `search_unavailable` ja `search_limit_reached`.
+- **Tarkistus**: ylläpitäjän oma daemon tekee yhden koehaun valitussa
+  palvelussa (`/internal/v1/search/key-check`), koska vain daemon puhuu
+  palveluille.
+- **Kopio**: `/internal/v1/search/site-key` jokaisen daemonille samoina
+  hetkinä kuin saneluavaimessa. Daemon kirjoittaa vain, jos avainta ei ole
+  tai siellä on aiempi kopio.
+- **Henkilön daemon**: `~/.config/web-search/key.json` (`0600`, `api_key`,
+  `backend`, `source`), jonka hakulaajennus lukee natiivisti. Reitti
+  `/api/v1/search/key` (luku, tallennus koehaun kanssa, poisto) ja uusi
+  skeema `contracts/v1/search.schema.json`.
+- **Poikkeama 2**: luvussa on mukana, mitkä henkilön palvelut hakevat itse ja
+  mitkä tarvitsevat avaimen. Luettelon antaa laajennus, koska se tietää,
+  mille palveluille se lisää haun. Selaimella ei ole omaa taulukkoa.
+- **Poikkeama 3**: kun haku saa 401 tai 403, laajennus kirjoittaa
+  merkinnän omaan tilatiedostoonsa (esimerkiksi `last_refused_at`), ja
+  daemon lukee sen avaimen tilaan. Uusi tallennus poistaa merkinnän.
+
+### Päätökset myöhempää arviota varten
+
+- **Gateway saa kolmannen pysyvän palveluavaimen.** ADR 0030 nimesi
+  sivuston AI-avaimen ainoaksi poikkeukseksi, ja saneluavain lisättiin
+  Jarin päätöksellä 27.10. Luen Jarin päätöksen 23.11. ("toimii kuten
+  Soniox-avain") hyväksynnäksi samalle poikkeukselle. Toteutuksen pitää
+  kirjata se ADR 0030:n muutokseksi ja `internal/AGENTS.md`:n sääntöön.
+- **Oman avaimen poisto ei tuo ylläpitäjän avainta takaisin**, eikä
+  henkilö voi pyytää sitä itse. Kierros 1 ehdotti tätä ja kysyi siitä
+  (kysymykset 2 ja 3). Jarin päätös sanoo "kuten Soniox", ja hakuavaimessa
+  ei ole tähän sanelusta poikkeavaa syytä. Jos takaisinotto halutaan, se
+  kuuluu kummallekin avaimelle omana muutoksenaan.
+- **Henkilölle ei kerrota yhteisestä avaimesta, kun hänellä on oma.** Syy on
+  sama kuin edellisessä kohdassa. Tilanne *molemmat* näyttää siksi samalta
+  kuin *oma*.
+- **Kopioiden saajat näytetään lukumäärinä**, kuten saneluavaimessa, eikä
+  henkilöittäin kuten AI-avaimessa. Henkilökohtainen luettelo tarvitsisi
+  gatewaylle kopiokirjan, jota saneluavaimella ei ole.
+- **Poisto ei kysy vahvistusta** kummallakaan puolella, kuten saneluavaimessa.
+  Kierros 1 kysyi. Poisto ei peru mitään palvelussa, ja avaimen voi lisätä
+  uudelleen.
+- **Staan näkyy valinnassa**, jotta valinnan paikka tulee arvioiduksi.
+  Jarin päätöksen mukaan toteutus piilottaa sen, kunnes kattavuus on
+  tarkistettu suomen- ja englanninkielisillä hauilla.
+- **Tiedoston nimi on `~/.config/web-search/key.json`** eikä palvelun mukaan
+  nimetty (`~/.config/soniox/` vastaavasti), koska palvelu voi vaihtua avainta
+  vaihdettaessa.
+- **Kierros ei lisää rivejä asetusten hakuun** (`settingsIndex`). Toteutus
+  lisää valitun paikan rivit, B:ssä `web-search` Tiedot agenteille -osioon
+  ja `site-search-key` Palvelinintegraatiot-osioon.
+
+### Kysymys Jarille
+
+1. Kelpaako B (ylläpitäjällä Integraatiot, henkilöllä Tiedot agenteille),
+   vai haluatko saneluavaimen kirjaimellisen kopion omina osioinaan (A)?
 
 ## Kierros 1: nykytila ja kolme suuntaa
 
