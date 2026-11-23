@@ -3,12 +3,15 @@ created: 2026-11-23
 updated: 2026-11-23
 type: chore
 reporter: runtime-pin-watch
-status: untriaged
+status: open
 priority: normal
 labels: [runtime-pin]
 provenance: other
 provenance_detail: runtime pin watch
 source_ref: runtime-pin:workmux@0.1.284
+lane: runtime-pins
+lane_seq: 22
+preparation: ready
 ---
 
 # Runtime pin: workmux 0.1.284 is available (pinned 0.1.278)
