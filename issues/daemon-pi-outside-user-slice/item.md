@@ -1,6 +1,6 @@
 ---
 created: 2026-10-31
-updated: 2026-11-14
+updated: 2026-11-23
 type: bug
 status: open
 priority: normal
@@ -10,7 +10,7 @@ originating_run: 01m68hqwwm215yz17mbzpnw471
 originating_run_kind: research
 lane: pi-memory
 lane_seq: 1
-preparation: pending
+preparation: ready
 ---
 
 # Pi children of the daemon run outside user-<uid>.slice, so the documented per-person memory budget does not bound them
@@ -53,3 +53,9 @@ describe what the limit actually covers.
 ## Note (14.11.2026)
 
 The holder architecture that would also have solved this was declined (`upgrade-keeps-agent-processes`, wontfix). If this is pursued, it needs a simple fix of its own (for example a memory limit on the daemon unit or a delegated per-conversation sub-cgroup), agreed with Jari first.
+
+## Decisions
+
+### 2026-11-23T13:41:14Z · @jari
+
+Jari 23.11.2026: each person's daemon instance runs in that person's user-<uid>.slice, so one operator limit per person (systemd user-.slice.d drop-in) bounds everything the person runs, including the daemon's Pi children; no new product setting. The product verifier accepts the one drop-in the product writes itself. docs/operations.md says what the limit covers. Next action (approved): implement.
