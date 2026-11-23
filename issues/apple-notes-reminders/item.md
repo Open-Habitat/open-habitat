@@ -46,3 +46,10 @@ Jari 23.11.2026: approved the recommended bounded trial (approach 1: existing Ma
 ### 2026-11-23T18:54:22Z · @jari
 
 Jari 23.11.2026 answered the research questions: (1) working while the chosen Mac is awake and logged in is enough; (2) Notes: reading selected notes and creating new plain notes is enough to start; (3) the existing Omat koneet account-wide trust with per-app consent is acceptable.
+
+## Trial
+
+[trial.md](trial.md) (23.11.2026): over SSH, macOS holds the SSH server responsible for
+privacy requests. EventKit Reminders cannot be granted on that path; Notes/Reminders
+automation raises a dialog that went unanswered (Mac locked), so the functional steps
+await one attended session. Proposal and open questions are in trial.md.
