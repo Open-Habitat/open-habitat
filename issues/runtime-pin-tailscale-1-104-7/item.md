@@ -1,9 +1,9 @@
 ---
 created: 2026-11-13
-updated: 2026-11-14
+updated: 2026-11-23
 type: chore
 reporter: runtime-pin-watch
-status: open
+status: done
 priority: normal
 labels: [runtime-pin]
 provenance: other
@@ -12,6 +12,7 @@ source_ref: runtime-pin:tailscale@1.104.7
 lane: runtime-pins
 lane_seq: 10
 preparation: ready
+closed: 2026-11-23
 ---
 
 # Runtime pin: tailscale 1.104.7 is available (pinned 1.104.4)
