@@ -3,12 +3,15 @@ created: 2026-11-23
 updated: 2026-11-23
 type: chore
 reporter: runtime-pin-watch
-status: untriaged
+status: open
 priority: normal
 labels: [runtime-pin]
 provenance: other
 provenance_detail: runtime pin watch
 source_ref: runtime-pin:code-server@4.146.0
+lane: runtime-pins
+lane_seq: 17
+preparation: ready
 ---
 
 # Runtime pin: code-server 4.146.0 is available (pinned 4.145.2)
