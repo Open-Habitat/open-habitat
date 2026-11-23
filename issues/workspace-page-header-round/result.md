@@ -1,3 +1,92 @@
+# Tulos, kierros 3: C2:n toimintoryhmä ja pienet painikkeet (23.11.)
+
+Kierros `design-system/prototypes/rounds/2026-11-23-workspace-page-header-3/`
+(rakennus ja tarkistus sen `NOTES.md`:ssä). Jarin 23.11. päätöksen mukaan
+C2 Toiminnot sivulla jatkoon: GitHub, Arkistoi ja Poista ovat nyt pieniä
+painikkeita (toissijaisen painikkeen pinta ja reuna, ei tekstiä), ryhmää
+kokeillaan myös toisella puolella, ja **Pienet painikkeet** -paneeli
+näyttää ehdotetut säännöt ja tilat Päivä- ja Yö-teemassa. Tuotannon
+tokenit ja komponentit (`ControlButton` vihjeineen, `QuickTooltip`,
+`DisabledTooltipTrigger`), työpöytä 1280 ja puhelin 390. Sivu toimii
+Habitat-näkymänä: ei iframeja, ei navigointia, ei verkkoa (tarkistettu).
+Tuotantokoodi ei muuttunut. `check.mjs`: 578 tarkistusta läpi, konsoli
+puhdas.
+
+Kuvat (DPR 2), ei repossa: `/var/tmp/agent-keep/workspace-page-header-round-3/`
+(`v<n>-<suunta>-<tilanne>-<leveys>-<teema>.png`; `vihje`, `fokus`,
+`eiorigin`, `lukittu`, `saannot`, `saannot-tilat`; `heights.json`).
+
+| Suunta | Mitä se päättää | 1280 px | 390 px |
+|---|---|---|---|
+| **C2a Oikealla** | Ryhmä laattojen oikealla: Uusi keskustelu ja Uusi worktree sanoin, kolme pientä painiketta alla, Poista oikeassa reunassa erillään. Puhelimessa Uusi keskustelu vasemmalla, pienet (myös worktree) oikealla. | 134 | 240 |
+| **C2b Vasemmalla** | Sama ryhmä ennen Kuvaketta. Puhelimessa peilattu: pienet vasemmalla (Poista reunimmaisena), Uusi keskustelu oikeassa reunassa. | 134 | 240 |
+| **C2c Yksi ryhmä** | Vain Uusi keskustelu sanoin; Uusi worktree, GitHub, Arkistoi ja Poista pieninä yhdellä rivillä sen alla. Puhelimessa Uusi keskustelu venyy rivin leveyteen. | 134 | 240 |
+
+## Ehdotetut pienten painikkeiden säännöt
+
+1. **Koko roolista**: rivin painike, työpöydällä 32 × 32 (ikoni 16),
+   puhelimessa 40 × 40 (nykyinen token) ja näkymätön osuma-alue 44 × 44;
+   väli `--ah-control-gap` (6 px), joten osumat ja fokusrenkaat eivät mene
+   päällekkäin (tarkistettu: piste 1 px napin ulkopuolella osuu nappiin).
+2. **Näyttää painikkeelta**: sanoin nimettyjen vieressä pienellä
+   painikkeella on toissijaisen pinta ja reuna; pelkkä ikoni ilman pintaa
+   vain rivien ja kenttien sisällä (Kopioi polku).
+3. **Nimi ja vihje**: `aria-label` on teko ja kohde; vihje hoverista ja
+   näppäimistöfokuksesta sanoo saman tai yhden rivin enemmän (Arkistoi).
+   Kosketuksessa ei vihjettä, joten puhelimessa ikonin pitää olla tuttu.
+4. **Estetty kertoo syyn**: pysyy paikallaan, saa fokuksen, vihje kertoo
+   syyn (Ei GitHub-originia, Muutokset estetty).
+5. **Ryhmä ja järjestys**: yksi `role=group`; päätoiminto ensin, sitten
+   luo, avaa muualla, piilota, viimeisenä Poista vähintään 12 px erillään,
+   punainen ikoni toissijaisella pinnalla.
+6. **Vaihtava painike** (Arkistoi/Palauta) vaihtaa nimeä ja ikonia ilman
+   `aria-pressed`ia.
+7. **Tilat** ovat tuotannon tiloja (hover ja painettu sävyinä, fokus 2 px
+   rengas, Korkea kontrasti mustereuna).
+
+## Suositus: C2a Oikealla
+
+Otsikko luetaan ensin ja toiminnot sen jälkeen, sekä silmällä että
+ruudunlukijalla. Uusi worktree pitää sanansa työpöydällä, ja Poista on
+kauimpana päätoiminnosta. C2b laittaa toiminnot sivun ensimmäiseksi
+asiaksi ennen otsikkoa ja vie katseen pois laatoista; sen puhelimen
+peilaus (päätoiminto peukalon alla oikealla) on silti kokeilemisen arvoinen
+erikseen. C2c on siistein, mutta worktree-ikoni ei ole tuttu ilman sanaa,
+mikä rikkoo säännön 3 puhelimessa.
+
+## Decisions for later review (kierros 3)
+
+- **"Kolme muuta toimintoa" = GitHub, Arkistoi ja Poista**, eli ne, jotka
+  C2:ssa olivat pintoja vailla olevia ikoneita. Vaihtoehto olisi ollut
+  lukea se laatoiksi; laatat valittiin kahdesti, joten ne pysyivät.
+- **Pienet painikkeet ovat `secondary`-pinnalla**, eivät `quiet`.
+  Vaihtoehto oli pitää tuotannon hiljaiset ikonit. Jarin pyyntö oli tehdä
+  niistä painikkeita, ja pinta on se, mikä sen näyttää.
+- **Poisto on toissijainen pinta punaisella ikonilla**, ei `danger-subtle`
+  -täyttö. Täysi punainen säästyy vahvistukseen, ja ryhmä pysyy yhtenäisenä.
+- **Arkistoi/Palauta ilman `aria-pressed`ia.** Tuotanto käyttää nyt sekä
+  nimen vaihtoa että `aria-pressed`ia, jolloin ruudunlukija sanoo
+  "Palauta työtila, painettu". Toteutuksessa korjattava.
+- **Puhelimessa Uusi worktree on pieni painike kaikissa suunnissa**, kuten
+  kierroksilla 1–2; sana ei mahdu riville.
+- **Osuma-alue toteutetaan näkymättömällä `::after`-alueella**, ei
+  kasvattamalla nappia 44 px:iin. Vaihtoehto oli `--ah-control-row` 44 px
+  puhelimessa, mikä kasvattaisi kaikki rivit; 40 px näkyvä + 44 osuma
+  pitää nykyisen rytmin.
+- **C2b:n DOM-järjestys on sama kuin näkyvä** (toiminnot ennen h1:tä),
+  jotta fokus kulkee näkyvässä järjestyksessä; tämä on C2b:n hinta.
+- **Puhelinasettelu ei näy työpöydän Habitat-näkymässä**, koska iframeja ei
+  voi käyttää; se näkyy kapeassa ikkunassa tai puhelimella, ja
+  sääntöpaneeli näyttää puhelinkoon staattisesti.
+
+## Kysymys Jarille
+
+C2a vai C2c? Ratkaisee, saako Uusi worktree pitää sanansa työpöydällä
+(C2a) vai riittääkö ikoni vihjeen kanssa (C2c, kapeampi ryhmä). Ja:
+hyväksytäänkö pienten painikkeiden säännöt yleisiksi (design-systemiin)?
+
+---
+
 # Tulos, kierros 2: C:n muunnelmat (23.11.)
 
 Kierros `design-system/prototypes/rounds/2026-11-23-workspace-page-header-2/`
