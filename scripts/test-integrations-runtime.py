@@ -60,7 +60,7 @@ with tempfile.TemporaryDirectory(prefix='oh-ms-package-', dir=os.environ.get('TM
     for name, change in patch['tools'].items():
         assert all(endpoints[name].get(k) == v for k, v in change['to'].items()), name
     runtime = root / 'runtime'
-    pins = {'himalaya': '2.2.1', 'rclone': '1.76.0', 'gog': '0.48.0', 'tea': '0.16.0', 'glab': '1.130.0', 'sops': '3.13.3', 'tailscale': '1.104.4', 'tailscaled': '1.104.4'}
+    pins = {'himalaya': '2.2.1', 'rclone': '1.76.0', 'gog': '0.48.0', 'tea': '0.16.0', 'glab': '1.130.0', 'sops': '3.13.3', 'tailscale': '1.104.7', 'tailscaled': '1.104.7'}
     for name, version in pins.items():
         assert components[name]['kind'] == 'native' and components[name]['version'] == version
         assert records['runtime/bin/' + name]['component'] == name and records['runtime/bin/' + name]['mode'] == 0o755
@@ -77,7 +77,7 @@ with tempfile.TemporaryDirectory(prefix='oh-ms-package-', dir=os.environ.get('TM
             go_notices.check((root / 'licenses' / name / 'THIRD-PARTY-NOTICES').read_text(), data)
     tool_env = {'HOME': str(root / 'home'), 'PATH': '/usr/bin:/bin', 'LANG': 'C.UTF-8'}
     (root / 'home').mkdir()
-    for argv, expected in [(['himalaya', '--version'], 'v2.2.1'), (['rclone', 'version'], 'v1.76.0'), (['gog', '--version'], '0.48.0'), (['tea', '--version'], '0.16.0'), (['glab', '--version'], '1.130.0'), (['sops', '--disable-version-check', '--version'], '3.13.3'), (['tailscale', 'version'], '1.104.4'), (['tailscaled', '--version'], '1.104.4')]:
+    for argv, expected in [(['himalaya', '--version'], 'v2.2.1'), (['rclone', 'version'], 'v1.76.0'), (['gog', '--version'], '0.48.0'), (['tea', '--version'], '0.16.0'), (['glab', '--version'], '1.130.0'), (['sops', '--disable-version-check', '--version'], '3.13.3'), (['tailscale', 'version'], '1.104.7'), (['tailscaled', '--version'], '1.104.7')]:
         out = subprocess.check_output([runtime / 'bin' / argv[0], *argv[1:]], env=tool_env, text=True, timeout=30)
         assert expected in out, (argv, out)
     # The Pi wrapper resolves core through the stable profile link, as host

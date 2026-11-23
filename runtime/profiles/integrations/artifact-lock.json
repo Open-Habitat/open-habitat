@@ -101,15 +101,15 @@
     },
     {
       "target": "linux-amd64",
-      "filename": "tailscale_1.104.4_amd64.tgz",
-      "url": "https://pkgs.tailscale.com/stable/tailscale_1.104.4_amd64.tgz",
-      "sha256": "624ea093d47d62cf56f17b8332d74b8decda4a1faa610ebc60a1de334b2b3dc9"
+      "filename": "tailscale_1.104.7_amd64.tgz",
+      "url": "https://pkgs.tailscale.com/stable/tailscale_1.104.7_amd64.tgz",
+      "sha256": "e56693ff74a64f2591b7e819c280635a100aae1ddfb0ef058fcd052b7cd8d16c"
     },
     {
       "target": "linux-arm64",
-      "filename": "tailscale_1.104.4_arm64.tgz",
-      "url": "https://pkgs.tailscale.com/stable/tailscale_1.104.4_arm64.tgz",
-      "sha256": "a1c249ce6bdebef62e1ae3b997595555bce2ae4709bf95a718e9ca7a129dad7e"
+      "filename": "tailscale_1.104.7_arm64.tgz",
+      "url": "https://pkgs.tailscale.com/stable/tailscale_1.104.7_arm64.tgz",
+      "sha256": "d6bed2720310b328b861f943d7b4016c5358a9bad60575eb51e8143b79068484"
     }
   ],
   "tools": [
@@ -284,12 +284,12 @@
     {
       "target": "linux-amd64",
       "name": "tailscale",
-      "version": "1.104.4",
+      "version": "1.104.7",
       "license": "BSD-3-Clause",
       "source": "https://github.com/tailscale/tailscale",
-      "archive": "tailscale_1.104.4_amd64.tgz",
-      "member": "tailscale_1.104.4_amd64/tailscale",
-      "sha256": "f27bd0ad0a9a04c23ae02aa8a5897cf7f99e4e5ae153c0e5f7000b122418c830",
+      "archive": "tailscale_1.104.7_amd64.tgz",
+      "member": "tailscale_1.104.7_amd64/tailscale",
+      "sha256": "6ff883f468ded6221ba16a34c09cbf8ba4488bf889bf6575e040684677e1a02c",
       "license_files": [
         "tailscale-THIRD-PARTY-NOTICES"
       ],
@@ -298,12 +298,12 @@
     {
       "target": "linux-arm64",
       "name": "tailscale",
-      "version": "1.104.4",
+      "version": "1.104.7",
       "license": "BSD-3-Clause",
       "source": "https://github.com/tailscale/tailscale",
-      "archive": "tailscale_1.104.4_arm64.tgz",
-      "member": "tailscale_1.104.4_arm64/tailscale",
-      "sha256": "01c657aa13af9a13789aa5f5fa70327c200d5387f2ac8cf245ec73e213b15217",
+      "archive": "tailscale_1.104.7_arm64.tgz",
+      "member": "tailscale_1.104.7_arm64/tailscale",
+      "sha256": "362426a7417d85879cb76ae767375b1e839996cc63d5d2ebccd5b8bfdc736ec8",
       "license_files": [
         "tailscale-THIRD-PARTY-NOTICES"
       ],
@@ -312,12 +312,12 @@
     {
       "target": "linux-amd64",
       "name": "tailscaled",
-      "version": "1.104.4",
+      "version": "1.104.7",
       "license": "BSD-3-Clause",
       "source": "https://github.com/tailscale/tailscale",
-      "archive": "tailscale_1.104.4_amd64.tgz",
-      "member": "tailscale_1.104.4_amd64/tailscaled",
-      "sha256": "afc601d3c5be812105064eba11b64afa8928e983815bc47db218f25f3749c0c0",
+      "archive": "tailscale_1.104.7_amd64.tgz",
+      "member": "tailscale_1.104.7_amd64/tailscaled",
+      "sha256": "38f0ffb0f156ca3ebad33c420bea626933e877be54c38c66cfa155dfa84540af",
       "license_files": [
         "tailscaled-THIRD-PARTY-NOTICES"
       ],
@@ -326,12 +326,12 @@
     {
       "target": "linux-arm64",
       "name": "tailscaled",
-      "version": "1.104.4",
+      "version": "1.104.7",
       "license": "BSD-3-Clause",
       "source": "https://github.com/tailscale/tailscale",
-      "archive": "tailscale_1.104.4_arm64.tgz",
-      "member": "tailscale_1.104.4_arm64/tailscaled",
-      "sha256": "c8c80d2f0919eb48b0a86a9f1ddd2289d07ded51a886066db8059cd6461e5aa3",
+      "archive": "tailscale_1.104.7_arm64.tgz",
+      "member": "tailscale_1.104.7_arm64/tailscaled",
+      "sha256": "bd34e19b71fdbb11a6e603ac69af5e4d360ea983d0d9f93ff0a7210afff52ad5",
       "license_files": [
         "tailscaled-THIRD-PARTY-NOTICES"
       ],

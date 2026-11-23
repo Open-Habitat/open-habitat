@@ -82,7 +82,7 @@ func TestIntegrationsClosurePinsTools(t *testing.T) {
 	for _, name := range []string{"sops", "tailscale", "tailscaled"} {
 		files["runtime/bin/"+name] = RuntimeFile{Path: "runtime/bin/" + name, Component: name, Mode: 0755}
 	}
-	for name, version := range map[string]string{"himalaya": "2.2.1", "rclone": "1.76.0", "gog": "0.48.0", "tea": "0.16.0", "glab": "1.130.0", "sops": "3.13.3", "tailscale": "1.104.4", "tailscaled": "1.104.4"} {
+	for name, version := range map[string]string{"himalaya": "2.2.1", "rclone": "1.76.0", "gog": "0.48.0", "tea": "0.16.0", "glab": "1.130.0", "sops": "3.13.3", "tailscale": "1.104.7", "tailscaled": "1.104.7"} {
 		components[name] = RuntimeComponent{Name: name, Version: version, Kind: "native"}
 	}
 	a := ReleaseArtifact{Profile: "integrations", Packages: []RuntimePackage{{"curl", "amd64", "8.5.0-2ubuntu10.6"}}}
@@ -174,7 +174,7 @@ func TestOnlyInstallationTargetsRequireIntegrationTools(t *testing.T) {
 	for _, name := range []string{"sops", "tailscale", "tailscaled"} {
 		files = append(files, RuntimeFile{Path: "runtime/bin/" + name, Component: name, Mode: 0755})
 	}
-	for name, version := range map[string]string{"himalaya": "2.2.1", "rclone": "1.76.0", "gog": "0.48.0", "tea": "0.16.0", "glab": "1.130.0", "sops": "3.13.3", "tailscale": "1.104.4", "tailscaled": "1.104.4"} {
+	for name, version := range map[string]string{"himalaya": "2.2.1", "rclone": "1.76.0", "gog": "0.48.0", "tea": "0.16.0", "glab": "1.130.0", "sops": "3.13.3", "tailscale": "1.104.7", "tailscaled": "1.104.7"} {
 		components = append(components, RuntimeComponent{Name: name, Version: version, Kind: "native"})
 	}
 	current := AuthenticatedRelease{manifest: ReleaseManifest{Artifacts: []ReleaseArtifact{
