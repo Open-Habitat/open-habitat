@@ -18,6 +18,11 @@ on:
       - design-system/fonts/jetbrains-mono-latin.woff2
       - design-system/fonts/jetbrains-mono-latin-ext.woff2
       - design-system/fonts/habitat-composer.woff2
+      # The English front page's blocks (website/landing.mjs) and the two
+      # browser scripts their engine reads at build time.
+      - design-system/prototypes/rounds/2026-11-23-etusivu-v1/**
+      - design-system/prototypes/lib/markdown.js
+      - design-system/prototypes/lib/icons.js
       - docs/product.md
       - docs/operations.md
       - .github/workflows/pages.yml

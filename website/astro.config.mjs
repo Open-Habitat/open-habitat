@@ -6,12 +6,15 @@ import starlightLinksValidator from 'starlight-links-validator';
 import { repoDocsDir, repoDocsMarkdown } from './docs.mjs';
 import { indexable } from './launch.mjs';
 import { contrastScript } from './contrast.mjs';
+import { landingPlugin } from './landing.mjs';
 
 export default defineConfig({
   site: 'https://open-habitat.ai',
   markdown: {
     processor: satteri({ mdastPlugins: [repoDocsMarkdown] }),
   },
+  // The English front page's blocks (landing.mjs).
+  vite: { plugins: [landingPlugin()] },
   integrations: [
     starlight({
       title: 'Open Habitat',

@@ -1,5 +1,92 @@
 ---
-import Landing from '../components/Landing.astro';
+// The English front page: the landing page's blocks (landing.mjs), rendered
+// at build time, inside a thin site shell. The blocks bring the page's own top
+// bar, footer and browser script; the shell adds what belongs to the site: the
+// head (title, robots switch, favicon), a bar with the documentation and the
+// Finnish page, and a footer line with the documentation's security model,
+// where "Unix accounts separate people, not an agent from its owner" and
+// "root is root" are stated. The blocks are drawn and checked in the light
+// theme only, so the page is Päivä whatever the docs' theme menu says.
+import '../../../design-system/styles.css';
+import '../styles/brand.css';
+import landing from 'virtual:landing';
+import { indexable } from '../../launch.mjs';
+
+const repo = 'https://github.com/Open-Habitat/open-habitat';
+const title = 'Open Habitat · Coding-grade AI agents for your whole team';
+const description =
+  'Open Habitat gives everyone on your team a real coding agent with its own Linux account, in a browser tab. Open source, early pre-release.';
+const canonical = new URL('/', Astro.site);
+const script = landing.js.replace(/<\/script/gi, '<\\/script');
 ---
 
-<Landing lang="en" />
+<!doctype html>
+<html lang="en" dir="ltr" data-theme="light" class="no-js">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="alternate" hreflang="en" href={canonical} />
+    <link rel="alternate" hreflang="fi" href={new URL('/fi/', Astro.site)} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    {!indexable && <meta name="robots" content="noindex, nofollow" />}
+    <script is:inline>document.documentElement.classList.replace('no-js', 'js');</script>
+    <style is:inline set:html={landing.css}></style>
+  </head>
+  <body>
+    <nav class="site-bar" aria-label="Site">
+      <a href="/docs/">Documentation</a>
+      <a href="/fi/" hreflang="fi" lang="fi">Suomeksi</a>
+    </nav>
+    <div class="pg v1" set:html={landing.html} />
+    <footer class="site-foot">
+      <a href="/docs/">Documentation</a>
+      <a href="/docs/security/">Security model</a>
+      <a href="/docs/operations/">Install and operate</a>
+      <a href="/fi/" hreflang="fi" lang="fi">Suomeksi</a>
+      <span>Fonts: Instrument Sans and JetBrains Mono, <a href={`${repo}/tree/main/design-system/fonts`}>SIL Open Font License</a>.</span>
+    </footer>
+    <script is:inline set:html={script}></script>
+  </body>
+</html>
+
+<style>
+  /* The shell's two strips, in the blocks' measure (engine/page.css .top, .foot). */
+  .site-bar,
+  .site-foot {
+    box-sizing: border-box;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 22px;
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 10px clamp(20px, 4vw, 40px) 0;
+    font-family: var(--ah-font);
+    font-size: 14px;
+    color: var(--ah-muted);
+  }
+  .site-bar {
+    justify-content: flex-end;
+  }
+  .site-foot {
+    padding: 0 clamp(20px, 4vw, 40px) 32px;
+  }
+  /* engine/page.css leaves 76 px under the page for round 6's floating
+     picker, which this round does not have; the site's footer follows it. */
+  .pg {
+    padding-bottom: 0;
+  }
+  .site-foot span {
+    flex-basis: 100%;
+  }
+  a {
+    color: var(--ah-ink-2);
+    text-decoration: none;
+  }
+  a:hover {
+    color: var(--ah-accent-ink);
+    text-decoration: underline;
+  }
+</style>
