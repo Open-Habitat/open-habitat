@@ -3,13 +3,19 @@ created: 2026-11-15
 updated: 2026-11-23
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-15/rewind-all-changes
 lane: rewind-all-changes
 lane_seq: 1
 preparation: ready
+closed: 2026-11-23
+commits:
+- hash: 4ac8a8c1f
+  summary: restore only what the agent changed, never ignored files
+- hash: 8182a152f
+  summary: never write an ignored file or one the undo point lacks
 ---
 
 # Rewind restores only edit-tool changes; shell and script edits are not tracked
@@ -47,7 +53,5 @@ Verification and synthetic reproductions are in `result.md`. The later recorded 
 
 - [x] Git-workspace shell/script edits and deletions appear in Muutokset and restore through Palaa tähän.
 - [x] Snapshots do not restore Git state and are limited to Git workspaces.
-- [ ] Files changed only by the person since the selected message remain untouched, even if an older turn tracked them through edit/write.
-- [ ] Ignored files remain untouched by the edit/write fallback as well as by snapshots.
-
-The remaining work is to align fallback selection with this scope across preview, restore, continuation switching and undo, with regressions and preservation of older histories without snapshots.
+- [x] Files changed only by the person since the selected message remain untouched, even if an older turn tracked them through edit/write.
+- [x] Ignored files remain untouched by the edit/write fallback as well as by snapshots.
