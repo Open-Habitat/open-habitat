@@ -9,7 +9,7 @@ provenance: chat
 source_ref: habitat:pi-current/2026-11-22-reply-to-message
 lane: reply-to-message
 lane_seq: 1
-preparation: pending
+preparation: ready
 ---
 
 # Prototype: reply to a specific agent message (quote in the composer)
@@ -31,3 +31,7 @@ the agent receives, jump to original).
 ### 2026-11-23T04:20:14Z · @jari
 
 Jari 23.11.2026: direction A (quote card above the composer) is the base, but the card must follow our design system — no coloured accent bar on the left or other foreign styling. Next action: a riff round on A in our design, plus the architecture: exactly what message reaches the agent (the literal text/structure Pi receives, how the reference to the original entry is carried, what the native session records), with options and a recommendation.
+
+### 2026-11-23T05:50:40Z · @jari
+
+Jari 23.11.2026, round 2: the reply control goes in the message's top-right corner (definitely). Riff its shape (e.g. the copy-button style), size, border and tint. The quote sits inside the composer (round 2 B). Riff how a long message's quote looks. Architecture option 1 (daemon-built <reply-to entry> block, browser sends only reply_to.entry_key) approved. Excerpt length (280 characters vs first sentence vs other) needs its own riff so the difference in how each works is visible.
