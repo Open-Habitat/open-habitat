@@ -329,6 +329,8 @@ esac
 	// listener is up.
 	var sonioxBase atomic.Pointer[string]
 	soniox := newSonioxFake(func() string { return *sonioxBase.Load() })
+	brave := newBraveFake(func() string { return *sonioxBase.Load() })
+	nativeSearch := nativeSearchList(tmp)
 	seedTargets := map[string]*daemon.PiDevice{}
 	var seedFail atomic.Bool
 	var busyMu sync.Mutex
@@ -578,6 +580,10 @@ esac
 		// The real handler and Pi's own SettingsManager, as with the keys above.
 		mux.Handle(daemon.RecapSettingsPath, daemon.RecapSettingsHandler(speechCfg, trusted, credentialDevice))
 		daemon.NewSpeechWithFixtureEndpoints(speechCfg, trusted, soniox.endpoints, soniox.client()).Mount(mux)
+		// The real search key routes against the synthetic Brave, with the
+		// search extension's own list of providers that search by themselves.
+		daemon.NewWebSearchWithFixture(speechCfg, trusted, brave.endpoint, brave.client(), nativeSearch).Mount(mux)
+		brave.homes[m.Username] = home
 		// Exercise native Claude availability through the same handler as the daemon.
 		// This synthetic host intentionally has no installed Claude runtime.
 		mux.Handle("/api/v1/pi/claude-login", daemon.ClaudeLoginHandler(cfg, trusted, credentialDevice))
@@ -845,6 +851,10 @@ esac
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/fixture/soniox" || strings.HasPrefix(r.URL.Path, "/fixture/soniox/") {
 			soniox.serve(w, r)
+			return
+		}
+		if r.URL.Path == "/fixture/brave" || strings.HasPrefix(r.URL.Path, "/fixture/brave/") {
+			brave.serve(w, r)
 			return
 		}
 		if strings.HasPrefix(r.URL.Path, "/fixture/") {

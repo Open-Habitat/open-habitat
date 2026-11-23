@@ -445,6 +445,21 @@ export const settingsSections = [
         kw: ["carddav", "contacts", "nextcloud"],
         desc: "Yhteystiedot muualta, esimerkiksi Fastmail tai Nextcloud.",
       },
+      {
+        id: "web-search",
+        label: "Verkkohaku (Brave)",
+        kw: [
+          "web search",
+          "haku",
+          "hakuavain",
+          "search key",
+          "brave",
+          "deepseek",
+          "api key",
+          "avain",
+        ],
+        desc: "Hakuavain malleille, joilla ei ole omaa verkkohakua.",
+      },
     ],
   },
   {
@@ -740,6 +755,19 @@ export const settingsSections = [
         kw: ["oauth", "sovellus", "tunnukset", ...kw],
         desc: "Onko palvelu henkilöiden käytettävissä tällä palvelimella.",
       })),
+      {
+        id: "server-brave",
+        label: "Brave (verkkohaku)",
+        kw: [
+          "web search",
+          "verkkohaku",
+          "hakuavain",
+          "search key",
+          "yhteinen avain",
+          "api key",
+        ],
+        desc: "Yhteinen hakuavain malleille, joilla ei ole omaa verkkohakua.",
+      },
     ],
   },
   {

@@ -937,6 +937,7 @@ export function ServerIntegrations({
   onRemove,
   onRefresh,
   children,
+  searchRows,
 }: {
   /** The administrator's own catalog; undefined when it could not be read. */
   providers?: Provider[];
@@ -956,6 +957,9 @@ export function ServerIntegrations({
   onRefresh: () => void;
   /** Rows above the services, such as a failed refresh. */
   children?: ReactNode;
+  /** The web search services' rows, drawn by the app, after the others as
+   * a new service would be. */
+  searchRows?: ReactNode;
 }) {
   const [open, setOpen] = useState<Open>();
   const [tables, setTables] = useState<TableProvider[]>([]);
@@ -1397,6 +1401,7 @@ export function ServerIntegrations({
               </Fragment>
             );
           })}
+          {searchRows}
         </PeopleList>
       </SectionCard>
       {open?.kind === "levels" && (

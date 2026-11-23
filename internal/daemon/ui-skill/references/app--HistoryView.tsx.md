@@ -55,6 +55,7 @@ import { RestartNoticeMarker } from "../components/RestartNotice";
 import { WakeLineMarker } from "../components/ScheduledWake";
 import { SessionSettingsRow } from "../components/SessionSettingsRow";
 import { SkillInvocation } from "../components/SkillInvocation";
+import { UpgradeNoticeLine } from "../components/UpgradeNotice";
 import { WaitReminderMarker } from "../components/WaitReminder";
 import { formatDate, liveText } from "../i18n";
 import { historyViewText } from "../text/historyView";
@@ -889,6 +890,8 @@ export function Entry({
     return <WaitReminderMarker reminder={entry.wait_reminder} />;
   if (entry.scheduled_wake)
     return <WakeLineMarker line={entry.scheduled_wake} />;
+  if (entry.upgrade_notice)
+    return <UpgradeNoticeLine line={entry.upgrade_notice} />;
   const processBlocks = entry.blocks?.filter((b) => b.type === "process_event");
   if (processBlocks?.length)
     return (

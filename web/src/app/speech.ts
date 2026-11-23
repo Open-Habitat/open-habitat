@@ -83,7 +83,7 @@ export class SpeechError extends Error {
   }
 }
 
-async function boundedJSON(response: Response, limit = 4096) {
+export async function boundedJSON(response: Response, limit = 4096) {
   const reader = response.body?.getReader();
   if (!reader) throw Error("unavailable");
   const decoder = new TextDecoder("utf-8", { fatal: true });
@@ -107,7 +107,7 @@ async function boundedJSON(response: Response, limit = 4096) {
   return JSON.parse(text) as unknown;
 }
 
-async function errorCode(response: Response): Promise<string> {
+export async function errorCode(response: Response): Promise<string> {
   try {
     const body = (await boundedJSON(response)) as {
       error?: { code?: unknown };

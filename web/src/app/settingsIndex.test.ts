@@ -85,6 +85,16 @@ describe("settings search", () => {
     expect(site).toBeGreaterThan(own);
   });
 
+  it("finds the web search key on Tiedot agenteille, and the site's only for an administrator", () => {
+    const person = searchSettings("hakuavain", { admin: false });
+    expect(person.map((h) => h.row)).toContain("web-search");
+    expect(person.map((h) => h.row)).not.toContain("server-brave");
+    const admin = searchSettings("brave", { admin: true }).map((h) => h.row);
+    expect(admin.indexOf("server-brave")).toBeGreaterThan(
+      admin.indexOf("web-search"),
+    );
+  });
+
   it("marks what the query matched in the original text", () => {
     expect(highlight("Sanelu ääni", "aani")).toEqual([
       { text: "Sanelu ", hit: false },

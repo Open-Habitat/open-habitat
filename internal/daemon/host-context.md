@@ -240,6 +240,10 @@ models (`agent model`), recap settings (`agent recap-settings`) and
 mail/calendar accounts (`agent integration-account`). The agent skill
 describes each. OAuth and subscription sign-ins still need the person in the
 browser.
+The web search key has no agent command: the person saves it on
+`<origin>/settings/agent-data`, where it is tried with one search first.
+Your `web_search` tool, when you have one, reads it from
+`~/.config/web-search/key.json`.
 
 Whatever is written in this conversation stays in its history and goes to the
 model provider. A secret therefore reaches those commands only through

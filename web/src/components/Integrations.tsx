@@ -936,8 +936,13 @@ export function IntegrationsOverview({
   gitlabBusy,
   now = Date.now(),
   compact = false,
+  webSearch,
 }: {
   list: IntegrationList;
+  /** The web search key, drawn by the app: its card goes after the
+   * connected accounts and its tiles among those to add, as a newly
+   * connected service would; extra (its dialog or a problem) after them. */
+  webSearch?: { card?: ReactNode; tiles?: ReactNode; extra?: ReactNode };
   /** Inside onboarding: the step says what the integration is for and the
    * connect dialog carries the agent warning, so the page's own lead,
    * headings and closing note are left out. */
@@ -1037,7 +1042,7 @@ export function IntegrationsOverview({
           <span>{unreadable ? txt.skillWaits : skillNotice[list.skill]}</span>
         </p>
       ) : null}
-      {connected.length > 0 && (
+      {(connected.length > 0 || webSearch?.card) && (
         <>
           {compact ? null : <h3 className="ig-h3">{txt.connected}</h3>}
           {connected.map((p) => (
@@ -1213,13 +1218,17 @@ export function IntegrationsOverview({
               ) : null}
             </section>
           ))}
+          {webSearch?.card}
         </>
       )}
-      {rest.length > 0 && (
+      {(rest.length > 0 || webSearch?.tiles) && (
         <>
           {compact ? null : <h3 className="ig-h3">{txt.addAccount}</h3>}
-          {primary.length ? (
-            <div className="ig-tiles">{primary.map(tile)}</div>
+          {primary.length || webSearch?.tiles ? (
+            <div className="ig-tiles">
+              {primary.map(tile)}
+              {webSearch?.tiles}
+            </div>
           ) : null}
           {others.length ? (
             <>
@@ -1234,6 +1243,7 @@ export function IntegrationsOverview({
           ) : null}
         </>
       )}
+      {webSearch?.extra}
       {compact ? null : <p className="ig-foot">{txt.foot}</p>}
     </div>
   );

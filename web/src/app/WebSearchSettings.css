@@ -1,0 +1,46 @@
+/* The web search key's dialog and rows (WebSearchSettings.tsx). The rows
+   and cards are the integration pages' own classes; only the key form, as
+   in the AI key dialog, needs its layout here. */
+.ws-key-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ah-s3);
+}
+.ws-key-form p,
+.ws-lead,
+.ws-line {
+  margin: 0;
+}
+.ws-key-form .s-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--ah-s2);
+}
+.ws-warn {
+  display: flex;
+  gap: var(--ah-s2);
+  align-items: flex-start;
+}
+.ws-warn svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+}
+.ws-more {
+  margin-top: var(--ah-s2);
+}
+.ws-bad {
+  color: var(--ah-err);
+}
+.ws-bad svg {
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.12em;
+  margin-right: 4px;
+}
+.ws-menu-head {
+  display: block;
+  max-width: 34ch;
+  white-space: normal;
+}

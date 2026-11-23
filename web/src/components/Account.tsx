@@ -1199,7 +1199,7 @@ export function AccountSettings({
           />
         )}
         {section === "tiedot" && (
-          <IntegrationsSettings csrf={csrf} except={codeHosts} />
+          <IntegrationsSettings csrf={csrf} except={codeHosts} webSearch />
         )}
         {section === "tilannekatsaus" && <RecapSettingsSection csrf={csrf} />}
         {section === "sanelu" && <SpeechSettings csrf={csrf} />}

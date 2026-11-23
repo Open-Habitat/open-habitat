@@ -214,6 +214,10 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
         label: "Contacts (CardDAV)",
         desc: "Contacts from elsewhere, for example Fastmail or Nextcloud.",
       },
+      "web-search": {
+        label: "Web search (Brave)",
+        desc: "A search key for models without web search of their own.",
+      },
     },
   },
   omatkoneet: {
@@ -375,6 +379,10 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
       "server-dropbox": {
         label: "Dropbox",
         desc: "Whether people can use the service on this server.",
+      },
+      "server-brave": {
+        label: "Brave (web search)",
+        desc: "A shared search key for models without web search of their own.",
       },
     },
   },

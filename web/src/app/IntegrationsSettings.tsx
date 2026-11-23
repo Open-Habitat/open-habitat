@@ -52,6 +52,7 @@ import {
   readLogin,
   removeAccount,
 } from "./integrations";
+import { useWebSearchPerson } from "./WebSearchSettings";
 
 const txt = liveText(integrationsSettingsText);
 
@@ -120,8 +121,11 @@ export function IntegrationsSettings({
   compact = false,
   onList,
   onNewWorkspace,
+  webSearch = false,
 }: {
   csrf?: string;
+  /** Show the web search key among the services (Tiedot agenteille only). */
+  webSearch?: boolean;
   /** Show only these providers and their accounts (an onboarding step). */
   only?: ProviderId[];
   /** Leave these providers out (they have a settings page of their own). */
@@ -136,6 +140,7 @@ export function IntegrationsSettings({
   onNewWorkspace?: () => void;
 }) {
   const [list, setList] = useState<IntegrationList | undefined>(initial);
+  const search = useWebSearchPerson(csrf, webSearch);
   const [failed, setFailed] = useState(false);
   const [checking, setChecking] = useState<Set<string> | "all">(
     initial ? new Set() : "all",
@@ -881,6 +886,7 @@ export function IntegrationsSettings({
       {failed ? <p role="alert">{txt.stale}</p> : null}
       <IntegrationsOverview
         compact={compact}
+        webSearch={search}
         list={
           only || except
             ? {

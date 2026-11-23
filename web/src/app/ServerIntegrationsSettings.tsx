@@ -25,6 +25,7 @@ import {
   readIntegrationApps,
 } from "./serverIntegrations";
 import { settingsHref } from "./settingsRoute";
+import { SiteSearchRows } from "./WebSearchSettings";
 
 const txt = liveText(serverIntegrationsText);
 
@@ -169,6 +170,7 @@ export function ServerIntegrationsSettings({ csrf }: { csrf?: string }) {
       onSave={(provider, fields) => change(provider, fields)}
       onRemove={(provider) => void change(provider)}
       onRefresh={() => void reload()}
+      searchRows={<SiteSearchRows csrf={csrf} />}
     >
       {failed && (
         <div className="s-row" role="alert">

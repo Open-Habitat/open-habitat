@@ -547,8 +547,10 @@ Identity and authority:
   and at most a literal key's four-character suffix; configured references
   are never resolved. The host keeps no credential store and no token copy,
   with the two site keys below as the exceptions.
-- The site AI key and the site Soniox key are the gateway's only persistent
-  provider credentials (Jari, 2026-10-24 and 2026-10-27). The site AI key
+- The site AI key, the site Soniox key and the site web search key are the
+  gateway's only persistent provider credentials (Jari, 2026-10-24,
+  2026-10-27 and 2026-11-23); another one is an architecture decision, not
+  a copy of these. The site AI key
   lives in a gateway-UID `0600` file of its own, never in administration
   state, a receipt, a log or a reply beyond provider, suffix
   and time, and is written only by a current administrator's browser session
@@ -598,6 +600,20 @@ Identity and authority:
   the setting administrator's own daemon, which stores nothing from the
   check. A daemon may correct the region in its own key file when a mint
   succeeds only in the other region.
+- A person's web search key lives only in `~/.config/web-search/key.json`
+  (0600), which the core runtime's search extension reads natively; the
+  daemon is its only product writer and removes the extension's refusal mark
+  (`state.json`) when it writes a key. Replies carry presence, service,
+  source, at most the four-character suffix, the mark only when it names
+  this key's SHA-256 and service, and the extension's own list of providers
+  that search natively, never a table of the product's. The site web search
+  key (Jari, 2026-11-23) follows the site Soniox key's rules line by line,
+  with the service in place of the region: one trial search on the person's
+  or the setting administrator's own daemon before anything is stored, a
+  copy only where there is no key or an earlier site copy, nothing recalled
+  on removal. Search uses one service at a time, so a key for the other
+  service replaces the stored one and its site copies. Staan is reserved:
+  no route accepts a key for a service without a trial search.
 - The person's own agent instructions (Jari, 2026-11-21) are
   `~/.pi/agent/AGENTS.md`, which Pi reads natively; the daemon reads and
   writes that one fixed file as the person and never a path from a request.

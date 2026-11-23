@@ -118,6 +118,8 @@ export const mutationClasses = {
   "speech.key": "confirmed",
   "speech.session": "confirmed",
   "server.speech_key": "confirmed",
+  "web_search.key": "confirmed",
+  "server.search_key": "confirmed",
 } as const satisfies Record<string, MutationClass>;
 export type MutationCommand = keyof typeof mutationClasses;
 
