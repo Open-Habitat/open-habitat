@@ -291,7 +291,10 @@ export function SiteSearchRows({ csrf }: { csrf?: string }) {
     setNote("");
     setProblem("");
     try {
-      setState(await setSiteSearchKey(csrf, backend, key));
+      const next = await setSiteSearchKey(csrf, backend, key);
+      setState(next);
+      // A stored key whose giving could not start comes back without given.
+      if (next.site_key && !next.given) setProblem(txt.notGiven);
       return undefined;
     } catch (error) {
       const why = refusal(error, backend);

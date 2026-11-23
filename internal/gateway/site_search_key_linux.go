@@ -444,9 +444,16 @@ func (a *Auth) siteSearchKeyHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	given, err := a.giveSearchKeyToJoined(ctx)
 	if err != nil {
-		// The key is stored; who has a copy is unknown until the next set.
-		given = nil
-		a.log.Warn("site_search_key_give", "outcome", "degraded", "reason", "access_list_unavailable")
+		// The key is stored but nobody was given it until the next set; the
+		// reply carries no given, which the page says. A delete that landed
+		// meanwhile is answered as what is stored now.
+		reason := "access_list_unavailable"
+		if errors.Is(err, errSiteKeyUnavailable) {
+			reason = "key_removed"
+		}
+		a.log.Warn("site_search_key_give", "outcome", "degraded", "reason", reason)
+		reply(a.siteSearchKeyView(), nil)
+		return
 	}
 	reply(k, given)
 }

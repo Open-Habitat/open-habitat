@@ -14,7 +14,7 @@
       }
     },
     "read": {
-      "$comment": "given is present after a set: how many joined people's daemons answered which word. It names nobody and nothing about a person's own key beyond kept.",
+      "$comment": "given is present after a set: how many joined people's daemons answered which word. It names nobody and nothing about a person's own key beyond kept. A set whose giving could not start (the list of joined people was unavailable) answers without given: the key is stored and nobody was given it until the next set.",
       "type": "object",
       "additionalProperties": false,
       "required": ["schema_version"],
