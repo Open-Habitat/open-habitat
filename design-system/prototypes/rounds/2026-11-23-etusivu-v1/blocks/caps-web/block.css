@@ -58,5 +58,5 @@
 @media (min-width: 900px) {
   [data-block="caps-web"] .cw-br { display: flex; flex-direction: column; max-height: 560px; }
   [data-block="caps-web"] .cw-br .m-img { flex: none; }
-  [data-block="caps-web"] .cw-scroll { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+  [data-block="caps-web"] .cw-scroll { overflow-y: auto; scrollbar-width: thin; }
 }

@@ -18,7 +18,7 @@
 [data-block="alice-07-lunch-phone"] .lp-title .oh-mark { flex: none; color: var(--ah-turn); }
 [data-block="alice-07-lunch-phone"] .lp-title b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 [data-block="alice-07-lunch-phone"] .lp-org { font-size: 12px; color: var(--ah-muted); padding-left: 22px; }
-[data-block="alice-07-lunch-phone"] .lp-feed { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column-reverse; padding: 12px 12px 14px; scrollbar-width: none; }
+[data-block="alice-07-lunch-phone"] .lp-feed { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column-reverse; padding: 12px 12px 14px; scrollbar-width: none; }
 [data-block="alice-07-lunch-phone"] .lp-feed::-webkit-scrollbar { display: none; }
 [data-block="alice-07-lunch-phone"] .lp-feed .c-feed { --ah-feed-gap: 10px; }
 [data-block="alice-07-lunch-phone"] .lp-feed .ah-message { font-size: 14px; }
