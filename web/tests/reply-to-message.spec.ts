@@ -17,7 +17,10 @@ test.use({
 async function prefer(page: Page, on: boolean) {
   const s = await (await page.request.get("/auth/session")).json();
   const put = await page.request.put("/api/v1/account/preferences", {
-    headers: { Origin: new URL(page.url()).origin, "X-Agent-Host-CSRF": s.csrf },
+    headers: {
+      Origin: new URL(page.url()).origin,
+      "X-Agent-Host-CSRF": s.csrf,
+    },
     data: { experimental: { "reply-to-message": on } },
   });
   expect(put.status()).toBe(200);
@@ -35,13 +38,14 @@ async function open(page: Page, width: number) {
 
 async function send(page: Page, text: string) {
   await page.getByTestId("message-input").fill(text);
-  await page.getByTestId("send").and(page.locator('[data-mode="send"]')).click();
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
 }
 
 const answer = (page: Page, asked: string) =>
-  page
-    .getByTestId("stage-reply")
-    .filter({ hasText: `Kysyit: "${asked}".` });
+  page.getByTestId("stage-reply").filter({ hasText: `Kysyit: "${asked}".` });
 
 for (const width of [1280, 390]) {
   test(`a reply quotes one agent message, reaches Pi with its excerpt and leads back to it ${width}`, async ({

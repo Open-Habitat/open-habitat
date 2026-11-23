@@ -2,6 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { useConversationActions } from "./ConversationActions";
 import * as conversations from "./conversations";
+import { replyKeyOf } from "./sentMessages";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -147,4 +148,74 @@ it("keeps a send's history mark only when nothing else could carry its text", as
   expect(await run(["jatka"])).toBeNull();
   expect(lost).toHaveBeenCalledTimes(2);
   expect(sessionStorage.getItem("uncertain")).not.toBeNull();
+});
+
+// reply-to-message: a reply whose outcome was lost goes again as the same
+// reply, and the target is kept beside the outstanding text for a reload.
+it("resends a lost reply with its target and remembers a queued one", async () => {
+  sessionStorage.clear();
+  const sent = vi.spyOn(conversations, "send").mockResolvedValue("pending");
+  const queued = vi
+    .spyOn(conversations, "queueMessage")
+    .mockResolvedValue(undefined);
+  const command = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  sessionStorage.setItem("send", command);
+  const props = (state: string, lostSend?: object) =>
+    ({
+      workspace: { workspace_id: "ws_test" },
+      id: "pi:a",
+      csrf: "synthetic-csrf",
+      ambiguous: null,
+      busy: false,
+      current: {
+        agent_id: "pi:a",
+        workspace_id: "ws_test",
+        state,
+        run_active: state === "accepted",
+        queue: { revision: 1, steering: [], follow_up: [] },
+      },
+      entries: [],
+      draft: "",
+      receipt: "",
+      problem: "",
+      serverUnavailable: false,
+      alive: { current: true },
+      generation: { current: 1 },
+      submittedKey: "submitted",
+      sendKey: "send",
+      uncertainKey: "uncertain",
+      answeredKey: "answered",
+      sentAfterKey: "sent-after",
+      resentKey: "resent",
+      lostSend,
+      setBusy: vi.fn(),
+      setReceipt: vi.fn(),
+      setSendObservation: vi.fn(),
+      setConfirmStop: vi.fn(),
+      changeDraft: vi.fn(),
+      onSent: vi.fn(),
+      onQueued: vi.fn(),
+      refresh: vi.fn(),
+      onLogin: vi.fn(),
+      onSessionCreated: vi.fn(),
+      navigate: vi.fn(),
+    }) as never;
+  renderHook(() =>
+    useConversationActions(
+      props("idle", { command, text: "Vastaus", replyTo: "a1" }),
+    ),
+  );
+  await vi.waitFor(() => expect(sent).toHaveBeenCalled());
+  expect(sent.mock.calls[0][2]).toBe(command);
+  expect(sent.mock.calls[0][5]).toBe("a1");
+
+  sessionStorage.clear();
+  const { result } = renderHook(() =>
+    useConversationActions(props("accepted")),
+  );
+  await act(() =>
+    result.current.submitQueue("follow_up", "Jatkoksi", false, "a2"),
+  );
+  expect(queued.mock.calls.at(-1)?.[5]).toBe("a2");
+  expect(sessionStorage.getItem(replyKeyOf("submitted"))).toBe("a2");
 });

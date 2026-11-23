@@ -1294,13 +1294,19 @@ function BrowserConversationContent({
     : !notStarted && !tellWorking && current?.state === "accepted"
       ? txt.waitIdle
       : undefined;
-  const tell = (text: string) => {
+  const tell = (text: string, replyTo?: string) => {
     dismissRecapOnSend();
     rest.onSend();
     if (notStarted)
-      sendHeld(text, canChooseFirstModel ? modelChoice : undefined, true);
-    else if (tellWorking) void submitQueue(workingMode, text, true);
-    else void submit(text, true);
+      sendHeld(
+        text,
+        canChooseFirstModel ? modelChoice : undefined,
+        true,
+        undefined,
+        replyTo,
+      );
+    else if (tellWorking) void submitQueue(workingMode, text, true, replyTo);
+    else void submit(text, true, undefined, replyTo);
   };
   // An AI provider refusing the person's sign-in (aiSignIn.ts). This
   // conversation is refused when its own newest reply was refused and the
@@ -1470,8 +1476,8 @@ function BrowserConversationContent({
       sessionStorage.getItem(sendKey) !== lostSend.command
     )
       return;
-    const { command, text } = lostSend;
-    held.submit(text, undefined, true, command);
+    const { command, text, replyTo } = lostSend;
+    held.submit(text, undefined, true, command, replyTo);
     endUnknown(command);
     if (draftNow() === text) changeDraft("");
   }, [lostSend, current, csrf, serverUnavailable, held.busy]);
@@ -1496,7 +1502,13 @@ function BrowserConversationContent({
   // Stored as they are kept, so a reload or a closed tab loses none of them.
   const keptStorage = id ? `nah:${identity}:kept:${id}` : "";
   const draftStorage = id ? `nah:${identity}:draft:${id}` : "";
-  type Kept = { id: string; text: string; mode?: "steer" | "follow_up" };
+  type Kept = {
+    id: string;
+    text: string;
+    mode?: "steer" | "follow_up";
+    /** The agent message it answers (reply-to-message). */
+    replyTo?: string;
+  };
   const [kept, setKeptState] = useState<{ key: string; items: Kept[] }>();
   const keptItems = kept?.key === keptKey ? kept.items : [];
   const setKept = (change: (items: Kept[]) => Kept[]) =>
@@ -1510,10 +1522,12 @@ function BrowserConversationContent({
     });
   const keep = (text: string, mode?: "steer" | "follow_up") => {
     if (!text.trim()) return;
-    // A message kept until the view can send goes as plain text: the quote
-    // is not kept with it (reply-to-message).
-    setReplyTarget(undefined);
-    setKept((items) => [...items, { id: crypto.randomUUID(), text, mode }]);
+    // A kept message keeps its quote and goes with it (reply-to-message).
+    const replyTo = takeReply(text);
+    setKept((items) => [
+      ...items,
+      { id: crypto.randomUUID(), text, mode, replyTo },
+    ]);
     changeDraft("");
   };
   const keeps = keptItems.length > 0 || (!canSend && sendWhenReady);
@@ -1539,8 +1553,9 @@ function BrowserConversationContent({
         controlled || sendRefused ? tellBlocked : problem || txt.loading,
       );
     setKept((items) => items.slice(1));
-    if (next.mode && tellWorking) void submitQueue(next.mode, next.text, true);
-    else tell(next.text);
+    if (next.mode && tellWorking)
+      void submitQueue(next.mode, next.text, true, next.replyTo);
+    else tell(next.text, next.replyTo);
   }, [keptItems, tellBlocked, sendWhenReady]);
   // Messages kept by a view that is gone (left, reloaded) were never sent:
   // they come back into the field rather than go later unasked.

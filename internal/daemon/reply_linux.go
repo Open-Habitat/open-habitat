@@ -15,7 +15,9 @@ import (
 // (reply-to-message). The browser sends only the message's native entry key;
 // this daemon reads the excerpt from the native session and writes it as a
 // `<reply-to>` block at the start of the person's text (internal/replyblock),
-// so the browser can never put words in the agent's mouth.
+// so a block this daemon builds never carries excerpt text from the browser.
+// (A person can still type such a block into their own message, as they can
+// Pi's <skill> wrapper; it is projected the same way and misleads only them.)
 const ReplyFeature = "reply-to-message"
 
 func replyEnabled(home string) bool {
@@ -151,7 +153,12 @@ func projectUserReply(message json.RawMessage) (*replyRef, bool) {
 }
 
 // userText is a person's message text as the view shows it: without a
-// leading reply block or skill wrapper.
+// leading reply block or, failing that, a skill wrapper. The two are
+// exclusive, as in the history projection, so block reads and the preview
+// read the same text.
 func userText(text string) string {
-	return skillInstruction(replyblock.Strip(text))
+	if _, _, rest, ok := replyblock.Parse(text); ok {
+		return rest
+	}
+	return skillInstruction(text)
 }

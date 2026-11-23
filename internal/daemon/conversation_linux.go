@@ -930,16 +930,18 @@ func (c *ConversationController) admitMessage(w http.ResponseWriter, r *http.Req
 	// A reply to one agent message (reply-to-message, experimental): only
 	// while the switch is on, and never in front of a slash command, which
 	// Pi reads only at the very start of the text.
-	excerpt := ""
+	excerpt, enabled := "", false
 	if body.ReplyTo != nil {
-		if !replyblock.ValidKey(body.ReplyTo.EntryKey) || !replyEnabled(c.home) || strings.HasPrefix(body.Message, "/") {
+		if !replyblock.ValidKey(body.ReplyTo.EntryKey) || strings.HasPrefix(body.Message, "/") {
 			snapshotError(w, 400, "invalid_request")
 			return
 		}
-		// Read from the native file before taking the lock. A target that is
-		// gone is refused only below, after a repeat has been answered as
-		// the message it is.
-		excerpt, _ = c.replyExcerpt(id, body.ReplyTo.EntryKey)
+		// Read from the native file before taking the lock. The switch and a
+		// target that is gone are refused only below, after a repeat has
+		// been answered as the message it is.
+		if enabled = replyEnabled(c.home); enabled {
+			excerpt, _ = c.replyExcerpt(id, body.ReplyTo.EntryKey)
+		}
 	}
 	if body.FirstChoice != nil {
 		if kind != "send" || !c.validFirstChoice(r.Context(), body.FirstChoice) {
@@ -1001,19 +1003,17 @@ func (c *ConversationController) admitMessage(w http.ResponseWriter, r *http.Req
 	}
 	reply := body.ReplyTo != nil
 	if reply {
+		if !enabled {
+			c.mu.Unlock()
+			snapshotError(w, 400, "invalid_request")
+			return
+		}
 		if excerpt == "" {
 			c.mu.Unlock()
 			snapshotError(w, 409, "reply_target_gone")
 			return
 		}
 		body.Message = replyblock.Build(body.ReplyTo.EntryKey, excerpt, body.Message)
-		// Held messages reach Pi joined as one prompt, and the block is read
-		// only at the start of a message: a reply never joins behind others.
-		if kind == "send" && len(s.held) > 0 {
-			c.mu.Unlock()
-			snapshotError(w, 409, "control_uncertain")
-			return
-		}
 	}
 	archiveState := "active"
 	if c.home != "" {
@@ -1045,6 +1045,14 @@ func (c *ConversationController) admitMessage(w http.ResponseWriter, r *http.Req
 	if idleStarts && kind != "send" && !notRunning(s) && !s.waking && !s.runActive && (s.state == "idle" || s.state == "rejected") {
 		diagnostic.New(os.Stderr, "daemon").Info("conversation_message_started", "agent_id", "pi:"+id, "kind", kind, "command_id", body.CommandID, "request_id", diagnostic.RequestID(r.Context()))
 		kind = "send"
+	}
+	// Held messages reach Pi joined as one prompt, and the block is read only
+	// at the start of a message: a reply never joins behind others. Checked
+	// after a browser steer may have become a send.
+	if reply && kind == "send" && len(s.held) > 0 {
+		c.mu.Unlock()
+		snapshotError(w, 409, "control_uncertain")
+		return
 	}
 	// A plain send to a conversation whose Pi is not running (yet) is held by
 	// the daemon and starts Pi if nothing is starting it already. Pi refuses

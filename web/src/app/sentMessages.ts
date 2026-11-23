@@ -37,7 +37,18 @@ export type SendObservationValue = {
   /** The command the status named when this direct send went: a status
    * still naming it was read before the host took this send. */
   supersedes?: string;
+  /** The agent message it answers, so a resend carries it too. */
+  replyTo?: string;
 };
+
+/** Where the outstanding send's reply target is kept beside its text, so a
+ * recovery after a reload carries it too (reply-to-message). Every send
+ * writes or clears it. */
+export const replyKeyOf = (submittedKey: string) => `${submittedKey}:reply`;
+export function rememberReply(submittedKey: string, replyTo?: string) {
+  if (replyTo) sessionStorage.setItem(replyKeyOf(submittedKey), replyTo);
+  else sessionStorage.removeItem(replyKeyOf(submittedKey));
+}
 
 /** A direct send this tab made, drawn until Pi's own message replaces it. */
 export type OwnSend = {

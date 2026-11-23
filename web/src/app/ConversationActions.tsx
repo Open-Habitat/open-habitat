@@ -37,6 +37,7 @@ import {
   type OwnSend,
   ownWrites,
   type QueuedSend,
+  rememberReply,
   userKeys,
 } from "./sentMessages";
 import type { Workspace } from "./snapshot";
@@ -142,7 +143,7 @@ export function useConversationActions({
   sentAfterKey: string;
   resentKey: string;
   /** This tab's lost send, proven never to have reached Pi (useConversation). */
-  lostSend?: { command: string; text: string };
+  lostSend?: { command: string; text: string; replyTo?: string };
   setBusy: Dispatch<SetStateAction<boolean>>;
   setReceipt: Dispatch<SetStateAction<string>>;
   setSendObservation: Dispatch<SetStateAction<Observation | undefined>>;
@@ -262,6 +263,7 @@ export function useConversationActions({
         command,
         kind: "send",
         supersedes: current?.command_id,
+        replyTo,
       });
       onSent({ command, text, before: userKeys(entries) });
       setReceipt(txt.awaitingAck);
@@ -292,6 +294,7 @@ export function useConversationActions({
           state: "uncertain",
           command,
           supersedes: current?.command_id,
+          replyTo,
         });
         setReceipt(txt.sendError);
         void refresh();
@@ -330,6 +333,7 @@ export function useConversationActions({
       csrf,
       undefined,
       false,
+      lostSend.replyTo,
     );
   });
   // The text leaves the field at once and is drawn where it is going; a
@@ -361,6 +365,7 @@ export function useConversationActions({
     setBusy(true);
     if (!alive.current) return true;
     sessionStorage.setItem(submittedKey, text);
+    rememberReply(submittedKey, replyTo);
     sessionStorage.setItem(sendKey, command);
     sessionStorage.setItem(uncertainKey, command);
     sessionStorage.removeItem(resentKey);
@@ -405,8 +410,15 @@ export function useConversationActions({
       sessionStorage.setItem(uncertainKey, command);
       markSent();
       ownWrites.begin(command);
-      setSendObservation({ text, state: "pending", command, kind: "queue" });
+      setSendObservation({
+        text,
+        state: "pending",
+        command,
+        kind: "queue",
+        replyTo,
+      });
       sessionStorage.setItem(submittedKey, text);
+      rememberReply(submittedKey, replyTo);
       onQueued({
         command,
         kind,
@@ -441,7 +453,7 @@ export function useConversationActions({
         sessionStorage.getItem(sendKey) === command
       ) {
         sessionStorage.setItem(uncertainKey, command);
-        setSendObservation({ text, state: "uncertain", command });
+        setSendObservation({ text, state: "uncertain", command, replyTo });
         setReceipt(txt.sendError);
         void refresh();
       }

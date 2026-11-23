@@ -131,6 +131,15 @@ for line in sys.stdin:
 	if text != want {
 		t.Fatalf("Pi received\n%q\nwant\n%q", text, want)
 	}
+	// The same POST again, after the switch went off in another tab: a
+	// repeat is answered as the message it is, never refused.
+	if err := os.WriteFile(filepath.Join(home, ".config", "open-habitat", "preferences.json"), []byte(`{"engine":"codemirror6","experimental":{}}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	command--
+	if code, out := send(reply("a1", "Mennään ensimmäisellä.")); code != 200 {
+		t.Fatalf("repeat after the switch went off: %d %s", code, out)
+	}
 }
 
 func TestReplyNeverJoinsHeldMessages(t *testing.T) {
@@ -190,6 +199,12 @@ func TestReplyProjection(t *testing.T) {
 	e.Raw = json.RawMessage(raw)
 	if out := nativeBlocks(e); out.ReplyTo != nil {
 		t.Fatalf("assistant text projected as a reply")
+	}
+	// A reply whose own text is a pasted skill record keeps it as text: the
+	// two wrappers are exclusive, so block reads match the preview.
+	skill := "<skill name=\"x\" location=\"/s/SKILL.md\">\nbody\n</skill>"
+	if got := userText(replyblock.Build("a1", "e", skill)); got != skill {
+		t.Fatalf("reply body read as a skill: %q", got)
 	}
 	// Pi's queue and held messages give back what the person wrote.
 	if got := writtenText("/home/x", native); got != "Mennään ensimmäisellä." {

@@ -18,6 +18,7 @@ import {
   lostSendArrived,
   lostSendVerdict,
   ownWrites,
+  replyKeyOf,
   type SendObservationValue,
 } from "./sentMessages";
 import type { Snapshot, Workspace } from "./snapshot";
@@ -311,6 +312,8 @@ export function useConversation({
                 ? "pending"
                 : "uncertain",
             command,
+            replyTo:
+              sessionStorage.getItem(replyKeyOf(submittedKey)) ?? undefined,
           }
         : undefined,
     );
@@ -341,6 +344,7 @@ export function useConversation({
       sessionStorage.removeItem(sendKey);
       sessionStorage.removeItem(uncertainKey);
       sessionStorage.removeItem(submittedKey);
+      sessionStorage.removeItem(replyKeyOf(submittedKey));
       sessionStorage.removeItem(answeredKey);
       sessionStorage.removeItem(sentAfterKey);
       sessionStorage.removeItem(resentKey);
@@ -458,6 +462,7 @@ export function useConversation({
       ? {
           command: lostCommand,
           text: sendObservation.text,
+          replyTo: sendObservation.replyTo,
           verdict: lostVerdict,
         }
       : undefined;

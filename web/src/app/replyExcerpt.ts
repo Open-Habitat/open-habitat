@@ -12,9 +12,12 @@ const fence = /^\s*(`{3,}|~{3,})/;
 const listItem = /^\s*(?:[-*+]|\d{1,9}[.)])\s+\S/;
 const attachmentRef = /\/api\/v1\/attachments\/[0-9a-f-]{36}/g;
 
-/** The agent message's text blocks as the excerpt reads them. */
+/** The agent message's text blocks as the excerpt reads them. The host's
+ * flattened content is text blocks only; the blocks are the fallback, since
+ * a long thinking block can leave a text block's preview empty. */
 export function replyText(entry: HistoryEntry): string {
-  if (!entry.blocks?.length) return entry.content.text;
+  if (entry.content.text.trim() || !entry.blocks?.length)
+    return entry.content.text;
   return entry.blocks
     .filter((b) => b.type === "text" && b.text?.trim())
     .map((b) => b.text ?? "")
