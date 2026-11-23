@@ -1,0 +1,34 @@
+/* Alice · 09:44 · Shipping banner: the shop page in a small browser frame and the site's history under it. */
+[data-block="alice-05-shipping-banner"] .sb { display: flex; flex-direction: column; gap: 12px; }
+[data-block="alice-05-shipping-banner"] .sb-site { margin: 0; border: 1px solid var(--ah-line); border-radius: 10px; overflow: hidden; background: var(--ah-surface); box-shadow: 0 1px 3px rgba(16, 24, 40, .1); }
+[data-block="alice-05-shipping-banner"] .scr .sb-bar { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid var(--ah-line-soft); background: var(--ah-surface); }
+[data-block="alice-05-shipping-banner"] .sb-dots { display: inline-flex; gap: 4px; }
+[data-block="alice-05-shipping-banner"] .sb-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--ah-line); }
+[data-block="alice-05-shipping-banner"] .sb-url { flex: 1; min-width: 0; padding: 2px 10px; border-radius: var(--ah-r-pill); background: var(--ah-sunken); font: 400 11.5px var(--ah-mono); color: var(--ah-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[data-block="alice-05-shipping-banner"] .sb-live { font: 600 10.5px var(--ah-font); letter-spacing: .06em; text-transform: uppercase; color: var(--ah-accent-ink); white-space: nowrap; }
+[data-block="alice-05-shipping-banner"] .sb-site picture { display: block; aspect-ratio: 1200 / 650; overflow: hidden; background: #faf7f0; }
+[data-block="alice-05-shipping-banner"] .sb-site img { display: block; width: 100%; height: auto; }
+
+[data-block="alice-05-shipping-banner"] .sb-hist { border: 1px solid var(--ah-line); border-radius: 10px; background: var(--ah-surface); padding: 10px 12px 2px; }
+[data-block="alice-05-shipping-banner"] .scr .sb-h { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; font-size: 13px; }
+[data-block="alice-05-shipping-banner"] .sb-h span { font-size: 12px; color: var(--ah-muted); }
+[data-block="alice-05-shipping-banner"] .sb-hist ol { list-style: none; margin: 0; padding: 0; }
+[data-block="alice-05-shipping-banner"] .sb-hist li { position: relative; padding: 0 0 10px 30px; }
+[data-block="alice-05-shipping-banner"] .sb-hist li::before { content: ""; position: absolute; left: 9.5px; top: 22px; bottom: 0; width: 1.5px; background: var(--ah-line); }
+[data-block="alice-05-shipping-banner"] .sb-hist li:last-child::before { display: none; }
+[data-block="alice-05-shipping-banner"] .sb-who { position: absolute; left: 0; top: 0; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font: 600 11px var(--ah-font); font-style: normal; color: #fff; background: var(--who); }
+[data-block="alice-05-shipping-banner"] .sb-a { --who: #2c6e3f; }
+[data-block="alice-05-shipping-banner"] .sb-b { --who: #3e5b6e; }
+[data-block="alice-05-shipping-banner"] .sb-c { --who: #b45a33; }
+[data-block="alice-05-shipping-banner"] .scr .sb-l { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; font-size: 12.5px; line-height: 20px; }
+[data-block="alice-05-shipping-banner"] .sb-l time { color: var(--ah-muted); font-size: 12px; }
+[data-block="alice-05-shipping-banner"] .scr .sb-l code { margin-left: auto; font: 400 11px var(--ah-mono); color: var(--ah-muted); background: none; padding: 0; }
+[data-block="alice-05-shipping-banner"] .scr .sb-what { font-size: 12.5px; line-height: 1.4; color: var(--ah-ink-2); }
+[data-block="alice-05-shipping-banner"] .scr .sb-why { margin-top: 5px; padding: 6px 9px; border-radius: 8px; background: var(--ah-sunken); font-size: 12.5px; line-height: 1.4; color: var(--ah-ink); }
+[data-block="alice-05-shipping-banner"] .sb-why span { font-weight: 600; }
+[data-block="alice-05-shipping-banner"] .sb-hit .sb-why { background: color-mix(in srgb, var(--ah-accent) 12%, var(--ah-surface)); box-shadow: inset 2px 0 0 var(--ah-accent); border-radius: 2px 8px 8px 2px; }
+[data-block="alice-05-shipping-banner"] .sb-hit .sb-what, [data-block="alice-05-shipping-banner"] .sb-now .sb-what { color: var(--ah-ink); font-weight: 500; }
+@media (max-width: 600px) {
+  [data-block="alice-05-shipping-banner"] .sb-site picture { aspect-ratio: 720 / 1010; }
+  [data-block="alice-05-shipping-banner"] .sb-live { display: none; }
+}
