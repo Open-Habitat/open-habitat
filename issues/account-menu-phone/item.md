@@ -12,7 +12,7 @@ lane_seq: 1
 preparation: ready
 ---
 
-# Prototype: the account menu on the phone (sheet vs popover)
+# Phone account menu as a bottom sheet
 
 ## Description
 
