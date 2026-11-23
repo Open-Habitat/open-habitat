@@ -1,0 +1,71 @@
+/* The slim product window and the pieces around the conversation (attachment, drafts, diff, view panel). Shared; from round 6's round.css. */
+
+/* ---------- A screen: the product's conversation language in a slim window ---------- */
+.scr { container-type: inline-size; border: 1px solid var(--ah-line); border-radius: 14px; background: var(--ah-bg); box-shadow: var(--ah-shadow-app); overflow: hidden; font: 400 var(--ah-size-body)/var(--ah-lh-body) var(--ah-font); color: var(--ah-ink); text-align: left; }
+.scr-bar { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 14px; border-bottom: 1px solid var(--ah-line); background: var(--ah-surface); font-size: 13px; }
+.scr-bar .oh-mark { color: var(--ah-accent); }
+.scr-bar b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.scr-bar span { color: var(--ah-muted); margin-left: auto; white-space: nowrap; }
+.scr-main { display: grid; }
+.scr-convo { display: flex; flex-direction: column; gap: 12px; padding: 16px; min-width: 0; }
+.pg .scr p { margin: 0; }
+.pg .scr .prose p { margin: 0 0 .5em; }
+.pg .scr .prose p:last-child { margin-bottom: 0; }
+.pg .scr code { font-size: var(--ah-size-code); }
+.pg .scr .prose em { font-style: italic; }
+.pg .scr pre { margin: 0; padding: 8px 10px; font: 400 12px/1.6 var(--ah-mono); border: 1px solid var(--ah-line-soft); background: var(--ah-sunken); border-radius: 8px; color: var(--ah-ink-2); white-space: pre-wrap; overflow-wrap: anywhere; }
+.scr .cell { display: flex; flex-direction: column; gap: 10px; }
+.scr .md-table { margin-bottom: .5em; }
+.scr .md-table table { font-size: 13px; }
+.scr .md-table :is(td, th) { overflow-wrap: normal; white-space: nowrap; padding-right: 14px; }
+@container (max-width: 420px) { .scr .md-table :is(td, th) { padding-right: 8px; font-size: 12.5px; } }
+.scr .working-lbl { margin: 4px 0 0; }
+
+/* A file the person attached, and a file the agent offers. */
+.att { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border: 1px solid var(--ah-line); border-radius: 8px; background: var(--ah-surface); font-size: 13px; width: fit-content; max-width: 100%; }
+.att svg, .offer svg, .diff-h svg, .f-h svg, .scr-view-h svg { width: 16px; height: 16px; flex: none; color: var(--ah-muted); }
+.att-n { font-weight: 500; }
+/* Mail drafts in the person's own mailbox. */
+.drafts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.dr { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 10px 12px; border: 1px solid var(--ah-line); border-radius: 10px; background: var(--ah-surface); font-size: 13px; }
+.dr > svg { width: 17px; height: 17px; color: var(--ah-muted); margin-top: 1px; }
+.dr-main { display: flex; flex-direction: column; min-width: 0; }
+.dr-to { color: var(--ah-muted); font-size: 12px; overflow-wrap: anywhere; }
+.dr-first { color: var(--ah-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dr-s { font: 600 11px var(--ah-font); letter-spacing: .04em; text-transform: uppercase; padding: 3px 8px; border-radius: var(--ah-r-pill); white-space: nowrap; }
+.dr-sent .dr-s { background: var(--ah-ok-soft); color: var(--ah-ok); }
+@container (max-width: 460px) {
+  .dr { grid-template-columns: 18px minmax(0, 1fr); }
+  .dr-s { grid-column: 2; justify-self: start; }
+}
+.dr-draft .dr-s { background: var(--ah-sunken); color: var(--ah-turn); box-shadow: inset 0 0 0 1px var(--ah-turn-line); }
+
+/* What changed: the product's own diff colours. */
+.diff { display: flex; flex-direction: column; gap: 4px; }
+.pg .diff-h, .pg .f-h { display: flex; align-items: center; gap: 6px; font: 500 12px var(--ah-mono); color: var(--ah-ink-2); }
+.pg .scr .diff pre span, .f-file pre span { display: block; padding: 0 6px; margin: 0 -6px; border-radius: 3px; }
+.diff pre .add, .f-file pre .add { background: var(--ah-accent-soft); color: var(--ah-accent-ink); }
+.diff pre .del, .f-file pre .del { background: var(--ah-err-soft); color: var(--ah-err); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--ah-err) 50%, transparent); }
+.pg .scr pre.outbox { white-space: pre; overflow-x: auto; }
+.pg .hist { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--ah-line-soft); font-size: 12.5px; color: var(--ah-muted); }
+.hist .quiet-btn { margin-left: -8px; color: var(--ah-accent-ink); }
+
+/* A view opened beside the conversation: here, slides. */
+.scr-view { border-top: 1px solid var(--ah-line); background: var(--ah-surface); min-width: 0; display: flex; flex-direction: column; }
+.pg .scr-view-h { display: flex; align-items: center; gap: 6px; padding: 9px 12px; border-bottom: 1px solid var(--ah-line-soft); font: 500 12.5px var(--ah-mono); }
+.scr-view-h small { margin-left: auto; font: 600 10.5px var(--ah-font); letter-spacing: .08em; text-transform: uppercase; color: var(--ah-muted); }
+.scr-view-b { padding: 14px; background: var(--ah-sunken); flex: 1; }
+.slides { display: flex; flex-direction: column; gap: 10px; }
+.slide { aspect-ratio: 16 / 9; display: flex; flex-direction: column; gap: 5px; padding: 6% 7%; background: #fff; border-radius: 6px; box-shadow: 0 1px 3px rgba(16, 24, 40, .12); color: #1d2a3a; container-type: inline-size; }
+.slide small { font-size: max(9px, 3.6cqi); color: #5a7a5f; letter-spacing: .04em; text-transform: uppercase; }
+.slide b { font-size: max(12px, 6.4cqi); line-height: 1.12; }
+.slide span { font-size: max(10px, 4.2cqi); color: #4b5563; margin-top: auto; }
+.slide i { display: block; width: var(--w); padding: 1.4cqi 2cqi; margin-top: 1.4cqi; border-radius: 3px; background: #dfe9dd; font: 600 max(9px, 3.8cqi) var(--ah-font); font-style: normal; color: #1f5430; }
+.slide i:first-of-type { background: #f2dcd3; color: #8a3a22; }
+.slide.s1 { background: #23432c; color: #fff; }
+.slide.s1 small { color: #a9d0b0; }
+.slide.s1 span { color: #d7e7d9; }
+@container (min-width: 640px) {
+  .has-view .scr-main { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
+  .scr-view { border-top: 0; border-left: 1px solid var(--ah-line); }
+}
