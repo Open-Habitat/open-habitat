@@ -50,7 +50,8 @@
 // to with its files and a files-only restore can be undone; a restore never
 // writes through a symlink; there is no Git reset.
 import { createHash, randomUUID } from 'node:crypto';
-import { spawn } from 'node:child_process';
+import { scopeFiles, restoreWithUndo } from './turn-snapshots/src/turn-snapshots/restore-policy.ts';
+export { checkIgnore, ignoredFiles, notARepository } from './turn-snapshots/src/turn-snapshots/restore-policy.ts';
 import { createReadStream, readFileSync } from 'node:fs';
 import { chmod, copyFile, lstat, mkdir, rename, stat, unlink } from 'node:fs/promises';
 import { homedir } from 'node:os';
@@ -317,82 +318,13 @@ export function editedOn(entries) {
   return { paths, legacy };
 }
 
-// Git run as the person on their own workspace, read-only: the recorder's
-// rules for which configuration to trust do not apply to a question Git
-// answers from the workspace's own ignore files. Stopped after `ms`.
-function workspaceGit(args, cwd, input, ms = 5000) {
-  return new Promise((done) => {
-    const env = {};
-    for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('GIT_')) env[k] = v;
-    Object.assign(env, { GIT_TERMINAL_PROMPT: '0', GIT_CONFIG_NOSYSTEM: '1', GIT_OPTIONAL_LOCKS: '0', LC_ALL: 'C' });
-    let out = Buffer.alloc(0), err = '', settled = false;
-    const finish = (code) => { if (!settled) { settled = true; clearTimeout(timer); done({ code, stdout: out, stderr: err }); } };
-    let child;
-    try { child = spawn('git', ['-c', 'core.fsmonitor=false', '-C', cwd, ...args], { cwd, env, stdio: ['pipe', 'pipe', 'pipe'] }); } catch { return finish(null); }
-    const timer = setTimeout(() => { child.kill('SIGKILL'); finish(null); }, ms);
-    child.on('error', (e) => finish(e?.code === 'ENOENT' ? 'unavailable' : null));
-    child.stdout.on('data', (c) => { if (out.length < 4 << 20) out = Buffer.concat([out, c]); });
-    child.stderr.on('data', (c) => { if (err.length < 65536) err += c.toString('utf8'); });
-    child.on('close', (code) => finish(code));
-    child.stdin.on('error', () => {});
-    child.stdin.end(input ?? '');
-  });
-}
-// Git's own message (LC_ALL=C) for a folder in no repository.
-export const notARepository = (stderr) => /^fatal: not a git repository/m.test(stderr);
-async function nearestFolder(file) {
-  for (let d = dirname(file); ; d = dirname(d)) {
-    try { if ((await stat(d)).isDirectory()) return d; } catch { /* Not there (any more): its parent. */ }
-    if (dirname(d) === d) return undefined;
-  }
-}
-// The files (absolute) Git ignores now, asked from each file's nearest
-// existing folder, so a file in another or a nested repository is asked
-// there and one in no repository is not ignored. A file Git could not
-// answer for is unknown; the caller leaves it alone.
-export async function ignoredFiles(files) {
-  const ignored = new Set(), unknown = new Set(), groups = new Map();
-  for (const file of files) {
-    const folder = await nearestFolder(file);
-    if (!folder) { unknown.add(file); continue; }
-    if (!groups.has(folder)) groups.set(folder, []);
-    groups.get(folder).push(file);
-  }
-  for (const [folder, group] of groups) {
-    const names = group.map((f) => relative(folder, f));
-    const listed = await checkIgnore(folder, names);
-    for (const [i, f] of group.entries()) if (!listed) unknown.add(f); else if (listed.has(names[i])) ignored.add(f);
-  }
-  return { ignored, unknown };
-}
-// The names (relative to folder) Git ignores, or null when it cannot say.
-// Outside every repository nothing is ignored. Any other failure (a timeout,
-// a broken configuration, which also exits 128) is no answer.
-export async function checkIgnore(folder, names) {
-  if (!names.length) return new Set();
-  const r = await workspaceGit(['check-ignore', '-z', '--stdin'], folder, names.join('\0') + '\0');
-  if (r.code === 0) return new Set(r.stdout.toString('utf8').split('\0').filter(Boolean));
-  if (r.code === 1 || r.code === 'unavailable') return new Set();
-  const inside = await workspaceGit(['rev-parse', '--is-inside-work-tree'], folder);
-  return inside.code === 128 && notARepository(inside.stderr) ? new Set() : null;
-}
-
 // Which of the per-file copies' paths a restore may write: one an edit or a
 // write named in `entries` (see editedOn) that Git does not ignore. The rest
 // were changed, if at all, by somebody else, or are ignored files that are
 // never touched (Jari 21.11.2026). A path whose ignore status Git could not
 // tell is left as it is and counted as an error.
 export async function fallbackScope(paths, cwd, entries) {
-  const { paths: edited, legacy } = editedOn(entries);
-  const named = paths.filter((p) => legacy || edited.has(p));
-  const { ignored, unknown } = await ignoredFiles(named.map((p) => resolveTracking(cwd, p)));
-  const scope = new Set(), errors = [];
-  for (const p of named) {
-    const file = resolveTracking(cwd, p);
-    if (unknown.has(file)) errors.push({ path: p, error: 'Git could not tell whether the file is ignored' });
-    else if (!ignored.has(file)) scope.add(p);
-  }
-  return { scope, errors };
+  return scopeFiles(paths, cwd, editedOn(entries));
 }
 
 // ---------- Turn snapshots ----------
@@ -412,8 +344,6 @@ function validUndoPoint(u) {
   return u && typeof u === 'object' && safe(u.store) && typeof u.tree === 'string' && OBJECT_ID.test(u.tree) && typeof u.root === 'string' && isAbsolute(u.root) && typeof u.cwd === 'string' && isAbsolute(u.cwd) && typeof u.timestamp === 'string' && Array.isArray(u.paths) && u.paths.length <= 100000 && u.paths.every((p) => typeof p === 'string' && p !== '');
 }
 const undoRecord = (u) => ({ version: 1, userEntryId: 'oh-rewind', phase: 'start', tree: u.tree, reason: null, store: u.store, root: u.root, cwd: u.cwd, timestamp: u.timestamp, skipped: u.skipped ?? { count: 0, paths: [], truncated: false } });
-const absoluteUnder = (root, paths) => new Set(paths.map((p) => resolve(root, ...p.split('/'))));
-const rootRelative = (root, files) => files.map((f) => relative(root, f).split(sep).join('/'));
 
 // Puts the paths back to `target`'s tree after taking a snapshot of the
 // files as they are (the undo point). Without an undo point nothing is
@@ -422,59 +352,7 @@ const rootRelative = (root, files) => files.map((f) => relative(root, f).split(s
 // the per-file copies leave them alone; without an undo point they answer
 // for none and the copies restore what they track.
 export async function restoreSnapshot(dir, ctx, storeId, target, pathsOrFind) {
-  // A store the retention sweep removed, or a tree Git cannot read: the
-  // snapshots answer for nothing and the per-file copies do what they can.
-  try { return await restoreFromSnapshot(dir, ctx, storeId, target, typeof pathsOrFind === 'function' ? await pathsOrFind() : pathsOrFind); } catch (e) {
-    return { covered: new Set(), changed: [], errors: [{ path: target.root, error: message(e) }], undo: null };
-  }
-}
-// A path a snapshot left out (too large, unreadable): it, or anything under
-// a skipped directory.
-const skippedBy = (summary) => {
-  const skipped = (summary?.paths ?? []).map((p) => p.path);
-  return (path) => skipped.some((s) => path === s || path.startsWith(`${s}/`));
-};
-async function restoreFromSnapshot(dir, ctx, storeId, target, all) {
-  const m = await snapshotsModule();
-  // A path the target snapshot skipped has no content there: the per-file
-  // copies answer for it.
-  const inTarget = skippedBy(target.skipped);
-  let paths = all.filter((p) => !inTarget(p));
-  // A file Git ignores now is not written either (Jari 21.11.2026), nor one
-  // Git cannot say about; the per-file copies' scope leaves them too.
-  const ignored = await checkIgnore(target.root, paths);
-  const unanswered = ignored ? [] : paths;
-  paths = ignored ? paths.filter((p) => !ignored.has(p)) : [];
-  if (!paths.length) return { covered: new Set(), changed: [], errors: unanswered.map((p) => ({ path: p, error: 'Git could not tell whether the file is ignored' })), undo: null };
-  const now = await m.snapshotNow({ agentDir: dir, storeId, cwd: target.cwd, sessionFile: ctx.sessionManager.getSessionFile?.() ?? null, labelPrefix: 'oh-rewind' });
-  // Every file the restore overwrites must be in the undo point: one the
-  // undo snapshot skipped (or a skip list too long to name them all) is left
-  // to the per-file copies.
-  if (!now.tree || now.root !== target.root || now.skipped?.truncated) return { covered: new Set(), changed: [], errors: paths.map((p) => ({ path: p, error: `no undo point (${now.reason ?? (now.skipped?.truncated ? 'too many skipped files' : 'different repository')})` })), undo: null };
-  const inUndo = skippedBy(now.skipped);
-  // A file on disk that the undo point does not hold (one that became
-  // ignored without Git saying so here, or a race) has no other copy.
-  const held = await inTree(dir, storeId, now.tree, target.root, paths);
-  const unsaved = paths.filter((p) => inUndo(p) || !held(p));
-  paths = paths.filter((p) => !inUndo(p) && held(p));
-  const result = await m.restorePaths(dir, target, paths);
-  const changed = rootRelative(target.root, result.changedFiles);
-  return { covered: absoluteUnder(target.root, paths), changed, errors: [...unanswered.map((p) => ({ path: p, error: 'Git could not tell whether the file is ignored' })), ...result.errors, ...unsaved.map((p) => ({ path: p, error: 'not in the undo point' }))], undo: { store: storeId, tree: now.tree, root: now.root, cwd: target.cwd, timestamp: now.startedAt, skipped: now.skipped, paths: changed } };
-}
-// Whether each root-relative path either is missing on disk or is in `tree`.
-// A path Git cannot list is treated as not held.
-async function inTree(dir, storeId, tree, root, paths) {
-  const { storeGit, storeDirectory } = await import('./turn-snapshots/src/turn-snapshots/store.ts');
-  const onDisk = [];
-  for (const p of paths) { try { await lstat(resolve(root, ...p.split('/'))); onDisk.push(p); } catch (e) { if (!isNotFound(e)) onDisk.push(p); } }
-  const listed = new Set();
-  for (let i = 0; i < onDisk.length; i += 200) {
-    const r = await storeGit(storeDirectory(dir, storeId), ['ls-tree', '-r', '-z', '--full-tree', '--name-only', tree, '--', ...onDisk.slice(i, i + 200)], { timeoutMs: 10_000, env: { GIT_LITERAL_PATHSPECS: '1' } });
-    if (r.code !== 0) return () => false;
-    for (const name of r.stdout.toString('utf8').split('\0')) if (name) listed.add(name);
-  }
-  const absent = new Set(onDisk.filter((p) => !listed.has(p)));
-  return (p) => !absent.has(p);
+  return restoreWithUndo({ agentDir: dir, storeId, sessionFile: ctx.sessionManager.getSessionFile?.() ?? null, labelPrefix: 'oh-rewind' }, target, pathsOrFind);
 }
 // The paths the agent's runs changed from the first run in `records` on.
 async function changedSince(dir, records, userEntryId) {
