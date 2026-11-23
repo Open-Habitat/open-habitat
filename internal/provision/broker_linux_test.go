@@ -445,3 +445,50 @@ func TestStartupBudgetsOnlyAtBoot(t *testing.T) {
 		t.Fatal(host.seen)
 	}
 }
+
+// sliceHost records the broker's slice drop-in writes beside the fake host.
+type sliceHost struct {
+	*fakeHost
+	slices []string
+	fail   bool
+}
+
+func (s *sliceHost) ensureDaemonSlice(_ context.Context, i ExecutorIdentity) error {
+	s.slices = append(s.slices, i.username)
+	if s.fail {
+		return ErrInvalid
+	}
+	return nil
+}
+
+// An installation upgraded by something other than host apply/upgrade has
+// committed bindings without the daemon's slice drop-in. Startup verifies
+// that drop-in, so it must write it first, for revoked bindings too, or the
+// broker refuses to start on the first such upgrade.
+func TestBrokerStartupWritesMissingSliceDropIns(t *testing.T) {
+	w, h := writerFixture(t)
+	put(t, w.Dir, "allowlist.json", `{"version":1,"epoch":4,"ids":[{"id":"42"},{"id":"43"}]}`)
+	for _, u := range []struct{ id, name string }{{"42", "carol"}, {"43", "dana"}} {
+		if r := handle(w, "ensure", u.id, u.name); r.Route == nil {
+			t.Fatal(r)
+		}
+	}
+	put(t, w.Dir, "allowlist.json", `{"version":1,"epoch":5,"ids":[{"id":"42"}]}`)
+	s := &sliceHost{fakeHost: h}
+	w.Executor = s
+	if _, err := w.startupBindings(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(s.slices, ",") != "carol,dana" {
+		t.Fatalf("slice drop-ins written for %v", s.slices)
+	}
+	var guards []string
+	w.GuardEvent = func(stage string) { guards = append(guards, stage) }
+	s.fail, s.slices = true, nil
+	if _, err := w.startupBindings(context.Background()); !errors.Is(err, ErrBrokerStartup) {
+		t.Fatalf("foreign drop-in accepted: %v", err)
+	}
+	if strings.Join(guards, ",") != "slice_dropin" || len(s.slices) != 1 {
+		t.Fatalf("guards %v, slices %v", guards, s.slices)
+	}
+}

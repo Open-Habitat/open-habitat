@@ -243,6 +243,12 @@ func removeDaemonSliceAt(base string, owner uint32, name string) error {
 	return unix.Fsync(parent)
 }
 
+// daemonSliceWriter is the native executor's drop-in write, which broker
+// startup also runs for every binding it verifies.
+type daemonSliceWriter interface {
+	ensureDaemonSlice(context.Context, ExecutorIdentity) error
+}
+
 // ensureDaemonSlice is the unit step's write: the binding's drop-in, then a
 // reload so systemd sees it before the unit is verified.
 func (e *LinuxHostExecutor) ensureDaemonSlice(ctx context.Context, i ExecutorIdentity) error {

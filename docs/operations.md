@@ -1752,9 +1752,9 @@ a site that contains it, so upgrade first and add the field afterwards.
   tmux, editors, Taskfleet workers) and their Open Habitat daemon
   `open-habitat-daemon@<user>.service` with every Pi conversation and every
   build, test or server its tools start. The broker writes the daemon's
-  `Slice=` drop-in when it binds the person and removes it with them; apply
-  and upgrade add it for people bound earlier, and the upgrade's daemon
-  restart moves them. One drop-in therefore bounds each person separately,
+  `Slice=` drop-in when it binds the person and removes it with them; for
+  people bound earlier, apply, upgrade and every broker start add it, and
+  the daemon restart that follows moves them. One drop-in therefore bounds each person separately,
   for example `/etc/systemd/system/user-.slice.d/50-budget.conf`:
 
   ```ini

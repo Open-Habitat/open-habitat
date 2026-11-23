@@ -137,7 +137,7 @@ func ServeBroker(ctx context.Context) error {
 	writer.GuardEvent = func(stage string) {
 		// Writer supplies fixed literals only. Never log request, candidate,
 		// UID, route, path, command output or raw host errors.
-		if stage != "persistent_identity" && stage != "availability_error" && stage != "no_available_binding" && stage != "invalid_executor" && stage != "nss_probe" && stage != "group_probe" && stage != "parent_policy" && stage != "acl_policy" && stage != "path_probe" && stage != "unit_probe" && stage != "quota_not_enforced" && stage != "binding_quota_missing" && stage != "activation_uncertain" && stage != "quota_charged" {
+		if stage != "persistent_identity" && stage != "availability_error" && stage != "no_available_binding" && stage != "invalid_executor" && stage != "nss_probe" && stage != "group_probe" && stage != "parent_policy" && stage != "acl_policy" && stage != "path_probe" && stage != "unit_probe" && stage != "slice_dropin" && stage != "quota_not_enforced" && stage != "binding_quota_missing" && stage != "activation_uncertain" && stage != "quota_charged" {
 			return
 		}
 		log.Warn("broker_guard", "outcome", "rejected", "reason", stage)
@@ -299,6 +299,20 @@ func (w Writer) startupBindings(ctx context.Context) ([]ExecutorIdentity, error)
 			}
 		}
 		i := ExecutorIdentity{provider: "github", id: b.ID, username: b.Username, uid: b.UID}
+		// The broker owns each binding's daemon slice drop-in and the
+		// verification below requires it. A binding committed before the
+		// drop-in existed gets it here, under the ledger lock, whatever
+		// installed the new release: host upgrade writes it too, but an
+		// operator's own upgrade path need not. A foreign file in that
+		// directory is refused, never repaired.
+		if s, ok := w.Executor.(daemonSliceWriter); ok {
+			if err := s.ensureDaemonSlice(ctx, i); err != nil {
+				if w.GuardEvent != nil {
+					w.GuardEvent("slice_dropin")
+				}
+				return nil, ErrBrokerStartup
+			}
+		}
 		var verifyErr error
 		if native, ok := w.Executor.(*LinuxHostExecutor); ok {
 			verifyErr = native.startupIdentity(ctx, i, w.AdmitAny || a.admits(b.ID))
