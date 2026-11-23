@@ -17,6 +17,8 @@ stub. The picker and variants 2 and 3 are gone; so are Alice's other weeks
 
 ```
 build.mjs  check.mjs  BLOCKS.md  NOTES.md
+render.mjs                  the page rendered from the blocks; build.mjs and the
+                            website's front page (website/landing.mjs) both use it
 engine/                     shared: the conductor's
   kit.mjs                   components a block draws with (product markup)
   story.mjs                 day model, sidebar, story sections rendered to HTML
