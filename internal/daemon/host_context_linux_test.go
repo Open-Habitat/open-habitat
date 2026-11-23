@@ -126,6 +126,20 @@ func TestHostContextCrossWorkspaceGuidance(t *testing.T) {
 	}
 }
 
+// An agent that ends its turn with work in flight has to learn the command
+// that keeps the conversation out of the person's turn, in the guide and at
+// both places that start a turn-notified wait.
+func TestHostContextRunningSection(t *testing.T) {
+	for _, want := range []string{"open-habitat agent section update --current --section running --json", "last tool call before", "conversation `running` and end your turn"} {
+		if !strings.Contains(hostContext, want) {
+			t.Errorf("missing rail guidance: %s", want)
+		}
+	}
+	if !strings.Contains(helpersContext, "set the conversation `running`") {
+		t.Error("helper recipe does not set the conversation running before the wait's turn ends")
+	}
+}
+
 // Every conversation launch gets the helper recipe; auxiliary launches do not.
 func TestLaunchContextHelperRecipe(t *testing.T) {
 	home := t.TempDir()

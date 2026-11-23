@@ -1,59 +1,62 @@
 
 ## Helpers
 
-A helper (Avustaja) is a named Taskfleet resident run that belongs to this conversation: it works in
-rounds in its own worktree, reports each round, and waits with its session
-kept for your next message. When the person asks for a helper ("tee
-avustaja"), this is what they mean. They talk to you; you relay.
+A helper (Avustaja) is a named Taskfleet resident run that belongs to this
+conversation. It works in rounds in its own worktree, reports each round, and
+then waits with its session kept for your next message. "Tee avustaja" asks
+for one. The person talks to you and you relay; nothing in the browser lands,
+messages or stops a helper.
 
-Helpers require a Taskfleet version that supports resident runs. Check
-`taskfleet run create --help` for `--resident` before the first creation;
-if unavailable, explain that this host cannot create helpers yet. Never
-substitute an ordinary run while claiming it is a resident helper.
+Helpers need a Taskfleet with resident runs: `--resident` in
+`taskfleet run create --help`. An ordinary run ends with its task and cannot
+take a next message, so it is no substitute; on an older Taskfleet, tell the
+person this host cannot make helpers yet.
 
-Make one in a single call from the repository it works in. Write a brief file
-with the round's task and where its result goes (Taskfleet adds the round
-protocol), name the helper after its job, and create it:
+Create a helper from the repository it works in. Write a brief with the
+round's task and where its result goes (Taskfleet adds the round protocol) and
+name the helper after its job:
 
 ```sh
 taskfleet run create --kind spinoff --resident --name reviewer --headless --title 'Catalog review' --prompt-file brief.md --output json
 ```
 
 Names are lowercase (`[a-z][a-z0-9-]*`, at most 48 bytes, no doubled or
-trailing hyphen) and scoped to the creating conversation in the repository.
-Another conversation can use the same name without a collision. If create
-reports `resident_name_in_use`, inspect your existing helper rather than
-creating a duplicate under a new name.
+trailing hyphen) and scoped to the creating conversation in that repository,
+so another conversation's helpers never collide with yours.
+`resident_name_in_use` means you already have that helper: inspect it; a new
+name would make a duplicate.
 
-Use the returned run id rather than the name from here on. Start
-`taskfleet run wait <run-id> --output json` with the process tool and turn
-notifications, set the conversation `running`, then end your turn. The wait
-settles as soon as a round is reported (`round_reported: true`, its summary in
-`resident.last_round`), not only when the run ends. Then land the round with
-`taskfleet run land <run-id> --output json` (a `land_conflict` lands nothing;
-the next message hands it to the helper), tell the person what the round did,
-and for the next round send `taskfleet run message <run-id> --body-file
-message.md` and wait again. When
-the work is done, `taskfleet run merge <run-id>` lands the last round and
-ends the helper; `taskfleet run cancel <run-id>` ends one with nothing left
-to land. Nothing in the browser lands, messages or stops a helper for you.
+From then on use the returned run id. A round goes like this:
 
-When the person asks to stop a helper's current work, or you need to redirect
-an ongoing round, interrupt the turn rather than cancel the helper. From its
-repository, use `taskfleet run interrupt <name> --output json` (the returned
-run id works too). This keeps its worktree, uncommitted changes and session;
-`run wait` settles with `round_interrupted: true`, not a completed round.
-Check the interrupt reply for the worker's exit before sending new work. Send
-the revised task with `taskfleet run message <run-id> --body-file message.md`
-to resume the same helper. An interruption is not a round report to land.
+- Start `taskfleet run wait <run-id> --output json` with the process tool and
+  turn notifications, set the conversation `running`, and end your turn. The
+  wait settles when a round is reported (`round_reported: true`, its summary
+  in `resident.last_round`), not only when the run ends.
+- Land the round with `taskfleet run land <run-id> --output json` and tell the
+  person what it did. A `land_conflict` lands nothing; your next message hands
+  the conflict to the helper.
+- For the next round, send `taskfleet run message <run-id> --body-file
+  message.md` and wait again.
 
-List this conversation's own runs in any repository; entries with a non-null
-`resident` are its named helpers:
+When the work is done, `taskfleet run merge <run-id>` lands the last round and
+ends the helper; `taskfleet run cancel <run-id>` ends one that has nothing
+left to land.
+
+To stop a helper's current work or redirect a round, interrupt it; cancelling
+would end the helper. From its repository,
+`taskfleet run interrupt <name> --output json` (the run id works too) keeps
+its worktree, uncommitted changes and session. The wait then settles with
+`round_interrupted: true`, which is not a round to land. Once the interrupt
+reply shows the worker has exited, send the revised task with
+`taskfleet run message` and the same helper resumes.
+
+This conversation's runs in every repository, where a non-null `resident`
+marks a helper:
 
 ```sh
 taskfleet run list --creator-session current --json
 ```
 
-Helpers created by another conversation are not yours to manage or report.
-When the person archives this conversation its helpers wait, and they come
-back with it when it is restored.
+Helpers of other conversations are theirs to manage and report. When the
+person archives this conversation its helpers wait, and they come back with it
+when it is restored.
