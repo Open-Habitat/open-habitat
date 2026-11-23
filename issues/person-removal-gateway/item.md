@@ -1,8 +1,8 @@
 ---
 created: 2026-11-21
-updated: 2026-11-21
+updated: 2026-11-23
 type: feature
-status: open
+status: done
 priority: normal
 provenance: other
 provenance_detail: ADR 0037 implementation (technical decision run)
@@ -14,6 +14,11 @@ blocked_by: ['@person-removal-broker', '@person-removal-daemon']
 related: ['@person-removal']
 lane: person-removal
 lane_seq: 4
+closed: 2026-11-23
+closed_by: agent
+commits:
+- hash: f03d68878
+  summary: gateway removal
 ---
 
 # Gateway and CLI: administrator removal of a person, removal record and storage sum
@@ -30,3 +35,9 @@ Implements sections 1–2 and 6–10 of ADR 0037 (`docs/decisions/adr-0037-perso
 - Removal record per subject in administration state (GitHub id, login hint, actor, scheduled/cancelled/completed times, final outcome, provider counts); access list states `removal_scheduled`, `removing` (with reason) and `removed`; `admin access list --state removed`; clearing a record.
 - Storage read: rows of a person with a removal record carry the due date and count usage instead of the limit in the sum of limits.
 - Contract changes start in `contracts/v1/`.
+
+## Resolution
+
+### 2026-11-23T04:42:09Z · @agent
+
+Gateway/CLI removal and storage sum landed; decisions in result.md.
