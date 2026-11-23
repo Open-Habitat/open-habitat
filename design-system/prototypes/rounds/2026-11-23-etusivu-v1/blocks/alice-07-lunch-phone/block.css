@@ -1,0 +1,45 @@
+/* alice-07-lunch-phone: Open Habitat on Alice's phone. The conversation inside
+   is the kit's product markup in a .scr, so product.css shapes it; this file
+   draws the phone, the product's slim mobile header and composer. */
+[data-block="alice-07-lunch-phone"] .lp-stage { display: flex; justify-content: center; align-items: center; min-height: 100%; padding: 28px 12px; box-sizing: border-box; background: radial-gradient(120% 80% at 50% 0%, var(--ah-surface) 0%, var(--ah-sunken) 70%); border-radius: 14px; }
+[data-block="alice-07-lunch-phone"] .lp-phone { position: relative; width: min(100%, 340px); height: 690px; max-height: calc(100vh - 140px); min-height: 560px; padding: 11px; box-sizing: border-box; border-radius: 46px; background: #141a16; box-shadow: inset 0 0 0 1.5px #2c362f, 0 1px 0 1px #0a0d0b, 0 24px 48px -18px rgba(20, 30, 22, .45), 0 8px 18px -8px rgba(20, 30, 22, .3); display: flex; flex-direction: column; }
+[data-block="alice-07-lunch-phone"] .lp-status { display: flex; align-items: center; justify-content: space-between; height: 38px; padding: 0 22px 0 26px; border-radius: 36px 36px 0 0; background: var(--ah-surface); color: var(--ah-ink); font: 600 13.5px var(--ah-font); font-variant-numeric: tabular-nums; position: relative; }
+[data-block="alice-07-lunch-phone"] .lp-island { position: absolute; left: 50%; top: 9px; width: 92px; height: 24px; margin-left: -46px; border-radius: 14px; background: #000; }
+[data-block="alice-07-lunch-phone"] .lp-sys { display: inline-flex; align-items: center; gap: 6px; }
+[data-block="alice-07-lunch-phone"] .lp-sys svg { height: 11px; width: auto; fill: currentColor; }
+[data-block="alice-07-lunch-phone"] .lp-sys svg:first-child { width: 16px; }
+[data-block="alice-07-lunch-phone"] .lp-sys svg:last-child { width: 24px; }
+[data-block="alice-07-lunch-phone"] .scr.lp-scr { flex: 1; min-height: 0; display: flex; flex-direction: column; border: 0; border-radius: 0 0 36px 36px; box-shadow: none; }
+[data-block="alice-07-lunch-phone"] .lp-bar { display: grid; grid-template-columns: 32px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 8px; align-items: center; padding: 6px 14px 9px 10px; background: var(--ah-surface); border-bottom: 1px solid var(--ah-line); }
+[data-block="alice-07-lunch-phone"] .lp-menu { grid-row: 1 / 3; position: relative; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; color: var(--ah-ink-2); }
+[data-block="alice-07-lunch-phone"] .lp-menu svg { width: 20px; height: 20px; }
+[data-block="alice-07-lunch-phone"] .lp-menu i { position: absolute; top: 1px; right: -1px; min-width: 15px; height: 15px; padding: 0 4px; box-sizing: border-box; border-radius: 8px; background: var(--ah-accent); color: var(--ah-on-accent); font: 600 10px/15px var(--ah-font); font-style: normal; text-align: center; }
+[data-block="alice-07-lunch-phone"] .lp-title { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 14.5px; }
+[data-block="alice-07-lunch-phone"] .lp-title .oh-mark { flex: none; color: var(--ah-turn); }
+[data-block="alice-07-lunch-phone"] .lp-title b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[data-block="alice-07-lunch-phone"] .lp-org { font-size: 12px; color: var(--ah-muted); padding-left: 22px; }
+[data-block="alice-07-lunch-phone"] .lp-feed { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column-reverse; padding: 12px 12px 14px; scrollbar-width: none; }
+[data-block="alice-07-lunch-phone"] .lp-feed::-webkit-scrollbar { display: none; }
+[data-block="alice-07-lunch-phone"] .lp-feed .c-feed { --ah-feed-gap: 10px; }
+[data-block="alice-07-lunch-phone"] .lp-feed .ah-message { font-size: 14px; }
+[data-block="alice-07-lunch-phone"] .lp-feed .ah-message-user { max-width: 92%; }
+[data-block="alice-07-lunch-phone"] .lp-day { justify-self: center; font: 500 11.5px var(--ah-font); color: var(--ah-faint); letter-spacing: .02em; }
+[data-block="alice-07-lunch-phone"] .lp-folder { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border: 1px solid var(--ah-line); border-radius: 8px; background: var(--ah-bg); font-size: 13px; }
+[data-block="alice-07-lunch-phone"] .lp-folder svg { width: 17px; height: 17px; flex: none; color: var(--ah-accent); }
+[data-block="alice-07-lunch-phone"] .lp-folder span { display: flex; flex-direction: column; line-height: 1.25; }
+[data-block="alice-07-lunch-phone"] .lp-folder b { font: 500 12.5px var(--ah-mono); }
+[data-block="alice-07-lunch-phone"] .lp-folder small { color: var(--ah-muted); font-size: 12px; }
+[data-block="alice-07-lunch-phone"] .lp-q { margin-top: 8px; }
+[data-block="alice-07-lunch-phone"] .lp-q ol { padding-left: 1.25em; }
+[data-block="alice-07-lunch-phone"] .u-note { display: flex; align-items: center; gap: 5px; margin-top: 4px; font-size: 12px; color: var(--ah-muted); }
+[data-block="alice-07-lunch-phone"] .u-note svg { width: 13px; height: 13px; color: var(--ah-accent); }
+[data-block="alice-07-lunch-phone"] .lp-comp { display: flex; align-items: center; gap: 6px; margin: 0 10px 12px; padding: 6px 6px 6px 14px; border: 1px solid var(--ah-control-line, var(--ah-line)); border-radius: 22px; background: var(--ah-surface); box-shadow: 0 1px 2px rgba(16, 24, 40, .06); }
+[data-block="alice-07-lunch-phone"] .lp-field { flex: 1; color: var(--ah-faint); font-size: 14px; }
+[data-block="alice-07-lunch-phone"] .lp-mic, [data-block="alice-07-lunch-phone"] .lp-send { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; }
+[data-block="alice-07-lunch-phone"] .lp-mic { color: var(--ah-accent-ink); background: var(--ah-accent-soft); }
+[data-block="alice-07-lunch-phone"] .lp-send { color: var(--ah-muted); background: var(--ah-sunken); }
+[data-block="alice-07-lunch-phone"] .lp-mic svg, [data-block="alice-07-lunch-phone"] .lp-send svg { width: 17px; height: 17px; }
+[data-block="alice-07-lunch-phone"] .lp-home { position: absolute; left: 50%; bottom: 17px; width: 110px; height: 4px; margin-left: -55px; border-radius: 2px; background: var(--ah-ink); opacity: .55; }
+@media (max-width: 480px) { [data-block="alice-07-lunch-phone"] .lp-stage { padding: 18px 8px; } [data-block="alice-07-lunch-phone"] .lp-phone { height: 640px; } }
+/* Tool output keeps its columns on the narrow screen and scrolls sideways. */
+[data-block="alice-07-lunch-phone"] .lp-feed .ah-tool-output pre { white-space: pre; overflow-x: auto; overflow-wrap: normal; font-size: 11px; }
