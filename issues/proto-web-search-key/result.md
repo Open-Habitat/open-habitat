@@ -1,5 +1,138 @@
 # Verkkohaun avain: palvelimen yhteinen avain ja henkilön rivi
 
+## Kierros 3: haku muiden palvelujen joukossa
+
+Kierros: `design-system/prototypes/rounds/2026-11-23-hakuavain-3/`
+(`NOTES.md` kertoo sivun rakenteen ja tarkistuksen). Rakennettu tiedosto:
+`design-system/prototypes/dist/hakuavain-3/offline.html`. Lähtökohta on
+Jarin päätös 23.11.: B eli ylläpitäjällä palvelimen *Integraatiot* ja
+henkilöllä *Asetukset › Tiedot agenteille*. Kierroksen 2 hakuavainlohko oli
+näillä sivuilla paljon suurempi kuin naapurinsa.
+
+Tällä kertaa näytetään molemmat sivut kokonaan, kuten tuotanto ne piirtää,
+ja naapurit ovat realistiset. Ylläpitäjällä Google, Apple, IMAP, CalDAV,
+CardDAV ja Dropbox ovat tarjolla, ja Microsoft odottaa sovelluksiaan.
+Henkilöllä sähköposti, Dropbox ja Trello on yhdistetty, ja Google ja
+Microsoft ovat lisättävinä. *Näkymä*, *Tilanne*, *Teema*, *Liike* ja *Kieli*
+ovat samat kuin kierroksella 2, ja samoin tilanteet: ylläpitäjällä kaksi ja
+henkilöllä kuusi.
+
+Akseli: **miten haku asettuu muiden palvelujen joukkoon.** Kaikissa
+suunnissa haku on samassa kohdassa kuin uusi palvelu olisi: ylläpitäjällä
+palvelutaulukon lopussa, henkilöllä yhdistettyjen tilien perässä, tai
+lisättävien ruuduissa, jos avainta ei ole.
+
+0. **Nyt**: Integraatiot ja Tiedot agenteille tänään, verkkohausta ei mitään.
+1. **A Palvelu kerrallaan** (Jarin ehdotus): Brave ja Staan ovat kumpikin oma
+   rivinsä kuten Google ja Dropbox, ja niissä on sama kirjainmerkki ja samat
+   sanat (*Tarjolla*, *Ei tarjolla*, *Ei käytössä*). Ylläpitäjä antaa
+   avaimen *Aseta avain…* -ikkunassa. Kun avain on annettu, rivillä on
+   *Avain*-valikko (*Vaihda avain…*, *Poista avain*) kuten *Tunnukset*
+   muilla. Henkilöllä avaimen palvelusta tulee yhdistetty kortti (*Brave ·
+   Ylläpitäjän avain …k7q2*, palvelurivinä *Verkkohaku*), ja toinen palvelu
+   on lisättävien ruuduissa.
+2. **B Yksi Verkkohaku-rivi**: haku on yksi palvelu muiden joukossa
+   (maapallomerkki, *Verkkohaku*). Rivi avaa ikkunan, jossa valitaan Brave
+   tai Staan ja annetaan avain. Henkilöllä on yksi kortti tai yksi ruutu.
+3. **C Tiivis rivi paikallaan**: sama yksi rivi samassa kohdassa kuin B,
+   mutta ikkunaa ei ole, vaan lomake avautuu rivin alle kuten kierroksella 2.
+   Henkilöllä tiivis kortti on aina yhdistettyjen tilien ensimmäisenä.
+
+**Suositus: A Palvelu kerrallaan.** Sivun muut rivit ovat nimettyjä
+palveluita, joilla on merkki, tila ja yksi painike. A on ainoa suunta, jossa
+haku näyttää täsmälleen samalta: ylläpitäjä tunnistaa *Aseta avain…*
+-ikkunan *Aseta tunnukset…* -ikkunan sisareksi, ja *Avain*-valikko toimii
+kuten *Tunnukset*. Henkilöllä Brave on samanlainen yhdistetty palvelu kuin
+Dropbox, ja palvelurivi kertoo, mitkä mallit käyttävät sitä. Lisäksi A on
+yksinkertaisin alussa. Staan pysyy piilossa, kunnes sen kattavuus on
+tarkistettu, joten aluksi näkyy vain yksi Brave-rivi, eikä lomakkeessa ole
+valintaa. Kun Staan tulee, se tulee uutena rivinä, kuten mikä tahansa
+palvelu.
+
+Muiden suuntien heikkoudet:
+
+- B on siisti, mutta *Verkkohaku* on kyky eikä palvelu, toisin kuin
+  naapurinsa. Palvelun valinta jää ikkunan sisälle, joten taulukosta ei näe,
+  mitä palvelua käytetään, ellei sitä lue tarkennusriviltä.
+- C on pienin muutos kierrokseen 2, mutta tyhjässä tilassa lomake on auki
+  taulukon sisällä ja kortissa. Juuri sen uusi asennus näkee ensimmäisenä,
+  ja silloin suhteet hajoavat taas.
+
+Kuvia ei ole tallennettu issueen, kuten ei kierroksillakaan 1 ja 2.
+`check.mjs` kirjoittaa ne (`r3-<n>-<suunta>-<näkymä>-<tapaus>-<leveys>-<teema>`)
+annettuun hakemistoon: kaikki tilanteet kaikissa suunnissa 1440 vaaleana ja
+koko sivuna, yksi tilanne kummastakin näkymästä 1440 tummana sekä 390
+vaaleana ja tummana (vaalea myös koko sivuna), kulut, avainvalikko ja
+englanti. Tarkistus: 382 tarkistusta, konsoli puhdas.
+
+### Mikä kierroksesta 2 säilyy ja mikä muuttuu
+
+Säilyy kaikissa: saneluavaimen logiikka, koehaku tallennettaessa (torjuttua
+ei tallenneta), kopiot lukumäärinä ja samoin sanoin, uusi avain korvaa
+aiemmat kopiot mutta ei omaa avainta, poisto ei peru kopioita, oma avain
+voittaa, eikä henkilölle kerrota yhteisestä avaimesta. Samoin säilyvät
+nimetyt poikkeamat: palvelun valinta, tieto siitä, mitkä mallit avainta
+käyttävät, ja myöhempi torjunta.
+
+Muotojen pakottamat muutokset:
+
+- **A ja B: lomake ei ole auki, kun avainta ei ole.** Ikkuna aukeaa vain
+  painamalla. Tilalla ylläpitäjän rivi sanoo *Ei tarjolla*, ja henkilön
+  ruutu sanoo punaisella *DeepSeek-mallit eivät hae verkosta ilman avainta*
+  ja *Lisää avain…* on ensisijainen painike. C pitää kierroksen 2
+  käytöksen.
+- **A: yksi hakupalvelu kerrallaan näkyy kahtena rivinä.** Toisen palvelun
+  rivi sanoo *Käytössä on Brave. Avain tähän korvaisi sen.*, ja sen
+  ikkunassa lukee, että tallennus korvaa yhteisen Brave-avaimen ja sen
+  kopiot samoin kuin avainta vaihdettaessa. Henkilöllä vastaavasti
+  *Korvaisi Brave-avaimesi*. Poikkeama 1 eli palvelun valinta siirtyy
+  lomakkeesta riville.
+- **Kaikki: kopioiden saajat ovat rivin tarkennusrivillä** (*4 sai avaimen,
+  1 käyttää omaa avaintaan.*), ja poiston jälkeen siinä lukee *Jo annetut
+  kopiot jäivät ennalleen*. A:n ja B:n valikon otsikossa on avain ja
+  päiväys, kuten *Tunnukset*-valikossa kerrotaan, kuka tunnukset asetti.
+  *Käyttö ja säilytys* on ikkunassa (C:ssä lomakkeen alla).
+- **Kaikki: myöhempi torjunta** on henkilön kortissa samalla tavalla kuin
+  muiden palvelujen ongelmat: huomautusrivi, palvelurivillä *Ei vastaa* ja
+  *Vaihda avain* ensisijaisena.
+
+### Host-tiedot
+
+Ei muutoksia kierrokseen 2. A:n rivit ja ruudut syntyvät samasta luvusta
+(`backend`, loppuosa, `set_at`, `given`) ja poikkeaman 2 luettelosta, joka
+kertoo, mitkä mallit hakevat itse.
+
+### Päätökset myöhempää arviota varten
+
+- **Haku on palvelujen lopussa**, ei ylimpänä: ylläpitäjällä taulukon
+  viimeisenä, henkilöllä yhdistettyjen tilien perässä tai lisättävien
+  ruuduissa, kuten uusi palvelu olisi. C:ssä tiivis kortti on yhdistettyjen
+  ensimmäisenä, koska se näkyy aina.
+- **Henkilön avain näkyy yhdistettynä korttina *Yhdistetyt tilit*
+  -otsikon alla** ja ruutuna *Lisää tili* -otsikon alla, vaikka avain ei ole
+  tili. Otsikot ovat tuotannon, eikä niitä muuteta tällä kierroksella.
+- **Henkilön palvelurivillä lukee *Käytössä*, ei *Toimii***, koska avainta
+  ei kokeilla sivua avattaessa. *Toimii* väittäisi enemmän kuin tiedetään.
+- **Henkilön *Poista* ei kysy vahvistusta**, kuten saneluavaimessa, vaikka
+  naapureiden *Poista…* avaa vahvistuksen. Ero on tahallinen: avaimen poisto
+  ei peru mitään palvelussa.
+- **Valikon sanat ovat *Avain*, *Vaihda avain…* ja *Poista avain***, kuten
+  *Tunnukset*, *Vaihda tunnukset…* ja *Poista tunnukset…*. *Poista avain*
+  on ilman kolmea pistettä, koska se ei avaa vahvistusta.
+- **Staan näkyy prototyypissä**, jotta A:n kaksi riviä tulevat arvioiduiksi.
+  Toteutus piilottaa sen, kunnes kattavuus on tarkistettu, eli A:ssa näkyy
+  silloin vain Brave.
+- **Kierros ei lisää rivejä asetusten hakuun.** Toteutus lisää A:ssa
+  `server-brave`- ja `server-staan`-rivit (kuten `server-google`) ja
+  henkilölle `web-search`-rivin.
+
+### Kysymys Jarille
+
+1. Kelpaako A? Jos kelpaa: riittääkö, että toisen palvelun avain korvaa
+   käytössä olevan (yksi palvelu kerrallaan, kuten nyt), vai pitäisikö
+   molempien avainten saada olla voimassa yhtä aikaa? Jälkimmäinen on
+   host-muutos: kaksi avainta, ja hakulaajennus valitsee niistä.
+
 ## Kierros 2: hakuavain toimii kuin saneluavain
 
 Kierros: `design-system/prototypes/rounds/2026-11-23-hakuavain-2/`
