@@ -8,7 +8,7 @@ const REPO = 'https://github.com/Open-Habitat/open-habitat';
 export default {
   id: 'hero',
   kind: 'section',
-  html: () => `<header class="top"><a class="brandword" href="#">${mark(24)} Open Habitat</a><nav><a href="#day">A day</a><a href="#can">What it can do</a><a href="#install">Install</a><a href="${REPO}">GitHub</a></nav></header>
+  html: () => `<header class="top"><a class="brandword" href="#">${mark(24)} Open Habitat</a><nav><a href="#day">A day</a><a href="#can">What it can do</a><a href="#install">Install</a><a href="/docs/">Docs</a><a href="${REPO}">GitHub</a><a href="/fi/" hreflang="fi" lang="fi">Suomeksi</a></nav></header>
 <section class="hero">
   <p class="eyebrow">Open source · on your own server · pre-release 0.1</p>
   <h1>Coding-grade AI agents <br>for your whole team.</h1>

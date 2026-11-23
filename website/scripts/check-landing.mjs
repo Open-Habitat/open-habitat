@@ -112,7 +112,7 @@ for (const p of paths.length ? paths : ['/', '/fi/']) {
         fail(`${tag}: ${block}: no Show work on screen`);
         continue;
       }
-      const toggle = page.locator('[data-check-pick]');
+      const toggle = page.locator('[data-check-pick]').first();
       await toggle.click();
       if ((await toggle.getAttribute('aria-expanded')) !== 'true') fail(`${tag}: ${block}: Show work did not open`);
       else opened++;
@@ -126,7 +126,7 @@ for (const p of paths.length ? paths : ['/', '/fi/']) {
       await glimpse.evaluate((e) => e.scrollIntoView({ block: 'center' }));
       await page.waitForTimeout(400);
       if (await onScreen('video')) {
-        const t = await page.locator('[data-check-pick]').evaluate(async (v) => {
+        const t = await page.locator('[data-check-pick]').first().evaluate(async (v) => {
           v.muted = true;
           await v.play();
           await new Promise((r) => setTimeout(r, 1200));
