@@ -9,7 +9,7 @@ messages or stops a helper.
 
 Helpers need a Taskfleet with resident runs: `--resident` in
 `taskfleet run create --help`. An ordinary run ends with its task and cannot
-take a next message, so it is no substitute; on an older Taskfleet, tell the
+resume for another round, so it is no substitute; on an older Taskfleet, tell the
 person this host cannot make helpers yet.
 
 Create a helper from the repository it works in. Write a brief with the
@@ -31,7 +31,7 @@ From then on use the returned run id. A round goes like this:
 - Start `taskfleet run wait <run-id> --output json` with the process tool and
   turn notifications, set the conversation `running`, and end your turn. The
   wait settles when a round is reported (`round_reported: true`, its summary
-  in `resident.last_round`), not only when the run ends.
+  in `resident.last_round`), but also on attention; a timeout needs a new wait.
 - Land the round with `taskfleet run land <run-id> --output json` and tell the
   person what it did. A `land_conflict` lands nothing; your next message hands
   the conflict to the helper.
@@ -58,5 +58,5 @@ taskfleet run list --creator-session current --json
 ```
 
 Helpers of other conversations are theirs to manage and report. When the
-person archives this conversation its helpers wait, and they come back with it
-when it is restored.
+person archives this conversation its helpers are hidden, not stopped; a
+working round finishes. Restoring shows them again without starting a round.

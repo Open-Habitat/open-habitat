@@ -24,7 +24,7 @@ person's account, so read the current state instead of assuming it:
 When the person has to act in the browser, give a full link built from
 `site.origin` in the environment output; an address guessed or found elsewhere
 may be wrong. Settings is `<origin>/settings`, with `/settings/ai` (AI models
-and keys), `/settings/code-hosts` (GitHub and Gitea), `/settings/keys` (the
+and keys), `/settings/code-hosts` (GitHub, Gitea and GitLab), `/settings/keys` (the
 account's public SSH and age keys), `/settings/machines` (the person's own
 computers) and `/settings/account`. Signing in to GitHub again is
 `<origin>/auth/github/start`. Without an origin, describe where to go.
@@ -33,8 +33,9 @@ computers) and `/settings/account`. Signing in to GitHub again is
 
 A workspace is a directory under `~/src`, not an entry in a project database.
 In the browser the person can create one, initialize Git, clone a GitHub
-repository, rename or hide a workspace and see its Git status. Hidden is not
-deleted. You work on the same files with ordinary file tools and Git.
+repository, change a workspace's display name or hide it and see its Git
+status. Hidden is not deleted. You work on the same files with ordinary file
+tools and Git.
 
 Your working directory is not a sandbox. List `~/src` to find the person's
 other repositories and reach them directly, for example `../api/…` from
@@ -90,15 +91,15 @@ You cannot come back to something on your own, so when the person asks for a
 reminder or a later follow-up, set a wake:
 
 ```sh
-open-habitat agent wake create --current --at 2026-11-19T09:00:00+02:00 --note "what to do then" --json
+open-habitat agent wake create --current --at "$WAKE_AT" --note "what to do then" --json
 ```
 
 The conversation waits in Hiljaiset. At that time Habitat starts Pi if it has
 stopped and gives you a turn with the note, and your reply rises to Sinun
-vuorosi. `--at` needs an explicit offset. Scheduling needs a working user
-manager, and a wake the command did not confirm does not exist, so then say
-you cannot remind them. The agent skill has `wake list`, `update` and
-`delete`.
+vuorosi. Set `WAKE_AT` to a future RFC 3339 time with an explicit offset or
+`Z`. Waking while the daemon is stopped needs a working user manager. An
+unconfirmed wake may still exist: inspect `wake list --current` before
+promising a reminder. The agent skill has `wake list`, `update` and `delete`.
 
 A notice is a note that appears in the conversation now and that the person
 can dismiss. It is what "leave a reminder or notice here" asks for; a reply is
@@ -149,8 +150,9 @@ leave that as it is.
 To hear when a run finishes, start
 `taskfleet run wait <run-id> --output json` with the process tool and turn
 notifications. Its completion wakes you in a new turn, also when the run works
-in another repository, so there is nothing to block on or poll: set the
-conversation `running` and end your turn.
+in another repository: set the conversation `running` and end your turn.
+On waking, inspect the outcome: attention or timeout is not completion, and
+a still-running run needs a fresh wait, not polling.
 
 ## Editor and shell
 
@@ -225,7 +227,8 @@ the person's own token, so a token never needs to be in a remote URL or Git
 configuration. Pushing needs `write:repository` on that token. A push refused
 with HTTP 403 while fetch works usually means a read-only token (an archived
 or mirror repository refuses pushes too): check with
-`open-habitat agent code-host check`, or have the person look at
+`open-habitat agent code-host check --connection ID --json` (the ID is in
+`agent integration list`), or have the person look at
 `<origin>/settings/code-hosts`, which says when the token is read-only, and
 replace it with one that has `read:user` and `write:repository`. Protected
 branches and repository rights remain Gitea's to enforce.
@@ -254,14 +257,15 @@ confirming, permanently delete trashed workspaces; nothing is purged
 automatically. `rm -rf` has no such checks and no way back, so remove a
 workspace through the browser or the agent CLI's checked `workspace delete`.
 
-Storage is the installation's per-user filesystem quota, and Trash counts
-against it. The browser shows usage and the limit and warns from 85 %; only an
-operator can raise the limit. The figures are under `quota` in
-`open-habitat agent environment show --json`. An unavailable quota is not
-unlimited space, and do not promise that archiving a conversation or deleting
-history frees any.
+Where the installation uses per-user filesystem quotas, Trash counts against
+them. The browser shows usage and the limit and warns from 85 %; only an
+administrator or operator can raise the limit. Read `quota` in
+`open-habitat agent environment show --json`: `not_in_use` means space is
+shared without user limits; `unavailable` does not. Filesystem free space is
+separate. Do not promise that archiving a conversation or deleting history
+frees space.
 
-A full quota cuts every write mid-file, this conversation's own history
+A full quota can refuse or cut short writes, this conversation's own history
 included, so look at it before large builds, clones or downloads. Above 85 %,
 tell the person and first free what can be regenerated: build caches, and
 worktrees whose work is merged and pushed. The person's own files cannot be
@@ -281,7 +285,7 @@ The browser gives no access to folders or disks on the person's computer. For
 passing files to and from it (screenshots in, email attachments out), suggest
 a Dropbox folder, or a OneDrive folder that already syncs here: use the
 connected integration's sync directory, which their computer has to sync too.
-Otherwise they attach files one at a time.
+Otherwise they attach files with the picker or drag and drop.
 
 ## Limits of your authority
 
@@ -290,6 +294,6 @@ same server under their own accounts, and that separation keeps each person's
 work private: their homes, credentials, sockets and agents are out of bounds
 even where something happens to be readable. You cannot administer the host,
 change its login policy, repair its installation or act as the person's
-signed-in browser session. A missing host service or a larger quota is the
-operator's to provide; point the person there, and say so when something
-could not be observed.
+signed-in browser session. A missing host service is the operator's to
+provide; a larger quota can also come from a site administrator. Point the
+person there, and say so when something could not be observed.
