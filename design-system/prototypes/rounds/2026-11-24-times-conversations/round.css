@@ -1,0 +1,58 @@
+/* Review chrome: one scrolling document (a Habitat view has no frames). */
+html, body { margin: 0; background: var(--ah-bg); color: var(--ah-ink); }
+body { padding-bottom: 96px; font: var(--ah-size-ui)/var(--ah-lh-ui) var(--ah-font); }
+.tt-review { display: grid; gap: var(--ah-s4); padding: 0 var(--ah-s4); }
+.tt-bar {
+  display: grid; gap: var(--ah-s1); margin: 0 calc(-1 * var(--ah-s4));
+  padding: var(--ah-s2) var(--ah-s4); background: var(--ah-surface);
+  border-bottom: 1px solid var(--ah-line); font-size: var(--ah-size-meta); line-height: 1.4;
+}
+.tt-controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s1) var(--ah-s4); }
+.tt-bar strong { font-weight: 600; }
+.tt-bar select, .tt-bar button { font: inherit; }
+.tt-hint { color: var(--ah-muted); }
+.tt-study h2 { margin: 0 0 2px; font-size: var(--ah-size-meta); font-weight: 600; }
+.tt-study ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; color: var(--ah-ink-2); }
+.tt-study li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.tt-recommend { margin: var(--ah-s1) 0 0; color: var(--ah-accent-ink); }
+.tt-all-toggle { display: none; }
+@media (max-width: 800px) {
+  .tt-review { padding: 0 var(--ah-s2); }
+  .tt-bar { margin: 0 calc(-1 * var(--ah-s2)); padding: var(--ah-s2); }
+  .tt-all-toggle { display: inline; justify-self: start; }
+  .tt-bar:not([data-all]) :is(.tt-study li:not([aria-current]), .tt-recommend, .tt-study h2) { display: none; }
+}
+
+/* ---------- Rail beside the conversation, as in the app ---------- */
+.tt-live { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: var(--ah-s4); align-items: start; }
+.tt-rail { min-width: 0; display: grid; gap: var(--ah-s2); }
+.tt-rail ul { margin: 0; padding: 0; list-style: none; }
+.tt-rail-note { margin: 0; color: var(--ah-muted); font-size: var(--ah-size-meta); line-height: 1.4; }
+.tt-frame { min-width: 0; height: max(600px, calc(100dvh - 300px)); border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); overflow: hidden; }
+@media (max-width: 800px) {
+  .tt-live { grid-template-columns: minmax(0, 1fr); }
+  .tt-frame { height: 700px; margin-inline: calc(-1 * var(--ah-s2)); border-radius: 0; border-inline: 0; }
+}
+
+/* ---------- A and B: a day separator where the date changes ---------- */
+.tt-day {
+  display: flex; align-items: center; gap: var(--ah-s3); margin: var(--ah-s3) 0 var(--ah-s1);
+  color: var(--ah-muted); font-size: var(--ah-size-meta); font-weight: 600;
+}
+.tt-day::before, .tt-day::after { content: ""; flex: 1; border-top: 1px solid var(--ah-line); }
+
+/* The saved time placed into AgentTurn's reply header, like production's own. */
+.tt-time { color: var(--ah-muted); }
+.ah-message-interim header .tt-time { margin-inline-start: auto; }
+
+/* ---------- A: the time exists in every header but shows on hover, focus or tap ---------- */
+.variant-1 .ah-message > header time { opacity: 0; transition: opacity var(--ah-fade); }
+.variant-1 .ah-message:is(:focus-within, [data-tt-shown]) > header time { opacity: 1; }
+/* A touch screen keeps :hover after a tap, so only a real pointer hovers. */
+@media (hover: hover) { .variant-1 .ah-message:hover > header time { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .variant-1 .ah-message > header time { transition: none; } }
+
+/* ---------- C: a time only after a long break; a long turn's closing line ---------- */
+.tt-gap { margin: var(--ah-s3) 0 var(--ah-s1); color: var(--ah-muted); font-size: var(--ah-size-meta); text-align: center; }
+.tt-gap time { color: var(--ah-ink-2); font-weight: 600; }
+.tt-turn-line { margin: var(--ah-s1) 0 0; color: var(--ah-muted); font-size: var(--ah-size-meta); }
