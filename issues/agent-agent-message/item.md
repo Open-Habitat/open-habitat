@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 lane: unlaned
-preparation: pending
+preparation: ready
 ---
 
 # Agent-to-agent message between the person's conversations (design and prototype)
@@ -49,3 +49,7 @@ Jari 24.11.2026 on round 1:
 - Receiver side (right): A Kirje's model is right: the incoming message looks much like the person's own message, but the sender shown is someone else, with iconography saying an agent sent it, and a reference/link to the sending conversation.
 - Riff on these in round 2. (Timestamps on messages are a separate prototype: `times-conversations-prototype`.)
 Next action (approved): prototype round 2 to this model.
+
+### 2026-11-24T19:56:56Z · @jari
+
+Jari 24.11.2026 on round 2: A Kirjeet. Hop limit: Jari does not see why agents should not talk more; the conductor explains the runaway-loop concern and proposes a guard instead of a hop limit (decision pending). Prototype next: riffs on the outgoing message bubble (always shown vs. only when the agent does not say it sent one, and its shape). Next action (approved): prototype round 3.

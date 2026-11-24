@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 lane: unlaned
-preparation: pending
+preparation: ready
 ---
 
 # Times in conversations (prototype)
@@ -22,3 +22,9 @@ Per-message time (always, on hover/tap, only at gaps), day separators ("Tänää
 "Eilen", a date), relative vs. clock time, the person's time zone, long-running turns
 (started/finished, duration), resumed conversations after days, phone, Explain mode, and
 what the history already records per entry (timestamps in Pi's native session entries).
+
+## Decisions
+
+### 2026-11-24T19:56:56Z · @jari
+
+Jari 24.11.2026 on round 1: B Kello (time on every message) with the day separators (Tänään, Eilen, …). Prototype next: the end row for long turns (C's "Valmis 17.03 · vuoro kesti 23 min") and riffs on where the time sits. The rail row age keeps its own language (elapsed time). Next action (approved): prototype round 2.
