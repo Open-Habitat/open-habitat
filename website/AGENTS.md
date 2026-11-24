@@ -35,6 +35,14 @@ there. `node scripts/check-landing.mjs dist <shots>` serves a build, scrolls
 console error, a failed request or a request to another origin; the round's
 `check.mjs` checks each block in depth.
 
+What a shared link shows is in `src/share.ts`: the site's description and
+one share image for every page, which the front page's head and the
+documentation's route middleware (`src/routeData.ts`) both use; Starlight
+writes the rest of the documentation's tags. `public/og.png` and
+`public/apple-touch-icon.png` are rendered by `node scripts/og-image.mjs`
+from the hero's headline and capture, and nothing notices when the hero
+changes under them, so re-render and look at the image when it does.
+
 The site is English only. The Finnish pages (the old `/fi/` landing page and
 the translated documentation) were removed on 24.11.2026 at Jari's request.
 

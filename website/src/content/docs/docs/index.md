@@ -1,6 +1,6 @@
 ---
 title: Documentation
-description: Where to start reading about Open Habitat.
+description: Open Habitat gives everyone on a team a real coding agent with its own Linux account, in a browser. Start reading here.
 sidebar:
   label: Overview
 ---

@@ -2,21 +2,32 @@
 // The English front page: the landing page's blocks (landing.mjs), rendered
 // at build time, inside a thin site shell. The blocks bring the page's own top
 // bar, footer and browser script; the shell adds what belongs to the site: the
-// head (title, robots switch, favicon), a bar with the documentation and the
-// Finnish page, and a footer line with the documentation's security model,
-// where "Unix accounts separate people, not an agent from its owner" and
-// "root is root" are stated. The blocks are drawn and checked in the light
-// theme only, so the page is Päivä whatever the docs' theme menu says.
+// head (title, robots switch, favicon, and the share tags from src/share.ts)
+// and a footer line with the documentation's security model, where "Unix
+// accounts separate people, not an agent from its owner" and "root is root"
+// are stated. The blocks are drawn and checked in the light theme only, so the
+// page is Päivä whatever the docs' theme menu says.
 import '../../../design-system/styles.css';
 import '../styles/brand.css';
 import landing from 'virtual:landing';
 import { indexable } from '../../launch.mjs';
+import { shareTags, siteDescription, siteName } from '../share';
 
 const repo = 'https://github.com/Open-Habitat/open-habitat';
 const title = 'Open Habitat · Coding-grade AI agents for your whole team';
-const description =
-  'Open Habitat gives everyone on your team a real coding agent with its own Linux account, in a browser tab. Open source, early pre-release.';
+const description = siteDescription;
 const canonical = new URL('/', Astro.site);
+// Starlight writes these on the docs; the front page has its own head.
+const share = [
+  { property: 'og:type', content: 'website' },
+  { property: 'og:site_name', content: siteName },
+  { property: 'og:locale', content: 'en' },
+  { property: 'og:url', content: canonical.href },
+  { property: 'og:title', content: title },
+  { property: 'og:description', content: description },
+  { name: 'twitter:card', content: 'summary_large_image' },
+  ...shareTags(Astro.site!, title, description).map((t) => t.attrs),
+];
 const script = landing.js.replace(/<\/script/gi, '<\\/script');
 ---
 
@@ -29,6 +40,8 @@ const script = landing.js.replace(/<\/script/gi, '<\\/script');
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    {share.map((attrs) => <meta {...attrs} />)}
     {!indexable && <meta name="robots" content="noindex, nofollow" />}
     <script is:inline>document.documentElement.classList.replace('no-js', 'js');</script>
     <style is:inline set:html={landing.css}></style>

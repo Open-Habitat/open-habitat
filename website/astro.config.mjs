@@ -7,6 +7,7 @@ import { repoDocsDir, repoDocsMarkdown } from './docs.mjs';
 import { indexable } from './launch.mjs';
 import { contrastScript } from './contrast.mjs';
 import { landingPlugin } from './landing.mjs';
+import { siteDescription } from './src/share.ts';
 
 export default defineConfig({
   site: 'https://open-habitat.ai',
@@ -18,11 +19,16 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'Open Habitat',
+      // The description of a page that has none of its own (src/share.ts).
+      description: siteDescription,
       // English only (Jari, 24.11.2026: the Finnish pages were removed).
       locales: { root: { label: 'English', lang: 'en' } },
       favicon: '/favicon.svg',
+      // The share image and twitter:* tags on every page (src/routeData.ts).
+      routeMiddleware: './src/routeData.ts',
       head: [
         { tag: 'script', content: contrastScript },
+        { tag: 'link', attrs: { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' } },
         ...(indexable ? [] : [{ tag: 'meta', attrs: { name: 'robots', content: 'noindex, nofollow' } }]),
       ],
       // The product's own design system: its tokens and bundled fonts, then

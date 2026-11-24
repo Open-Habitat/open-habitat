@@ -17,6 +17,14 @@ export const repoDocs = {
   'docs/product.md': 'docs/product',
   'docs/operations.md': 'docs/operations',
 };
+
+// Their descriptions (meta description and share previews): the documents
+// have no front matter, and their opening paragraphs are too long for one.
+const repoDocsDescription = {
+  'docs/product': 'What Open Habitat is for: the product goal and the journeys of the people who use it.',
+  'docs/operations':
+    'How to install and run Open Habitat on your own Linux server. Written for your coding agent to follow, with you approving each plan.',
+};
 export const repoDocsDir = path.join(repoRoot, 'docs');
 
 function entryId(repoPath) {
@@ -45,7 +53,9 @@ export function docsCollectionLoader() {
         parseData: (entry) => {
           const filePath = path.resolve(repoRoot, entry.filePath ?? '');
           const isRepoDoc = Object.values(repoDocs).includes(entry.id);
-          const data = isRepoDoc ? { title: h1(filePath), ...entry.data } : entry.data;
+          const data = isRepoDoc
+            ? { title: h1(filePath), description: repoDocsDescription[entry.id], ...entry.data }
+            : entry.data;
           return context.parseData({ ...entry, data });
         },
       }),
