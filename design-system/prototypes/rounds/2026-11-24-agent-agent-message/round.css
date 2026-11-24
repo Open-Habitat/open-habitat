@@ -1,0 +1,89 @@
+/* Review chrome: one scrolling document (a Habitat view has no frames). */
+html, body { margin: 0; background: var(--ah-bg); color: var(--ah-ink); }
+body { padding-bottom: 96px; font: var(--ah-size-ui)/var(--ah-lh-ui) var(--ah-font); }
+.aam-review { display: grid; gap: var(--ah-s4); padding: 0 var(--ah-s4); }
+.aam-bar {
+  display: grid; gap: var(--ah-s1); margin: 0 calc(-1 * var(--ah-s4));
+  padding: var(--ah-s2) var(--ah-s4); background: var(--ah-surface);
+  border-bottom: 1px solid var(--ah-line); font-size: var(--ah-size-meta); line-height: 1.4;
+}
+.aam-controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s1) var(--ah-s4); }
+.aam-bar strong { font-weight: 600; }
+.aam-bar select, .aam-bar button { font: inherit; }
+.aam-hint { color: var(--ah-muted); }
+.aam-study h2 { margin: 0 0 2px; font-size: var(--ah-size-meta); font-weight: 600; }
+.aam-study ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; color: var(--ah-ink-2); }
+.aam-study li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.aam-recommend { margin: var(--ah-s1) 0 0; color: var(--ah-accent-ink); }
+.aam-all-toggle { display: none; }
+@media (max-width: 800px) {
+  .aam-review { padding: 0 var(--ah-s2); }
+  .aam-bar { margin: 0 calc(-1 * var(--ah-s2)); padding: var(--ah-s2); }
+  .aam-hint { display: none; }
+  .aam-all-toggle { display: inline; justify-self: start; }
+  .aam-bar:not([data-all]) :is(.aam-study li:not([aria-current]), .aam-recommend, .aam-study h2) { display: none; }
+}
+
+/* ---------- The two conversations, side by side as Jari has them ---------- */
+.aam-live { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--ah-s4); }
+.aam-pane { min-width: 0; display: grid; gap: var(--ah-s1); align-content: start; scroll-margin-top: var(--ah-s2); }
+.aam-pane-label { margin: 0; font-size: var(--ah-size-meta); font-weight: 600; color: var(--ah-muted); }
+.aam-frame { height: max(560px, calc(100dvh - 330px)); border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); overflow: hidden; }
+.aam-native { grid-column: 1 / -1; margin: 0; min-width: 0; }
+.aam-native figcaption { color: var(--ah-muted); font-size: var(--ah-size-meta); margin-bottom: 2px; }
+.aam-native pre {
+  margin: 0; padding: var(--ah-s2) var(--ah-s3); white-space: pre-wrap; overflow-wrap: anywhere;
+  font: var(--ah-size-meta)/1.45 var(--ah-mono); color: var(--ah-ink);
+  background: var(--ah-surface); border: 1px solid var(--ah-line); border-radius: var(--ah-r-md);
+}
+@media (max-width: 800px) {
+  .aam-live { grid-template-columns: minmax(0, 1fr); }
+  .aam-frame { height: 640px; margin-inline: calc(-1 * var(--ah-s2)); border-radius: 0; border-inline: 0; }
+}
+.aam-tools { display: grid; gap: var(--ah-s1); }
+.aam-msg { max-width: min(var(--ah-measure), 100%); }
+
+/* A link pressed in one pane: the other pane's entry gets a short accent
+   wash; reduced motion keeps a still outline for the same time. */
+.aam-pane[data-flash] :is([data-item="r-in"], [data-item="s-t1"]) > * { animation: aam-flash 1.6s ease-out; }
+@keyframes aam-flash { 0%, 30% { background: var(--ah-accent-soft); } 100% { background: transparent; } }
+@media (prefers-reduced-motion: reduce) {
+  .aam-pane[data-flash] :is([data-item="r-in"], [data-item="s-t1"]) > * { animation: none; outline: var(--ah-focus-width) solid var(--ah-focus); outline-offset: 2px; }
+}
+
+.aam-review a { color: var(--ah-accent-ink); }
+.aam-review a:focus-visible { outline: var(--ah-focus-width) solid var(--ah-focus); outline-offset: 2px; }
+.aam-state {
+  font-size: var(--ah-size-meta); padding: 0 var(--ah-s1); border-radius: 999px;
+  border: 1px solid var(--ah-line-strong); color: var(--ah-muted); white-space: nowrap;
+}
+.aam-state[data-tone="ok"] { border-color: var(--ah-ok); color: var(--ah-ink); }
+
+/* A and C: the incoming message is a card of its own, on the agent's side
+   (start), never the person's bubble. The sender's workspace icon names it. */
+.aam-letter {
+  max-width: min(var(--ah-measure), 100%); margin: var(--ah-s2) 0; padding: var(--ah-s2) var(--ah-s3);
+  border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-lg); background: var(--ah-surface);
+}
+.aam-letter header { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s1) var(--ah-s2); font-size: var(--ah-size-meta); }
+.aam-letter-from { font-weight: 600; min-width: 0; }
+.aam-letter time { color: var(--ah-muted); }
+.aam-letter .ah-prose { margin-top: var(--ah-s1); }
+.aam-letter-note { margin: var(--ah-s1) 0 0; color: var(--ah-muted); font-size: var(--ah-size-meta); }
+
+/* B: Habitat's line and the text as a quiet quote; no card, no bubble. */
+.aam-in-line blockquote { margin: 0 0 var(--ah-s2) 16px; padding: 0 0 0 var(--ah-s3); border-left: 1px solid var(--ah-line-strong); color: var(--ah-ink-2); }
+.aam-in-line time { color: inherit; }
+
+/* C: the sent card on the sender's side; its state changes and the reply's
+   opening comes back into it. */
+.aam-card {
+  max-width: min(var(--ah-measure), 100%); margin: var(--ah-s2) 0; padding: var(--ah-s2) var(--ah-s3);
+  border: 1px dashed var(--ah-line-strong); border-radius: var(--ah-r-lg);
+}
+.aam-card header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--ah-s1); font-size: var(--ah-size-meta); }
+.aam-card-to { font-weight: 600; }
+.aam-card-text { margin: var(--ah-s1) 0 0; color: var(--ah-ink-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.aam-card-reply { margin-top: var(--ah-s2); padding-top: var(--ah-s2); border-top: 1px solid var(--ah-line); font-size: var(--ah-size-meta); }
+.aam-card-reply p { margin: 2px 0; color: var(--ah-ink); }
+.aam-reply-tag { margin: 0 0 2px; color: var(--ah-muted); font-size: var(--ah-size-meta); }
