@@ -72,9 +72,9 @@
 
 /* ---------- Scrolling: "Yläreuna" (Jari, 23.11.2026; round 2026-11-23-vieritys) ----------
    A step is active once its text reaches the line where the sticky screen's
-   top edge rests (phone: the status bar's bottom, --vr-bar measured by
-   client.js). Appended here so it wins over page.css's .s1 rules. */
-:root { --vr-top: 20px; --vr-bar: 49px; }
+   top edge rests (phone: the bottom of the page's sticky bar, --pn-h in
+   nav.css). Appended here so it wins over page.css's .s1 rules. */
+:root { --vr-top: 20px; }
 /* ---------- Shared by all three ---------- */
 @media (min-width: 901px) {
   .s1-app { top: var(--vr-top); }
@@ -83,9 +83,39 @@
   /* The last step holds the screen pinned until its text has reached the line. */
   .s1 > .s1-steps > .s1-step:last-child { min-height: calc(100vh - var(--vr-top) - 64px); }
 }
+/* ---------- The phone: each day a timeline (round 2026-11-24-mobiili, 3 "Aikajana") ----------
+   A step is a row (time, the conversation's sidebar line at that moment, the
+   ask); a tap opens its text and its screen in place, one open per story
+   (client.js). The row carries the ask, so the text's own copy and its time
+   are not repeated. Without JavaScript there is no row and every step is
+   open, as before. */
+.s1-row { display: none; }
 @media (max-width: 900px) {
-  .s1 > .s1-steps > .s1-step { padding: 16px 0 36px; scroll-margin-top: var(--vr-bar); }
-  .s1 > .s1-steps > .s1-step:first-child { padding-top: 16px; }
+  .s1 > .s1-steps { padding: 0 12px; }
+  .s1 > .s1-steps > .s1-step, .s1 > .s1-steps > .s1-step:first-child { min-height: 0; padding: 16px 0 36px; scroll-margin-top: var(--pn-h); }
+  .js .s1 > .s1-steps > .s1-step, .js .s1 > .s1-steps > .s1-step:first-child { padding: 0; border-top: 1px solid var(--ah-line); }
+  .js .s1 > .s1-steps > .s1-step:last-child { border-bottom: 1px solid var(--ah-line); }
+  .js .s1 > .s1-steps > .s1-step.s1-open { padding-bottom: 22px; }
+  .js .s1-step:not(.s1-open) > :is(.s1-txt, .s1-inline) { display: none; }
+  .js .s1-txt .ask, .js .s1-txt .s1-when .when > b, .js .s1-txt .s1-when .cap-tag { display: none; }
+  .js .s1-txt { padding: 0 4px; }
+  .js .s1-step > .s1-inline { margin-top: 12px; }
+  .js .s1-row { display: block; margin: 0; font: inherit; letter-spacing: 0; text-wrap: initial; }
+  .s1-row button { width: 100%; min-height: 56px; display: grid; grid-template-columns: auto minmax(0, 1fr) 14px; grid-template-areas: "time chip chev" "ask ask chev"; align-items: center; gap: 5px 10px; padding: 11px 6px 12px 4px; border: 0; background: none; color: var(--ah-ink); text-align: left; font: inherit; font-size: 15.5px; cursor: pointer; -webkit-tap-highlight-color: transparent; scroll-margin: calc(var(--pn-h) + 12px) 0 24px; }
+  .s1-row button:focus-visible { outline: 2px solid var(--ah-focus); outline-offset: 2px; }
+  .s1-row-time { grid-area: time; font: 600 13px var(--ah-mono); font-variant-numeric: tabular-nums; }
+  .s1-row-time:empty { display: none; }
+  .s1-row-time:empty + .s1-chip { grid-column: 1 / 3; }
+  .s1-chip { grid-area: chip; justify-self: start; max-width: 100%; padding: 2px 9px; border-radius: var(--ah-r-pill); font-weight: 600; font-size: 12px; line-height: 1.5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .s1-chip-turn { background: color-mix(in srgb, var(--ah-turn) 13%, var(--ah-surface)); color: var(--ah-turn); }
+  .s1-chip-run { background: var(--ah-accent-soft); color: var(--ah-accent-ink); }
+  .s1-chip-quiet { background: var(--ah-sunken); color: var(--ah-muted); }
+  .s1-chip-tag { background: var(--ah-accent-soft); color: var(--ah-accent-ink); font-family: var(--ah-mono); }
+  .s1-row-ask { grid-area: ask; line-height: 1.32; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .s1-row [aria-expanded="true"] .s1-row-ask { display: block; font-size: 19px; line-height: 1.2; font-weight: 600; letter-spacing: -0.015em; }
+  .s1-row-chev { grid-area: chev; justify-self: center; width: 7px; height: 7px; border-right: 1.8px solid var(--ah-muted); border-bottom: 1.8px solid var(--ah-muted); transform: translateY(-2px) rotate(45deg); }
+  .s1-row [aria-expanded="true"] .s1-row-chev { transform: translateY(2px) rotate(-135deg); }
+  @media (prefers-reduced-motion: no-preference) { .s1-row-chev { transition: transform 150ms ease-out; } }
 }
 
 /* ---------- 3 Yläreunan aktivointi: free scrolling, activation at the top line ----------

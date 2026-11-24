@@ -338,8 +338,6 @@ i.sp-a, i.sp-b, i.sp-c { font-style: normal; font-weight: 600; }
   .lib li { padding: 12px; }
   .lib b { font-size: 16px; }
   .lib q { font-size: 13.5px; }
-  .s1-bar-row { justify-content: flex-start; }
-  .s1-tog { margin-left: auto; }
 }
 @media (max-width: 520px) {
   .tr li { grid-template-columns: 40px minmax(0, 1fr); }

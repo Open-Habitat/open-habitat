@@ -20,7 +20,9 @@ rendered HTML, the engine's and blocks' CSS and the browser script
 build's Node process, not in Vite's bundle, because they find their own files
 through `import.meta.url`. The page's shell is thin: the head and a footer line with the
 documentation's links and the font licence; the blocks bring their own top
-bar and footer. The blocks are drawn and checked in the light theme only, so
+bar and footer, and the round's engine its navigation (a rail at the left
+edge on the desktop, a sticky bar on the phone), so nothing here adds
+another. The blocks are drawn and checked in the light theme only, so
 the page is Päivä whatever the theme menu on the documentation says.
 
 The blocks' binary assets (images, video, audio) are not in the round. Block
@@ -31,7 +33,8 @@ removes files it no longer uses, and `--check` only reports. The conductor
 reviews each file at full size and commits `public/landing/` by hand. The
 build fails, listing the files, while an asset the page uses is missing
 there. `node scripts/check-landing.mjs dist <shots>` serves a build, scrolls
-`/` at 1440 and 390 px, opens work, plays a video and fails on a
+`/` at 1440 and 390 px, opens work (on the phone, where each story is a
+timeline of rows, it opens the row first), plays a video and fails on a
 console error, a failed request or a request to another origin; the round's
 `check.mjs` checks each block in depth.
 

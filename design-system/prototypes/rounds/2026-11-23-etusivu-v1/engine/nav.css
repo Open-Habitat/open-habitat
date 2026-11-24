@@ -1,0 +1,96 @@
+/* The page's navigation (engine/nav.mjs): the desktop's rail and the phone's
+   bar. They meet at the engine's breakpoint and never overlap: the rail
+   exists only at ≥ 901 px, the bar and the strips only at ≤ 900 px, the same
+   query client.js's wide() asks. Shared, not a block worker's file. */
+.ix-rail, .pn-bar, .pg .pn-cta { display: none; }
+:root { --pn-h: 0px; }
+
+/* ---------- Desktop: the index rail (round 2026-11-24-navigaatio, 2 "Hakemisto") ----------
+   No top chrome, so the engine's line and the stories stay where they are.
+   Collapsed it is 4 px of segments in the page margin; hover or keyboard
+   focus lays the labels over the page beside the same segments, which do not
+   move. It comes in once the hero is past (client.js sets data-shown). */
+@media (min-width: 901px) {
+  .ix-rail { display: block; position: fixed; left: 8px; top: 50%; z-index: 30; transform: translateY(-50%); width: 28px; padding: 10px 0 10px 12px; font: 500 12.5px/1.15 var(--ah-font); transition: opacity 180ms ease-out; }
+  .ix-rail[data-shown="false"]:not(:focus-within) { opacity: 0; pointer-events: none; }
+  .ix-rail :focus-visible { outline: 2px solid var(--ah-focus); outline-offset: 2px; border-radius: 6px; }
+  /* The panel behind the labels: drawn only while the rail is open. */
+  .ix-rail::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 264px; border-radius: 14px; background: var(--ah-surface); box-shadow: var(--ah-shadow-menu); border: 1px solid var(--ah-line); opacity: 0; transform: translateX(-6px); transition: opacity 160ms ease-out, transform 160ms cubic-bezier(0.23, 1, 0.32, 1); pointer-events: none; }
+  .ix-rail ol { list-style: none; margin: 0; padding: 0; }
+  .ix-sec + .ix-sec { margin-top: 10px; }
+  .pg .ix-rail a { position: relative; display: flex; align-items: flex-start; gap: 12px; width: 22px; color: var(--ah-ink-2); text-decoration: none; }
+  .pg .ix-rail .ix-top { height: 22px; align-items: center; margin-bottom: 8px; }
+  .ix-top svg { width: 14px; height: 14px; margin-left: -5px; flex: none; fill: none; stroke: var(--ah-muted); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .pg .ix-rail .ix-sec-a { height: 16px; align-items: center; }
+  .ix-dot { width: 4px; height: 4px; border-radius: 2px; background: var(--ah-faint); flex: none; }
+  .ix-sec-a[aria-current] .ix-dot { background: var(--ah-accent); transform: scale(1.5); }
+  .pg .ix-rail .ix-kid > a { padding: 1.5px 0; }
+  .ix-seg { position: relative; flex: none; width: 4px; height: var(--h); border-radius: 2px; background: var(--ah-line); overflow: hidden; transition: width 160ms cubic-bezier(0.23, 1, 0.32, 1); }
+  .ix-seg i { position: absolute; inset: 0; background: var(--ah-accent); transform: scaleY(var(--p, 0)); transform-origin: top; transition: transform 160ms ease-out; }
+  .ix-kid[data-state="past"] .ix-seg i { background: color-mix(in srgb, var(--ah-accent) 45%, var(--ah-line)); }
+  .ix-kid > a[aria-current] .ix-seg { width: 6px; margin-left: -1px; }
+  /* Labels: absolutely placed beside their segment, so opening the rail
+     moves nothing; clipped (not hidden) while closed so they stay the links' names. */
+  .ix-lbl { position: absolute; left: 18px; top: 0; white-space: nowrap; clip-path: inset(50%); opacity: 0; transition: opacity 120ms ease-out; }
+  .ix-kid .ix-lbl { line-height: 17px; font-size: 13px; }
+  .ix-sec-a .ix-lbl { font: 500 10.5px/16px var(--ah-mono); text-transform: uppercase; letter-spacing: .08em; color: var(--ah-muted); }
+  .ix-top .ix-lbl { line-height: 22px; color: var(--ah-ink-2); }
+  .ix-n { font: 400 11px var(--ah-mono); color: var(--ah-muted); margin-left: 4px; }
+  .ix-kid > a[aria-current] .ix-lbl { color: var(--ah-ink); font-weight: 600; }
+  .ix-sec-a[aria-current] .ix-lbl { color: var(--ah-accent-ink); }
+  .ix-rail:is(:hover, :focus-within)::before { opacity: 1; transform: none; }
+  .ix-rail:is(:hover, :focus-within) .ix-lbl { clip-path: none; opacity: 1; }
+  .pg .ix-rail:is(:hover, :focus-within) a { width: 236px; }
+  .pg .ix-rail a:hover .ix-lbl { color: var(--ah-accent-ink); }
+}
+/* Where the margin is wide enough, the current person or group shows its
+   name and count beside its segment while the rail is closed. */
+@media (min-width: 1440px) {
+  .ix-rail:not(:hover):not(:focus-within) .ix-kid > a[aria-current] .ix-lbl { clip-path: none; opacity: 1; left: 12px; font-size: 11.5px; line-height: 1.2; white-space: normal; width: 60px; color: var(--ah-ink-2); font-weight: 500; }
+  .ix-rail:not(:hover):not(:focus-within) .ix-kid > a[aria-current] .ix-n { display: block; margin: 1px 0 0; }
+}
+
+/* ---------- Phone: the sticky bar (round 2026-11-24-mobiili, 3 "Aikajana") ----------
+   It is the phone's navigation from the top of the page, so the hero's top
+   bar gives way to it. The steps rest at its bottom edge (screen.css). */
+@media (max-width: 900px) {
+  :root { --pn-h: 52px; }
+  .pg .top { display: none; }
+  .pg :is(#day, #roles, #can, #install, .role, .cap-g) { scroll-margin-top: calc(var(--pn-h) + 8px); }
+  .pn-bar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 8px; height: var(--pn-h); padding: 0 10px 0 14px; background: color-mix(in srgb, var(--ah-surface) 94%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border-bottom: 1px solid var(--ah-line); }
+  .pn-bar :is(a, button):focus-visible, .pg .pn-cta a:focus-visible { outline: 2px solid var(--ah-focus); outline-offset: 2px; }
+  .pg .pn-mark { flex: none; display: inline-flex; color: var(--ah-accent); border-radius: 6px; }
+  .pn-who { flex: 0 1 auto; min-width: 0; display: inline-flex; align-items: center; gap: 7px; height: 38px; padding: 0 11px 0 5px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-pill); background: var(--ah-bg); color: var(--ah-ink); font: inherit; font-size: 14.5px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .pn-av { display: inline-flex; }
+  .pn-av:empty { width: 4px; }
+  .pn-who b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pn-car { flex: none; width: 7px; height: 7px; border-right: 1.8px solid var(--ah-muted); border-bottom: 1.8px solid var(--ah-muted); transform: translateY(-2px) rotate(45deg); }
+  .pn-who[aria-expanded="true"] .pn-car { transform: translateY(2px) rotate(-135deg); }
+  .pn-now { flex: 1 1 0; min-width: 0; font: 500 12.5px var(--ah-mono); color: var(--ah-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+  .pg .pn-install { flex: none; margin-left: auto; display: inline-flex; align-items: center; height: 36px; padding: 0 14px; border-radius: var(--ah-r-pill); background: var(--ah-accent); color: var(--ah-on-accent); font-weight: 600; font-size: 14px; text-decoration: none; }
+  .pn-menu { position: absolute; top: 100%; left: 8px; right: 8px; margin-top: 6px; max-height: calc(100svh - var(--pn-h) - 24px); overflow-y: auto; overscroll-behavior: contain; padding: 8px; border: 1px solid var(--ah-line); border-radius: 16px; background: var(--ah-surface); box-shadow: var(--ah-shadow-menu); }
+  .pn-menu[hidden] { display: none; }
+  .pn-menu ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 4px; }
+  .pg .pn-menu ul a { min-width: 0; min-height: 48px; display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 10px; color: var(--ah-ink); text-decoration: none; font-size: 14.5px; }
+  .pn-menu ul a[aria-current] { background: var(--ah-current); box-shadow: inset 0 0 0 1px var(--ah-current-line); }
+  .pn-menu ul a > span:last-child { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+  .pn-menu b { font-weight: 600; }
+  .pn-menu small { font-size: 12px; color: var(--ah-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pg .pn-menu-h { margin: 10px 8px 4px; font: 600 11px var(--ah-font); letter-spacing: .08em; text-transform: uppercase; color: var(--ah-muted); }
+  /* Install, Docs and GitHub between the sections and at the menu's end. */
+  .pg .pn-cta { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px 22px; margin: 28px 16px; font-size: 15px; font-weight: 500; }
+  .pg .pn-cta .btn { height: 44px; }
+  .pg .pn-menu .pn-cta { margin: 12px 8px 8px; padding-top: 12px; border-top: 1px solid var(--ah-line-soft); }
+  /* The timeline is short, so the sections need less air between them. */
+  .js .pg .day-intro:not(.roles-intro) { padding-top: 48px; }
+  .js .pg .role { padding-top: 36px; }
+  .js .pg .cap-g { padding-top: 40px; }
+  /* The four sourced library claims as one row to swipe. */
+  .pg .lib { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 10px; margin: 22px -20px 12px; padding: 0 20px 4px; scrollbar-width: none; }
+  .pg .lib li { flex: 0 0 78%; scroll-snap-align: center; }
+  @media (prefers-reduced-motion: no-preference) {
+    .pn-car { transition: transform 150ms ease-out; }
+    .pn-menu:not([hidden]) { animation: pn-menu-in 160ms cubic-bezier(0.23, 1, 0.32, 1); transform-origin: top left; }
+  }
+}
+@keyframes pn-menu-in { from { opacity: 0; transform: translateY(-6px) scale(0.98); } }

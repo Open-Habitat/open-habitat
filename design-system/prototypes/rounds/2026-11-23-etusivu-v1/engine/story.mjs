@@ -2,10 +2,11 @@
 // their states through the day), the product's sidebar at a moment, and a
 // story section rendered to static HTML. Steps sit on the left; on a wide
 // screen one sticky product screen on the right follows the step in view
-// (client.js); on a phone, and without JavaScript, each step carries its own
-// screen. Everything client.js needs is in the HTML: each step's screen is
-// its inline copy, and the sidebar state and the screens a sidebar row opens
-// are <template>s. Round 6's round.js, made static.
+// (client.js); on a phone each step is a timeline row that opens its text and
+// its own copy of the screen in place, and without JavaScript every step shows
+// both. Everything client.js needs is in the HTML: each step's screen is its
+// inline copy, and the sidebar state and the screens a sidebar row opens are
+// <template>s. Round 6's round.js, made static.
 import { esc, mark, you, working } from './kit.mjs';
 
 export const T = (s) => { const [h, m] = s.split(':').map(Number); return h * 60 + m; };
@@ -52,13 +53,19 @@ export function railAt(d, t, active) {
   const row = ([s, g]) => `<li><button type="button" class="rl-row rl-${g[1]}" data-s="${s.id}"${s.id === active ? ' aria-current="true"' : ''}>${mark(16, MARK_STATE[g[1]])}<span class="rl-t">${esc(s.title)}</span><span class="rl-l">${esc(g[2])}</span><time>${g[0]}</time></button></li>`;
   return `<div class="rl">${['turn', 'run', 'quiet'].map((k) => `<section class="rl-sec rl-sec-${k}"><h4><span>${STATE[k]}</span><b>${groups[k].length}</b></h4>${groups[k].length ? `<ul>${groups[k].map(row).join('')}</ul>` : '<p class="rl-none">Nothing</p>'}</section>`).join('')}</div>`;
 }
-const chips = (d, t) => { const c = counts(d, t); return `<span class="chips"><i class="c-turn">${c.turn} Your turn</i><i class="c-run">${c.run} Running</i><i class="c-quiet">${c.quiet} Quiet</i></span>`; };
 export const when = (d, t) => { const p = placeAt(d, t); return `<span class="when"><b>${hhmm(t)}</b><span>${placeIc(p[2])}${p[1]}</span></span>`; };
 export const avatar = (d, px = 22) => `<span class="av" style="--av:${d.color}; --px:${px}px" aria-hidden="true">${d.name[0]}</span>`;
 const runningScreen = (d, s, t, screenFn) => { const g = glimpseOf(d, s.id, t); const seg = segAt(s, t); return screenFn(s.title, working(s.segs[0][0], g.ask, seg[2]), '', d.org); };
 
 // A step: { block, d?, t?, sid?, head, ask, did, hand?, foot?, screen() }.
-export const dayStep = (g) => ({ block: g.block, d: g.day, t: g.t, sid: g.s, ask: g.ask, did: g.did, screen: g.screen, head: when(g.day, g.t), foot: countLine(g.day, g.t), hand: g.hand || '' });
+// `row` is what the phone's timeline row shows for the step (time, the
+// conversation's sidebar line at that moment as a chip, its state) and `now`
+// what the phone's bar says while the step is under it.
+export const dayStep = (g) => {
+  const seg = segAt(g.day.SID[g.s], g.t); const c = counts(g.day, g.t);
+  const now = `${hhmm(g.t)} · ${c.turn ? `${c.turn} waiting` : c.run ? `${c.run} running` : 'all quiet'}`;
+  return { block: g.block, d: g.day, t: g.t, sid: g.s, ask: g.ask, did: g.did, screen: g.screen, head: when(g.day, g.t), foot: countLine(g.day, g.t), hand: g.hand || '', row: { time: hhmm(g.t), chip: seg[2], state: seg[1] }, now };
+};
 function appTop(st) {
   if (st.d) return `${avatar(st.d)}<b>${esc(st.d.name)}</b><span class="s1-org">${esc(st.d.org)}</span><span class="s1-clock">${when(st.d, st.t)}</span>`;
   return `<span class="av" style="--av:var(--ah-line-strong); --px:22px" aria-hidden="true">${esc((st.who || '?')[0])}</span><b>${esc(st.who || '')}</b><span class="s1-org">${esc(st.org || '')}</span><span class="s1-clock">${st.clock || ''}</span>`;
@@ -89,19 +96,28 @@ export function storySection(key, steps, o = {}, { screen, anchors = new Set() }
   });
   const seen = new Set();
   const anchor = (st) => { if (!st.d) return ''; const id = `g-${st.d.id}-${st.sid}`; if (seen.has(id) || anchors.has(id)) return ''; seen.add(id); anchors.add(id); return ` id="${id}" data-who="${st.d.id}"`; };
-  const state = (st, i) => `<template class="s1-state" data-i="${i}"><div data-part="top">${appTop(st)}</div>${st.d ? `<div data-part="rail">${railAt(st.d, st.t, st.sid)}</div><div data-part="when">${when(st.d, st.t)}</div><div data-part="chips">${chips(st.d, st.t)}</div><div data-part="av">${avatar(st.d, 22)}</div>` : ''}</template>`;
+  const state = (st, i) => `<template class="s1-state" data-i="${i}"><div data-part="top">${appTop(st)}</div>${st.d ? `<div data-part="rail">${railAt(st.d, st.t, st.sid)}</div>` : ''}</template>`;
+  // The phone's timeline row: a heading with one button that opens the step's
+  // text and screen in place (client.js; on the desktop the row is not shown).
+  const row = (st, i, open) => {
+    const r = st.row || {};
+    const chip = r.chip ? `<span class="s1-chip s1-chip-${r.state}">${esc(r.chip)}</span>` : `<span class="s1-chip s1-chip-tag">${esc(st.tag || '')}</span>`;
+    return `<h3 class="s1-row"><button type="button" aria-expanded="${open}" aria-controls="${key}-${i}-t ${key}-${i}-s"><span class="s1-row-time">${esc(r.time || '')}</span>${chip}<span class="s1-row-ask">“${esc(st.ask)}”</span><span class="s1-row-chev" aria-hidden="true"></span></button></h3>`;
+  };
   return `<section class="s1${rail ? '' : ' s1-norail'}${o.cls ? ` ${o.cls}` : ''}" data-story="${key}">
-  ${rail ? `<div class="s1-bar"><div class="s1-bar-row">${avatar(s0.d, 22)}${when(s0.d, s0.t)}<button type="button" class="s1-tog" aria-expanded="false">${chips(s0.d, s0.t)}</button></div><div class="s1-drop" hidden>${railAt(s0.d, s0.t, s0.sid)}</div></div>` : ''}
   <div class="s1-steps">
-${steps.map((st, i) => `<article class="s1-step blk${i === 0 ? ' on' : ''}" data-block="${st.block}"${anchor(st)} data-i="${i}"${rows[i] ? ` data-rows='${JSON.stringify(rows[i])}'` : ''}>
+${steps.map((st, i) => { const open = !!o.openFirst && i === 0; return `<article class="s1-step blk${i === 0 ? ' on' : ''}${open ? ' s1-open' : ''}" data-block="${st.block}"${anchor(st)} data-i="${i}" data-now="${esc(st.now || st.tag || '')}"${rows[i] ? ` data-rows='${JSON.stringify(rows[i])}'` : ''}>
+    ${row(st, i, open)}
+    <div class="s1-txt" id="${key}-${i}-t">
     <p class="s1-when">${st.head}</p>
     <h3 class="ask">“${esc(st.ask)}”</h3>
     <p class="did">${esc(st.did)}</p>
     ${st.hand ? `<p class="hand">${esc(st.hand)}</p>` : ''}
     ${st.foot ? `<p class="s1-count">${st.foot}</p>` : ''}
-    <div class="s1-inline">${own[i]}</div>
+    </div>
+    <div class="s1-inline" id="${key}-${i}-s">${own[i]}</div>
     ${state(st, i)}
-  </article>`).join('\n')}
+  </article>`; }).join('\n')}
   </div>
   <div class="s1-app" aria-label="The product’s screen at the moment shown">
     <div class="s1-top">${appTop(s0)}</div>

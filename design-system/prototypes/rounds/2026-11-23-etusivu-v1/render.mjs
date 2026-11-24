@@ -12,9 +12,12 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { esc, screen, you, reply, USED_ASSETS } from './engine/kit.mjs';
 import { mkDay, dayStep, storySection, avatar, wrap } from './engine/story.mjs';
+import { pageRail, phoneBar, ctaStrip } from './engine/nav.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const read = (p) => readFileSync(p, 'utf8');
+// The links the phone's bar and strips share with the hero's top bar.
+const LINKS = { docs: '/docs/', repo: 'https://github.com/Open-Habitat/open-habitat' };
 
 // A bad --only: the caller's usage error, not a crash.
 export class UsageError extends Error {}
@@ -33,6 +36,7 @@ export async function render({ only = null } = {}) {
   const shown = new Set(); // blocks that appear on this page
   const anchors = new Set();
   const ctx = { screen, anchors };
+  const sections = []; // the page's sections for engine/nav.mjs, filled as they render
 
   // ---------- Sections ----------
   function daySection(entry) {
@@ -44,9 +48,11 @@ export async function render({ only = null } = {}) {
     if (!steps.length) return '';
     steps.forEach((s) => shown.add(s.block));
     if (showAll) shown.add(entry.day);
+    sections.push({ id: 'day', label: 'A day', kids: [{ key: d.id, href: '#day', label: d.name, sub: 'Ten conversations, one Thursday', avatar: avatar(d, 28), steps: steps.length }] });
+    // Her first row starts open on the phone, so the reader learns that rows open.
     return `${showAll ? wrap(entry.day, dayB.intro(esc(d.blurb)), 'section', 'day-intro" id="day') : ''}
-  ${storySection(d.id, steps, {}, ctx)}
-  ${showAll ? wrap(entry.day, dayB.end, 'section', 'day-end') : ''}`;
+  ${storySection(d.id, steps, { openFirst: true }, ctx)}
+  ${showAll ? `${wrap(entry.day, dayB.end, 'section', 'day-end')}\n  ${ctaStrip(LINKS)}` : ''}`;
   }
   const roleHead = (d, n) => `<header class="role-h">${avatar(d, 40)}<div><p class="role-k">${esc(d.role)} · ${esc(d.org)}</p><h3>${esc(d.name)}</h3><p>${esc(d.blurb)}</p></div><span class="role-n">${n}</span></header>`;
   function rolesSection(entry) {
@@ -55,15 +61,17 @@ export async function render({ only = null } = {}) {
     if (!list.length) return '';
     const intro = !only || only === entry.intro;
     if (intro) shown.add(entry.intro);
+    if (only !== entry.intro) sections.push({ id: 'roles', label: 'The team', kids: list.map(([, d]) => ({ key: `role-${d.id}`, href: `#role-${d.id}`, label: d.name, sub: d.role, avatar: avatar(d, 28), steps: d.g.filter((x) => x.pick).length })) });
     const rolesHtml = only === entry.intro ? '' : list.map(([id, d]) => { shown.add(id); return `<div class="role blk" data-block="${id}" id="role-${d.id}">${roleHead(d, `${days.findIndex(([x]) => x === id) + 1}/${days.length}`)}${storySection(`role-${d.id}`, d.g.filter((x) => x.pick).map(dayStep), { cls: 's1-role' }, ctx)}</div>`; }).join('\n');
     return `<section class="roles" id="roles">
   ${intro ? wrap(entry.intro, B[entry.intro].html({ roles: days.map(([, d]) => d), avatar }), 'div', 'day-intro roles-intro') : ''}
   ${rolesHtml}
-  </section>`;
+  </section>
+  ${!only ? ctaStrip(LINKS) : ''}`;
   }
   // Capabilities: a group's full screens as a story, the ones somebody's day
   // shows as lines pointing there, the rest in a list the reader opens.
-  const capStep = (b, n) => { const c = b.caps.find((x) => x[0] === n); return { block: b.id, who: c[4], org: c[5], clock: `<span class="cap-prog">${esc(c[3])}</span>`, head: `<span class="cap-tag">${esc(c[3])}</span><span class="cap-who">${esc(c[4])}, ${esc(c[5])}</span>`, ask: c[6], did: c[7], screen: b.full[n] }; };
+  const capStep = (b, n) => { const c = b.caps.find((x) => x[0] === n); return { block: b.id, who: c[4], org: c[5], clock: `<span class="cap-prog">${esc(c[3])}</span>`, head: `<span class="cap-tag">${esc(c[3])}</span><span class="cap-who">${esc(c[4])}, ${esc(c[5])}</span>`, ask: c[6], did: c[7], screen: b.full[n], tag: c[3] }; };
   const capItem = (c) => `<li><details class="cap-it"><summary><span class="cap-t">${esc(c[2])}</span><span class="cap-p">${esc(c[3])}</span></summary><div class="cap-b">${screen(c[2], you('', c[6]) + reply(c[7]), '', c[5])}<p class="cap-by">${esc(c[4])}, ${esc(c[5])}</p></div></details></li>`;
   const capIn = (b, c) => { const [who, sid] = b.inDay[c[0]]; const id = `g-${who}-${sid}`; const href = anchors.has(id) ? id : `role-${who}`; return `<li class="cap-in"><span class="cap-t">${esc(c[2])}</span><span class="cap-p">${esc(c[3])}</span><a class="cap-role" href="#${href}" data-who="${who}">${esc(c[4])}’s day</a></li>`; };
   function capsSection(entry) {
@@ -73,6 +81,7 @@ export async function render({ only = null } = {}) {
     const intro = !only || only === entry.intro;
     if (intro) shown.add(entry.intro);
     const nav = `<nav class="cap-nav" aria-label="Capability groups">${groups.map((b) => `<a href="#cap-${b.group.id}">${esc(b.group.name)} <b>${b.caps.length}</b></a>`).join('')}</nav>`;
+    if (only !== entry.intro) sections.push({ id: 'can', label: 'What it can do', kids: list.map((b) => ({ key: `cap-${b.group.id}`, href: `#cap-${b.group.id}`, label: b.group.name, sub: `${b.caps.length} examples`, avatar: '', steps: b.show.length || 1 })) });
     const body = only === entry.intro ? '' : list.map((b) => {
       shown.add(b.id);
       const notFull = b.caps.filter((c) => !b.show.includes(c[0]));
@@ -91,6 +100,7 @@ export async function render({ only = null } = {}) {
   </section>`;
   }
   const parts = INDEX.map((x) => {
+    if (x === 'install' && (!only || only === x)) sections.push({ id: 'install', label: 'Install', kids: [] });
     if (typeof x === 'string') { if (only && only !== x) return ''; shown.add(x); return wrap(x, B[x].html(ctx), 'div', 'blk-section'); }
     if (x.day) return daySection(x);
     if (x.roles) return rolesSection(x);
@@ -111,7 +121,7 @@ export async function render({ only = null } = {}) {
     if (bad.length) throw new Error(`blocks/${id}/block.css: every selector must start with [data-block="${id}"] (and a @keyframes name must contain the id); not: ${bad.slice(0, 5).join(' | ')}`);
     return `/* ---- blocks/${id}/block.css ---- */\n${css}`;
   }
-  const css = [...['page', 'screen', 'product', 'views'].map((n) => read(join(here, 'engine', `${n}.css`))), ...[...shown].map(blockCss)].join('\n');
+  const css = [...['page', 'screen', 'product', 'views', 'nav'].map((n) => read(join(here, 'engine', `${n}.css`))), ...[...shown].map(blockCss)].join('\n');
 
   // ---------- JS ----------
   const blockJs = [...shown].filter((id) => existsSync(join(here, 'blocks', id, 'client.js'))).map((id) => `// ---- blocks/${id}/client.js ----\n(() => {\n${read(join(here, 'blocks', id, 'client.js'))}\n})();`);
@@ -121,5 +131,8 @@ export async function render({ only = null } = {}) {
   // register an asset when its module loads or while it renders, so this is
   // read after rendering.
   const assets = new Map([...shown].filter((id) => USED_ASSETS.has(id)).map((id) => [id, new Set(USED_ASSETS.get(id))]));
-  return { html: parts.filter(Boolean).join('\n'), css, js, shown: [...shown], assets };
+  // The navigation: the phone's bar first, so it can stick over the whole
+  // page; the desktop's rail is fixed. A page with one block (--only) has none.
+  const navHtml = only ? '' : `${phoneBar(sections, LINKS)}\n${pageRail(sections)}`;
+  return { html: [navHtml, ...parts].filter(Boolean).join('\n'), css, js, shown: [...shown], assets };
 }

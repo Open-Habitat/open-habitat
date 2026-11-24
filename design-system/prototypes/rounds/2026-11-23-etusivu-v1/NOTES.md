@@ -22,7 +22,9 @@ render.mjs                  the page rendered from the blocks; build.mjs and the
 engine/                     shared: the conductor's
   kit.mjs                   components a block draws with (product markup)
   story.mjs                 day model, sidebar, story sections rendered to HTML
-  client.js                 browser half: sticky screen, sidebar rows, disclosures
+  nav.mjs  nav.css          the page's navigation: desktop rail, phone bar, strips
+  client.js                 browser half: sticky screen, sidebar rows, disclosures,
+                            phone rows, navigation
   views.mjs                 the five round-6 mock helpers several blocks share
   page.css screen.css       page, story layout and the slim window (from round 6)
   product.css               the conversation in the product's shapes
@@ -143,3 +145,48 @@ check at 1440 and 390 px; every block passes `--only`.
 The port itself was a one-off script (TypeScript's parser over round 6's
 `round.js`, `roles.js` and `caps.js`) that is not kept: the blocks are now
 the source.
+
+## Navigation and the phone (24.11.2026)
+
+Ported from two rounds, chosen by the conductor for Jari:
+`2026-11-24-navigaatio` variant 2 "Hakemisto" (desktop part only) and
+`2026-11-24-mobiili` variant 3 "Aikajana" with Alice's first row open. The
+rounds themselves stay as they were; their NOTES give the reasons.
+
+- **Desktop (≥ 901 px)**: a quiet rail at the left edge (`engine/nav.mjs`
+  `pageRail`, `nav.css`): the four sections, a segment per person and
+  capability group that fills as its steps are read ("Carol 2/3"), and Back
+  to the top. It appears once the hero is past. Nothing else on the desktop
+  changed: with the rail hidden, the page is pixel-identical to the build
+  before the port at 1440 and 1024 px (same height, same frames down the
+  page), except the hero's top bar, which gained The team.
+- **Phone (≤ 900 px)**: each story is a timeline. `storySection` writes a row
+  per step (`h3.s1-row` with one button: time, the conversation's sidebar line
+  at that moment as a chip, the ask) in front of the step's `.s1-txt` (now
+  written at build time, not by `client.js`) and `.s1-inline`. A tap opens the
+  step in place, one open per story, and the row keeps its place. Alice's
+  first row starts open. The engine's per-story status bar (`.s1-bar`) is
+  gone; the page's sticky bar (`phoneBar`) replaces it and the hero's top
+  bar. It shows the mark (to the top), the person under it with the moment
+  ("13:35 · 2 waiting", from the step's `data-now`), and Install. The person
+  opens a list of the seven people and eight groups with Install, Docs and
+  GitHub. The same strip sits after Alice's day and after the team. The
+  library's four claims are one row to swipe. Without JavaScript there are no
+  rows and every step is open, as before.
+- **Dropped on the phone**: the status bar's drop-down sidebar, the only way
+  on the phone to open *another* conversation as it stood at that moment
+  (the mobiili round flagged this; no variant brought it back).
+- **Engine**: `jumpTo()` is the one jump (rail, bar, list, capability lines
+  into a day): the target lands at its scroll-margin, the hash is pushed,
+  focus moves there, and on the phone a step's row opens first. The phone's
+  line is the sticky bar's bottom (`--pn-h`, 52 px). Landing (moving a step
+  that a scroll nobody drove left in the upper middle to the line) now
+  ignores its own scrollend even when it is instant: before, with reduced
+  motion, each placement set off the next, which never showed with 87.5vh
+  desktop steps but ran a page of short rows to the end. On the phone it
+  only moves an open row. A row toggle turns the browser's scroll anchoring
+  off for two frames, or it would correct the same shift twice.
+- `check.mjs` opens each phone row before exercising its screen, checks
+  that one row is open per story, that the bar names Carol in her day, and
+  that the bar's list lands at Frank.
+

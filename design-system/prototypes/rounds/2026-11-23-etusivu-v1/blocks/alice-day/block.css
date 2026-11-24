@@ -6,3 +6,5 @@
 [data-block="alice-day"].day-end .ad-sum span { display: inline-flex; align-items: baseline; gap: 7px; padding: 8px 16px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-pill); background: var(--ah-surface); }
 [data-block="alice-day"].day-end .ad-sum b { font-size: 20px; font-weight: 600; color: var(--ah-accent-ink); letter-spacing: -.01em; }
 [data-block="alice-day"].day-end .ad-next { font-size: clamp(16px, 1.6vw, 18px); font-weight: 400; color: var(--ah-ink-2); }
+/* The phone has no sidebar to move: its day is a timeline of rows. */
+@media (max-width: 900px) { [data-block="alice-day"].day-intro .ad-hint { display: none; } }

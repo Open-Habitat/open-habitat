@@ -12,10 +12,12 @@
 //     opens and closes, and every button in the screen answers (view toggles,
 //     offered files, a block's own buttons); screenshots of the step closed and
 //     open: <width>-<block>-<step>-closed.png / -open.png;
-//   - sections: a screenshot each; the sidebar: on the desktop a row opens its
-//     conversation, on the phone the state bar opens the sidebar and a row
-//     replaces the step's screen; capability lists open; a line pointing at
-//     someone's day scrolls there;
+//   - sections: a screenshot each; on the desktop a sidebar row opens its
+//     conversation; on the phone each step is a row that opens its screen in
+//     place (one open per story), and the sticky bar names the person under it
+//     and opens the list, whose person links land at that person; capability
+//     lists open; a line pointing at someone's day scrolls there (on the phone
+//     with its row open);
 //   - without JavaScript every step's request, story and replies are visible;
 //   - asset budget per block (BUDGET below), formats, nothing unused.
 // Exits 1 with the list of failures.
@@ -72,12 +74,18 @@ async function open(width, js = true) {
 const tag = (w) => (w > 600 ? 'desktop' : 'phone');
 const name = (s) => s.replace(/[^a-z0-9-]+/gi, '-');
 
-// The screen that belongs to a step: the sticky one on the desktop, the step's own on the phone.
+// The screen that belongs to a step: the sticky one on the desktop, the step's
+// own on the phone, where its row is opened first.
 async function screenFor(page, step, desktop) {
   await step.scrollIntoViewIfNeeded();
   await step.evaluate((el) => el.scrollIntoView({ block: 'center' }));
   await page.waitForTimeout(250);
-  if (!desktop) return step.locator('.s1-inline');
+  if (!desktop) {
+    const row = step.locator(':scope > .s1-row button');
+    if ((await row.getAttribute('aria-expanded')) !== 'true') await press(row);
+    if (!(await step.locator('.s1-inline').isVisible())) fail(`${await step.getAttribute('data-block')} step ${await step.getAttribute('data-i')}: its row did not open its screen`);
+    return step.locator('.s1-inline');
+  }
   const sec = step.locator('xpath=ancestor::section[contains(@class,"s1")][1]');
   const i = await step.getAttribute('data-i');
   const id = await step.getAttribute('data-block');
@@ -151,11 +159,11 @@ for (const width of [1440, 390]) {
     const scr = await screenFor(page, step, desktop);
     const shotEl = desktop ? step.locator('xpath=ancestor::section[contains(@class,"s1")][1]') : step;
     await page.waitForTimeout(100);
-    await (desktop ? page : step).screenshot({ path: join(shots, `${W}-${id}-${sec}-${i}-closed.png`), style: '.s1-bar { visibility: hidden; }' });
+    await (desktop ? page : step).screenshot({ path: join(shots, `${W}-${id}-${sec}-${i}-closed.png`), style: '.pn-bar { visibility: hidden; }' });
     const n = await exercise(page, scr, label);
     // Open state: the screen scrolled to the first opened stage.
     if (n) await scr.locator('.ah-stage-toggle').first().evaluate((el) => el.scrollIntoView({ block: 'start' }));
-    await (desktop ? page : step).screenshot({ path: join(shots, `${W}-${id}-${sec}-${i}-open.png`), style: '.s1-bar { visibility: hidden; }' });
+    await (desktop ? page : step).screenshot({ path: join(shots, `${W}-${id}-${sec}-${i}-open.png`), style: '.pn-bar { visibility: hidden; }' });
     await closeAll(scr, label);
     void shotEl;
   }
@@ -174,17 +182,25 @@ for (const width of [1440, 390]) {
         await exercise(page, scr, `${W} sidebar ${title}`);
       }
     } else {
-      const tog = railSec.locator('.s1-tog');
-      await tog.click();
-      if (!(await railSec.locator('.s1-drop').isVisible())) fail(`${W}: the state bar did not open the sidebar`);
-      const r = railSec.locator('.s1-drop .rl-row:not([aria-current])').first();
-      if (await r.count()) {
-        const title = await r.locator('.rl-t').innerText();
-        await r.click(); await page.waitForTimeout(150);
-        const t = await scr.locator('.scr-bar b').first().innerText();
-        if (t !== title) fail(`${W}: a sidebar row (${title}) did not replace the step's screen (${t})`);
-      }
+      // One row open per story: the last step's row is open, the others closed.
+      const open = await railSec.locator('.s1-step.s1-open').count();
+      if (open !== 1) fail(`${W}: ${open} rows open in one story after opening one`);
+      void scr;
     }
+  }
+  // The phone's bar: it names the person under it, and its list lands at a person.
+  if (!desktop && (await page.locator('.pn-bar').count())) {
+    await page.locator('#role-carol .s1-step').first().evaluate((el) => el.scrollIntoView({ block: 'start' }));
+    await page.waitForTimeout(200);
+    const who = (await page.locator('.pn-who b').innerText()).trim();
+    if (who !== 'Carol') fail(`${W}: the bar says "${who}" in Carol's day`);
+    await page.locator('.pn-who').click();
+    if (!(await page.locator('.pn-menu').isVisible())) fail(`${W}: the bar's switcher did not open the list`);
+    await page.locator('.pn-menu a[href="#role-frank"]').click(); await page.waitForTimeout(250);
+    if (await page.locator('.pn-menu').isVisible()) fail(`${W}: the list stayed open after a jump`);
+    const top = (await page.locator('#role-frank').boundingBox())?.y;
+    const bar = (await page.locator('.pn-bar').boundingBox())?.height;
+    if (!(top >= bar - 1 && top < bar + 40)) fail(`${W}: the list's Frank landed at ${top}px (bar ${bar}px)`);
   }
   // Capability lists and lines that point at someone's day.
   for (const more of await page.locator('.cap-more').all()) {

@@ -2,7 +2,8 @@
 // Serves a built site (dist/, or the round's `node build.mjs <out>` for
 // comparison) on 127.0.0.1 and opens each path (default /) in
 // Chromium at 1440 and 390 px with reduced motion. It scrolls the whole page,
-// opens Show work in a few blocks, plays a video, and fails on a console error,
+// opens Show work in a few blocks (on the phone, where each step is a timeline
+// row, it opens the row first), plays a video, and fails on a console error,
 // an uncaught exception, a failed or 4xx/5xx request, any request to another
 // origin, or sideways scrolling. Screenshots: the top, Alice's day, a role,
 // the capability section, the install section and the page's end (those that
@@ -102,10 +103,18 @@ for (const p of paths.length ? paths : ['/']) {
         if (el) el.setAttribute('data-check-pick', '');
         return Boolean(el);
       }, [sel, block]);
+    // On the phone a step's screen is behind its row: open it as a reader would.
+    const openRow = (loc) =>
+      loc.evaluate((e) => {
+        const step = e.matches('.s1-step') ? e : e.querySelector('.s1-step');
+        const b = step?.querySelector(':scope > .s1-row button');
+        if (b && b.offsetParent && b.getAttribute('aria-expanded') !== 'true') b.click();
+      });
     let opened = 0;
     for (const block of ['alice-01-whats-waiting', 'alice-08-returns-workers', 'role-frank', 'caps-pictures']) {
       const anchor = page.locator(`[data-block="${block}"]`).first();
       if (!(await anchor.count())) continue;
+      await openRow(anchor);
       await anchor.evaluate((e) => e.scrollIntoView({ block: 'center' }));
       await page.waitForTimeout(400);
       if (!(await onScreen('.ah-stage-toggle', block))) {
@@ -123,6 +132,7 @@ for (const p of paths.length ? paths : ['/']) {
     // A video plays from the site's origin.
     const glimpse = page.locator('#g-alice-video');
     if (await glimpse.count()) {
+      await openRow(glimpse);
       await glimpse.evaluate((e) => e.scrollIntoView({ block: 'center' }));
       await page.waitForTimeout(400);
       if (await onScreen('video')) {
