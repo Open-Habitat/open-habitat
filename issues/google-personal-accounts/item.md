@@ -9,7 +9,7 @@ provenance: chat
 source_ref: chat:2026-11-16/google-personal-accounts
 lane: google-personal
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Google integration for personal Gmail accounts: External consent screen, admin and person flows
