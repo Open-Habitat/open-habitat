@@ -1,0 +1,8 @@
+/* Harness chrome, not part of any variant: the Finnish description strip
+   above the page. */
+.proto-desc { margin: 0; padding: 9px 16px; background: #1d1f1c; color: rgba(255, 255, 255, 0.78); font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; text-align: center; }
+.proto-desc b { color: #fff; font-weight: 600; margin-right: 8px; }
+/* On the phone the floating corner buttons (variants 2 and 3) sit above the
+   picker pill, which is centred at the bottom. Prototype only; the port's
+   offset is 0. */
+@media (max-width: 900px) { :root { --proto-dock: 52px; } }

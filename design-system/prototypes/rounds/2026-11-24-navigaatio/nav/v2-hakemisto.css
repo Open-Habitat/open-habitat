@@ -1,0 +1,89 @@
+/* Variant 2, Sisällysluettelo / etenemispalkki. No top chrome: the engine's
+   line and the stories' sticky elements stay where they are (--nav-h 0). */
+html[data-nav="2"] { --nav-h: 0px; }
+html[data-nav="2"] :is(#day, #roles, #can, #install, .role, .cap-g) { scroll-margin-top: 0; }
+.ix-rail, .ix-fab { display: none; }
+.ix-rail :focus-visible, .ix-fab:focus-visible, .ix-sheet :focus-visible { outline: 2px solid var(--ah-focus); outline-offset: 2px; border-radius: 6px; }
+
+/* ---------- Desktop rail ---------- */
+@media (min-width: 901px) {
+  .ix-rail { display: block; position: fixed; left: 8px; top: 50%; z-index: 30; transform: translateY(-50%); width: 28px; padding: 10px 0 10px 12px; font: 500 12.5px/1.15 var(--ah-font); transition: opacity 180ms ease-out; }
+  .ix-rail[data-shown="false"]:not(:focus-within) { opacity: 0; pointer-events: none; }
+  /* The panel behind the labels: drawn only while the rail is open. */
+  .ix-rail::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 264px; border-radius: 14px; background: var(--ah-surface); box-shadow: var(--ah-shadow-menu); border: 1px solid var(--ah-line); opacity: 0; transform: translateX(-6px); transition: opacity 160ms ease-out, transform 160ms cubic-bezier(0.23, 1, 0.32, 1); pointer-events: none; }
+  .ix-rail ol { list-style: none; margin: 0; padding: 0; }
+  .ix-sec + .ix-sec { margin-top: 10px; }
+  .ix-rail a { position: relative; display: flex; align-items: flex-start; gap: 12px; width: 22px; color: var(--ah-ink-2); text-decoration: none; }
+  .ix-top { height: 22px; align-items: center !important; margin-bottom: 8px; }
+  .ix-top svg { width: 14px; height: 14px; margin-left: -5px; flex: none; fill: none; stroke: var(--ah-muted); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .ix-sec-a { height: 16px; align-items: center !important; }
+  .ix-dot { width: 4px; height: 4px; border-radius: 2px; background: var(--ah-faint); flex: none; }
+  .ix-sec-a[aria-current] .ix-dot { background: var(--ah-accent); transform: scale(1.5); }
+  .ix-kid > a { padding: 1.5px 0; }
+  .ix-seg { position: relative; flex: none; width: 4px; height: var(--h); border-radius: 2px; background: var(--ah-line); overflow: hidden; transition: width 160ms cubic-bezier(0.23, 1, 0.32, 1); }
+  .ix-seg i { position: absolute; inset: 0; background: var(--ah-accent); transform: scaleY(var(--p, 0)); transform-origin: top; transition: transform 160ms ease-out; }
+  .ix-kid[data-state="past"] .ix-seg i { background: color-mix(in srgb, var(--ah-accent) 45%, var(--ah-line)); }
+  .ix-kid > a[aria-current] .ix-seg { width: 6px; margin-left: -1px; }
+  /* Labels: absolutely placed beside their segment, so opening the rail
+     moves nothing; clipped (not hidden) while closed so they stay the links' names. */
+  .ix-lbl { position: absolute; left: 18px; top: 0; white-space: nowrap; clip-path: inset(50%); opacity: 0; transition: opacity 120ms ease-out; }
+  .ix-kid .ix-lbl { top: 0; line-height: 17px; font-size: 13px; }
+  .ix-sec-a .ix-lbl { font: 500 10.5px/16px var(--ah-mono); text-transform: uppercase; letter-spacing: .08em; color: var(--ah-muted); }
+  .ix-top .ix-lbl { line-height: 22px; color: var(--ah-ink-2); }
+  .ix-n { font: 400 11px var(--ah-mono); color: var(--ah-muted); margin-left: 4px; }
+  .ix-kid > a[aria-current] .ix-lbl { color: var(--ah-ink); font-weight: 600; }
+  .ix-sec-a[aria-current] .ix-lbl { color: var(--ah-accent-ink); }
+  .ix-rail:is(:hover, :focus-within)::before { opacity: 1; transform: none; }
+  .ix-rail:is(:hover, :focus-within) .ix-lbl { clip-path: none; opacity: 1; }
+  .ix-rail:is(:hover, :focus-within) a { width: 236px; }
+  .ix-rail a:hover .ix-lbl { color: var(--ah-accent-ink); }
+}
+/* Where the page has a margin wide enough, the current person or group
+   shows its label beside its segment even while the rail is closed. */
+@media (min-width: 1440px) {
+  .ix-rail:not(:hover):not(:focus-within) .ix-kid > a[aria-current] .ix-lbl { clip-path: none; opacity: 1; left: 12px; font-size: 11.5px; line-height: 1.2; white-space: normal; width: 60px; color: var(--ah-ink-2); font-weight: 500; }
+  .ix-rail:not(:hover):not(:focus-within) .ix-kid > a[aria-current] .ix-n { display: block; margin: 1px 0 0; }
+}
+
+/* ---------- Phone: the button in the corner, the sheet from the bottom ---------- */
+@media (max-width: 900px) {
+  .ix-fab { position: fixed; right: 14px; bottom: calc(14px + env(safe-area-inset-bottom) + var(--proto-dock, 0px)); z-index: 30; display: inline-flex; align-items: center; gap: 10px; height: 52px; padding: 0 18px 0 9px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-pill); background: var(--ah-surface); color: var(--ah-ink); box-shadow: var(--ah-shadow-float); font: 600 14px/1.15 var(--ah-font); text-align: left; cursor: pointer; transition: transform 200ms cubic-bezier(0.23, 1, 0.32, 1), opacity 200ms ease-out; }
+  .ix-fab:active { transform: scale(0.97); }
+  .ix-fab[data-shown="false"]:not(:focus-visible) { opacity: 0; transform: translateY(14px); pointer-events: none; }
+}
+.ix-ring { width: 34px; height: 34px; flex: none; transform: rotate(-90deg); fill: none; stroke-linecap: round; }
+.ix-ring circle { stroke: var(--ah-line); stroke-width: 3; }
+.ix-ring .ix-ring-p { stroke: var(--ah-accent); stroke-dasharray: 0 100; }
+.ix-ring path { stroke: var(--ah-ink-2); stroke-width: 1.7; transform: rotate(90deg); transform-origin: 18px 18px; }
+.ix-fab-t { display: flex; flex-direction: column; width: 116px; } /* fixed: a label that changes width would move the right-anchored button */
+.ix-fab-t small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ix-fab-t small { font: 500 12.5px var(--ah-mono); color: var(--ah-muted); }
+
+.ix-sheet { position: fixed; inset: auto 0 0; margin: 0; width: 100%; max-width: none; max-height: 84dvh; padding: 0; border: 0; border-radius: 20px 20px 0 0; background: var(--ah-surface); color: var(--ah-ink); box-shadow: var(--ah-shadow-dialog); font-family: var(--ah-font); flex-direction: column; }
+.ix-sheet[open] { display: flex; animation: ix-rise 220ms cubic-bezier(0.23, 1, 0.32, 1); }
+@keyframes ix-rise { from { transform: translateY(24px); opacity: 0; } }
+.ix-sheet::backdrop { background: color-mix(in srgb, var(--ah-ink) 28%, transparent); }
+.ix-sh-h { flex: none; display: flex; align-items: center; justify-content: space-between; padding: 6px 6px 2px 20px; font: 500 12px var(--ah-mono); text-transform: uppercase; letter-spacing: .08em; color: var(--ah-muted); border-bottom: 1px solid var(--ah-line-soft); }
+.ix-close { width: 44px; height: 44px; border: 0; background: none; color: var(--ah-ink-2); font-size: 16px; cursor: pointer; }
+.ix-sh-b { flex: 1; overflow-y: auto; padding: 6px 10px 10px; overscroll-behavior: contain; }
+.ix-sh-sec + .ix-sh-sec { border-top: 1px solid var(--ah-line-soft); }
+.pg .ix-sheet a { color: var(--ah-ink); text-decoration: none; }
+.ix-sh-a { display: flex; flex-direction: column; padding: 12px 10px 6px; border-radius: 10px; }
+.ix-sh-a b { font-size: 17px; }
+.ix-sh-a small { font-size: 13px; color: var(--ah-muted); }
+.pg .ix-sheet .ix-sh-a[aria-current] b { color: var(--ah-accent-ink); }
+.ix-sh-kids { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 2px; }
+.ix-sh-kids.ix-two { grid-template-columns: 1fr 1fr; }
+.ix-sh-kids a { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 6px 10px; border-radius: 10px; }
+.ix-sh-kids a[aria-current] { background: var(--ah-accent-soft); }
+.ix-k-t { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
+.ix-k-t b { font-size: 15px; font-weight: 600; }
+.ix-k-t small { font-size: 12.5px; color: var(--ah-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ix-two .ix-k-t small { display: none; }
+.ix-k-p { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.ix-bar { position: relative; width: 40px; height: 4px; border-radius: 2px; background: var(--ah-line); overflow: hidden; }
+.ix-bar i { position: absolute; inset: 0; background: var(--ah-accent); transform: scaleX(var(--p, 0)); transform-origin: left; }
+.ix-sh-kids .ix-n { font: 400 11px var(--ah-mono); color: var(--ah-muted); }
+.ix-sh-f { flex: none; margin: 0; padding: 4px 10px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--ah-line-soft); }
+.pg .ix-sh-f a { display: flex; align-items: center; justify-content: center; height: 48px; border-radius: 12px; background: var(--ah-control); font-weight: 600; }
+.ix-sheet .av { width: 32px; height: 32px; font-size: 14px; }

@@ -1,0 +1,8 @@
+/* Shared by the three variants. On the phone a story without a status bar
+   (a capability group) puts its steps at the top bar's edge, the line the
+   engine uses there (common.js), not under a status bar it does not have.
+   Without a top bar that is the viewport's top, which the v1 engine missed
+   by the status bar's 49 px. */
+@media (max-width: 900px) {
+  html[data-nav] .s1-norail > .s1-steps > .s1-step { scroll-margin-top: var(--nav-h, 0px); }
+}
