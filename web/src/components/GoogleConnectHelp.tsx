@@ -16,7 +16,9 @@ import "./GoogleConnectHelp.css";
 // shorter, Jari 21.11.2026): one short note before Google, and the help
 // behind a link there and while waiting for the return address. Habitat
 // cannot see Google's tab and does not know whether the server's app warns,
-// so every answer is conditional and none is shown as a state.
+// so every answer is conditional and none is shown as a state. The note
+// names the server's administrator up front for Google's "Access blocked"
+// (Jari 24.11.2026), because the help behind the link goes unread.
 
 const txt = liveText(googleConnectText);
 
@@ -185,7 +187,12 @@ export function GoogleNote({
       <div className="ig-notice gc-note" role="note" data-testid="gc-note">
         <Icon name="info" />
         <div>
-          {txt.note} {txt.noteCheck(host)}{" "}
+          {txt.note} {txt.noteCheck(host)}
+          {/* Its own line: the one sentence people read before Google
+              refuses a personal account on an organisation-only app. */}
+          <b className="gc-blocked" data-testid="gc-blocked">
+            {txt.blocked}
+          </b>
           <button
             type="button"
             className="ig-link gc-linkbtn"

@@ -158,3 +158,9 @@
 .gc-granted li .ig-meta {
   margin-left: auto;
 }
+.gc-blocked {
+  display: block;
+  margin: 4px 0;
+  color: var(--ah-ink);
+  font-weight: 600;
+}

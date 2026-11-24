@@ -133,6 +133,10 @@ const fi = {
   },
   copied: "Kopioitu",
   done: "Valmis",
+  // Item in the Google row's Tunnukset menu under Palvelinintegraatiot once
+  // credentials are set. It reopens this guide with its audience question, so an
+  // administrator asked to allow personal accounts (Google said "Access
+  // blocked" to a personal account) starts here.
   audienceMenu: "Kenen tilit…",
 };
 

@@ -4,10 +4,14 @@ import { catalog } from "../i18n";
 // account (components/GoogleConnectHelp.tsx). Habitat cannot see Google's
 // tab, so every answer is conditional. Google's screens are named only by
 // the English labels and error codes Google documents; their Finnish
-// wording is not confirmed, and the help says so.
+// wording is not confirmed, and the help says so. The one exception is
+// blocked: "Pääsy estetty" is the Finnish heading a person reported from
+// Google's refusal of a personal account, and it is what people look for.
 const fi = {
   note: "Google voi varoittaa, ettei se ole vahvistanut tämän palvelimen sovellusta.",
   noteCheck: (host: string) => `Jatka vain, jos tunnistat palvelimen ${host}.`,
+  blocked:
+    "Jos Google sanoo ”Pääsy estetty”, pyydä tämän palvelimen ylläpitäjää sallimaan henkilökohtaiset tilit.",
   more: "Mitä teen, jos Google varoittaa tai pysäyttää?",
   less: "Piilota ohje",
   waitLink: "Google varoitti tai pysäytti?",
@@ -70,6 +74,8 @@ export const googleConnectText = catalog(
   {
     note: "Google may warn that it has not verified this server's app.",
     noteCheck: (host) => `Continue only if you recognize the server ${host}.`,
+    blocked:
+      "If Google says “Access blocked”, ask this server's administrator to allow personal accounts.",
     more: "What if Google warns or stops me?",
     less: "Hide help",
     waitLink: "Did Google warn or stop you?",

@@ -215,6 +215,10 @@ for (const locale of ["fi-FI", "en-US"]) {
         .and(dialog.getByTestId("integration-continue"))
         .click();
       await expect(dialog.getByTestId("gc-note")).toBeVisible();
+      // Google's refusal and who fixes it, readable without opening the help.
+      await expect(dialog.getByTestId("gc-blocked")).toContainText(
+        lang === "fi" ? "Pääsy estetty" : "Access blocked",
+      );
       await expect(dialog.getByTestId("gc-panel")).toHaveCount(0);
       await shot(page, `person-${lang}-1440-before`);
       await dialog.getByTestId("gc-more").click();
