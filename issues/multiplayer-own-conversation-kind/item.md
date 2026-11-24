@@ -46,10 +46,15 @@ cannot see in the middle of the conversation.
 - A multiplayer conversation runs on an API-key model (the server's shared key
   or the owner's own key), chosen when it is started. Ordinary conversations
   keep using whatever the person has, subscriptions included.
-- An ordinary conversation is not turned into a multiplayer one by inviting
-  someone. Whether a "continue this as a multiplayer conversation" action is
-  needed (for "come and look at this"), and what it carries over, is a
-  question for the prototype, not a hidden conversion.
+- An ordinary conversation can become a multiplayer one, but only through the
+  same "multiplayer +" button, never by a plain invite. Pressing it is the one
+  boundary: the conversation moves to an API-key model at that moment (Pi
+  switches models mid-session and keeps the history; Habitat already drives
+  `set_model`), and from then on it is a multiplayer conversation like any
+  other. Jari 24.11.: "if the conversation is moved from the subscription to
+  the API key, fine; that is what we do." The first turn after the move costs
+  the full uncached history once; some subscription-only models have no
+  API-key equivalent and map to the nearest one.
 - What the person sees when no API-key model is available is decided once, at
   the start button, in plain words.
 - The rest of ADR 0038 (owner card, participant strip, text-only participant
