@@ -3,10 +3,11 @@ created: 2026-11-24
 updated: 2026-11-24
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 preparation: ready
+closed: 2026-11-24
 ---
 
 # An offered HTML file should open as a page in its preview

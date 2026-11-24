@@ -1163,6 +1163,11 @@ const fi = {
       know: "Näkymässä tekemäsi valinnat nollautuvat. Sisäkkäiset sivut pysyvät estettyinä, joten sama este voi toistua.",
       try: "Avaa näkymä uudelleen",
     },
+    V45: {
+      name: "Sivu tai lähdekoodi",
+      lead: "Agentin tarjoama HTML-tiedosto näkyy sivuna. Lähdekoodi ja tiedot näyttää sen tekstinä sekä tyypin ja koon.",
+      know: "Sivu on erillään Habitatista eikä pääse verkkoon. Lataus antaa aina tiedoston sellaisenaan.",
+    },
     V40: {
       name: "Salli",
       lead: "Antaa agentin tehdä kysytyn toimen.",
@@ -3234,6 +3239,11 @@ export const explainModeText = catalog(fi, {
       lead: "Opens the agent's original view again from the start.",
       know: "Choices made inside the view reset. Embedded pages stay blocked, so the same problem may return.",
       try: "Reopen the view",
+    },
+    V45: {
+      name: "Page or source",
+      lead: "An HTML file the agent offered shows as its page. Source and details shows it as text, with its type and size.",
+      know: "The page is kept apart from Habitat and cannot reach the network. Downloading always gives the file as it is.",
     },
     V40: {
       name: "Allow",

@@ -371,6 +371,9 @@ func (d *viewDesk) openOfferPage(id, path string) *http.Cookie {
 		d.t.Fatalf("offer page url %q", v.URL)
 	}
 	res = d.do("GET", u.Host, u.RequestURI(), "", nil)
+	if want := (&url.URL{Path: "/" + path}).EscapedPath(); res.Header.Get("Location") != want {
+		d.t.Fatalf("redeem offer page went to %q, not %q", res.Header.Get("Location"), want)
+	}
 	for _, c := range res.Cookies() {
 		if c.Name == viewCookie && res.StatusCode == 303 {
 			return c
@@ -407,6 +410,9 @@ func TestOfferedHTMLFileOpensOnItsOwnViewHost(t *testing.T) {
 	if res := d.do("POST", "host.test", "/auth/view", `{"offer_id":"`+offerPageA+`","path":"`+long+`"}`, appWrite); res.StatusCode != 200 {
 		t.Fatalf("a long offered path: %d", res.StatusCode)
 	}
+	// A second file of the same offer, redeemed later, takes the host's one
+	// cookie; each redemption still went to its own file.
+	_ = d.openOfferPage(offerPageA, "proto/toinen.html")
 	cookie := d.openOfferPage(offerPageA, "proto/Sivu (1).html")
 	d.drain()
 	res := d.do("GET", host, "/", "", withCookie(cookie))

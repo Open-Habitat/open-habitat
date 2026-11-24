@@ -453,7 +453,14 @@ func (a *Auth) redeemViewHandoff(w http.ResponseWriter, r *http.Request) {
 	// every request of a top-level sandboxed document (no top-level site is
 	// the same as an opaque one), while a frame keeps the app's site.
 	http.SetCookie(w, &http.Cookie{Name: viewCookie, Value: secret, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteNoneMode})
-	w.Header().Set("Location", "/")
+	// An offered page goes straight to its own file: two files of one offer
+	// share the host and its one cookie, so a later redemption's session
+	// must not choose what an earlier one opens.
+	location := "/"
+	if g.entry != "" {
+		location = (&url.URL{Path: "/" + g.entry}).EscapedPath()
+	}
+	w.Header().Set("Location", location)
 	w.WriteHeader(http.StatusSeeOther)
 }
 

@@ -481,6 +481,7 @@ export const parts: Record<CardId, Part> = {
   V42: { kind: "info", sel: '[data-testid="permission-technical"]' },
   V43: { kind: "once", sel: '[data-testid="permission-stop"]' },
   V44: { kind: "once", sel: '[data-testid="reopen-view"]' },
+  V45: { kind: "menu", sel: '[data-testid="offer-page-mode"]' },
   B01: { kind: "panel", sel: '[data-testid="browser-card"]', opens: true },
   B02: { kind: "info", sel: '[data-testid="row-browser"]' },
   B03: {
