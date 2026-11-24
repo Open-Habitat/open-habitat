@@ -1,6 +1,6 @@
 ---
 created: 2026-11-16
-updated: 2026-11-21
+updated: 2026-11-24
 type: feature
 reporter: jari
 status: in-progress
@@ -31,6 +31,10 @@ Alternative considered: Gmail via IMAP app password (mail only); a centrally ver
 ### 2026-11-18T14:12:39Z · @jari
 
 Jari 18.11.2026: the External switch was tried on the pilot installation (not the staging one) and it worked.
+
+### 2026-11-24T16:31:06Z · @jari
+
+Jari 24.11.2026: a person on another installation could not connect a second personal Gmail account: Google refused with "403 org_internal" (the installation's Google app is Internal). Jari wants this External matter put right as a series of user interfaces: first the administrator side, then the person's side. Conductor: the admin guide and person flow from 21.11. are already shipped (v0.1.5+); next is to show Jari what they look like today, including the Internal/org_internal case, and prototype what is missing.
 
 ## Decisions
 
