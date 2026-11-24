@@ -1,6 +1,6 @@
 ---
 created: 2026-11-23
-updated: 2026-11-23
+updated: 2026-11-24
 type: task
 reporter: jari
 status: open
@@ -53,3 +53,14 @@ Jari 23.11.2026 answered the research questions: (1) working while the chosen Ma
 privacy requests. EventKit Reminders cannot be granted on that path; Notes/Reminders
 automation raises a dialog that went unanswered (Mac locked), so the functional steps
 await one attended session. Proposal and open questions are in trial.md.
+
+## Comments
+
+### 2026-11-24T07:10:26Z · @agent
+
+Attended session 24.11.2026 (conductor, person at the desktop Mac):
+- The person allowed the two Automation dialogs for sshd-keygen-wrapper (Notes, Reminders). After that, over SSH:
+  - Notes via apple-notes-mcp's AppleScript core: create folder Habitat-koe, three notes (plain with ä/ö/å, HTML, Markdown routed via HTML), list, read back as HTML/plain/Markdown, search by title and by content, get-sync-status: all succeeded (one early "Folder not found" while the folder was being created, then fine).
+  - Reminders via AppleScript: create list, an all-day and a timed reminder with a remind-me time, complete one, read dates back: works in ~7 s. The JXA variant (`reminders-jxa.js`) created reminders and then hung; use plain AppleScript.
+- remindctl (EventKit) from a Terminal window the agent opened with `open -a Terminal` after `remindctl authorize` (grant goes to Terminal, not SSH): date-only, timed with alarm, weekly and every-3-days recurrence, list as JSON in system TZ, UTC and America/New_York, completing the weekly one created the next occurrence one week later (24.11. -> 1.12.), edit and clearing a due date: all succeeded. All-day reminders are stored at local midnight and keep their day.
+- Conclusion: over SSH, AppleScript automation is enough for Notes (read + new notes) and basic Reminders; recurrence needs EventKit, which needs a desktop-session launcher (Terminal or a helper). Synthetic list/folder still on the Mac for the person's phone sync check; then removed with the trial directory.
