@@ -3,12 +3,15 @@ created: 2026-11-24
 updated: 2026-11-24
 type: chore
 reporter: runtime-pin-watch
-status: untriaged
+status: open
 priority: normal
 labels: [runtime-pin]
 provenance: other
 provenance_detail: runtime pin watch
 source_ref: runtime-pin:glab@1.132.0
+lane: runtime-pins
+lane_seq: 25
+preparation: ready
 ---
 
 # Runtime pin: glab 1.132.0 is available (pinned 1.130.0)
