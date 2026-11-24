@@ -13,8 +13,7 @@ blocks, rendered at build time by the round's own `render.mjs`, the same
 renderer its `build.mjs` uses, so a block change reaches the site with no
 change here. `landing.mjs` holds the blocks' location in one constant
 (`landingRound`, today `design-system/prototypes/rounds/2026-11-23-etusivu-v1/`;
-moving the round changes that line and the matching path in
-`.github/workflows/pages.yml`), and a Vite plugin that gives the page the
+moving the round changes that line), and a Vite plugin that gives the page the
 rendered HTML, the engine's and blocks' CSS and the browser script
 (`engine/client.js` plus each block's `client.js`). The blocks render in the
 build's Node process, not in Vite's bundle, because they find their own files
@@ -101,6 +100,11 @@ reduced motion.
 ## Launch switches
 
 `launch.mjs` holds `indexable`. While it is false every page carries
-`noindex, nofollow` and `/robots.txt` disallows everything. The site
-deploys on every push to main that touches it, so a merge is a release of
-the (still unindexed) preview.
+`noindex, nofollow` and `/robots.txt` disallows everything.
+
+## Publishing
+
+The site is published only by an explicit dispatch of `pages.yml` with the
+commit to publish, which must be on `main`; the maintainer's publish script
+lives outside this repository. A change on `main` is not live until
+published.

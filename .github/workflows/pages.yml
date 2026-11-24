@@ -3,30 +3,17 @@ name: Website
 # Publishes the website (website/, Astro + Starlight) to GitHub Pages at
 # https://open-habitat.ai. The CNAME file in website/public/ sets the custom
 # domain.
+#
+# Only an explicit dispatch publishes, never a push: main is shared, and a
+# change there is not live until someone publishes that exact commit. The
+# maintainer's publish script lives outside this repository.
 on:
-  push:
-    branches: [main]
-    paths:
-      - website/**
-      - design-system/styles.css
-      - design-system/tokens/colors.css
-      - design-system/tokens/typography.css
-      - design-system/tokens/spacing.css
-      - design-system/tokens/motion.css
-      - design-system/fonts/instrument-sans-latin.woff2
-      - design-system/fonts/instrument-sans-latin-ext.woff2
-      - design-system/fonts/jetbrains-mono-latin.woff2
-      - design-system/fonts/jetbrains-mono-latin-ext.woff2
-      - design-system/fonts/habitat-composer.woff2
-      # The English front page's blocks (website/landing.mjs) and the two
-      # browser scripts their engine reads at build time.
-      - design-system/prototypes/rounds/2026-11-23-etusivu-v1/**
-      - design-system/prototypes/lib/markdown.js
-      - design-system/prototypes/lib/icons.js
-      - docs/product.md
-      - docs/operations.md
-      - .github/workflows/pages.yml
   workflow_dispatch:
+    inputs:
+      sha:
+        description: Full commit sha on main to publish
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -42,7 +29,27 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      - name: check the commit sha
+        env:
+          SHA: ${{ inputs.sha }}
+        run: |
+          if ! [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::sha must be a full 40-character lowercase commit sha, got '$SHA'"
+            exit 1
+          fi
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.sha }}
+          fetch-depth: 0
+      - name: require the commit to be on main
+        env:
+          SHA: ${{ inputs.sha }}
+        run: |
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+          if ! git merge-base --is-ancestor "$SHA" origin/main; then
+            echo "::error::$SHA is not reachable from origin/main"
+            exit 1
+          fi
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -55,6 +62,16 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: website/dist
+      - name: record the published commit
+        env:
+          SHA: ${{ inputs.sha }}
+        run: |
+          {
+            echo "## Website build"
+            echo
+            echo "Commit: [\`$SHA\`]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$SHA)"
+            git log -1 --format='Subject: %s' "$SHA"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   deploy:
     name: deploy
