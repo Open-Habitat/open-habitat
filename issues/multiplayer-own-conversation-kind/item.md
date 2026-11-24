@@ -55,8 +55,10 @@ cannot see in the middle of the conversation.
   the API key, fine; that is what we do." The first turn after the move costs
   the full uncached history once; some subscription-only models have no
   API-key equivalent and map to the nearest one.
-- What the person sees when no API-key model is available is decided once, at
-  the start button, in plain words.
+- Multiplayer requires an API key, the owner's own or the server's shared
+  one (Jari 24.11.). Without one, multiplayer is not available to that
+  person; the prototype decides only how the button says so and where it
+  points (the AI settings).
 - The rest of ADR 0038 (owner card, participant strip, text-only participant
   turns with owner approval of tool calls, take-back) stays unless the
   prototype shows a reason to change it.
