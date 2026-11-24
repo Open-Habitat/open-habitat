@@ -77,12 +77,21 @@ test("@worktree-agent @a11y create, converse, ask to merge and see it merged", a
     }, theme);
     for (const width of [1920, 1000, 390]) {
       await page.setViewportSize({ width, height: 900 });
+      // The page lays itself out for the new width partly in script, after
+      // the resize: on a loaded host one read can see the intro in the new
+      // column and the composer still in the old. Wait for them to agree; a
+      // column that stays off still fails.
+      const offset = async () => {
+        const intro = await main.locator(".ah-worktree-intro").boundingBox();
+        const composer = await main.locator(".ah-composer").boundingBox();
+        if (!intro || !composer) throw new Error("Missing conversation column");
+        return Math.abs(
+          intro.x + intro.width / 2 - (composer.x + composer.width / 2),
+        );
+      };
+      await expect.poll(offset).toBeLessThan(2);
       const intro = await main.locator(".ah-worktree-intro").boundingBox();
-      const composer = await main.locator(".ah-composer").boundingBox();
-      if (!intro || !composer) throw new Error("Missing conversation column");
-      expect(
-        Math.abs(intro.x + intro.width / 2 - (composer.x + composer.width / 2)),
-      ).toBeLessThan(2);
+      if (!intro) throw new Error("Missing conversation column");
       expect(intro.x).toBeGreaterThanOrEqual(0);
       expect(intro.x + intro.width).toBeLessThanOrEqual(width);
     }
