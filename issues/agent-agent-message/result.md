@@ -1,5 +1,127 @@
 # Agentin viesti toiselle keskustelulle
 
+## Kierros 3
+
+Kierros: `design-system/prototypes/rounds/2026-11-24-agent-agent-message-3/`
+(rakennus ja tarkistus: `NOTES.md`). Malli ja host-tiedot:
+[design.md](design.md). Sivu on rakennettu tuotannon komponenteista.
+
+Valitsit kierroksella 2 A Kirjeet, joten tuleva viesti on sellaisenaan
+kierroksen 2 A. Tämä kierros miettii lähtevää viestiä lähettäjän puolella:
+näytetäänkö se aina omana kuplanaan vai vain silloin, kun agentin teksti ei
+kerro lähettäneensä sitä, ja minkä muotoisena. Tarina on kierroksen 2 viisi
+vaihetta. Vaiheet 6–7 jatkavat vaihtoa silmukaksi, jossa agentit vaihtavat
+kuvaajan selitteen muotoa edestakaisin, kunnes vahti pysäyttää sen ja sinä
+jatkat.
+
+Akseli: lähtevän viestin paikka ja muoto lähettäjän puolella.
+
+- **Nyt (kierroksen 2 A).** Katkoviivakupla on aina siinä kohdassa, josta
+  viesti lähti, ja agentti kertoo lisäksi tekstissään lähettäneensä sen.
+  Sama asia tulee siis kahdesti: kuplana ja lauseena.
+- **A Peili.** Viesti on aina oma kuplansa, tulevan kirjeen peilikuva
+  agentin puolella. Pinta ja reuna ovat samat, ja otsikossa lukee *Tämä
+  agentti › Kaaviot*. Molemmat suunnat näyttävät samalta, mutta lause ja
+  kupla toistavat yhä toisiaan.
+- **B Rivi.** Viesti näkyy aina, mutta tiiviinä rivinä agentin vastauksen
+  alla: kenelle, viestin alku ja tila, ja rivin saa auki. Ennen vastausta
+  rivi on vuoron lopussa. Silmukassa B vie vähiten tilaa.
+- **C Upotettu.** Kun agentin vastaus linkittää viestin (*kerroin
+  Kaavioille*), viesti on vastauksen sisällä lainauslohkona, eikä omaa
+  kuplaa ole. Vain jos mikään vastaus ei mainitse sitä, lohko on omana
+  rivinään siinä kohdassa, josta viesti lähti. Vaiheessa 2 näkyy tämä:
+  Kaavioiden viesti on omana lohkonaan, kunnes vastaus tulee vaiheessa 3,
+  ja siirtyy sitten vastaukseen.
+
+**Suositus: C Upotettu.** Agentti kertoo joka tapauksessa lähettäneensä
+viestin, joten viesti kuuluu siihen kohtaan eikä toiseksi kuplaksi. Näet
+sanatarkasti, mitä lähti, siinä missä agentti sanoo lähettäneensä sen, eikä
+mitään toisteta. Lohko ei ole agentin omaa tekstiä, vaan Habitat piirtää
+sen CLI:n tuloksesta, joten agentti ei voi kuvata viestiä toisin kuin se
+lähti. A on johdonmukaisin, mutta jättää toiston. B on siistein, mutta
+viestin sisältö jää aina avattavaksi, vaikka juuri sitä tarkistaisit.
+C:n hinta on se, että lohko siirtyy, kun vastaus tulee, ja pitkä viesti
+pidentää vastausta.
+
+### Karkaamisvahti hyppyrajan sijaan
+
+Kysyit, miksi agentit eivät saisi puhua enempää. Hyppyrajalle ei ole muuta
+syytä kuin silmukka, jota kukaan ei katso: kaksi agenttia vastaa toisilleen
+loputtomiin (*vaihdanko senkin?* – *vaihda, ja tarkista samalla tämä*), ja
+jokainen viesti käynnistää kokonaisen vuoron työkaluineen ja tokeneineen.
+Siksi ehdotan kiinteän rajan tilalle vahtia:
+
+- Agentit saavat vaihtaa viestejä vapaasti.
+- Daemon laskee, monta agentin viestiä peräkkäin on kulkenut sen jälkeen,
+  kun kirjoitit viimeksi jompaankumpaan keskusteluun. **Kun luku ylittäisi
+  10:n**, viesti ei lähde vaan odottaa sinua.
+- Kummassakin keskustelussa näkyy sama kortti: *Agentit odottavat sinua.
+  Kvartaaliraportti ja Kaaviot ovat vaihtaneet 10 viestiä peräkkäin ilman,
+  että kirjoitit kumpaankaan.* Kortissa on *Jatka* ja lähettäjän puolella
+  *Älä lähetä*, vastaanottajan puolella *Näytä viesti*. Pidätetyssä
+  viestissä lukee *Odottaa sinua*.
+- *Jatka* lähettää viestin, ja lasku alkaa alusta. Kumpikin keskustelu saa
+  Habitat-rivin *Jatkoit klo 10.06*. Jos kirjoitat itse jompaankumpaan
+  keskusteluun, lasku alkaa alusta, mutta pidätetty viesti odottaa yhä
+  *Jatka*-painiketta, koska kirjoittamasi voi olla "lopettakaa".
+
+Luku 10 on ehdotus. Kierroksen 2 tarina, jossa oli oikea korjaus, tarvitsi
+viisi viestiä, joten kymmenen jättää tilaa kaksinkertaiselle vaihdolle ja
+pysäyttää silmukan kymmenen vuoron ja muutaman minuutin jälkeen. Lasku
+seuraa viestiketjua eikä keskusteluparia, joten se pysäyttää myös kolmen
+keskustelun kehän. Vaiheessa 6 Nyt-suunta näyttää vertailuksi kierroksen 2
+hyppyrajan: lähetys hylätään heti, kun Kaavioiden viesti saa vastauksen.
+
+Host tarvitsee tätä varten (yksityiskohdat design.md:ssä, "The runaway
+guard"): lohkoon laskurin `count` hyppyjen tilalle, pidätyksen daemonin
+muistiin samaan tapaan kuin pysähtyneen keskustelun viestille, pidätyksen
+molempien keskustelujen snapshotiin (`agent_message_hold`), selaimelle
+omistajan komennot `release` ja `discard`, CLI:n tilan `held_for_person`
+ja lopputuloksen Habitat-rivin kumpaankin keskusteluun nykyistä
+keskustelurivin polkua pitkin. Uutta tallennuspaikkaa ei tule.
+
+### Tarkistus
+
+`check.mjs` kävi kaikki neljä suuntaa Päivä-, Yö- ja Korkea kontrasti
+-teemassa 1440 ja 390 px vähennetyllä liikkeellä suomeksi, ja lisäksi
+englanniksi 1440 Päivä ja 390 Yö. Mukana olivat kaikki seitsemän vaihetta,
+merkintä (ei koskaan sinun kuplaasi), kunkin suunnan muoto ja paikka (B
+vastauksen alla, C vastauksen sisällä ja yksin vain ennen vastausta),
+lainaukset, linkit paneelien välillä, vahti kummassakin keskustelussa,
+*Jatka*, *Älä lähetä*, hyppyraja Nyt-suunnassa ja Pi:n saama teksti.
+1472 tarkistusta meni läpi, ja konsoli pysyi puhtaana. Rakennettu sivu
+näkymäksi tarjottavaksi on
+`/var/tmp/agent-keep/agent-agent-message/round-3/offline.html`, ja kuvat
+(DPR 2) ovat sen vieressä hakemistossa `shots/`.
+
+### Decisions for later review
+
+- Upotettu lohko tulee tyypitetystä `sent_agent_message`-tiedosta. Habitat
+  liittää sen vastaukseen, jonka linkissä on viestin tunniste
+  (`message_url`), eikä jäsennä agentin sanoja.
+- Ennen kuin vastaus linkittää viestin, lohko on omana rivinään, ja kun
+  vastaus tulee, lohko siirtyy siihen. Viesti ei siis ole koskaan
+  näkymättä.
+- Vahdin lasku seuraa ketjua, eli sitä vuoroa, jonka viesti aloitti, eikä
+  keskusteluparia. Ajastetun herätyksen vuoro lasketaan omistajan vuoroksi,
+  ja osallistujan vuoro ei lähetä lainkaan.
+- Pidätys on daemonin muistissa. Uudelleenkäynnistyksen jälkeen viesti
+  näkyy lähettäjällä tilassa *Ei lähtenyt*, ja teksti säilyy työkalun
+  tuloksessa.
+- Kun pidätys odottaa, seuraavat viestit samojen keskustelujen välillä
+  hylätään (`agent_message_held`). Jonoa ei synny.
+- *Jatka* ja *Älä lähetä* ovat vain omistajan. Jaetussa keskustelussa
+  osallistuja näkee kortin ilman painikkeita.
+
+### Kysymykset Jarille
+
+1. Kelpaako C Upotettu, vai haluatko viestin aina omana kuplanaan (A) tai
+   rivinä (B)?
+2. Kelpaako vahti hyppyrajan tilalle, ja onko 10 viestiä peräkkäin sopiva
+   raja?
+3. Riittääkö *Jatka* yhdeksi napsautukseksi, vai haluatko kortissa myös
+   *Jatka ilman rajaa* -valinnan tälle keskusteluparille?
+
 ## Kierros 2
 
 Kierros: `design-system/prototypes/rounds/2026-11-24-agent-agent-message-2/`

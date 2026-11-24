@@ -1,0 +1,140 @@
+/* Review chrome: one scrolling document (a Habitat view has no frames). */
+html, body { margin: 0; background: var(--ah-bg); color: var(--ah-ink); }
+body { padding-bottom: 96px; font: var(--ah-size-ui)/var(--ah-lh-ui) var(--ah-font); }
+.aam-review { display: grid; gap: var(--ah-s4); padding: 0 var(--ah-s4); }
+.aam-bar {
+  display: grid; gap: var(--ah-s1); margin: 0 calc(-1 * var(--ah-s4));
+  padding: var(--ah-s2) var(--ah-s4); background: var(--ah-surface);
+  border-bottom: 1px solid var(--ah-line); font-size: var(--ah-size-meta); line-height: 1.4;
+}
+.aam-controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s1) var(--ah-s4); }
+.aam-bar strong { font-weight: 600; }
+.aam-bar select, .aam-bar button { font: inherit; }
+.aam-hint { color: var(--ah-muted); }
+.aam-study h2 { margin: 0 0 2px; font-size: var(--ah-size-meta); font-weight: 600; }
+.aam-study ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; color: var(--ah-ink-2); }
+.aam-study li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.aam-recommend { margin: var(--ah-s1) 0 0; color: var(--ah-accent-ink); }
+.aam-all-toggle { display: none; }
+@media (max-width: 800px) {
+  .aam-review { padding: 0 var(--ah-s2); }
+  .aam-bar { margin: 0 calc(-1 * var(--ah-s2)); padding: var(--ah-s2); }
+  .aam-hint { display: none; }
+  .aam-all-toggle { display: inline; justify-self: start; }
+  .aam-bar:not([data-all]) :is(.aam-study li:not([aria-current]), .aam-recommend, .aam-study h2) { display: none; }
+}
+
+/* ---------- The two conversations, side by side as Jari has them ---------- */
+.aam-live { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--ah-s4); }
+.aam-pane { min-width: 0; display: grid; gap: var(--ah-s1); align-content: start; scroll-margin-top: var(--ah-s2); }
+.aam-pane-label { margin: 0; font-size: var(--ah-size-meta); font-weight: 600; color: var(--ah-muted); }
+.aam-frame { height: max(560px, calc(100dvh - 330px)); border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); overflow: hidden; }
+.aam-native { grid-column: 1 / -1; margin: 0; min-width: 0; }
+.aam-native figcaption { color: var(--ah-muted); font-size: var(--ah-size-meta); margin-bottom: 2px; }
+.aam-native pre {
+  margin: 0; padding: var(--ah-s2) var(--ah-s3); white-space: pre-wrap; overflow-wrap: anywhere;
+  font: var(--ah-size-meta)/1.45 var(--ah-mono); color: var(--ah-ink);
+  background: var(--ah-surface); border: 1px solid var(--ah-line); border-radius: var(--ah-r-md);
+}
+.aam-steps { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s1); }
+@media (max-width: 800px) {
+  .aam-live { grid-template-columns: minmax(0, 1fr); }
+  .aam-frame { height: 640px; margin-inline: calc(-1 * var(--ah-s2)); border-radius: 0; border-inline: 0; }
+}
+.aam-tools { display: grid; gap: var(--ah-s1); }
+.aam-msg { max-width: min(var(--ah-measure), 100%); }
+.aam-review a { color: var(--ah-accent-ink); }
+.aam-review a:focus-visible, .aam-linkish:focus-visible, .aam-strip-toggle:focus-visible { outline: var(--ah-focus-width) solid var(--ah-focus); outline-offset: 2px; }
+.aam-state {
+  font-size: var(--ah-size-meta); padding: 0 var(--ah-s1); border-radius: 999px;
+  border: 1px solid var(--ah-line-strong); color: var(--ah-muted); white-space: nowrap;
+}
+
+/* A message pressed from the other pane, a quote or a pointer: a short
+   accent wash on the original; reduced motion keeps a still outline. */
+[data-msg][data-flash] { animation: aam-flash 1.6s ease-out; }
+@keyframes aam-flash { 0%, 30% { background-color: var(--ah-accent-soft); } 100% { background-color: transparent; } }
+@media (prefers-reduced-motion: reduce) {
+  [data-msg][data-flash] { animation: none; outline: var(--ah-focus-width) solid var(--ah-focus); outline-offset: 2px; }
+}
+
+/* Who wrote it, in every direction: the agent icon, the conversation's name. */
+.aam-from { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px var(--ah-s1); min-width: 0; font-weight: 600; }
+.aam-from svg { flex: none; width: 14px; height: 14px; color: var(--ah-accent-ink); }
+.aam-from-kind { color: var(--ah-muted); font-weight: 400; }
+.aam-quote-who { color: var(--ah-muted); font-weight: 400; }
+.aam-quote { margin-bottom: var(--ah-s2); }
+.ah-message .ah-prose > .aam-quote { margin-bottom: var(--ah-s2); }
+
+/* Incoming (round 2's A): the person's message geometry, another sender. */
+:is(.aam-in, .aam-out) > header, .aam-fold > header { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s1) var(--ah-s2); }
+:is(.aam-in, .aam-out) > header time, .aam-fold > header time { margin-inline-start: auto; color: var(--ah-muted); }
+.ah-message.aam-in { border-color: var(--ah-accent-line); }
+:is(.aam-in, .aam-out) > header strong { text-transform: none; letter-spacing: 0; font-size: var(--ah-size-meta); }
+.ah-feed > li[data-kind="out"] + li[data-kind="user"], .ah-feed > li[data-kind="user"] + li[data-kind="out"] { margin-top: 0; }
+
+/* Now (round 2's A): the dashed bubble on the agent's side. */
+.ah-feed > li[data-kind="out"] .ah-message.aam-dashed {
+  max-width: min(560px, 100%); background: transparent;
+  border: 1px dashed var(--ah-line-strong); border-radius: 10px;
+}
+/* A Mirror: the incoming letter's surface and edge, on the agent's side. */
+.ah-feed > li[data-kind="out"] .ah-message.aam-mirror {
+  max-width: min(560px, 100%); background: var(--ah-surface-2);
+  border: 1px solid var(--ah-accent-line); border-radius: 10px;
+}
+.aam-mirror .aam-from svg + span + svg { color: var(--ah-muted); }
+
+/* B Line: one compact line under the reply, opening in place. */
+.ah-feed > li > [data-item]:has(> .aam-line) { width: min(560px, 100%); }
+.aam-line {
+  width: 100%; box-sizing: border-box; padding: 2px var(--ah-s2); border-radius: var(--ah-r-md);
+  border: 1px solid var(--ah-line); font-size: var(--ah-size-meta);
+}
+.aam-line-head { display: flex; align-items: center; gap: var(--ah-s2); min-height: 28px; min-width: 0; }
+.aam-line-head > svg { flex: none; width: 14px; height: 14px; color: var(--ah-accent-ink); }
+.aam-line-who { flex: 0 1 auto; min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.aam-line-to { font-weight: 400; color: var(--ah-muted); }
+.aam-line-ref { flex: none; display: inline-flex; align-items: center; gap: 2px; color: var(--ah-muted); }
+.aam-line-ref svg { width: 12px; height: 12px; }
+.aam-line-text { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ah-ink-2); }
+.aam-line-gap { flex: 1 1 auto; }
+.aam-line time { flex: none; color: var(--ah-muted); }
+.aam-line .aam-state { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.aam-line-toggle {
+  flex: none; display: inline-grid; place-items: center; width: 28px; height: 28px; padding: 0;
+  border: 0; border-radius: var(--ah-r-sm); background: none; color: var(--ah-muted); cursor: pointer;
+}
+.aam-line-toggle svg { width: 14px; height: 14px; }
+.aam-line-toggle:hover { background: var(--ah-hover, var(--ah-surface-2)); }
+.aam-line-toggle:focus-visible { outline: var(--ah-focus-width) solid var(--ah-focus); outline-offset: 2px; }
+.aam-line-body { padding: var(--ah-s1) 0 var(--ah-s2) 22px; font-size: var(--ah-size-ui); }
+.aam-line-body .ah-prose :first-child { margin-top: 0; } .aam-line-body .ah-prose :last-child { margin-bottom: 0; }
+.ah-feed > li[data-kind="assistant"] + li[data-kind="out"]:has(.aam-line) { margin-top: calc(-1 * var(--ah-s2)); }
+@media (max-width: 800px) { .aam-line-to, .aam-line .aam-state:not(.aam-state-held) { display: none; } }
+
+/* C Folded: the message as a quote block inside the reply that links it. */
+.aam-fold {
+  margin: var(--ah-s2) 0 0; padding: var(--ah-s2) var(--ah-s3); min-width: 0;
+  border-inline-start: 3px solid var(--ah-accent-line); border-radius: 0 var(--ah-r-md) var(--ah-r-md) 0;
+  background: var(--ah-surface-2);
+}
+.aam-fold > header { font-size: var(--ah-size-meta); margin-bottom: var(--ah-s1); }
+.aam-fold .ah-prose :first-child { margin-top: 0; } .aam-fold .ah-prose :last-child { margin-bottom: 0; }
+.aam-fold[data-alone] { margin: 0; max-width: min(560px, 100%); box-sizing: border-box; }
+
+/* The runaway guard: one card in both conversations, one click to go on. */
+.aam-guard { max-width: min(560px, 100%); box-sizing: border-box; padding: var(--ah-s3); display: grid; gap: var(--ah-s2); }
+.aam-guard p { margin: 0; }
+.aam-guard-head { display: flex; align-items: center; gap: var(--ah-s2); }
+.aam-guard-head svg { width: 16px; height: 16px; color: var(--ah-accent-ink); }
+.aam-guard-actions { display: flex; flex-wrap: wrap; gap: var(--ah-s2); }
+.aam-btn {
+  display: inline-flex; align-items: center; min-height: 32px; padding: 0 var(--ah-s3); box-sizing: border-box;
+  font: inherit; border-radius: var(--ah-r-md); border: 1px solid var(--ah-line-strong);
+  background: var(--ah-surface); color: var(--ah-ink); cursor: pointer; text-decoration: none;
+}
+.aam-review a.aam-btn { color: var(--ah-ink); }
+.aam-btn-primary { background: var(--ah-accent); border-color: var(--ah-accent); color: var(--ah-on-accent); }
+.aam-btn:focus-visible { outline: var(--ah-focus-width) solid var(--ah-focus); outline-offset: 2px; }
+.aam-state-held { border-color: var(--ah-accent-line); color: var(--ah-accent-ink); }
