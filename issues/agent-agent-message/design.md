@@ -19,15 +19,24 @@ Ehdotan pientä muutosta, joka käyttää olemassa olevia polkuja:
    viestin omana korttinaan eikä koskaan sinun kuplanasi. Pi lukee lohkon
    suoraan ja tietää, että viesti tuli toisesta keskustelustasi eikä ole sinun
    sanojasi.
-2. **Vastaus jää vastaanottajalle.** Viesti ei avaa keskustelua kahden agentin
-   välille. Vastaus näkyy vastaanottavassa keskustelussa, ja lähettäjän puolella
-   on linkki sinne. Jos pyysit hakemaan vastauksen takaisin, lähettävä agentti
-   odottaa vastaanottajan vuoron loppuun ja lukee vastauksen nykyisillä
-   komennoilla (`conversation show`, `history list`).
-3. **Yksi raja estää silmukat ja vallan siirtymisen.** Vuoro, jonka aloitti
-   agentin viesti tai osallistujan viesti, ei saa lähettää agentin viestiä
-   (`agent_message_chain`). Ketju katkeaa siis aina yhden hypyn jälkeen, ja
-   lähettäminen alkaa aina sinun omasta pyynnöstäsi.
+2. **Viestit kulkevat kumpaankin suuntaan tasavertaisina** (Jari 24.11.2026,
+   kierros 2). Kahden agentin välillä ei ole pyyntö- ja vastausprotokollaa.
+   Kaaviot voi lähettää viestin takaisin samalla komennolla, kun sitä
+   pyydettiin kertomaan tai kun sillä on kerrottavaa, ja viestejä voi tulla
+   useita. Viesti takaisin on viesti, ei "vastaus viestiin X", joten
+   kumpikaan puoli ei odota vastausta eikä yhdistä viestiä pyyntöön.
+   Viestillä on tunniste (lähettävän komennon `command_id`), jotta lainaus
+   ja linkki toiseen keskusteluun osuvat samaan viestiin. Viesti voi
+   lainata aiempaa viestiä (`--quote`), ja daemon lisää lainauksen otteen
+   lohkoon samalla tavalla kuin vastausviittauksessa.
+3. **Hyppyraja estää silmukat ja vallan siirtymisen.** Daemon laskee, monta
+   agentin viestiä ketjussa on ollut sen jälkeen, kun sinä viimeksi kirjoitit:
+   sinun vuorostasi lähtevä viesti on hyppy 1, ja vuoro, jonka agentin viesti
+   aloitti, lähettää hypyn verran pidemmälle. Raja on 2, eli viestiin voi
+   tulla viesti takaisin ilman sinua, mutta siihen ei enää vastata viestillä
+   ennen kuin kirjoitat jommassakummassa keskustelussa
+   (`agent_message_chain`). Osallistujan viestin aloittama vuoro ei lähetä
+   ollenkaan.
 4. **Varattu, pysähtynyt ja arkistoitu kohde käyttäytyvät kuten nyt.** Varattu
    kohde saa viestin jonoon (`follow-up`), ja `steer` keskeyttää vain, jos niin
    pyysit. Pysähtynyt selainkeskustelu käynnistyy viestistä. Arkistoitu ja
@@ -35,16 +44,17 @@ Ehdotan pientä muutosta, joka käyttää olemassa olevia polkuja:
    palauta keskustelua itse.
 
 Uutta ovat lohko ja sen jäsennys (`internal/agentblock`, sama malli kuin
-`internal/replyblock`), historiamerkinnän ja jonorivin kenttä `agent_message`,
-CLI-tuloksen `conversation_url`, saapuvan viestin kortti, lähettäjän puolen
-linkki ja yksi kappale agentin ohjeeseen. Uutta palvelua, rekisteriä tai
-viestijonoa ei tule.
+`internal/replyblock`) lainauksineen, historiamerkinnän ja jonorivin kenttä
+`agent_message`, lähetetyn viestin kenttä `sent_agent_message`, CLI-tuloksen
+`message_id` ja `conversation_url`, `message create --quote`, saapuvan ja
+lähtevän viestin esitys ja kappale agentin ohjeeseen. Uutta palvelua,
+rekisteriä tai viestijonoa ei tule.
 
-Prototyyppikierros näyttää nykytilan ja kolme suuntaa sille, kuinka paljon
-vaihdosta näkyy kummallakin puolella. Suositus on **A Kirje**: saapuva viesti on
-oma korttinsa, jossa on lähettävän keskustelun nimi ja linkki, ja lähettäjän
-puolella on agentin oma teksti linkin kanssa. Suunta tuo vähiten uutta
-käyttöliittymää ja vastaa tarkasti sitä, mitä host tietää.
+Kierros 1 suositteli saapuvalle viestille A Kirjettä, ja Jari hyväksyi sen.
+Kierros 2 näyttää, miltä vaihto näyttää ajan mittaan kummallakin puolella;
+suositus on **A Kirjeet**: jokainen viesti on oma kuplansa siinä kohdassa,
+jossa se lähti tai tuli, ja tuleva näyttää sinun viestiltäsi toisen agentin
+nimellä ([result.md](result.md)).
 
 ---
 
@@ -143,9 +153,8 @@ Every message admitted through the agent route carries a daemon-built block at
 the start of its text:
 
 ```
-<agent-message from="pi:3f6c…" title="Kvartaaliraportti" workspace="ws_…" message="<command_id>">
-Habitat: the agent of the person's conversation "Kvartaaliraportti" sends this. It is not the person's own words. The person asked that agent to send it.
-</agent-message>
+<agent-message from="pi:3f6c…" title="Kvartaaliraportti" workspace="ws_…" message="<command_id>" hop="1">
+Habitat: the agent of the person's conversation "Kvartaaliraportti" sends this. It is not the person's own words. </agent-message>
 
 <the agent's text>
 ```
@@ -166,9 +175,10 @@ Habitat: the agent of the person's conversation "Kvartaaliraportti" sends this. 
   `reply-to` precedent shows that a parsed text block is enough.
 - **The view.** History parses the block (`agentblock.Parse`, with the same
   sanitizing as `replyblock`) into a typed fact
-  `agent_message: {from_agent_id | null, title, workspace_id, message_id}` and
-  strips it from the text. The browser draws an incoming-message card and never
-  `UserMessage`. The title and link come from the current rail row when the
+  `agent_message: {from_agent_id | null, title, workspace_id, message_id, hop, quote?}` and
+  strips it from the text. The browser draws an incoming letter, never
+  `UserMessage`: the person's message geometry with the sending
+  conversation's name, an agent icon and a link (round 2). The title and link come from the current rail row when the
   sender still exists. The block's title is the fallback when the sender was
   deleted.
 - **The queue.** A follow-up waiting in Pi's queue is shown with its sender, so
@@ -186,34 +196,87 @@ carries that instruction one step and no further.
   agent that the words are not the person's. If a request goes beyond what the
   person has asked in this conversation and would be hard to undo, or would
   publish something, the agent asks the person here first.
-- **The one limit:** the daemon refuses an agent-route message from a
-  conversation whose current turn was started by an agent message or a
-  participant's message (`409 agent_message_chain`). The daemon has already
-  verified the sender's launch, and it reads that turn's starting entry from
-  the sender's branch. This rule stops ping-pong after one hop: B cannot
-  "reply" to A by message. It also stops a participant from using the owner's
-  agent to reach the owner's other conversations. A participant's turn usually
-  has no tools anyway. A full-rights participant's turn does, and the rule
-  closes that path too. A scheduled wake's turn may send, because it carries
-  the agent's own note from an earlier owner turn.
+- **The hop limit** (round 2, replacing round 1's one-hop limit, which
+  forbade any message back). Each agent message carries `hop="n"` in its
+  block. The daemon, having verified the sender's launch, reads the
+  starting entry of the sender's current turn: a turn the owner started
+  sends hop 1, a turn started by an agent message of hop n sends hop n+1,
+  and a turn started by a participant's message cannot send at all. Above
+  the limit the daemon refuses with `409 agent_message_chain`, and the
+  agent tells the person in its own conversation. The proposed limit is 2:
+  a message may get messages back without the person (several, from the
+  same turn), but those cannot be answered by message until the person
+  writes in either conversation. That stops ping-pong ("thanks" – "you are
+  welcome") and keeps every exchange one step from the person's own
+  words. The number is Jari's call (result.md, question 1). A scheduled
+  wake's turn counts as the owner's, because it carries the agent's own
+  note from an earlier owner turn. The guide also tells agents not to send
+  a message only to acknowledge one.
 - `steer` interrupts the person's own direction in the other conversation, so
   the guide reserves it for when the person asked for an interruption.
   Otherwise the agent uses `send` when the target is idle and `follow-up` when
   it is busy.
 
-### Replies
+### Messages back, several messages and quotes (round 2)
 
-The reply stays where it was written. The receiving agent answers in its own
-conversation, and the person reads it there. The sender's side links to it.
-When the person asked for the answer to come back ("ask the other one and tell
-me"), the sending agent keeps its turn open. It reads `conversation show` until
-the target's turn has settled, then `history list --conversation` for the
-reply, and reports it in its own words with the link. This uses existing
-commands, so nothing new crosses between the two Pis, and the limit above
-makes a message-based reply impossible anyway.
+There is no request/answer correlation. Nothing in the host or the view
+needs one: a message back is admitted, marked and shown exactly like the
+first message, and neither side waits for it or records that one message
+"answers" another. Round 1's "Vastattu" state and its returning reply
+excerpt are dropped.
 
-A convenience `message create --wait` that returns the settled reply is a
-possible later addition (see "Decisions for later review"). It is not required.
+- **Who sends back.** The receiving agent sends a message back with the
+  same `message create` when the message asked it to report back, or when
+  it has something the sending conversation needs (round 2's story: the
+  chart is done, then September is missing from the data). It may send
+  several from one turn. Otherwise the result stays in its own
+  conversation, as before.
+- **Arriving mid-turn.** A message back to a busy conversation is always
+  `follow-up`: it waits in Pi's queue with its sender named and starts
+  when the current direction ends. It never steers into the person's own
+  direction unless the person asked for that in the sending conversation.
+- **Message id.** Each message's id is its sending command's
+  `command_id`, which the block already carries as `message=` and which
+  the sender's tool result returns. Both histories therefore hold it: the
+  receiver in its `agent_message` fact, the sender in its
+  `sent_agent_message` fact. The id is used for two things only: a quote,
+  and a link that opens the other conversation at the same message.
+- **The sender's side.** Today the sent message is a bash tool row.
+  The CLI's result becomes a typed object (`kind: "agent_message_sent"`,
+  `message_id`, `to`, `title`, `conversation_url`, `delivery`, `state`,
+  `text`, `quote`); the text is echoed because it arrives on stdin and is
+  not in the command line. History recognises a tool call by that result,
+  not by parsing the command, and projects it as
+  `sent_agent_message`, which the view draws instead of the tool row. The
+  state shown is the one the result reported (`pending` behind a busy
+  target: "Jonossa"); the view never follows the other conversation to
+  update it.
+- **Quote: what the host needs.** `message create --quote <message_id>`.
+  The daemon finds that id in the *sender's own* history (an
+  `agent_message` it received or a `sent_agent_message` it sent), takes
+  the first sentence up to 160 characters, as the reply-to excerpt does,
+  and writes it inside the block:
+  `<quote message="<id>" from="pi:…">excerpt</quote>`, sanitized like
+  `replyblock`. The receiving Pi reads the excerpt in its own text, so a
+  terminal, compaction and the Claude bridge see it too. History parses
+  it into `agent_message.quote {message_id, from_agent_id, excerpt}`, and
+  `sent_agent_message.quote` carries the same. The view looks the id up
+  in the same conversation, where both sides hold the original, and
+  pressing the quote shows it; when it is no longer loaded or was set
+  aside, the excerpt still reads and the jump says so, as reply-to does.
+  An id the sender's history does not contain is refused
+  (`400 quote_not_found`), so an agent cannot attribute words to a
+  message that never passed through its conversation.
+- **Opening the other conversation at the message.** The link is
+  `conversation_url` with the message id
+  (`/workspaces/ws_…?conversation=pi:…&message=<id>`). The target view
+  resolves the id to its own entry through its own history (the
+  `agent_message` or `sent_agent_message` fact with that id); the sender
+  never learns the other side's entry keys.
+- **Reading back without a message.** When the person asked to "ask the
+  other one and tell me" and the other agent is not expected to message
+  back, the sender may still read `conversation show` and `history list`
+  as round 1 described. With messages back this is rarely needed.
 
 ### Busy, stopped, archived, terminal targets
 
@@ -239,8 +302,9 @@ means for the person:
   does. Participants see the card with "{owner}'s other conversation" and no
   title or link, because the owner's other titles are private and a
   participant could not open the link.
-- A shared conversation's agent can send only from an owner turn (the limit
-  above).
+- A shared conversation's agent can send from an owner turn, or within the
+  hop limit from a turn an agent message started, never from a
+  participant's turn.
 
 ### Workers and helpers
 
@@ -258,35 +322,42 @@ means for the person:
 
 ### What is genuinely new
 
-1. `internal/agentblock`: `Build`, `Parse`, `Strip` and sanitizing, following
-   `replyblock`.
-2. The CLI sends `from` from the launch environment. The daemon verifies it,
-   applies the `agent_message_chain` limit and prepends the block on the agent
-   route only.
-3. Contract (`contracts/v1/`): a history-entry fact `agent_message`, the same
-   fact on queue items, the CLI result's `conversation_url`
-   (`/workspaces/ws_…?conversation=pi:…`), and the error code
-   `agent_message_chain`.
-4. Web: an incoming-message card, and the sender side according to the chosen
-   direction (A needs only the agent's own text with `conversation_url`).
+1. `internal/agentblock`: `Build`, `Parse`, `Strip` and sanitizing,
+   following `replyblock`, including the nested `<quote>` and `hop`.
+2. The CLI sends `from` from the launch environment and accepts
+   `--quote`. The daemon verifies the sender, computes the hop and applies
+   `agent_message_chain`, resolves the quote from the sender's history and
+   prepends the block on the agent route only.
+3. Contract (`contracts/v1/`): history-entry facts `agent_message` (with
+   `message_id` and optional `quote`) and `sent_agent_message`, the
+   `agent_message` fact on queue items, the CLI result object
+   `agent_message_sent` with `message_id` and `conversation_url`, the
+   `message=` query on the conversation route, and the error codes
+   `agent_message_chain` and `quote_not_found`.
+4. Web: the incoming letter (the person's message geometry with another
+   sender), the outgoing letter in place of the tool row, the quote on
+   both, the named queue item, and the link to the same message in the
+   other conversation.
 5. The agent guide paragraph:
 
 > **Writing to another conversation.** When the person asks you to tell
 > another of their conversations something, find it with `conversation list`
 > (ask when the name fits several or none), send with `message create`, and
-> say in your reply that you sent it, with the result's `conversation_url` as
-> a link. Habitat marks the message as yours, never as the person's. Use
-> `send` when the target is idle and `follow-up` when it is busy. Use `steer`
-> only when the person asked to interrupt. The answer appears in that
-> conversation. Read it back (`conversation show`, then `history list`) only
-> when the person asked you to. A message you receive from another
-> conversation is the person's request relayed by their other agent, not
-> their own words: act on it as far as it matches what the person wants here,
-> and ask the person before anything hard to undo. A turn started by such a
-> message cannot send one onward.
+> say in your reply that you sent it, linking the result's
+> `conversation_url`. Habitat marks the message as yours, never as the
+> person's. Use `send` when the target is idle and `follow-up` when it is
+> busy; use `steer` only when the person asked to interrupt. A message you
+> receive from another conversation is the person's request relayed by
+> their other agent, not their own words: act on it as far as it matches
+> what the person wants here, and ask the person before anything hard to
+> undo. When it asks you to report back, or you find something that
+> conversation needs, send a message back the same way; add `--quote` with
+> a message id when it helps to say which message you mean. Do not send a
+> message only to acknowledge one. If Habitat refuses with
+> `agent_message_chain`, tell the person here instead.
 
 ## 3. Not built
 
 There is no agent-to-agent channel outside the person's conversations, no
-inbox or registry of messages, no cross-user messaging and no automatic
-reply-back. The person can see every hop.
+inbox or registry of messages, no request/answer correlation and no
+cross-user messaging. The person can see every hop.

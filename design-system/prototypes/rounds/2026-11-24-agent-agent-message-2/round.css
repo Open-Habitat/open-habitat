@@ -1,0 +1,141 @@
+/* Review chrome: one scrolling document (a Habitat view has no frames). */
+html, body { margin: 0; background: var(--ah-bg); color: var(--ah-ink); }
+body { padding-bottom: 96px; font: var(--ah-size-ui)/var(--ah-lh-ui) var(--ah-font); }
+.aam-review { display: grid; gap: var(--ah-s4); padding: 0 var(--ah-s4); }
+.aam-bar {
+  display: grid; gap: var(--ah-s1); margin: 0 calc(-1 * var(--ah-s4));
+  padding: var(--ah-s2) var(--ah-s4); background: var(--ah-surface);
+  border-bottom: 1px solid var(--ah-line); font-size: var(--ah-size-meta); line-height: 1.4;
+}
+.aam-controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s1) var(--ah-s4); }
+.aam-bar strong { font-weight: 600; }
+.aam-bar select, .aam-bar button { font: inherit; }
+.aam-hint { color: var(--ah-muted); }
+.aam-study h2 { margin: 0 0 2px; font-size: var(--ah-size-meta); font-weight: 600; }
+.aam-study ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; color: var(--ah-ink-2); }
+.aam-study li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.aam-recommend { margin: var(--ah-s1) 0 0; color: var(--ah-accent-ink); }
+.aam-all-toggle { display: none; }
+@media (max-width: 800px) {
+  .aam-review { padding: 0 var(--ah-s2); }
+  .aam-bar { margin: 0 calc(-1 * var(--ah-s2)); padding: var(--ah-s2); }
+  .aam-hint { display: none; }
+  .aam-all-toggle { display: inline; justify-self: start; }
+  .aam-bar:not([data-all]) :is(.aam-study li:not([aria-current]), .aam-recommend, .aam-study h2) { display: none; }
+}
+
+/* ---------- The two conversations, side by side as Jari has them ---------- */
+.aam-live { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--ah-s4); }
+.aam-pane { min-width: 0; display: grid; gap: var(--ah-s1); align-content: start; scroll-margin-top: var(--ah-s2); }
+.aam-pane-label { margin: 0; font-size: var(--ah-size-meta); font-weight: 600; color: var(--ah-muted); }
+.aam-frame { height: max(560px, calc(100dvh - 330px)); border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); overflow: hidden; }
+.aam-native { grid-column: 1 / -1; margin: 0; min-width: 0; }
+.aam-native figcaption { color: var(--ah-muted); font-size: var(--ah-size-meta); margin-bottom: 2px; }
+.aam-native pre {
+  margin: 0; padding: var(--ah-s2) var(--ah-s3); white-space: pre-wrap; overflow-wrap: anywhere;
+  font: var(--ah-size-meta)/1.45 var(--ah-mono); color: var(--ah-ink);
+  background: var(--ah-surface); border: 1px solid var(--ah-line); border-radius: var(--ah-r-md);
+}
+.aam-steps { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s1); }
+@media (max-width: 800px) {
+  .aam-live { grid-template-columns: minmax(0, 1fr); }
+  .aam-frame { height: 640px; margin-inline: calc(-1 * var(--ah-s2)); border-radius: 0; border-inline: 0; }
+}
+.aam-tools { display: grid; gap: var(--ah-s1); }
+.aam-msg { max-width: min(var(--ah-measure), 100%); }
+.aam-review a { color: var(--ah-accent-ink); }
+.aam-review a:focus-visible, .aam-linkish:focus-visible, .aam-strip-toggle:focus-visible { outline: var(--ah-focus-width) solid var(--ah-focus); outline-offset: 2px; }
+.aam-state {
+  font-size: var(--ah-size-meta); padding: 0 var(--ah-s1); border-radius: 999px;
+  border: 1px solid var(--ah-line-strong); color: var(--ah-muted); white-space: nowrap;
+}
+
+/* A message pressed from the other pane, a quote or a pointer: a short
+   accent wash on the original; reduced motion keeps a still outline. */
+[data-msg][data-flash] { animation: aam-flash 1.6s ease-out; }
+@keyframes aam-flash { 0%, 30% { background-color: var(--ah-accent-soft); } 100% { background-color: transparent; } }
+@media (prefers-reduced-motion: reduce) {
+  [data-msg][data-flash] { animation: none; outline: var(--ah-focus-width) solid var(--ah-focus); outline-offset: 2px; }
+}
+
+/* Who wrote it, in every direction: the agent icon, the conversation's name. */
+.aam-from { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px var(--ah-s1); min-width: 0; font-weight: 600; }
+.aam-from svg { flex: none; width: 14px; height: 14px; color: var(--ah-accent-ink); }
+.aam-from-kind { color: var(--ah-muted); font-weight: 400; }
+.aam-quote-who { color: var(--ah-muted); font-weight: 400; }
+.aam-quote { margin-bottom: var(--ah-s2); }
+.ah-message .ah-prose > .aam-quote { margin-bottom: var(--ah-s2); }
+
+/* A: the incoming letter takes the person's message geometry (the feed's
+   user row places it); its header names another sender. The outgoing one
+   sits on the agent's side, dashed: what this agent sent away. */
+.aam-in > header, .aam-out > header { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s1) var(--ah-s2); }
+.aam-in > header time, .aam-out > header time { margin-inline-start: auto; }
+.ah-message.aam-in { border-color: var(--ah-accent-line); }
+.ah-feed > li[data-kind="out"] .ah-message.aam-out {
+  max-width: min(560px, 100%); background: transparent;
+  border: 1px dashed var(--ah-line-strong); border-radius: 10px;
+}
+
+/* B: the exchange with one conversation as one thread where it began. */
+.aam-thread {
+  max-width: min(var(--ah-measure), 100%); border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg);
+  background: var(--ah-surface); overflow: hidden;
+}
+.aam-thread-head {
+  display: flex; align-items: center; gap: var(--ah-s2); padding: var(--ah-s2) var(--ah-s3);
+  border-bottom: 1px solid var(--ah-line); font-size: var(--ah-size-meta); font-weight: 600;
+}
+.aam-thread-head svg { width: 14px; height: 14px; flex: none; }
+.aam-thread-list { list-style: none; margin: 0; padding: var(--ah-s2); display: grid; gap: var(--ah-s2); }
+.aam-trow { max-width: 88%; padding: var(--ah-s2) var(--ah-s3); border-radius: 10px; min-width: 0; }
+.aam-trow[data-dir="in"] { justify-self: end; background: var(--ah-surface-2); border: 1px solid var(--ah-accent-line); }
+.aam-trow[data-dir="out"] { justify-self: start; border: 1px dashed var(--ah-line-strong); }
+.aam-trow header { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s1) var(--ah-s2); font-size: var(--ah-size-meta); margin-bottom: var(--ah-s1); }
+.aam-trow header time { margin-inline-start: auto; color: var(--ah-muted); }
+.aam-trow .ah-prose :first-child { margin-top: 0; } .aam-trow .ah-prose :last-child { margin-bottom: 0; }
+.aam-pointer { align-items: baseline; }
+.aam-pointer-text { min-width: 0; flex: 1 1 auto; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; }
+.aam-pointer time { color: inherit; }
+.aam-linkish {
+  flex: none; padding: 0; border: 0; background: none; font: inherit; color: var(--ah-accent-ink);
+  text-decoration: underline; cursor: pointer;
+}
+
+/* C: one compact row per message; incoming on the person's side as in A. */
+.aam-strip {
+  width: min(560px, 100%); box-sizing: border-box; padding: 2px var(--ah-s2); border-radius: var(--ah-r-md);
+  font-size: var(--ah-size-meta);
+}
+.aam-strip[data-dir="in"] { background: var(--ah-surface-2); border: 1px solid var(--ah-accent-line); }
+.aam-strip[data-dir="out"] { border: 1px dashed var(--ah-line-strong); }
+.aam-strip-line { display: flex; align-items: center; gap: var(--ah-s2); min-height: 28px; min-width: 0; }
+.aam-strip-line > svg { flex: none; width: 14px; height: 14px; color: var(--ah-accent-ink); }
+.aam-strip-who { flex: none; font-weight: 600; white-space: nowrap; }
+.aam-strip-ref { flex: none; display: inline-flex; align-items: center; gap: 2px; color: var(--ah-muted); }
+.aam-strip-ref svg { width: 12px; height: 12px; }
+.aam-strip-text { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ah-ink-2); }
+.aam-strip-gap { flex: 1 1 auto; }
+.aam-strip time { flex: none; color: var(--ah-muted); }
+.aam-strip .aam-state { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.aam-strip-toggle {
+  flex: none; display: inline-grid; place-items: center; width: 28px; height: 28px; padding: 0;
+  border: 0; border-radius: var(--ah-r-sm); background: none; color: var(--ah-muted); cursor: pointer;
+}
+.aam-strip-toggle svg { width: 14px; height: 14px; }
+.aam-strip-toggle:hover { background: var(--ah-hover, var(--ah-surface-2)); }
+.aam-strip-body { padding: var(--ah-s1) 0 var(--ah-s2) 22px; font-size: var(--ah-size-ui); }
+.aam-strip-body .ah-prose :first-child { margin-top: 0; } .aam-strip-body .ah-prose :last-child { margin-bottom: 0; }
+.ah-feed > li[data-kind="out"] + li[data-kind="user"], .ah-feed > li[data-kind="user"] + li[data-kind="out"] { margin-top: 0; }
+@media (max-width: 800px) {
+  .aam-strip .aam-state { display: none; }
+  .aam-trow { max-width: 94%; }
+}
+/* The production message header sets its speaker in small capitals; a
+   sender's name is a title and keeps its own case. */
+:is(.aam-in, .aam-out) > header strong { text-transform: none; letter-spacing: 0; font-size: var(--ah-size-meta); }
+.ah-feed > li > [data-item]:has(> .aam-strip) { width: min(560px, 100%); }
+.ah-feed > li > [data-item] > .aam-strip { width: 100%; }
+.aam-strip-who { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.aam-strip-text { flex: 1 1 0; }
+@media (max-width: 800px) { .aam-strip-to { display: none; } }
