@@ -1333,6 +1333,11 @@ esac
 						http.Error(w, "fixture failed", 500)
 						return
 					}
+				} else if mode == "wake-fired" {
+					if e := seedWakeFiredHistory(path, filepath.Join(tmp, "alice", "src", "ordinary-dir")); e != nil {
+						http.Error(w, "fixture failed", 500)
+						return
+					}
 				} else if mode == "turn-changes" {
 					if e := seedTurnChangesHistory(path, filepath.Join(tmp, "alice", "src", "ordinary-dir")); e != nil {
 						http.Error(w, "fixture failed", 500)

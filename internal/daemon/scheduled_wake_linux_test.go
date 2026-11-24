@@ -116,7 +116,7 @@ func TestAgentWakeCommandsAndTheCap(t *testing.T) {
 	}
 	// The snapshot shows the pending wake on the conversation.
 	value, _ := readWakes(h.root)
-	if pending, _ := snapshotWakes(value, "pi:"+id); len(pending) != 1 || pending[0]["id"] != wakeID {
+	if pending := snapshotWakes(value, "pi:"+id); len(pending) != 1 || pending[0]["id"] != wakeID {
 		t.Fatalf("snapshot wakes: %v", pending)
 	}
 	// The person moves it: the agent's time is kept as moved_from.
@@ -290,10 +290,11 @@ func TestOverdueWakeFiresOnceAfterARestartAndSaysLate(t *testing.T) {
 	if got.LateSeconds != 3*3600 || got.FiredAt != stamp(late) {
 		t.Fatalf("fired record: %+v", got)
 	}
-	// The person's line reads the native message the companion appended.
+	// A fired wake leaves the snapshot: Habitat's line in the conversation
+	// tells it, not the rail row.
 	value, _ := readWakes(h.root)
-	if _, last := snapshotWakes(value, "pi:"+id); last == nil || last["late_seconds"] != int64(3*3600) {
-		t.Fatalf("last wake: %v", last)
+	if pending := snapshotWakes(value, "pi:"+id); len(pending) != 0 {
+		t.Fatalf("fired wake still in the snapshot: %v", pending)
 	}
 	// A later due check fires nothing again, and nothing pends: no timer.
 	if fired, next := c2.processDueWakes(context.Background()); fired != 0 || !next.IsZero() {
@@ -386,7 +387,7 @@ func TestArchiveCancelsWakesUndoRestoresLaterRestoreTells(t *testing.T) {
 		t.Fatalf("archived: %+v", w)
 	}
 	value, _ := readWakes(h.root)
-	if pending, _ := snapshotWakes(value, "pi:"+id); len(pending) != 0 {
+	if pending := snapshotWakes(value, "pi:"+id); len(pending) != 0 {
 		t.Fatal("an archived conversation still shows a pending wake")
 	}
 	restore(true) // the notice's undo

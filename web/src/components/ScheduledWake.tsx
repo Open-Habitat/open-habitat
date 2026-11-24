@@ -33,7 +33,9 @@ export type PendingWakeModel = {
 const ms = (s?: string) => (s ? Date.parse(s) : Number.NaN);
 
 /** The line Habitat, not the agent, writes when a wake fired or a
- * cancellation was told to the agent; the agent's own text stays out. */
+ * cancellation was told to the agent; the agent's own text stays out. A
+ * fired wake reads as one sentence after the name, "Open Habitat herätti
+ * agentin …", with the agent's note under it. */
 export function WakeLineMarker({ line }: { line: WakeLine }) {
   const t = useText(scheduledWakeText);
   const first = line.wakes[0];
@@ -46,7 +48,7 @@ export function WakeLineMarker({ line }: { line: WakeLine }) {
       data-late={first?.late_seconds ? "" : undefined}
     >
       <Icon name="clock" className="ah-wake-icon" aria-hidden="true" />
-      <span className="ah-wake-line-who">{t.habitat}</span>
+      <span className="ah-wake-line-who">{t.habitat}</span>{" "}
       {line.kind === "fired" && first ? (
         <span>
           {first.late_seconds && first.fired_at

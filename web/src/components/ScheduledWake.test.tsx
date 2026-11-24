@@ -95,5 +95,33 @@ describe("Habitat's wake line", () => {
     expect(line.dataset.kind).toBe("fired");
     expect(line.dataset.late).toBe("");
     expect(line.textContent).toContain("muistuta poistamaan backup-2024");
+    expect(line.textContent).toMatch(/^Open Habitat herätti agentin vasta /);
+  });
+  it("says in words that Habitat woke the agent, and when", () => {
+    render(
+      <Entry
+        entry={{
+          entry_key: "w",
+          kind: "unknown",
+          content,
+          scheduled_wake: {
+            kind: "fired",
+            wakes: [
+              {
+                at: "2026-11-24T19:20:00Z",
+                set_at: "2026-11-24T15:00:00Z",
+                fired_at: "2026-11-24T19:20:02Z",
+                note: "Tarkista, valmistuiko ajo",
+              },
+            ],
+          },
+        }}
+      />,
+    );
+    const line = screen.getByTestId("wake-line");
+    expect(line.dataset.late).toBeUndefined();
+    expect(line.textContent).toMatch(
+      /^Open Habitat herätti agentin \S+ 24\.11\. klo \d+\.20\. Agentti oli asettanut herätyksen .*Tarkista, valmistuiko ajo$/,
+    );
   });
 });

@@ -4902,16 +4902,13 @@ h2.ah-rail-section-head {
   font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
-/* The rail row's end: a clock and the wake time where the age is. A woken
-   reply not yet read says when it was woken, in the turn colour. */
+/* The rail row's end: a clock and the wake time where the age is, while
+   the wake is still ahead. */
 .ah-nav-time.ah-nav-wake {
   display: inline-flex;
   align-items: center;
   gap: 3px;
   color: var(--ah-accent-ink);
-}
-.ah-nav-time.ah-nav-wake[data-woke] {
-  color: var(--ah-turn);
 }
 .ah-nav-wake-icon {
   width: 11px;

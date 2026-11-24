@@ -73,17 +73,6 @@
         "moved_from": { "$ref": "common.schema.json#/$defs/timestamp" }
       }
     },
-    "fired": {
-      "description": "The conversation's latest wake that fired: its time, when it fired, and how late when more than two minutes.",
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["at", "fired_at"],
-      "properties": {
-        "at": { "$ref": "common.schema.json#/$defs/timestamp" },
-        "fired_at": { "$ref": "common.schema.json#/$defs/timestamp" },
-        "late_seconds": { "type": "integer", "minimum": 1 }
-      }
-    },
     "request": {
       "description": "The body of POST /agent/v1/wakes (agent wake create --current). at is RFC 3339 with an explicit offset or Z and must be in the future.",
       "type": "object",

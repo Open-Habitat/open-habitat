@@ -548,12 +548,10 @@ export interface AgentNavModel {
   historyLabel?: string;
   /** When the conversation last changed (the host's changed_at), Unix ms. */
   changedAt?: number;
-  /** The next pending scheduled wake, Unix ms: the row's end shows a clock
-   * and the time instead of the age (scheduled-wake). */
+  /** The next pending scheduled wake, Unix ms: while it is still ahead the
+   * row's end shows a clock and the time instead of the age
+   * (scheduled-wake). */
   wakeAt?: number;
-  /** An unread reply a scheduled wake started: when it was woken, in the
-   * same place, so the reply explains itself before it is opened. */
-  wokeAt?: number;
   /** The work ended in a failure the person has to look at: Pi crashed, the
    * turn ended in an error, or a worker run failed. */
   failed?: boolean;
@@ -741,7 +739,6 @@ export function AgentNavItem({
   historyLabel,
   changedAt,
   wakeAt,
-  wokeAt,
   failed,
   selected = false,
   kept = false,
@@ -808,22 +805,17 @@ export function AgentNavItem({
   // place (server-browser-entry-points round 3).
   const browser = useContext(BrowserRowMarks).get(agentId);
   const wakeWords = textNow(scheduledWakeText);
+  // Only a wake still ahead takes the time's place: one whose moment has
+  // passed has fired or is firing, and Habitat's line in the conversation
+  // tells it; the row goes back to its age.
   const wake =
-    wakeAt !== undefined
+    wakeAt !== undefined && wakeAt > now
       ? {
           at: wakeAt,
           short: wakeShort(wakeAt, now),
           said: wakeWords.waitsWake(wakeFull(wakeAt, now)),
-          woke: false,
         }
-      : wokeAt !== undefined
-        ? {
-            at: wokeAt,
-            short: wakeShort(wokeAt, now),
-            said: wakeWords.wokeAt(wakeFull(wokeAt, now)),
-            woke: true,
-          }
-        : undefined;
+      : undefined;
   const said = [
     pendingLabel,
     browser ? browserRowSaid(textNow(serverBrowserText), browser) : null,
@@ -1057,7 +1049,6 @@ export function AgentNavItem({
                     <time
                       className="ah-nav-time ah-nav-wake"
                       data-testid="rail-wake-time"
-                      data-woke={wake.woke || undefined}
                       dateTime={new Date(wake.at).toISOString()}
                       title={wake.said}
                     >

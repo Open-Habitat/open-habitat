@@ -11,7 +11,6 @@ const fi = {
     `${weekday} ${date} klo ${time}`,
   // The rail row.
   waitsWake: (at: string) => `Odottaa herätystä ${at}`,
-  wokeAt: (at: string) => `Herätetty ${at}`,
   // The bar at the conversation's foot.
   bar: (at: string) => `Herätys ${at}`,
   setByAgent: "agentti asetti",
@@ -26,10 +25,11 @@ const fi = {
   changeFailed: "Herätystä ei voitu muuttaa. Lue tilanne uudelleen.",
   // Habitat's line in the conversation.
   habitat: "Open Habitat",
+  // Read after the bold "Open Habitat": "Open Habitat herätti agentin …".
   fired: (at: string, set: string) =>
-    `Ajastettu herätys ${at}. Agentti asetti sen ${set}.`,
+    `herätti agentin ${at}.${set ? ` Agentti oli asettanut herätyksen ${set}.` : ""}`,
   firedLate: (at: string, woke: string) =>
-    `Ajastettu herätys ${at} myöhästyi: agentti herätettiin vasta ${woke}, koska palvelin tai Habitat ei ollut käynnissä.`,
+    `herätti agentin vasta ${woke}, vaikka herätys oli ajastettu ${at}: palvelin tai Habitat ei ollut käynnissä.`,
   moved: (from: string, to: string) => `Siirsit herätyksen ${from} → ${to}.`,
   cancelled: (n: number) =>
     n === 1
@@ -59,7 +59,6 @@ export const scheduledWakeText = catalog(
     weekdays: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
     full: (weekday, date, time) => `${weekday} ${date} at ${time}`,
     waitsWake: (at) => `Waiting for a wake ${at}`,
-    wokeAt: (at) => `Woken ${at}`,
     bar: (at) => `Wake ${at}`,
     setByAgent: "set by the agent",
     more: (n) =>
@@ -72,9 +71,10 @@ export const scheduledWakeText = catalog(
     pastTime: "Choose a time in the future.",
     changeFailed: "The wake could not be changed. Read the situation again.",
     habitat: "Open Habitat",
-    fired: (at, set) => `Scheduled wake ${at}. The agent set it ${set}.`,
+    fired: (at, set) =>
+      `woke the agent ${at}.${set ? ` The agent had set the wake ${set}.` : ""}`,
     firedLate: (at, woke) =>
-      `Scheduled wake ${at} was late: the agent was woken only ${woke} because the server or Habitat was not running.`,
+      `woke the agent only ${woke}, though the wake was set for ${at}: the server or Habitat was not running.`,
     moved: (from, to) => `You moved the wake ${from} → ${to}.`,
     cancelled: (n) =>
       n === 1

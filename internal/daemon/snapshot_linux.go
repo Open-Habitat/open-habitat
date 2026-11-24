@@ -430,12 +430,8 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 			if wakesErr != nil {
 				return
 			}
-			pending, last := snapshotWakes(wakes, id)
-			if len(pending) > 0 && agent["archive"] == "active" {
+			if pending := snapshotWakes(wakes, id); len(pending) > 0 && agent["archive"] == "active" {
 				agent["wakes"] = pending
-			}
-			if last != nil {
-				agent["last_wake"] = last
 			}
 		}
 		for _, raw := range agents {

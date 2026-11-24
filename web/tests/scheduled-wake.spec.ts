@@ -218,3 +218,56 @@ test("@scheduled-wake archiving asks in the window with focus on archive, and th
   ).toHaveAttribute("datetime", at.toISOString(), { timeout: 15000 });
   expect(writes).toBe(2);
 });
+
+test("@scheduled-wake a fired wake is Habitat's line in the conversation, not a clock on the row", async ({
+  page,
+}) => {
+  // The native session holds a wake that fired and the reply it started.
+  expect(
+    (await page.request.get("/fixture/history?mode=wake-fired")).status(),
+  ).toBe(204);
+  const nativeId = "pi:11111111-1111-4111-8111-111111111111";
+  await page.goto(`${hostOrigin}/workspaces`);
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
+  await page.goto(`/agents/${nativeId}`);
+  const line = page.getByTestId("wake-line");
+  // The line stands at the turn the wake started: after the reply that set
+  // it, before the woken reply, and says in words that Habitat woke the
+  // agent, when, and the agent's note.
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(line).toBeVisible({ timeout: 15000 });
+    await expect(line).toHaveAttribute("data-kind", "fired");
+    await expect(line).toContainText(/Open Habitat herätti agentin .*klo/);
+    await expect(line).toContainText("Tarkista, valmistuiko ajo");
+  }
+  const order = await page
+    .locator('[data-testid="wake-line"], [data-testid="agent-turn"]')
+    .evaluateAll((nodes) =>
+      nodes.map((n) =>
+        n.getAttribute("data-testid") === "wake-line"
+          ? "wake"
+          : (n.textContent ?? "").includes("Ajo valmistui")
+            ? "woken"
+            : (n.textContent ?? "").includes("Asetin herätyksen")
+              ? "set"
+              : "other",
+      ),
+    );
+  expect(order.filter((o) => o !== "other")).toEqual(["set", "wake", "woken"]);
+  expect(
+    (
+      await new AxeBuilder({ page })
+        .include('[data-testid="wake-line"]')
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+  // The fired wake leaves the rail row's time slot to the row's age.
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const item = page
+    .getByRole("navigation")
+    .getByTestId(`agent-item-${nativeId}`);
+  await expect(item).toBeVisible({ timeout: 15000 });
+  await expect(item.getByTestId("rail-wake-time")).toHaveCount(0);
+});

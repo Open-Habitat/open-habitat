@@ -3,10 +3,12 @@ created: 2026-11-24
 updated: 2026-11-24
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 preparation: ready
+closed: 2026-11-24
+closed_by: claude
 ---
 
 # A fired wake keeps a clock on the rail row, and the conversation does not say it woke
@@ -29,3 +31,9 @@ The conversation's scheduled wake had fired at 21.20. Jari:
   that line does not exist or is not visible today.
 - A pending wake's meaning is reachable without hover (e.g. the row's accessible name and
   the conversation header or a line), checked on phone width too.
+
+## Resolution
+
+### 2026-11-24T20:09:30Z · @claude
+
+Rail row shows a clock only for a pending wake still ahead; the woken variant and the snapshot's last_wake are gone. Habitat's fired-wake line now says 'Open Habitat herätti agentin …'. See result.md.

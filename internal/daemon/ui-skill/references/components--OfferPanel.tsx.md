@@ -7,7 +7,9 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
   type Ref,
+  useEffect,
   useMemo,
+  useState,
 } from "react";
 import {
   downloadURL,
@@ -17,9 +19,17 @@ import {
   type OfferState,
   readOfferedFile,
 } from "../app/fileOffers";
+import { accountSession } from "../app/pi";
+import {
+  mintOfferPageURL,
+  offeredPagePattern,
+  ViewsUnavailable,
+} from "../app/views";
 import { liveText } from "../i18n";
 import { offerPanelText } from "../text/offerPanel";
+import { viewPanelText } from "../text/viewPanel";
 import { usePreview } from "./AttachmentPreview";
+import { Segmented } from "./ControlElements";
 import {
   fileFacts,
   formatOfferSize,
@@ -32,7 +42,7 @@ import {
 import { Icon } from "./Icon";
 import { OfferActions, OfferSeen } from "./OfferCard";
 import type { ViewVisibility } from "./ViewOffer";
-import { ViewHeader } from "./ViewPanel";
+import { ViewFrame, ViewHeader } from "./ViewPanel";
 
 // A file offer opened beside the conversation, in the same right-hand panel
 // a view opens in (proto-offer-cards-consistent, A Viereen): a table, an
@@ -41,17 +51,44 @@ import { ViewHeader } from "./ViewPanel";
 // bytes come from the offer's own inline and download routes.
 
 const txt = liveText(offerPanelText);
+const viewTxt = liveText(viewPanelText);
 
 const baseName = (path: string) => path.slice(path.lastIndexOf("/") + 1);
 
 /** One offered file's content, as far as the browser can show it, else its
- * facts. The panel and the offer's own tab both show a file this way. */
+ * facts. The panel and the offer's own tab both show a file this way. An
+ * HTML file opens as the page, in the view sandbox on its offer's own host,
+ * with its source and facts one press away. */
 export function OfferedFileView({
   offerId,
   item,
 }: {
   offerId: string;
   item: FileOfferItem;
+}) {
+  return offeredPagePattern.test(item.path) ? (
+    <OfferedPage offerId={offerId} item={item} />
+  ) : (
+    <div
+      className="ah-offer-file"
+      data-testid="offer-file"
+      data-kind={item.kind}
+      data-path={item.path}
+    >
+      <OfferedFileContent offerId={offerId} item={item} />
+    </div>
+  );
+}
+
+function OfferedFileContent({
+  offerId,
+  item,
+  withFacts = false,
+}: {
+  offerId: string;
+  item: FileOfferItem;
+  /** Show the facts under the content too, not only in its place. */
+  withFacts?: boolean;
 }) {
   const attachment = useMemo(
     () => ({
@@ -69,13 +106,122 @@ export function OfferedFileView({
     offered: { item, download: downloadURL(offerId, item.path) },
   });
   return (
+    <>
+      {content && withFacts ? facts : null}
+      {content ?? facts}
+    </>
+  );
+}
+
+/** An offered HTML file as its page. The app origin never presents the
+ * file's bytes as HTML: the frame is the view host's, minted for this one
+ * offer and file, and confined as a view is. Where the page cannot open (no
+ * view origin on this installation, or the session ended) the source and
+ * facts are shown instead. */
+function OfferedPage({
+  offerId,
+  item,
+}: {
+  offerId: string;
+  item: FileOfferItem;
+}) {
+  // "plain": this site opens no pages, so the source is all there is.
+  const [mode, setMode] = useState<"page" | "source" | "plain">("page");
+  const [src, setSrc] = useState<string>();
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    // Each reopen (attempt) mints a fresh single-use URL.
+    if (mode !== "page" || attempt < 0) return;
+    let alive = true;
+    setSrc(undefined);
+    accountSession()
+      .then((session) => {
+        if (session === "login") throw new Error("signed out");
+        return mintOfferPageURL(session.csrf, offerId, item.path);
+      })
+      .then(
+        (url) => {
+          if (alive) setSrc(url);
+        },
+        (error) => {
+          if (!alive) return;
+          const plain = error instanceof ViewsUnavailable;
+          setFailed(!plain);
+          setMode(plain ? "plain" : "source");
+        },
+      );
+    return () => {
+      alive = false;
+    };
+  }, [offerId, item.path, mode, attempt]);
+  const name = baseName(item.path);
+  if (mode === "plain")
+    return (
+      <div
+        className="ah-offer-file"
+        data-testid="offer-file"
+        data-kind={item.kind}
+        data-path={item.path}
+      >
+        <OfferedFileContent offerId={offerId} item={item} />
+      </div>
+    );
+  return (
     <div
-      className="ah-offer-file"
+      className="ah-offer-file ah-offer-page"
       data-testid="offer-file"
       data-kind={item.kind}
       data-path={item.path}
+      data-mode={mode}
     >
-      {content ?? facts}
+      <div className="ah-offer-page-bar">
+        <Segmented
+          data-testid="offer-page-mode"
+          label={txt.show}
+          options={[
+            { id: "page", label: txt.page },
+            { id: "source", label: txt.source },
+          ]}
+          value={mode}
+          onChange={(next) => {
+            setFailed(false);
+            setMode(next);
+          }}
+        />
+      </div>
+      {mode === "page" ? (
+        <>
+          <div className="ah-view-frame ah-offer-page-frame">
+            {src ? (
+              <ViewFrame
+                key={src}
+                src={src}
+                title={name}
+                onReopen={() => setAttempt((n) => n + 1)}
+              />
+            ) : (
+              <p className="ah-view-frame-status" role="status">
+                {txt.opening}
+              </p>
+            )}
+          </div>
+          <p className="ah-view-note">{viewTxt.isolated}</p>
+        </>
+      ) : (
+        <div className="ah-offer-page-source" data-testid="offer-page-source">
+          {failed ? (
+            <p
+              className="ah-attachment-preview-note"
+              data-testid="offer-page-failed"
+              role="status"
+            >
+              {txt.pageFailed}
+            </p>
+          ) : null}
+          <OfferedFileContent offerId={offerId} item={item} withFacts />
+        </div>
+      )}
     </div>
   );
 }

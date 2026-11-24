@@ -27,10 +27,6 @@ import type { RootState } from "./store";
 import { placeWorkClause } from "./workSentence";
 
 const txt = liveText(statusText);
-/** A reply that came within this long of a wake firing is the wake's: a
- * woken turn replies in minutes, and a reply hours later answers something
- * else the person wrote meanwhile. */
-const wokenReplyWindow = 6 * 60 * 60 * 1000;
 
 export interface RailNow {
   /** A new reply, a question or a new conversation: the person's turn. */
@@ -300,21 +296,10 @@ export function railNow({
     const servicesClause = services.length
       ? txt.rail.backgroundService(services.join(", "))
       : "";
-    // Scheduled wake: a waiting conversation shows when it wakes; an unread
-    // reply its wake started shows when it was woken.
+    // Scheduled wake: a waiting conversation shows when it wakes. A wake
+    // that fired is Habitat's line in the conversation, not the row's.
     const nextWake = (current ?? a).wakes?.[0];
     const wakeAt = nextWake ? Date.parse(nextWake.at) : Number.NaN;
-    const lastWake = (current ?? a).last_wake;
-    const firedAt = lastWake ? Date.parse(lastWake.fired_at) : Number.NaN;
-    const wokeAt =
-      attention &&
-      !dismissed &&
-      reply &&
-      Number.isFinite(firedAt) &&
-      firedAt <= Date.parse(reply.at) &&
-      Date.parse(reply.at) - firedAt < wokenReplyWindow
-        ? firedAt
-        : undefined;
     const pendingLabel = closing.has(a.agent_id) ? txt.rail.closing : undefined;
     const changedAt = a.changed_at ? Date.parse(a.changed_at) : Number.NaN;
     const model: AgentNavModel = {
@@ -328,7 +313,6 @@ export function railNow({
       workspaceIcon: icons?.get(w.workspace_id),
       changedAt: Number.isFinite(changedAt) ? changedAt : undefined,
       wakeAt: Number.isFinite(wakeAt) ? wakeAt : undefined,
-      wokeAt: Number.isFinite(wakeAt) ? undefined : wokeAt,
       failed: failed || undefined,
       detail: [name, state, waits, servicesClause, presentation.operationLabel]
         .filter(Boolean)

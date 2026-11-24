@@ -375,6 +375,40 @@ describe("Ryhmät rows", () => {
         ?.textContent,
     ).toBe("kasvimaa · Odottaa viestiä · 2 t sitten");
   });
+  it("shows a clock only for a wake still ahead, and says it without hover", () => {
+    const ahead = now + 26 * 60000;
+    const view = render(
+      <MemoryRouter>
+        <ul>
+          <AgentNavItem
+            {...agent("p", { changedAt: at(130), wakeAt: ahead })}
+            now={now}
+          />
+          <AgentNavItem
+            {...agent("f", { changedAt: at(130), wakeAt: at(26) })}
+            now={now}
+          />
+        </ul>
+      </MemoryRouter>,
+    );
+    const link = (id: string) =>
+      view.getByTestId(`agent-item-${id}`).querySelector("a") as HTMLElement;
+    const described = (id: string) =>
+      document.getElementById(link(id).getAttribute("aria-describedby") ?? "")
+        ?.textContent ?? "";
+    // Pending: the clock and the time take the age's place, and the row's
+    // accessible description says what it means.
+    const wake = link("p").querySelector('[data-testid="rail-wake-time"]');
+    expect(wake?.getAttribute("datetime")).toBe(new Date(ahead).toISOString());
+    expect(described("p")).toMatch(/Odottaa herätystä .*klo/);
+    // A wake whose moment has passed no longer takes the slot: the row
+    // shows its ordinary age and says nothing of a wake.
+    expect(
+      link("f").querySelector('[data-testid="rail-wake-time"]'),
+    ).toBeNull();
+    expect(link("f").querySelector("time")?.textContent).toBe("2 t");
+    expect(described("f")).not.toMatch(/herät/i);
+  });
   it("offers each row's archive, says why one waits, and keeps focus in the rail", () => {
     const archived: string[] = [];
     let leaving: (() => void) | undefined;

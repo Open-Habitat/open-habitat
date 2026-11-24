@@ -322,10 +322,10 @@ func wakeView(w scheduledWake) map[string]any {
 }
 
 // snapshotWakes is what the snapshot shows of one conversation's wakes: the
-// pending ones in time order, and the latest that fired.
-func snapshotWakes(value wakesFile, agentID string) ([]map[string]any, map[string]any) {
+// pending ones in time order. A wake that has fired is told in the
+// conversation by Habitat's line, not on the rail row.
+func snapshotWakes(value wakesFile, agentID string) []map[string]any {
 	var pending []map[string]any
-	var last *scheduledWake
 	for _, w := range pendingWakes(value) {
 		if w.AgentID == agentID {
 			v := map[string]any{"id": w.ID, "at": w.At, "note": w.Note, "set_by": w.SetBy, "set_at": w.SetAt}
@@ -335,20 +335,7 @@ func snapshotWakes(value wakesFile, agentID string) ([]map[string]any, map[strin
 			pending = append(pending, v)
 		}
 	}
-	for i := range value.Wakes {
-		w := value.Wakes[i]
-		if w.AgentID == agentID && w.Status == "fired" && (last == nil || w.FiredAt > last.FiredAt) {
-			last = &value.Wakes[i]
-		}
-	}
-	if last == nil {
-		return pending, nil
-	}
-	fired := map[string]any{"at": last.At, "fired_at": last.FiredAt}
-	if last.LateSeconds > 0 {
-		fired["late_seconds"] = last.LateSeconds
-	}
-	return pending, fired
+	return pending
 }
 
 // ---- The agent's commands ----

@@ -188,8 +188,6 @@ export interface Agent {
   agent_section?: { section: "yours" | "running" | "quiet"; at: string };
   /** Pending scheduled wakes in time order (scheduled-wake). */
   wakes?: PendingWake[];
-  /** The latest scheduled wake that fired. */
-  last_wake?: { at: string; fired_at: string; late_seconds?: number };
   /** The work ended in a failure nobody has acted on: the last reply ended
    * in an error (read while Pi runs), or an own Taskfleet run failed after
    * the conversation last changed. */

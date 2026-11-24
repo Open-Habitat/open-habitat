@@ -1163,37 +1163,19 @@ describe("scheduled wake on the row", () => {
     const on = run([waiting], { attention: [["w", "new"]] });
     expect(ids(on.quiet)).toEqual(["w"]);
     expect(row(on, "w")?.wakeAt).toBe(Date.parse(pending.at));
-    expect(row(on, "w")?.wokeAt).toBeUndefined();
   });
 
-  it.each([
-    ["unread reply of the wake", "new", at(8), at(8), true],
-    ["read reply", "seen", at(8), at(8), false],
-    ["reply long after the wake", "new", at(8), at(16), false],
-    ["reply before the wake", "new", at(8), at(7), false],
-  ] as const)(
-    "a woken reply says when it was woken: %s",
-    (_name, attention, fired, replyAt, shows) => {
-      const woken = agent("v", {
-        ...done,
-        last_reply: { id: "r2", at: replyAt },
-        last_wake: { at: at(7), fired_at: fired },
-      });
-      const now = run([woken], { attention: [["v", attention]] });
-      expect(row(now, "v")?.wokeAt).toBe(shows ? Date.parse(fired) : undefined);
-      if (shows) expect(ids(now.yours)).toEqual(["v"]);
-    },
-  );
-
-  it("a pending wake wins the end slot over a past one", () => {
-    const both = agent("b", {
+  it("a fired wake leaves the row: an unread reply it started shows its age", () => {
+    // A wake fires and leaves the pending list; the snapshot no longer says
+    // anything of it, and the row carries no wake time.
+    const woken = agent("v", {
       ...done,
-      last_reply: { id: "r3", at: at(8) },
-      last_wake: { at: at(7), fired_at: at(8) },
-      wakes: [later],
+      changed_at: at(8),
+      last_reply: { id: "r2", at: at(8) },
     });
-    const now = run([both], { attention: [["b", "new"]] });
-    expect(row(now, "b")?.wakeAt).toBe(Date.parse(later.at));
-    expect(row(now, "b")?.wokeAt).toBeUndefined();
+    const now = run([woken], { attention: [["v", "new"]] });
+    expect(ids(now.yours)).toEqual(["v"]);
+    expect(row(now, "v")?.wakeAt).toBeUndefined();
+    expect(row(now, "v")?.changedAt).toBe(Date.parse(at(8)));
   });
 });

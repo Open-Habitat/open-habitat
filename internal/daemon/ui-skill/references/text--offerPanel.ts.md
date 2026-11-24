@@ -19,6 +19,11 @@ const fi = {
     "Tiedostoa ei voitu avata. Se on ehkä poistettu, tai olet kirjautunut ulos. Avaa se uudelleen Habitatista.",
   signIn: "Kirjaudu sisään avataksesi tiedoston.",
   signInAction: "Kirjaudu GitHubilla",
+  show: "Näytä",
+  page: "Sivu",
+  source: "Lähdekoodi ja tiedot",
+  pageFailed:
+    "Sivua ei voitu avata tässä. Alla ovat tiedoston lähdekoodi ja tiedot.",
 };
 
 export const offerPanelText = catalog(fi, {
@@ -33,6 +38,11 @@ export const offerPanelText = catalog(fi, {
     "The file could not be opened. It may have been removed, or you have signed out. Open it again from Habitat.",
   signIn: "Sign in to open the file.",
   signInAction: "Sign in with GitHub",
+  show: "Show",
+  page: "Page",
+  source: "Source and details",
+  pageFailed:
+    "The page could not be opened here. The file's source and details are below.",
 });
 
 ```

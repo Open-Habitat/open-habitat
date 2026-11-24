@@ -811,10 +811,6 @@
             "$ref": "agent-wake.schema.json#/$defs/pending"
           }
         },
-        "last_wake": {
-          "description": "The conversation's latest scheduled wake that fired, by which an unread reply it started explains itself on the rail row. Absent when none has fired or the daemon cannot read its wakes.",
-          "$ref": "agent-wake.schema.json#/$defs/fired"
-        },
         "failure": {
           "description": "The conversation's work ended in a failure nobody has acted on yet: turn_error when the last message on its branch is a reply that ended in an error, read only while its Pi runs; worker_failed when one of its own Taskfleet runs failed after the conversation last changed. turn_error wins when both hold. Absent otherwise; a Pi crash is rest.cause crash instead.",
           "enum": [
