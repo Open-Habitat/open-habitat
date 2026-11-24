@@ -33,7 +33,6 @@
 [data-block="caps-pictures"] .cp-key b { font-weight: 600; color: var(--ah-ink); }
 [data-block="caps-pictures"] .cp-key i { width: 11px; height: 11px; border-radius: 4px; border: 2px solid #2c6e3f; }
 [data-block="caps-pictures"] .cp-k-unsure i { border-color: #c2410c; }
-[data-block="caps-pictures"] .cp-k-skip i { border: 2px dashed #3a453c; border-radius: 2px; }
 @media (prefers-reduced-motion: reduce) {
   [data-block="caps-pictures"] .cp-found, [data-block="caps-pictures"] .cp-key { transition: none; }
 }

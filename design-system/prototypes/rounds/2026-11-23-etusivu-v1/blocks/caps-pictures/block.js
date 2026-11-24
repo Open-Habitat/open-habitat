@@ -25,10 +25,10 @@ const upscaleView = () => `<div class="cp-up" style="--p:50%">
 // not shipped: the point of the block is that those faces are not published.
 const blurView = () => `<div class="cp-blur" data-view data-state="ready">${toggles([['ready', 'Ready to publish'], ['found', 'What it found']], 'ready')}
 <div class="cp-photo">
-<img class="cp-pic" src="${asset('market-ready.webp')}" alt="A busy street market in the sun; every face is blurred" width="640" height="480" loading="lazy" decoding="async">
-<img class="cp-pic cp-found" src="${asset('market-found.svg')}" alt="" width="640" height="480" loading="lazy" decoding="async">
+<img class="cp-pic" src="${asset('market-ready.webp')}" alt="A busy street market in the sun, stalls under white awnings on both sides; every face is blurred" width="960" height="720" loading="lazy" decoding="async">
+<img class="cp-pic cp-found" src="${asset('market-found.svg')}" alt="" width="1280" height="960" loading="lazy" decoding="async">
 </div>
-<ul class="cp-key"><li class="cp-k-sure"><i></i><b>9</b> sure</li><li class="cp-k-unsure"><i></i><b>18</b> unsure, blurred anyway</li><li class="cp-k-skip"><i></i><b>1</b> left alone: too large to be a face</li></ul>
+<ul class="cp-key"><li class="cp-k-sure"><i></i><b>11</b> sure</li><li class="cp-k-unsure"><i></i><b>19</b> unsure, blurred anyway</li><li>nothing left alone in this one</li></ul>
 <p class="cp-n"><span>market-014.jpg · 1 of 64</span><span>originals untouched</span></p>
 </div>`;
 

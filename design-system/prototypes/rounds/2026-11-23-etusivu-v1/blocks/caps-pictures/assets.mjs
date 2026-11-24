@@ -73,19 +73,27 @@ im([x4, '-crop', DETAIL, '+repage', ...webp, join(out, 'regatta-x4.webp')]);
 im([x4, '-resize', '480x', ...webp, join(out, 'regatta-whole.webp')]);
 
 // ---------- 2. Faces blurred before publishing: OpenCV ----------
-// A CC0 photograph of a street market. Only the blurred picture is written:
-// the block is about not publishing faces, so the original never ships.
-const market = fetchTo('market-1024.webp', 'https://images.rawpixel.com/editor_1024/cHJpdmF0ZS9zdGF0aWMvaW1hZ2Uvd2Vic2l0ZS8yMDIyLTA0L2xyL3B4MTY0MTA3Mi1pbWFnZS1rejJlYWdtZC5qcGc.jpg');
+// A CC0 photograph of a street market in Normandy from Wikimedia Commons
+// (NOTES.md has the licence as read on the file page). Only the blurred picture
+// is written: the block is about not publishing faces, so the original never
+// ships. The view shows the lower middle of the photo, where the people are;
+// the detector gets that part at 1280 × 960.
+const market = fetchTo('market-3840.jpg', 'https://commons.wikimedia.org/wiki/Special:FilePath/Market%20on%20Avenue%20de%20la%20Gare%2C%20Houlgate%2C%202024.jpg?width=3840');
 const yunet = fetchTo('face_detection_yunet_2023mar.onnx', 'https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx');
 const marketPng = join(work, 'market.png');
-im([market, marketPng]);
+im([market, '-crop', '1840x1380+660+1173', '+repage', '-resize', '1280x960', marketPng]);
 const pyCv = venv('venv-cv', '3.12', ['opencv-python-headless==5.1.0.95', 'numpy']);
 // Every detection down to a score of 0.30 is blurred, sure or not: a blurred
 // lamp post costs nothing, a missed face does. The one exception is a box
 // wider than a fifth of the picture with a low score, which is not a face in a
 // crowd photo; it is left alone and listed.
+// PRINTS are not detections: two T-shirt prints with a clothing brand on them,
+// softened by hand-set boxes so that the page shows no real brand. They are
+// not counted and not drawn in the overlay.
+const PRINTS = [[596, 328, 56, 30], [548, 578, 32, 32]];
 const blur = script('blur_faces.py', `import sys, json, cv2, numpy as np
 model, src, dst, report = sys.argv[1:5]
+prints = json.loads(sys.argv[5])
 SURE, FLOOR, UP = 0.80, 0.30, 2
 img = cv2.imread(src); h, w = img.shape[:2]
 big = cv2.resize(img, (w * UP, h * UP), interpolation=cv2.INTER_CUBIC)  # small faces: look at twice the size
@@ -106,28 +114,29 @@ for f in (faces if faces is not None else []):
     cv2.ellipse(mask, (int(cx - x0), int(cy - y0)), (max(1, int(fw * 0.62)), max(1, int(fh * 0.66))), 0, 0, 360, 1, -1)
     mask = cv2.GaussianBlur(mask, (0, 0), max(1.0, fw * 0.12))[..., None]
     out[y0:y1, x0:x1] = (soft * mask + roi * (1 - mask)).astype(np.uint8)
+for px, py, pw, ph in prints:
+    out[py:py + ph, px:px + pw] = cv2.GaussianBlur(out[py:py + ph, px:px + pw], (0, 0), 5)
 found.sort(key=lambda d: (d['y'], d['x']))
 cv2.imwrite(dst, out)
 json.dump({'width': w, 'height': h, 'faces': found}, open(report, 'w'), indent=1)
 `);
 const blurred = join(work, 'market-blurred.png');
 const report = join(work, 'market-faces.json');
-run(pyCv, ['-I', blur, yunet, marketPng, blurred, report]);
-// The view shows the middle of the photo, where the people are.
-const CROP = { x: 170, y: 112, w: 640, h: 480 };
-im([blurred, '-crop', `${CROP.w}x${CROP.h}+${CROP.x}+${CROP.y}`, '+repage', '-quality', '86', '-define', 'webp:method=6', join(out, 'market-ready.webp')]);
+run(pyCv, ['-I', blur, yunet, marketPng, blurred, report, JSON.stringify(PRINTS)]);
+const VIEW = { w: 1280, h: 960 };
+im([blurred, '-resize', '960x720', '-quality', '84', '-define', 'webp:method=6', join(out, 'market-ready.webp')]);
 const { faces } = JSON.parse(readFileSync(report, 'utf8'));
 const INK = { sure: '#2c6e3f', unsure: '#c2410c', skipped: '#3a453c' };
 const boxes = faces.map((f) => {
   // A blurred face is outlined a little outside its box, where the blur ends.
   const g = f.state === 'skipped' ? 0 : 0.18;
-  const x = f.x - CROP.x - f.w * g, y = f.y - CROP.y - f.h * g, w = f.w * (1 + 2 * g), h = f.h * (1 + 2 * g);
-  if (x + w < 2 || y + h < 2 || x > CROP.w - 2 || y > CROP.h - 2) return '';
+  const x = f.x - f.w * g, y = f.y - f.h * g, w = f.w * (1 + 2 * g), h = f.h * (1 + 2 * g);
+  if (x + w < 2 || y + h < 2 || x > VIEW.w - 2 || y > VIEW.h - 2) return '';
   const r = (v) => Math.round(v * 10) / 10;
-  const box = `x="${r(x)}" y="${r(y)}" width="${r(w)}" height="${r(h)}" rx="${f.state === 'skipped' ? 6 : r(Math.min(w, h) * 0.3)}"`;
-  return `<rect ${box} fill="none" stroke="#fff" stroke-opacity=".85" stroke-width="4"/><rect ${box} fill="none" stroke="${INK[f.state]}" stroke-width="2"${f.state === 'skipped' ? ' stroke-dasharray="7 5"' : ''}/>`;
+  const box = `x="${r(x)}" y="${r(y)}" width="${r(w)}" height="${r(h)}" rx="${f.state === 'skipped' ? 12 : r(Math.min(w, h) * 0.3)}"`;
+  return `<rect ${box} fill="none" stroke="#fff" stroke-opacity=".85" stroke-width="8"/><rect ${box} fill="none" stroke="${INK[f.state]}" stroke-width="4"${f.state === 'skipped' ? ' stroke-dasharray="14 10"' : ''}/>`;
 }).join('');
-writeFileSync(join(out, 'market-found.svg'), `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${CROP.w} ${CROP.h}">${boxes}</svg>\n`);
+writeFileSync(join(out, 'market-found.svg'), `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${VIEW.w} ${VIEW.h}">${boxes}</svg>\n`);
 
 const n = (s) => faces.filter((f) => f.state === s).length;
 // block.js quotes these numbers; if they change, change them there.

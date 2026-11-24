@@ -13,7 +13,8 @@ from the program the block names, and the list rows.
 - **Market photos (OpenCV).** Judy wants Saturday's market photos online
   without anyone's face. The view shows a real street-market photo with every
   face OpenCV found blurred; “What it found” lays the detector's boxes over
-  it: sure, unsure but blurred anyway, and one box left alone.
+  it: sure, and unsure but blurred anyway (one of those is a fold in a white
+  shirt, which is the point of the rule).
 
 ## What changed from round 6 and why
 
@@ -41,9 +42,37 @@ from the program the block names, and the list rows.
   It is true of the program: on a test with a close-up of a crew, the faces
   came out with invented eyes. That picture is not shipped (real faces).
 
+## The market photo was replaced (24.11.)
+
+Jari decided to swap the first market photo (rawpixel's “Flea market,
+Utrecht”): its CC0 status was only Openverse's record, because the source
+page could not be read, and it showed real shop names out of focus. The new
+one is a photograph of a street market in Normandy from Wikimedia Commons,
+whose licence was read on the file page itself (below). The view shows the
+lower middle of it: stalls, awnings, shoppers; no shop sign, street sign or
+place name is in the crop.
+
+- The detector now works on real pixels (the crop at 1280 × 960, from the
+  3840 px rendering) and the shipped picture is 960 × 720 instead of
+  640 × 480, so it is sharp on a dense screen.
+- The numbers follow the program: 30 detections, 11 sure, 19 unsure and
+  blurred anyway, none skipped. The key under the picture lost its “1 left
+  alone” item and says so; the conversation's totals for all 64 photos (412
+  blurred, 131 on a low score, 3 skipped) are the story's and were not
+  changed, and they do not contradict this photo.
+- **Two T-shirt prints are softened by hand-set boxes** (`PRINTS` in
+  `assets.mjs`): a clothing brand's lettering on one shirt and a brand's
+  chest emblem on another. Both were already unreadable at the shipped size;
+  softening them keeps a real brand off the page for certain. They are not
+  detections, are not counted and are not drawn in “What it found”.
+- Considered and dropped: a prettier CC0 photo of a Saturday market in an
+  Italian town. Its Commons page carries the Italian cultural-heritage
+  notice, which asks for a ministry authorisation before use “in any form of
+  advertising”. A landing page is advertising.
+
 ## Assets
 
-`node blocks/caps-pictures/assets.mjs` writes five files, 80 KB together, to
+`node blocks/caps-pictures/assets.mjs` writes five files, 140 KB together, to
 `$ETUSIVU_ASSETS/caps-pictures/`:
 
 | File | Size | Made by |
@@ -51,8 +80,8 @@ from the program the block names, and the list rows.
 | `regatta-scan.webp` | 720 × 540, 10 KB | ImageMagick: the scan, `-filter Catrom -resize 400%`, cropped |
 | `regatta-x4.webp` | 720 × 540, 17 KB | Real-ESRGAN ×4 of the same scan, same crop |
 | `regatta-whole.webp` | 480 × 372, 9 KB | Real-ESRGAN's whole picture, reduced |
-| `market-ready.webp` | 640 × 480, 38 KB | OpenCV: faces found by YuNet, blurred with `GaussianBlur` |
-| `market-found.svg` | 5 KB | the same detections as boxes (written by `assets.mjs`) |
+| `market-ready.webp` | 960 × 720, 95 KB | OpenCV: faces found by YuNet, blurred with `GaussianBlur` |
+| `market-found.svg` | 7 KB | the same detections as boxes (written by `assets.mjs`) |
 
 Programs and versions:
 
@@ -67,12 +96,13 @@ Programs and versions:
   and bottom; with the tool's own tiling the result is clean.
 - **OpenCV 5.1.0** (`opencv-python-headless` 5.1.0.95, Python 3.12):
   `cv2.FaceDetectorYN` with `face_detection_yunet_2023mar.onnx` from
-  opencv_zoo (sha256 `8f2383e4…552fa4`), run on the photo enlarged twice,
-  score floor 0.30, “sure” from 0.80; blur is `cv2.GaussianBlur` under a
-  feathered ellipse. A low-score box wider than a fifth of the picture is
-  not blurred but listed. On this photo: 28 detections, 9 sure, 18 unsure
-  and blurred anyway, 1 skipped (the out-of-focus back of a head in the
-  foreground). `block.js` quotes those three numbers; `assets.mjs` prints
+  opencv_zoo (sha256 `8f2383e4…552fa4`), run on the 1280 × 960 crop
+  enlarged twice, score floor 0.30, “sure” from 0.80; blur is
+  `cv2.GaussianBlur` under a feathered ellipse. A low-score box wider than a
+  fifth of the picture is not blurred but listed. On this photo: 30
+  detections, 11 sure, 19 unsure and blurred anyway, 0 skipped. Looked at
+  enlarged three times: every face turned to the camera is blurred; the
+  people left sharp are seen from behind. `block.js` quotes those three numbers; `assets.mjs` prints
   them, so change them there if a different photo or version changes them.
 - **ImageMagick 6.9.12** for cropping, the bicubic stretch and WebP.
 
@@ -86,23 +116,41 @@ the ×4 picture are kept there, so later runs take seconds
 | What | Source | Licence |
 |---|---|---|
 | Regatta photograph, 20 June 1964 (“Roeien in Duisburg op de Wedaubaan, overzicht”, Bestanddeelnr 916-5600) | Nationaal Archief, Fotocollectie Anefo, via Wikimedia Commons: `File:Roeien in Duisburg op de Wedaubaan, overzicht, Bestanddeelnr 916-5600.jpg` | CC0 1.0. No attribution required; credit: Nationaal Archief / Anefo |
-| Street-market photograph (“Flea market, Utrecht, Netherlands, 04/13/2021”) | rawpixel, `https://www.rawpixel.com/image/6113547/flea-market-utrecht-netherlands-04132021`, found through Openverse (id `87c83ac8-7d71-4b25-bfd1-68f053eaa760`) | CC0 1.0 according to Openverse's record |
+| Street-market photograph, 1 August 2024 (“Market on Avenue de la Gare, Houlgate, 2024”), 5,662 × 3,765 px, sha1 `c62dade9…6d20f044` | Wikimedia Commons, own work of user DimiTalen: `https://commons.wikimedia.org/wiki/File:Market_on_Avenue_de_la_Gare,_Houlgate,_2024.jpg` | CC0 1.0, read on the file page on 24.11.2026 (text below). No attribution required; credit: DimiTalen / Wikimedia Commons |
 | `RealESRGAN_x4plus.pth`, Real-ESRGAN code | `github.com/xinntao/Real-ESRGAN` | BSD-3-Clause (used to make the picture, not shipped) |
 | `face_detection_yunet_2023mar.onnx` | `github.com/opencv/opencv_zoo` | MIT (not shipped) |
+
+The market photo's licence as its Commons file page states it, under
+“Licensing” (wikitext `{{self|cc-zero}}`):
+
+> I, the copyright holder of this work, hereby publish it under the following
+> license: This file is made available under the Creative Commons CC0 1.0
+> Universal Public Domain Dedication. The person who associated a work with
+> this deed has dedicated the work to the public domain by waiving all of
+> their rights to the work worldwide under copyright law, including all
+> related and neighboring rights, to the extent allowed by law. You can copy,
+> modify, distribute and perform the work, even for commercial purposes, all
+> without asking permission.
+
+The page carries no other restriction template (no personality-rights or
+heritage notice).
 
 Both photographs are modified (cropped, reduced, enlarged, blurred). Neither
 is hotlinked; the page loads only the files above.
 
 ## For Jari
 
-- **Check the market photo's licence by eye.** Openverse lists it as CC0 1.0,
-  but rawpixel's own page sits behind a bot check that a script cannot read,
-  so the licence was not confirmed at the source.
-- The market photo shows real passers-by, all blurred, and the 1964 photo
-  shows spectators from behind and distant crews: no recognisable person in
-  either. The market photo also shows a shop's carrier bag and café awnings
-  with real names, out of focus. If that is too much for the fictional
-  frame, another CC0 photo goes through the same script unchanged.
+- The market photo shows real passers-by at a public market, every face
+  blurred, and the 1964 photo shows spectators from behind and distant
+  crews: no recognisable person in either. CC0 settles the photographer's
+  rights, not the rights of the people in the picture; the blur is what
+  answers that, and it is also the block's story.
+- The market is a real one in France standing in for the invented Maple
+  Lane Market. Nothing in the crop names it; the file name and place appear
+  only in this file and in `assets.mjs`'s download address.
+- The two softened T-shirt prints (above) are the one place where the
+  picture is not purely “what the detector found”. Say if you would rather
+  have them untouched.
 - The regatta is a Dutch press photo standing in for the fictional Riverside
   Rowing Club's album; the “scan” is that photo reduced to 400 px.
 - “Maple Lane Market” is an invented organisation; `caps-web`,
