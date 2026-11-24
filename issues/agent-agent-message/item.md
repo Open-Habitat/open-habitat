@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 lane: unlaned
-preparation: pending
+preparation: ready
 ---
 
 # Agent-to-agent message between the person's conversations (design and prototype)
@@ -38,3 +38,14 @@ other conversations"). So the plumbing exists; what is not designed is the exper
   messaging each other without the person, ping-pong loops, steer vs. follow-up, a busy
   or stopped target, multiplayer conversations owned by someone else.
 - Relation to workers (`worker-asks-parent`, Taskfleet `node ask`/`run answer`) and helpers.
+
+## Decisions
+
+### 2026-11-24T07:28:23Z · @jari
+
+Jari 24.11.2026 on round 1:
+- Sender side (left): C Kierto is closest, but think further about how it looks when the message arrives, is answered, and so on. Perhaps a quote of the earlier message in the reply, and the next reply quoting that. Open: what if the other agent sends several messages, which one is "the answer"?
+- Model: there need not be a request/answer protocol. Agents exchange equal messages, like two people talking: A sends a message, does its thing, and may later get a message back from B. B's message back is a message like any other, not "the reply to X". A quote mechanism may still show what it refers to.
+- Receiver side (right): A Kirje's model is right: the incoming message looks much like the person's own message, but the sender shown is someone else, with iconography saying an agent sent it, and a reference/link to the sending conversation.
+- Riff on these in round 2. (Timestamps on messages are a separate prototype: `times-conversations-prototype`.)
+Next action (approved): prototype round 2 to this model.
