@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { type AddressInfo, connect, createServer } from "node:net";
 import { join } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import { snapshot } from "../lab/session.mjs";
@@ -48,9 +49,13 @@ async function conversation(page: Page): Promise<string> {
   return new URL(page.url()).searchParams.get("conversation") ?? "";
 }
 
-async function offer(page: Page, target: string): Promise<string> {
+async function offer(
+  page: Page,
+  target: string,
+  kind: "site" | "large" = "site",
+): Promise<string> {
   const res = await page.request.get(
-    `/fixture/view?target=${encodeURIComponent(target)}`,
+    `/fixture/view?target=${encodeURIComponent(target)}${kind === "large" ? "&page=large" : ""}`,
   );
   expect(res.status()).toBe(200);
   return (await res.json()).view_id;
@@ -396,4 +401,86 @@ test("the own tab frames the view on the app's page, with no opener", async ({
   await tab.reload();
   await expect(body).toHaveAttribute("data-style", "rgb(1, 2, 3)");
   await tab.close();
+});
+
+test("a several-megabyte single-file view renders over a connection that stalls", async ({
+  playwright,
+}) => {
+  test.setTimeout(120_000);
+  // A real network does not take a large view as fast as loopback does: the
+  // browser's reading pauses, and the relay from the daemon waits with it.
+  // This relay stands between the browser and the view hosts and stops
+  // passing the view host's bytes for longer than the daemon socket's
+  // per-response deadline once in each burst, after its first quarter
+  // megabyte. Loopback's buffers would otherwise absorb the whole file.
+  const proxy = createServer((client) => {
+    const upstream = connect(port, "127.0.0.1");
+    client.pipe(upstream);
+    let burst = 0;
+    let stalled = false;
+    let last = 0;
+    upstream.on("data", (chunk) => {
+      if (Date.now() - last > 1000) {
+        burst = 0;
+        stalled = false;
+      }
+      burst += chunk.length;
+      client.write(chunk);
+      if (!stalled && burst > 256_000) {
+        stalled = true;
+        upstream.pause();
+        setTimeout(() => {
+          last = Date.now();
+          upstream.resume();
+        }, 7000);
+      }
+      last = Date.now();
+    });
+    upstream.on("end", () => client.end());
+    upstream.on("error", () => client.destroy());
+    client.on("error", () => upstream.destroy());
+  });
+  await new Promise<void>((resolve) => proxy.listen(0, "127.0.0.1", resolve));
+  const relay = (proxy.address() as AddressInfo).port;
+  const browser = await playwright.chromium.launch({
+    args: [
+      `--host-resolver-rules=MAP app.oh.localhost:443 127.0.0.1:${port}, MAP *.oh.localhost:443 127.0.0.1:${relay}`,
+    ],
+  });
+  try {
+    const context = await browser.newContext({
+      baseURL: app,
+      ignoreHTTPSErrors: true,
+      viewport: { width: 1366, height: 800 },
+      locale: "fi-FI",
+    });
+    const page = await context.newPage();
+    const id = await conversation(page);
+    await offer(page, id, "large");
+    const card = page.getByTestId("view-offer");
+    await card.getByTestId("offer-open").click();
+    // The page's one script renders it only once the whole document has
+    // arrived; a document cut short would leave the frame blank.
+    const body = page
+      .frameLocator('[data-testid="view-frame"]')
+      .locator("body");
+    await expect(body).toHaveAttribute("data-rendered", "6291456", {
+      timeout: 30_000,
+    });
+    await expect(
+      page.frameLocator('[data-testid="view-frame"]').locator("#large-heading"),
+    ).toBeVisible();
+    await page.getByTestId("close-view").click();
+
+    const opened = context.waitForEvent("page");
+    await card.hover();
+    await card.getByTestId("offer-open-tab").click();
+    const tab = await opened;
+    await expect(
+      tab.frameLocator('[data-testid="view-frame"]').locator("body"),
+    ).toHaveAttribute("data-rendered", "6291456", { timeout: 30_000 });
+  } finally {
+    await browser.close();
+    proxy.close();
+  }
 });

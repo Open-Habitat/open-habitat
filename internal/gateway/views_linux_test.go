@@ -38,6 +38,8 @@ func newViewDesk(t *testing.T) *viewDesk {
 		"/view-export/" + viewTestB + "/":                  `{"schema_version":1,"view":{"title":"Toinen","entry":"secret/index.html"}}`,
 		"/view-export/" + viewTestA + "/site/index.html":   "<script src=app.js></script>",
 		"/view-export/" + viewTestA + "/site/app.js":       "1",
+		"/view-export/" + viewTestA + "/site/cut.html":     "<p>alku</p><script>render(" + strings.Repeat("x", 64<<10),
+		"/view-export/" + viewTestA + "/site/cut.js":       "render(" + strings.Repeat("x", 64<<10),
 		"/view-export/" + viewTestA + "/site/data.bin":     "\x00",
 		"/view-export/" + viewTestA + "/site/index.svg":    "<svg/>",
 		"/view-export/" + viewTestA + "/site/kuva (1).png": "png",
@@ -58,6 +60,11 @@ func newViewDesk(t *testing.T) *viewDesk {
 		w.Header().Set("Content-Type", "text/html")
 		http.SetCookie(w, &http.Cookie{Name: viewCookie, Value: "from-daemon"})
 		w.Header().Set("Content-Length", strconv.Itoa(len(body)))
+		if strings.Contains(r.URL.Path, "/cut.") {
+			// The daemon's stream ends before its announced length, as one
+			// cut by a socket deadline does.
+			w.Header().Set("Content-Length", strconv.Itoa(len(body)+64<<10))
+		}
 		io.WriteString(w, body)
 	})
 	d := newEditorDesk(t, daemon)
@@ -250,6 +257,36 @@ func TestViewHostServesOnlyItsExportWithSandboxEverywhere(t *testing.T) {
 		if res.StatusCode < 400 {
 			t.Fatalf("%s %s: %d", tc.method, tc.path, res.StatusCode)
 		}
+	}
+}
+
+// A view file whose stream from the daemon ends short must not reach the
+// browser as a complete response. HTML goes out without a length (the
+// bootstrap changes it), so a cleanly ended reply would be a whole document
+// to the browser: a page whose script is cut off stays blank, with nothing
+// telling the person or the view panel that anything failed.
+func TestViewHostAbortsACutDaemonStream(t *testing.T) {
+	d := newViewDesk(t)
+	host := d.host(viewTestA)
+	cookie := d.openView(viewTestA)
+	for _, path := range []string{"/site/cut.html", "/site/cut.js"} {
+		req, _ := http.NewRequest("GET", d.server.URL+path, nil)
+		req.Host = host
+		req.AddCookie(cookie)
+		res, err := d.server.Client().Do(req)
+		if err != nil {
+			t.Fatalf("%s: headers should go out before the cut: %v", path, err)
+		}
+		body, err := io.ReadAll(res.Body)
+		res.Body.Close()
+		if res.StatusCode == 200 && err == nil {
+			t.Fatalf("%s: a cut stream arrived as complete: %q", path, body)
+		}
+	}
+	// The whole file still arrives whole.
+	res := d.do("GET", host, "/site/index.html", "", withCookie(cookie))
+	if body, err := io.ReadAll(res.Body); res.StatusCode != 200 || err != nil || !strings.HasSuffix(string(body), "<script src=app.js></script>") {
+		t.Fatalf("whole file: %d %v %q", res.StatusCode, err, body)
 	}
 }
 

@@ -17,6 +17,7 @@ import (
 	"sync/atomic"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/open-habitat/open-habitat/internal/transport"
 )
@@ -558,5 +559,40 @@ func TestViewZipHoldsOnlyThatExport(t *testing.T) {
 	}
 	if w := read("GET", ViewsPath+"/"+a.View.ID+"/zip"); w.Code != 503 || strings.Contains(w.Body.String(), "salaisuus") {
 		t.Fatalf("planted symlink: %d %q", w.Code, w.Body.String())
+	}
+}
+
+// A view file of several megabytes to a browser on an ordinary connection
+// takes longer than the daemon socket's per-response deadline (five seconds
+// in production), and the gateway relays it at the browser's pace. The file
+// must still arrive whole: a single-file page whose one inline script is cut
+// short never runs and stays blank.
+func TestViewExportOutlastsTheSocketDeadline(t *testing.T) {
+	h := viewFixture(t)
+	big := bytes.Repeat([]byte("x"), 8<<20)
+	if err := os.WriteFile(filepath.Join(h.root, "src", "project", "big.html"), big, 0600); err != nil {
+		t.Fatal(err)
+	}
+	_, v := offerView(t, h.c, h.q, map[string]any{"idempotency_key": "00000000-0000-4000-8000-000000000031", "workspace_id": h.ws, "path": "big.html"})
+	if v.View.ID == "" {
+		t.Fatalf("offer: %+v", v)
+	}
+	srv := httptest.NewUnstartedServer(ViewExportHandler(h.cfg, func(*http.Request) bool { return true }))
+	srv.Config.ReadTimeout, srv.Config.WriteTimeout = 200*time.Millisecond, 200*time.Millisecond
+	srv.Start()
+	defer srv.Close()
+	req, _ := http.NewRequest("GET", srv.URL+ViewExportPath(v.View.ID, "big.html"), nil)
+	req.Host = "unix"
+	res, err := http.DefaultTransport.RoundTrip(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	// The reader stalls past the server's own deadline, as a slow network
+	// behind the gateway does, before reading on.
+	time.Sleep(600 * time.Millisecond)
+	got, err := io.ReadAll(res.Body)
+	if res.StatusCode != 200 || err != nil || len(got) != len(big) {
+		t.Fatalf("export read: %d %v, %d of %d bytes", res.StatusCode, err, len(got), len(big))
 	}
 }

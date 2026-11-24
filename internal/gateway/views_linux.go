@@ -586,10 +586,29 @@ func (a *Auth) viewRelay(w http.ResponseWriter, r *http.Request, target Identity
 	// the announced UTF-8. Its wire length need not equal the export's size.
 	w.WriteHeader(200)
 	if r.Method == http.MethodGet {
+		body := &countedReader{r: io.LimitReader(res.Body, size)}
 		if bootstrap != "" {
-			writeViewHTML(w, io.LimitReader(res.Body, size), bootstrap)
+			writeViewHTML(w, body, bootstrap)
 		} else {
-			_, _ = io.Copy(w, io.LimitReader(res.Body, size))
+			_, _ = io.Copy(w, body)
+		}
+		if body.n != size {
+			// A stream cut before the file's end must not look complete:
+			// HTML goes out without a length, so a cleanly ended reply would
+			// be a whole, blank document to the browser.
+			panic(http.ErrAbortHandler)
 		}
 	}
+}
+
+// countedReader counts the bytes read through it.
+type countedReader struct {
+	r io.Reader
+	n int64
+}
+
+func (c *countedReader) Read(p []byte) (int, error) {
+	n, err := c.r.Read(p)
+	c.n += int64(n)
+	return n, err
 }

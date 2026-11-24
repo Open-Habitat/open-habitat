@@ -898,6 +898,11 @@ func ViewExportHandler(cfg transport.Config, trusted func(*http.Request) bool) h
 			snapshotError(w, 404, "view_file_not_found")
 			return
 		}
+		// The gateway relays the file at the browser's pace, so a view of a
+		// few megabytes on an ordinary connection outlasts the socket's
+		// per-response deadline, and a cut single-file page stays blank. The
+		// gateway bounds the whole relay at five minutes; so does this.
+		_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(5 * time.Minute))
 		w.Header().Set("Content-Type", "application/octet-stream")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Cache-Control", "no-store")
@@ -1131,6 +1136,32 @@ func (c *ConversationController) FixtureView(target string) (string, bool) {
 		}
 	}
 	return c.fixtureOffer(target, filepath.Join(home, "src", "view-fixture"), "site", "index.html", "Synteettinen näkymä")
+}
+
+// FixtureLargeView offers a single-file page shaped like a prototype build's
+// offline.html: a data: font and one inline module script of several
+// megabytes that renders the page only once all of it has arrived, so a
+// document cut short stays blank. Fixture-only, like FixtureView.
+func (c *ConversationController) FixtureLargeView(target string) (string, bool) {
+	if !c.fixture || c.journal == nil || !viewConversationPattern.MatchString(target) {
+		return "", false
+	}
+	home := c.viewCfg().Home
+	site := filepath.Join(home, "src", "view-fixture", "large")
+	if os.MkdirAll(site, 0700) != nil {
+		return "", false
+	}
+	font := strings.Repeat("AAAA", 512<<10)
+	payload := strings.Repeat("0123456789abcdef", 384<<10)
+	page := `<!doctype html><html lang="fi"><head><meta charset="utf-8"><title>Iso näkymä</title><style>@font-face{font-family:Fixture;src:url(data:font/woff2;base64,` + font + `) format("woff2")}body{font-family:Fixture,sans-serif}</style></head><body><div id="root"></div><script type="module">const payload = "` + payload + `";
+const h = document.createElement("h1"); h.id = "large-heading"; h.textContent = "Iso näkymä"; document.getElementById("root").appendChild(h);
+document.body.dataset.rendered = String(payload.length);
+</script></body></html>
+`
+	if os.WriteFile(filepath.Join(site, "offline.html"), []byte(page), 0600) != nil {
+		return "", false
+	}
+	return c.fixtureOffer(target, filepath.Join(home, "src", "view-fixture"), "large", "offline.html", "Iso näkymä")
 }
 
 // FixtureViewOf offers a page already in one of the synthetic home's

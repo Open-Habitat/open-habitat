@@ -1168,7 +1168,12 @@ esac
 				w.WriteHeader(204)
 				return
 			case "/fixture/view":
-				id, ok := conversationHandlers[0].Load().(*daemon.ConversationController).FixtureView(r.URL.Query().Get("target"))
+				controller := conversationHandlers[0].Load().(*daemon.ConversationController)
+				offer := controller.FixtureView
+				if r.URL.Query().Get("page") == "large" {
+					offer = controller.FixtureLargeView
+				}
+				id, ok := offer(r.URL.Query().Get("target"))
 				if !ok {
 					http.Error(w, "fixture failed", 400)
 					return
