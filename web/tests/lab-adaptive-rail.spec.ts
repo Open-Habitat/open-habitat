@@ -159,11 +159,8 @@ for (const height of [720, 900, 1080]) {
       expect(
         Math.abs(filter.y + filter.height / 2 - (create.y + create.height / 2)),
       ).toBeLessThan(6);
-      // A resting row names its workspace (the selected row's focused
-      // actions temporarily replace that name).
-      await expect(
-        rail(page).getByTestId("rail-row-workspace").nth(1),
-      ).toBeVisible();
+      // A row's icon names its workspace; the title gets the name's room.
+      await expect(rail(page).getByTestId("rail-row-workspace")).toHaveCount(0);
       // Työtilat's lower edge says how many lie below, and pages the list.
       const below = rail(page).getByTestId("rail-ws-below");
       await expect(below).toBeVisible();

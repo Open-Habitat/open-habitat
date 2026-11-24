@@ -771,7 +771,8 @@ export function AgentNavItem({
   card,
 }: AgentNavModel & {
   /** Say the workspace's name quietly in the row (Hiljaiset without
-   * icons, where no heading names it). */
+   * icons, where no heading names it). A row with an icon never does: the
+   * icon names the workspace and the title gets the room (Jari 24.11.2026). */
   workspaceTag?: boolean;
   now?: number;
   archive?: RailArchive;
@@ -1025,7 +1026,7 @@ export function AgentNavItem({
               ) : undefined
             }
             end={
-              (workspaceTag && workspaceName) ||
+              (workspaceTag && workspaceName && !workspaceIcon) ||
               backgroundService ||
               wake ||
               browser ||
@@ -1041,7 +1042,7 @@ export function AgentNavItem({
                       )}
                     />
                   ) : null}
-                  {workspaceTag && workspaceName ? (
+                  {workspaceTag && workspaceName && !workspaceIcon ? (
                     <span
                       className="ah-nav-workspace"
                       data-testid="rail-row-workspace"
@@ -1219,7 +1220,6 @@ function NowDot(agent: AgentNavModel) {
 function RunningGroups({
   running,
   iconed,
-  named,
   now,
   archive,
   rename,
@@ -1227,7 +1227,6 @@ function RunningGroups({
 }: {
   running: AgentNavModel[];
   iconed: boolean;
-  named: boolean;
   now: number;
   archive?: RailArchive;
   rename?: RailRename;
@@ -1250,7 +1249,6 @@ function RunningGroups({
     <AgentNavItem
       key={agent.agentId}
       {...agent}
-      workspaceTag={named}
       now={now}
       archive={archive}
       rename={rename}
@@ -1307,7 +1305,6 @@ export function NowSections({
   rename,
   turn,
   card,
-  workspaceNames = false,
 }: {
   yours: AgentNavModel[];
   running: AgentNavModel[];
@@ -1331,9 +1328,6 @@ export function NowSections({
   turn?: RailTurn;
   /** The workspace icon card's actions, where rows carry icons. */
   card?: WorkspaceCardActions;
-  /** Every row names its workspace (the adaptive rail, where the wider
-   * rail has room for it). */
-  workspaceNames?: boolean;
 }) {
   const t = useText(navigationText);
   const shared = useText(sectionFilterText);
@@ -1426,7 +1420,6 @@ export function NowSections({
               <AgentNavItem
                 key={agent.agentId}
                 {...agent}
-                workspaceTag={workspaceNames}
                 now={now}
                 archive={archive}
                 rename={rename}
@@ -1484,7 +1477,6 @@ export function NowSections({
           <RunningGroups
             running={withKept(runningView.shown)}
             iconed={iconed}
-            named={workspaceNames}
             now={now}
             archive={archive}
             rename={rename}

@@ -393,7 +393,6 @@ export function WorkspaceRailView({
               rename={renameConversation}
               turn={turnConversation}
               card={card}
-              workspaceNames={adaptive}
             />
           }
           collapsed={collapsed}
@@ -404,7 +403,6 @@ export function WorkspaceRailView({
           rename={renameConversation}
           turn={turnConversation}
           card={card}
-          workspaceNames={adaptive}
         />
       }
       filterValue={filter}

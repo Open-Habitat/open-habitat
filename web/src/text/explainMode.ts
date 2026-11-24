@@ -454,8 +454,8 @@ const fi = {
     },
     S09: {
       name: "Keskustelurivi",
-      lead: "Avaa keskustelun. Rivillä ovat tila, nimi, työtila ja milloin siinä viimeksi tapahtui.",
-      know: "Auki olevan keskustelun rivillä on kehys.",
+      lead: "Avaa keskustelun. Rivillä ovat tila, työtilan kuvake, nimi ja milloin siinä viimeksi tapahtui.",
+      know: "Auki olevan keskustelun rivillä on kehys. Työtilan nimen näet viemällä osoittimen rivin tai kuvakkeen päälle.",
     },
     S10: {
       name: "Tilamerkki",
@@ -2532,8 +2532,8 @@ export const explainModeText = catalog(fi, {
     },
     S09: {
       name: "Conversation row",
-      lead: "Opens the conversation. The row shows state, name, workspace and when something last happened.",
-      know: "The open conversation's row has a frame around it.",
+      lead: "Opens the conversation. The row shows state, the workspace's icon, name and when something last happened.",
+      know: "The open conversation's row has a frame around it. Point at the row or its icon to see the workspace's name.",
     },
     S10: {
       name: "State mark",

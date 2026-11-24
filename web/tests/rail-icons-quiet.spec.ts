@@ -163,9 +163,8 @@ test("@rail-quiet every other conversation as one flat list, in every layout", a
         phone ? { width: 390, height: 844 } : { width: 1280, height: 900 },
       );
       if (phone) await page.getByTestId("navigation-open").click();
-      await expect(open.getByTestId("rail-row-workspace")).toHaveCount(
-        phone ? 0 : 1,
-      );
+      // The icon names the workspace; the row does not repeat its name.
+      await expect(open.getByTestId("rail-row-workspace")).toHaveCount(0);
       for (const theme of ["light", "dark"] as const) {
         await page.emulateMedia({ colorScheme: theme });
         await expect(page.locator("html")).toHaveAttribute("data-theme", theme);

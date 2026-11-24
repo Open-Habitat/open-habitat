@@ -90,7 +90,6 @@ export function QuietSection({
   rename,
   turn,
   card,
-  workspaceNames = false,
 }: {
   /** Every quiet conversation, newest first. */
   rows: AgentNavModel[];
@@ -105,8 +104,6 @@ export function QuietSection({
   /** Raising a row to Sinun vuorosi; absent while the feature is off. */
   turn?: RailTurn;
   card?: WorkspaceCardActions;
-  /** Every row names its workspace, icon or not (the adaptive rail). */
-  workspaceNames?: boolean;
 }) {
   const t = useText(quietRailText);
   const shared = useText(sectionFilterText);
@@ -121,7 +118,7 @@ export function QuietSection({
       key={agent.agentId}
       {...agent}
       detail={keptDetail(agent, shared.kept)}
-      workspaceTag={!iconed || workspaceNames}
+      workspaceTag={!iconed}
       now={now}
       archive={archive}
       rename={rename}

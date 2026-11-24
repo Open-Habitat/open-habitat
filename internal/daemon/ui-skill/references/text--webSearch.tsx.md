@@ -67,6 +67,8 @@ const fi = {
     unknown: "tulos ei varmistunut",
   } as Record<string, string>,
   missed: " Tavoittamattomat saavat avaimen, kun tallennat sen uudelleen.",
+  notGiven:
+    "Avain tallennettiin, mutta sitä ei voitu antaa jo liittyneille. He saavat sen, kun tallennat avaimen uudelleen.",
   // The person's card and tile
   admins: (suffix: string) => `Ylläpitäjän avain …${suffix}`,
   own: (suffix: string) => `Oma avain …${suffix}`,
@@ -168,6 +170,8 @@ export const webSearchText = catalog(fi, {
     unknown: "result not confirmed",
   },
   missed: " Those not reached receive the key when you save it again.",
+  notGiven:
+    "The key was saved, but it could not be given to those already joined. They receive it when you save the key again.",
   admins: (suffix) => `The administrator's key …${suffix}`,
   own: (suffix) => `Your own key …${suffix}`,
   addOwn: "Add your own key",

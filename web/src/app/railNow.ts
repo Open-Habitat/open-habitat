@@ -435,6 +435,9 @@ export function railNow({
       workspaceId: w.workspace_id,
       workspaceName: w.display_name ?? w.name,
       workspaceIcon: icons?.get(w.workspace_id),
+      // The row's description and tooltip name the workspace; the row
+      // shows only its icon.
+      detail: w.display_name ?? w.name,
       activityLabel: "",
       controlLabel: "",
       selected:

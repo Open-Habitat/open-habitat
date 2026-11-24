@@ -3,10 +3,11 @@ created: 2026-11-24
 updated: 2026-11-24
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: unlaned
 preparation: ready
+closed: 2026-11-24
 ---
 
 # Sidebar rows: drop the workspace name, the icon identifies it
@@ -28,3 +29,9 @@ takes space from the title, which gets truncated.
   identical, say so in result.md and choose a sensible fallback).
 - Phone layout and Explain mode texts follow; touched browser specs and UI references
   updated.
+
+## Resolution
+
+### 2026-11-24T05:55:29Z · @issuectl
+
+Rows with an icon drop the workspace name; see result.md.
