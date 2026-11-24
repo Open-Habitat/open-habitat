@@ -1,9 +1,9 @@
 ---
 created: 2026-11-23
-updated: 2026-11-23
+updated: 2026-11-24
 type: chore
 reporter: runtime-pin-watch
-status: open
+status: obsolete
 priority: normal
 labels: [runtime-pin]
 provenance: other
@@ -12,6 +12,8 @@ source_ref: runtime-pin:glab@1.131.0
 lane: runtime-pins
 lane_seq: 18
 preparation: ready
+closed: 2026-11-24
+closed_by: runtime-pin-watch
 ---
 
 # Runtime pin: glab 1.131.0 is available (pinned 1.130.0)
@@ -30,3 +32,9 @@ A research run assesses this release before it is scheduled and writes its
 findings and a verdict (safe-to-bump, needs-work or hold) to research.md in
 this issue directory. A safe-to-bump release is raised automatically; anything
 else stays here for the conductor.
+
+## Resolution
+
+### 2026-11-24T14:11:34Z · @runtime-pin-watch
+
+Runtime pin watch: superseded.
