@@ -27,9 +27,13 @@ TypeScript catalogs under `web/src/text/`, Finnish defines the keys,
 all 197 call sites, and there is no fallback for a partial language. The
 smallest change (private launch-readiness review, 24.11.2026, section 5):
 
-- additional languages as partial overlays on English, one directory per
-  language and one file per module (`web/src/text/locales/<lang>/<module>.ts`),
-  missing keys falling back to English;
+- additional languages as one directory per language and one file per module
+  (`web/src/text/locales/<lang>/<module>.ts`), **complete or the build fails**,
+  exactly as Finnish and English are today (Jari 24.11.: no fallback to
+  English, no half-translated interface). A new language arrives whole, as an
+  agent-drafted catalog that native speakers then review; a new string in a
+  feature change is written in every language in the same change, and the
+  type check refuses it otherwise;
 - an English-side extract for translators (`web/scripts/catalog-review.mjs`
   already extracts Finnish, US and UK side by side) and a "what is
   untranslated in <lang>" report;
@@ -41,8 +45,8 @@ smallest change (private launch-readiness review, 24.11.2026, section 5):
 
 **2. zh-CN and zh-TW.** Simplified Chinese for the mainland and Traditional
 Chinese for Taiwan (Taiwan can use the product as it is today; only the
-language is missing). Machine-drafted catalogs marked beta, reviewed by native
-speakers of each variant before any Chinese-language announcement names them.
+language is missing). Complete agent-drafted catalogs, marked beta until native
+speakers of each variant have reviewed them, before any Chinese-language announcement names them.
 Chinese IME input in the composer and dictation checked. Server-side texts
 (Go, Pi extensions) that the catalogs do not cover are listed, as the
 `translation-coverage-check` item already noted.
