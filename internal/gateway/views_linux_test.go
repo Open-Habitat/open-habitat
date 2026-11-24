@@ -17,8 +17,10 @@ import (
 )
 
 const (
-	viewTestA = "vaaaaaaaaaaaaaaaaaaaaaaaaaa"
-	viewTestB = "vbbbbbbbbbbbbbbbbbbbbbbbbbb"
+	viewTestA  = "vaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	viewTestB  = "vbbbbbbbbbbbbbbbbbbbbbbbbbb"
+	offerPageA = "faaaaaaaaaaaaaaaaaaaaaaaaaa"
+	offerPageB = "fbbbbbbbbbbbbbbbbbbbbbbbbbb"
 )
 
 // viewDesk is a signed-in app with an editor and a view origin, and a daemon
@@ -44,6 +46,9 @@ func newViewDesk(t *testing.T) *viewDesk {
 		"/view-export/" + viewTestA + "/site/index.svg":    "<svg/>",
 		"/view-export/" + viewTestA + "/site/kuva (1).png": "png",
 		"/view-export/" + viewTestB + "/secret/index.html": "other view",
+		"/api/v1/file-offers/" + offerPageA + "/files/proto/Sivu (1).html": "<!doctype html><script src=app.js></script>",
+		"/api/v1/file-offers/" + offerPageA + "/files/proto/app.js":         "2",
+		"/api/v1/file-offers/" + offerPageB + "/files/secret.html":          "other offer",
 	}
 	var mu sync.Mutex
 	daemon := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -350,5 +355,106 @@ func TestViewFailureFollowsFirstBrowserLanguage(t *testing.T) {
 		if w.Code != http.StatusNotFound || w.Header().Get("Content-Language") != want || body != text {
 			t.Errorf("Accept-Language %q: %d %q %q, want %s", header, w.Code, w.Header().Get("Content-Language"), body, want)
 		}
+	}
+}
+
+func (d *viewDesk) openOfferPage(id, path string) *http.Cookie {
+	d.t.Helper()
+	body, _ := json.Marshal(map[string]string{"offer_id": id, "path": path})
+	res := d.do("POST", "host.test", "/auth/view", string(body), appWrite)
+	var v struct{ URL string }
+	if res.StatusCode != 200 || json.NewDecoder(res.Body).Decode(&v) != nil {
+		d.t.Fatalf("mint offer page: %d", res.StatusCode)
+	}
+	u, err := url.Parse(v.URL)
+	if err != nil || u.Host != d.host(id) || u.Path != viewHandoffRoute {
+		d.t.Fatalf("offer page url %q", v.URL)
+	}
+	res = d.do("GET", u.Host, u.RequestURI(), "", nil)
+	for _, c := range res.Cookies() {
+		if c.Name == viewCookie && res.StatusCode == 303 {
+			return c
+		}
+	}
+	d.t.Fatalf("redeem offer page: %d", res.StatusCode)
+	return nil
+}
+
+// An offered HTML file opens on its offer's own view host, under the view
+// sandbox, and that host reads only the offer's own frozen files.
+func TestOfferedHTMLFileOpensOnItsOwnViewHost(t *testing.T) {
+	d := newViewDesk(t)
+	host := d.host(offerPageA)
+	if host == d.host(viewTestA) || host == d.host(offerPageB) {
+		t.Fatal("an offer's host must be its own")
+	}
+	// Only an HTML file of a well-formed offer opens as a page.
+	for _, body := range []string{
+		`{"offer_id":"` + offerPageA + `","path":"proto/app.js"}`,
+		`{"offer_id":"` + offerPageA + `","path":"../x.html"}`,
+		`{"offer_id":"` + offerPageA + `","path":".hidden.html"}`,
+		`{"offer_id":"` + offerPageA + `"}`,
+		`{"offer_id":"vaaaaaaaaaaaaaaaaaaaaaaaaaa","path":"a.html"}`,
+		`{"view_id":"` + viewTestA + `","path":"a.html"}`,
+		`{"view_id":"` + viewTestA + `","offer_id":"` + offerPageA + `","path":"a.html"}`,
+		`{"offer_id":"` + offerPageA + `","path":"a.html","x":1}`,
+	} {
+		if res := d.do("POST", "host.test", "/auth/view", body, appWrite); res.StatusCode != 400 {
+			t.Fatalf("mint %s: %d", body, res.StatusCode)
+		}
+	}
+	long := strings.Repeat("a/", 400) + "x.html"
+	if res := d.do("POST", "host.test", "/auth/view", `{"offer_id":"`+offerPageA+`","path":"`+long+`"}`, appWrite); res.StatusCode != 200 {
+		t.Fatalf("a long offered path: %d", res.StatusCode)
+	}
+	cookie := d.openOfferPage(offerPageA, "proto/Sivu (1).html")
+	d.drain()
+	res := d.do("GET", host, "/", "", withCookie(cookie))
+	assertViewCSP(t, res, "offer root")
+	if res.StatusCode != 302 || res.Header.Get("Location") != "/proto/Sivu%20%281%29.html" {
+		t.Fatalf("offer root: %d %q", res.StatusCode, res.Header.Get("Location"))
+	}
+	if n := d.drain(); n != 0 {
+		t.Fatalf("the root asked the daemon %d times", n)
+	}
+	res = d.do("GET", host, "/proto/Sivu%20(1).html", "", withCookie(cookie))
+	assertViewCSP(t, res, "offered page")
+	body, _ := io.ReadAll(res.Body)
+	if res.StatusCode != 200 || res.Header.Get("Content-Type") != "text/html; charset=utf-8" || !strings.Contains(string(body), "oh-view-check") || !strings.HasSuffix(string(body), "<script src=app.js></script>") {
+		t.Fatalf("offered page: %d %v %q", res.StatusCode, res.Header, body)
+	}
+	if got := <-d.seen; got.URL.Path != "/api/v1/file-offers/"+offerPageA+"/files/proto/Sivu (1).html" || got.Header.Get("Range") != "" {
+		t.Fatalf("daemon saw %s", got.URL)
+	}
+	res = d.do("GET", host, "/proto/app.js", "", withCookie(cookie))
+	if body, _ := io.ReadAll(res.Body); res.StatusCode != 200 || string(body) != "2" || res.Header.Get("Content-Type") != "text/javascript; charset=utf-8" {
+		t.Fatalf("sibling file: %d %q", res.StatusCode, body)
+	}
+	d.drain()
+	// Another offer's file, a view's file and traversal stay out of reach.
+	for _, path := range []string{"/../" + offerPageB + "/files/secret.html", "/proto/%2e%2e/%2e%2e/" + offerPageB + "/files/secret.html", "/secret.html", "/proto%2Fapp.js"} {
+		res := d.do("GET", host, path, "", withCookie(cookie))
+		assertViewCSP(t, res, path)
+		if res.StatusCode != 404 && res.StatusCode != 400 {
+			t.Fatalf("%s: %d", path, res.StatusCode)
+		}
+	}
+	for {
+		select {
+		case r := <-d.seen:
+			if !strings.HasPrefix(r.URL.Path, "/api/v1/file-offers/"+offerPageA+"/files/") || strings.Contains(r.URL.Path, "..") {
+				t.Fatalf("daemon was asked for %q", r.URL.Path)
+			}
+			continue
+		default:
+		}
+		break
+	}
+	// The offer's view cookie opens nothing on another host.
+	if res := d.do("GET", d.host(offerPageB), "/secret.html", "", withCookie(cookie)); res.StatusCode != 401 {
+		t.Fatalf("offer cookie on another offer's host: %d", res.StatusCode)
+	}
+	if res := d.do("GET", d.host(viewTestA), "/site/index.html", "", withCookie(cookie)); res.StatusCode != 401 {
+		t.Fatalf("offer cookie on a view's host: %d", res.StatusCode)
 	}
 }

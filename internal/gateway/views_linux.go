@@ -36,6 +36,13 @@ import (
 // View sessions live in gateway memory only and end with their app session;
 // the app cookie is host-only on the app's host and never reaches a view
 // host, and the view cookie is never accepted anywhere but its own view host.
+//
+// An offered HTML file opens the same way: its handoff names the file offer
+// and the HTML file, the host is the offer's own, and the session reads only
+// that offer's frozen files through the daemon's offer-read route, so a
+// folder offer's page finds its sibling scripts and images as a view does.
+// It is agent-written HTML of the same person under the same policy; the app
+// origin still presents an offered file only as media or an attachment.
 
 const (
 	viewCookie        = "__Host-oh-view"
@@ -54,6 +61,9 @@ const (
 
 var viewIDPattern = regexp.MustCompile(`^v[a-z2-7]{26}$`)
 
+// offerPagePattern is an offered file that opens as a page: an HTML file.
+var offerPagePattern = regexp.MustCompile(`(?i)\.html?$`)
+
 // viewContentTypes are the only types a view host announces; anything else is
 // opaque octets. The CSP sandbox applies to every one of them, SVG included.
 var viewContentTypes = map[string]string{
@@ -65,11 +75,13 @@ var viewContentTypes = map[string]string{
 	".mp3": "audio/mpeg", ".ogg": "audio/ogg", ".wav": "audio/wav", ".mp4": "video/mp4", ".webm": "video/webm",
 }
 
+// A grant or session's viewID is a view's or a file offer's; an offer's
+// entry is the HTML file it opens at.
 type viewGrant struct {
 	parent, parentID string
 	identity         Identity
 	accessEmail      string
-	viewID           string
+	viewID, entry    string
 	until            time.Time
 }
 
@@ -77,7 +89,7 @@ type viewSession struct {
 	parent, parentID string
 	identity         Identity
 	accessEmail      string
-	viewID           string
+	viewID, entry    string
 	until            time.Time
 }
 
@@ -120,8 +132,8 @@ func validViewOrigin(app, editor, view string) bool {
 func (a *Auth) viewTemplate() string { return strings.TrimPrefix(a.cfg.ViewOrigin, "https://") }
 
 // viewOrigin is the per-view host: a full SHA-256 of the authenticated
-// identity and the view ID. Two views, or two people's views, never share an
-// origin, and no registry maps hosts to views.
+// identity and the view ID (or file offer ID). Two views, or two people's
+// views, never share an origin, and no registry maps hosts to views.
 func (a *Auth) viewOrigin(identity Identity, viewID string) string {
 	h := sha256.Sum256([]byte("view\x00" + identity.Provider + "\x00" + identity.Subject + "\x00" + viewID))
 	label := strings.ToLower(base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(h[:]))
@@ -166,18 +178,48 @@ func (a *Auth) pruneViewSessions() {
 	}
 }
 
+// viewHandoffBody reads a handoff request: a view, or one HTML file of a
+// file offer. A file's path may be long, so the bound is the path's own.
+func viewHandoffBody(w http.ResponseWriter, r *http.Request) (id, entry string, ok bool) {
+	var body struct {
+		ViewID  string `json:"view_id"`
+		OfferID string `json:"offer_id"`
+		Path    string `json:"path"`
+	}
+	if r.Header.Get("Content-Type") != "application/json" || len(r.Header.Values("Content-Type")) != 1 || r.ContentLength < 2 || r.ContentLength > 4096 {
+		return "", "", false
+	}
+	d := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096))
+	d.DisallowUnknownFields()
+	if d.Decode(&body) != nil || d.Decode(new(any)) != io.EOF {
+		return "", "", false
+	}
+	switch {
+	case body.ViewID != "" && body.OfferID == "" && body.Path == "" && viewIDPattern.MatchString(body.ViewID):
+		return body.ViewID, "", true
+	case body.ViewID == "" && fileOfferIDPattern.MatchString(body.OfferID) && validOfferPath(body.Path) && offerPagePattern.MatchString(body.Path):
+		if entry, ok := viewRelPath(&http.Request{URL: &url.URL{Path: "/" + body.Path}}); ok && entry == body.Path {
+			return body.OfferID, body.Path, true
+		}
+	}
+	return "", "", false
+}
+
 // mintViewHandoff gives the signed-in app a one-minute, single-use URL that
-// opens one view on its own host. It checks only who asks; whether the view
-// exists is the person's daemon's answer when the host reads it.
+// opens one view, or one offered HTML file, on its own host. It checks only
+// who asks; whether the view or file exists is the person's daemon's answer
+// when the host reads it.
 func (a *Auth) mintViewHandoff(w http.ResponseWriter, r *http.Request) {
 	if a.cfg.ViewOrigin == "" {
 		http.NotFound(w, r)
 		return
 	}
-	var body struct {
-		ViewID string `json:"view_id"`
+	if !a.exact(r, viewHandoffPath) {
+		safe(w, 400, "invalid_request")
+		return
 	}
-	if !a.exact(r, viewHandoffPath) || !jsonBody(w, r, &body) || !viewIDPattern.MatchString(body.ViewID) {
+	id, entry, ok := viewHandoffBody(w, r)
+	if !ok {
 		safe(w, 400, "invalid_request")
 		return
 	}
@@ -206,9 +248,9 @@ func (a *Auth) mintViewHandoff(w http.ResponseWriter, r *http.Request) {
 		safe(w, 429, "view_handoff_limited")
 		return
 	}
-	a.viewGrants[editorKey("view-grant", token)] = viewGrant{parent: key, parentID: s.id, identity: s.identity, accessEmail: s.accessEmail, viewID: body.ViewID, until: a.now().Add(viewGrantLifetime)}
+	a.viewGrants[editorKey("view-grant", token)] = viewGrant{parent: key, parentID: s.id, identity: s.identity, accessEmail: s.accessEmail, viewID: id, entry: entry, until: a.now().Add(viewGrantLifetime)}
 	a.mu.Unlock()
-	writeJSON(w, map[string]any{"schema_version": 1, "url": a.viewOrigin(s.identity, body.ViewID) + viewHandoffRoute + "?token=" + token})
+	writeJSON(w, map[string]any{"schema_version": 1, "url": a.viewOrigin(s.identity, id) + viewHandoffRoute + "?token=" + token})
 }
 
 // viewList is the app origin's list of the person's views, one page at a
@@ -347,7 +389,7 @@ func (a *Auth) viewServe(w http.ResponseWriter, r *http.Request) {
 		viewFailure(w, r, 401, viewSessionEnded)
 		return
 	}
-	a.viewRelay(w, r, v.identity, v.viewID, "", nil, "user", v.identity.Username)
+	a.viewRelay(w, r, v.identity, v.viewID, v.entry, "", nil, "user", v.identity.Username)
 }
 
 func (a *Auth) redeemViewHandoff(w http.ResponseWriter, r *http.Request) {
@@ -397,7 +439,7 @@ func (a *Auth) redeemViewHandoff(w http.ResponseWriter, r *http.Request) {
 		viewFailure(w, r, 503, viewUnavailable)
 		return
 	}
-	a.views[editorKey("view-session", secret)] = viewSession{parent: g.parent, parentID: g.parentID, identity: g.identity, accessEmail: g.accessEmail, viewID: g.viewID, until: a.now().Add(viewSessionLifetime)}
+	a.views[editorKey("view-session", secret)] = viewSession{parent: g.parent, parentID: g.parentID, identity: g.identity, accessEmail: g.accessEmail, viewID: g.viewID, entry: g.entry, until: a.now().Add(viewSessionLifetime)}
 	a.mu.Unlock()
 	if a.log != nil {
 		a.log.Info("view_session", "outcome", "accepted", "reason", "handoff", "user", g.identity.Username)
@@ -474,8 +516,10 @@ func viewRelPath(r *http.Request) (string, bool) {
 
 // viewRelay reads one file of viewID from target's daemon. base is the path
 // prefix the view's files sit under on this host (a link's token); charge,
-// when set, takes the file's size from a budget before it is sent.
-func (a *Auth) viewRelay(w http.ResponseWriter, r *http.Request, target Identity, viewID, base string, charge func(int64) bool, logKey, logValue string) {
+// when set, takes the file's size from a budget before it is sent. A file
+// offer's ID reads that offer's frozen files instead, and its host's root
+// goes to entry, the HTML file it was opened at.
+func (a *Auth) viewRelay(w http.ResponseWriter, r *http.Request, target Identity, viewID, entry, base string, charge func(int64) bool, logKey, logValue string) {
 	u := *r.URL
 	u.Path = strings.TrimPrefix(u.Path, base)
 	u.RawPath = strings.TrimPrefix(u.RawPath, base)
@@ -496,11 +540,20 @@ func (a *Auth) viewRelay(w http.ResponseWriter, r *http.Request, target Identity
 		},
 	}
 	defer transport.CloseIdleConnections()
+	offer := fileOfferIDPattern.MatchString(viewID)
+	if offer && rel == "" {
+		w.Header().Set("Location", (&url.URL{Path: base + "/" + entry}).EscapedPath())
+		w.WriteHeader(http.StatusFound)
+		return
+	}
 	method := r.Method
 	if rel == "" {
 		method = http.MethodGet
 	}
 	out := &url.URL{Scheme: "http", Host: "unix", Path: "/view-export/" + viewID + "/" + rel}
+	if offer {
+		out.Path = fileOffersPath + "/" + viewID + "/files/" + rel
+	}
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Minute)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, method, out.String(), http.NoBody)

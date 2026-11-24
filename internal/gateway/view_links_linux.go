@@ -1113,7 +1113,7 @@ func (a *Auth) viewLinkServe(w http.ResponseWriter, r *http.Request, id string) 
 		a.offerLinkServe(w, r, l, "/"+token)
 		return
 	}
-	a.viewRelay(w, r, l.Owner, l.ViewID, "/"+token, func(n int64) bool { return a.chargeViewLink(id, n) }, "link", id)
+	a.viewRelay(w, r, l.Owner, l.ViewID, "", "/"+token, func(n int64) bool { return a.chargeViewLink(id, n) }, "link", id)
 }
 
 func (a *Auth) acquireViewLinkRelay(id string) (func(), bool) {

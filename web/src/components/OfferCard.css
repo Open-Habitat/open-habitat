@@ -401,3 +401,26 @@
   flex-direction: column;
   background: var(--ah-surface);
 }
+/* An offered HTML file as its page: the view's sandboxed frame fills the
+   body under a switch to its source and facts. */
+.ah-offer-page {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  height: 100%;
+  padding: 0;
+}
+.ah-offer-page-bar {
+  flex: none;
+  padding: var(--ah-s2) var(--ah-s4);
+  border-bottom: 1px solid var(--ah-line);
+}
+.ah-offer-page-frame {
+  min-height: 20rem;
+}
+.ah-offer-page-source {
+  display: grid;
+  align-content: start;
+  gap: var(--ah-s3);
+  padding: var(--ah-s4);
+}

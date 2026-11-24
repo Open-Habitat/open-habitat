@@ -5,6 +5,7 @@
 import common from "../../../contracts/v1/common.schema.json";
 import viewSchema from "../../../contracts/v1/view.schema.json";
 import type { ViewSummary } from "../components/ViewOffer";
+import { fileOfferIdPattern } from "./fileOffers";
 import { LazyAjv } from "./lazyAjv";
 import { mutationFetch } from "./mutations";
 import { readJSON } from "./readJSON";
@@ -99,13 +100,43 @@ export async function mintViewURL(
   viewId: string,
 ): Promise<string> {
   if (!viewIdPattern.test(viewId)) throw new Error("invalid view");
+  return mintHandoff(csrf, { view_id: viewId });
+}
+
+/** Whether an offered file opens as a page: an HTML file. */
+export const offeredPagePattern = /\.html?$/i;
+
+/** A one-minute, single-use URL that opens one offered HTML file as a page
+ * on its offer's own view host, under the same sandbox as a view. */
+export async function mintOfferPageURL(
+  csrf: string,
+  offerId: string,
+  path: string,
+): Promise<string> {
+  if (!fileOfferIdPattern.test(offerId) || !offeredPagePattern.test(path))
+    throw new Error("invalid offered page");
+  return mintHandoff(csrf, { offer_id: offerId, path });
+}
+
+/** The site has no view origin: nothing opens as a page here. */
+export class ViewsUnavailable extends Error {
+  constructor() {
+    super("views unavailable");
+  }
+}
+
+async function mintHandoff(
+  csrf: string,
+  request: { view_id: string } | { offer_id: string; path: string },
+): Promise<string> {
   const response = await mutationFetch("view.handoff", "/auth/view", {
     method: "POST",
     credentials: "same-origin",
     cache: "no-store",
     headers: { "Content-Type": "application/json", "X-Agent-Host-CSRF": csrf },
-    body: JSON.stringify({ view_id: viewId }),
+    body: JSON.stringify(request),
   });
+  if (response.status === 404) throw new ViewsUnavailable();
   if (!response.ok) throw new Error("view hand-off refused");
   const value = await boundedJSON(response, 4096);
   if (!validHandoff(value)) throw new Error("unexpected view reply");

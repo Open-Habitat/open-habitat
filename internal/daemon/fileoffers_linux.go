@@ -1046,8 +1046,10 @@ func (c *ConversationController) agentFileOffers(w http.ResponseWriter, r *http.
 // FixtureFiles freezes synthetic files from the controller's home through
 // the real plan and export and offers them to a conversation as a transient
 // notice. `set` is "single" (one PNG), "types" (one file of each kind in
-// separate offers), "folder" (a directory) or "removed" (one PNG whose copy
-// is removed before the notice). It is not mounted by the
+// separate offers), "folder" (a directory), "removed" (one PNG whose copy
+// is removed before the notice) or "page" (one HTML file of several
+// megabytes shaped like a prototype build's offline.html, which renders only
+// once all of it has arrived and records what its sandbox let it do). It is not mounted by the
 // product and is unavailable outside the browser-host controller.
 func (c *ConversationController) FixtureFiles(target, set string) ([]string, bool) {
 	if !c.fixture || c.journal == nil || !viewConversationPattern.MatchString(target) {
@@ -1094,6 +1096,20 @@ func (c *ConversationController) FixtureFiles(target, set string) ([]string, boo
 			contents["large/"+name] = large
 		}
 	}
+	if set == "page" {
+		font := strings.Repeat("AAAA", 512<<10)
+		payload := strings.Repeat("0123456789abcdef", 384<<10)
+		contents = map[string][]byte{"prototyyppi.html": []byte(`<!doctype html><html lang="fi"><head><meta charset="utf-8"><title>Prototyyppi</title><style>@font-face{font-family:Fixture;src:url(data:font/woff2;base64,` + font + `) format("woff2")}body{font-family:Fixture,sans-serif}</style></head><body><div id="root"></div><script type="module">const payload = "` + payload + `";
+const h = document.createElement("h1"); h.id = "page-heading"; h.textContent = "Prototyyppi"; document.getElementById("root").appendChild(h);
+let top = "reachable"; try { void window.top.document.title; } catch { top = "blocked"; }
+document.body.dataset.top = top;
+let cookie = "readable"; try { void document.cookie; } catch { cookie = "blocked"; }
+document.body.dataset.cookie = cookie;
+fetch("/api/v1/file-offers").then(() => { document.body.dataset.network = "reachable"; }, () => { document.body.dataset.network = "blocked"; });
+document.body.dataset.rendered = String(payload.length);
+</script></body></html>
+`)}
+	}
 	for name, data := range contents {
 		if os.MkdirAll(filepath.Dir(filepath.Join(base, name)), 0700) != nil || os.WriteFile(filepath.Join(base, name), data, 0600) != nil {
 			return nil, false
@@ -1108,6 +1124,8 @@ func (c *ConversationController) FixtureFiles(target, set string) ([]string, boo
 	switch set {
 	case "single", "removed":
 		groups = [][]string{{"kaavio.png"}}
+	case "page":
+		groups = [][]string{{"prototyyppi.html"}}
 	case "large-images", "large-zip":
 		groups = [][]string{{"large"}}
 	case "folder":

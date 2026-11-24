@@ -484,3 +484,92 @@ test("a several-megabyte single-file view renders over a connection that stalls"
     proxy.close();
   }
 });
+
+test("an offered HTML file of several megabytes opens as its page in the view sandbox", async ({
+  page,
+  context,
+}) => {
+  const id = await conversation(page);
+  const files = await page.request.get(
+    `/fixture/files?target=${encodeURIComponent(id)}&set=page`,
+  );
+  expect(files.status()).toBe(200);
+  const [html] = (await files.json()).offer_ids as string[];
+  const card = (page: Page, offerId: string) =>
+    page.locator(`[data-testid="file-offer"][data-offer-id="${offerId}"]`);
+  await expect(card(page, html)).toHaveAttribute("data-state", "ready");
+  const viewRequests: string[] = [];
+  page.on("request", (request) => {
+    if (new URL(request.url()).hostname.startsWith("oh-view-"))
+      viewRequests.push(request.url());
+  });
+  const pageDocument = page
+    .waitForResponse((r) =>
+      /^https:\/\/oh-view-.*\/prototyyppi\.html$/.test(r.url()),
+    )
+    .then((r) => r.headers()["content-security-policy"]);
+  await card(page, html).getByTestId("offer-open").click();
+  const panel = page.getByTestId("offer-panel");
+  await expect(panel).toHaveAttribute("data-offer-id", html);
+  // The page, not its facts: the whole multi-megabyte document arrived and
+  // its one module script ran, in the view's sandboxed frame.
+  const frame = panel.frameLocator('[data-testid="view-frame"]');
+  await expect(frame.locator("#page-heading")).toHaveText("Prototyyppi", {
+    timeout: 30_000,
+  });
+  const body = frame.locator("body");
+  await expect(body).toHaveAttribute("data-rendered", String((16 * 384) << 10));
+  // The view host's policy: no reach into the app, no cookie, no network.
+  await expect(body).toHaveAttribute("data-top", "blocked");
+  await expect(body).toHaveAttribute("data-cookie", "blocked");
+  await expect(body).toHaveAttribute("data-network", "blocked");
+  await expect(panel.getByTestId("view-frame")).toHaveAttribute(
+    "sandbox",
+    "allow-scripts",
+  );
+  // It is served from the offer's own view host, never the app's origin.
+  expect(viewRequests.length).toBeGreaterThan(0);
+  const pageFrame = page.frames().find((f) => f.url().includes("oh-view-"));
+  expect(pageFrame?.url()).toMatch(
+    /^https:\/\/oh-view-[a-z2-7]{52}\.[^/]+\/prototyyppi\.html$/,
+  );
+  const csp = await pageDocument;
+  expect(csp).toMatch(/^sandbox allow-scripts;.*connect-src 'none'/);
+
+  // The source and the file's facts are one press away; the download is
+  // the frozen file under its own name, as before.
+  await panel.getByTestId("segment-source").click();
+  const source = panel.getByTestId("offer-page-source");
+  await expect(source.getByTestId("attachment-size")).toHaveAttribute(
+    "data-bytes",
+    /^[0-9]{7}$/,
+  );
+  await expect(panel.getByTestId("view-frame")).toHaveCount(0);
+  await expect(panel.getByTestId("offer-download")).toHaveAttribute(
+    "download",
+    "prototyyppi.html",
+  );
+  const download = await page.request.get(
+    `/api/v1/file-offers/${html}/download/prototyyppi.html`,
+  );
+  expect(download.headers()["content-type"]).toBe("application/octet-stream");
+  expect(download.headers()["content-disposition"]).toMatch(/^attachment;/);
+  await panel.getByTestId("segment-page").click();
+  await expect(frame.locator("#page-heading")).toHaveText("Prototyyppi", {
+    timeout: 30_000,
+  });
+  const axe = await new AxeBuilder({ page })
+    .include('[data-testid="offer-panel"]')
+    .exclude('[data-testid="view-frame"]')
+    .analyze();
+  expect(axe.violations).toEqual([]);
+
+  // Its own tab shows the page the same way.
+  const opened = context.waitForEvent("page");
+  await panel.getByTestId("offer-open-tab").click();
+  const tab = await opened;
+  await expect(
+    tab.frameLocator('[data-testid="view-frame"]').locator("#page-heading"),
+  ).toHaveText("Prototyyppi", { timeout: 30_000 });
+  await tab.close();
+});

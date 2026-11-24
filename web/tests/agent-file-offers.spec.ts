@@ -521,3 +521,24 @@ test("an offered Markdown file shows its frontmatter as metadata above the body"
       }
     }
 });
+
+test("without a view origin an offered HTML file shows its source and facts", async ({
+  page,
+}) => {
+  const id = await conversation(page);
+  const [html] = await offer(page, id, "page");
+  await card(page, html).getByTestId("offer-open").click();
+  const panel = page.getByTestId("offer-panel");
+  await expect(panel.getByTestId("attachment-size")).toHaveAttribute(
+    "data-bytes",
+    /^[0-9]{7}$/,
+  );
+  // Nothing to switch to and nothing failed: this site opens no pages.
+  await expect(panel.getByTestId("offer-page-mode")).toHaveCount(0);
+  await expect(panel.getByTestId("offer-page-failed")).toHaveCount(0);
+  await expect(panel.getByTestId("view-frame")).toHaveCount(0);
+  await expect(panel.getByTestId("offer-download")).toHaveAttribute(
+    "download",
+    "prototyyppi.html",
+  );
+});

@@ -37,13 +37,26 @@
       }
     },
     "handoffRequest": {
-      "description": "POST /auth/view: the view to open. The gateway checks who asks; the person's daemon answers whether the view exists when its host reads it.",
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["view_id"],
-      "properties": {
-        "view_id": {"type": "string", "pattern": "^v[a-z2-7]{26}$"}
-      }
+      "description": "POST /auth/view: the view to open, or one HTML file of a file offer to open as a page on the offer's own view host. The gateway checks who asks; the person's daemon answers whether the view or file exists when its host reads it.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["view_id"],
+          "properties": {
+            "view_id": {"type": "string", "pattern": "^v[a-z2-7]{26}$"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["offer_id", "path"],
+          "properties": {
+            "offer_id": {"type": "string", "pattern": "^f[a-z2-7]{26}$"},
+            "path": {"type": "string", "minLength": 1, "maxLength": 1024, "pattern": "^(?!\\.)(?!.*/\\.)(?!.*//)[^/\\\\]+(/[^/\\\\]+)*\\.[hH][tT][mM][lL]?$"}
+          }
+        }
+      ]
     },
     "handoff": {
       "description": "A one-minute, single-use URL on the view's own host; opening it sets that host's view cookie and goes to the view's entry.",
