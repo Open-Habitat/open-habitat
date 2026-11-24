@@ -152,8 +152,22 @@ test("a click on the title that selects nothing opens the card", async ({
     "true",
   );
   expect(await selected(page)).toBe("");
-  // The same click closes it again, as the rest of the card does.
-  await page.mouse.click(at.x + 4, at.y);
+  // The same click closes it again, as the rest of the card does. The open
+  // card's panel narrows the conversation, which reflows and moves the title;
+  // a click at the first point lands on the panel once that layout has come.
+  // Aim again where the title has settled.
+  const title = csv.getByTestId("offer-title");
+  await title.scrollIntoViewIfNeeded();
+  let again = await firstGlyph(csv);
+  await expect
+    .poll(async () => {
+      const now = await firstGlyph(csv);
+      const still = now.x === again.x && now.y === again.y;
+      again = now;
+      return still;
+    })
+    .toBe(true);
+  await page.mouse.click(again.x + 4, again.y);
   await expect(csv.getByTestId("offer-open")).toHaveAttribute(
     "aria-expanded",
     "false",

@@ -1593,7 +1593,11 @@ func TestRejectionIsConfirmedAgainstTheSameCredential(t *testing.T) {
 	if got := a.Status(context.Background()); got != "expired" {
 		t.Fatal(got)
 	}
+	// The confirmation scheduled a check verifyAfter (0) later, which may be
+	// settling now and reads the field under flightMu.
+	a.flightMu.Lock()
 	a.verifyAfter = time.Hour
+	a.flightMu.Unlock()
 	// The person logs in again natively; GitHub's first answer is a 401.
 	if err := os.WriteFile(filepath.Join(home, ".config", "gh", "hosts.yml"), []byte("github.com:\n  oauth_token: fake-new\n"), 0600); err != nil {
 		t.Fatal(err)

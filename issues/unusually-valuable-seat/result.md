@@ -34,6 +34,8 @@ tests or the harness.
 | `browser-conversation.spec.ts:2335` | the fake Pi's abort `message_end` lacked Pi's abort text, so the daemon journaled `message_error` and the page flashed an error notice until `agent_end` | the fixture sends the text; with 600 ms between the events the old fixture shows the notice in 3 of 3 runs, the new in none |
 | `recap-resting.spec.ts:178` | asserted inside `expect.poll` that the recap read succeeds; `expect.poll` ends at the first throw, so one retryable `native_source_unavailable` failed the case | the polls treat a refused read as not yet |
 | `lab-worktree-agent.spec.ts:26` | measured the intro and composer right after `setViewportSize`; the navigation follows the width partly in React state, so one read saw them in different columns | polls the offset |
+| `nativegh` `TestRejectionIsConfirmedAgainstTheSameCredential` (race detector, met in a validating gate) | the test changed `verifyAfter` while the check it had scheduled could be settling and reading it under `flightMu` | the test changes it under `flightMu` (200/200 under the race detector and 12 hogs) |
+| `lab-offer-title-select.spec.ts:143` (met in a validating gate) | the second click reused the point measured before the first; the opened card's panel narrows the conversation and moves the title, so the click landed on the panel | re-aims at the title once its position is still (2 of 16 failed before; the file 96/96 under 20 hogs) |
 | packaging block, silent exit 1 | the regressions matched the verifier's stderr with a bare `grep -q`, so a verifier failing for another reason ended the block with no word | every expected refusal prints the verifier's own error otherwise |
 
 ## Not changed, with the evidence
@@ -69,9 +71,11 @@ before), the whole recap-resting file and the stopped-turn case 50/50
 (28 hogs), lab-worktree-agent and lab-reply-selection 24/24 (20 hogs),
 gate-storage 30/30 (16 hogs).
 
-A full clean gate on the code-complete commit (`7d3457696`) ran both browser
-suites green (ordinary 763 passed, 9 skipped; lab 344 passed) with packaging
-green; its only red was the Go test filed above. The gate on the landing
-commit is reported with the run, since a receipt names the exact tree and
-this file is part of it.
+Validating clean gates: on `7d3457696` both browser suites and packaging
+were green and the Go test filed above was the only red; on `df2242ad8`
+two runs each had one red: `lab-phone-account-sheet.spec.ts:15` (the drawer
+already open after Settings and Back; 24/24 under 20 hogs, not reproduced,
+also seen once in round 1) and the race and offer click fixed above. The
+gate on the landing commit is reported with the run, since a receipt names
+the exact tree and this file is part of it.
 
