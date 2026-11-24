@@ -7,23 +7,23 @@ const asset = assets(import.meta.url);
 const CAPTIONS = ['Saturday at the winter market', 'Every piece printed by hand', 'One block, one colour at a time', 'A carved block for every pattern', 'New prints for winter'];
 
 const SRT = `1
-00:00:02,400 --> 00:00:06,400
+00:00:02,400 --> 00:00:06,000
 Saturday at the winter market
 
 2
-00:00:06,400 --> 00:00:10,200
+00:00:06,000 --> 00:00:12,200
 Every piece printed by hand
 
 3
-00:00:10,200 --> 00:00:16,900
+00:00:12,200 --> 00:00:19,600
 One block, one colour at a time
 
 4
-00:00:16,900 --> 00:00:22,200
+00:00:19,600 --> 00:00:23,000
 A carved block for every pattern
 
 5
-00:00:22,200 --> 00:00:26,700
+00:00:23,000 --> 00:00:27,600
 New prints for winter`;
 
 // The clip shows its poster with the captions readable, no native controls on
@@ -32,7 +32,7 @@ New prints for winter`;
 const LABEL = `Market video, 30 seconds, muted. Captions: ${CAPTIONS.join('; ')}; ends on “Come and say hello every Saturday, example.org/shop”.`;
 const clip = () => `<video class="mv-video" src="${esc(asset('market-30s.mp4'))}" poster="${esc(asset('market-30s.webp'))}" width="720" height="1280" muted playsinline preload="none" aria-label="${esc(LABEL)}"></video>`;
 
-// The player: a phone-shaped frame around the real clip, its facts and credit.
+// The player: a phone-shaped frame around the real clip and its facts.
 const player = () => `<figure class="mv">
   <div class="mv-phone">${clip()}<button type="button" class="mv-play" aria-label="Play the market video, 30 seconds">${PLAY_SVG}<span>0:30</span></button></div>
   <figcaption class="mv-side">
@@ -41,10 +41,9 @@ const player = () => `<figure class="mv">
       <div><dt>Length</dt><dd>0:30</dd></div>
       <div><dt>Frame</dt><dd>9:16 · 720 × 1280</dd></div>
       <div><dt>Captions</dt><dd>5, burned in</dd></div>
-      <div><dt>Size</dt><dd>1.7 MB · H.264</dd></div>
+      <div><dt>Size</dt><dd>1.8 MB · H.264</dd></div>
     </dl>
     <ol class="mv-caps">${CAPTIONS.map((c) => `<li>${esc(c)}</li>`).join('')}</ol>
-    <p class="mv-credit">Footage: “Blockprinting in Bagru” by Incredible India and “Tampere Christmas Market” by Sounds of Changes / Työväenmuseo Werstas, CC BY 3.0, via Wikimedia Commons; cut, cropped, graded and captioned.</p>
   </figcaption>
 </figure>`;
 
@@ -61,20 +60,20 @@ export default {
     turn({
       thoughts: [
         thought('Vertical 9:16 so it fills a phone; captions burned in because most people watch muted'),
-        thought('Open on the stalls, then the printing up close, end on the shop address'),
+        thought('Open on the stall, then the printing up close, end on the shop address'),
       ],
       tools: [
         tool('computer', 'Alice’s laptop › Pictures › Market 21 Nov', '3 clips · 4K · 6 min 12 s in all\ncopied to video/market-2026-11-21/'),
         tool('bash', 'ffmpeg -version', 'bash: ffmpeg: command not found'),
         tool('bash', 'install ffmpeg into ~/.local/bin', 'downloaded ffmpeg 7.1, static build, 79 MB\ninstalled for alice only; no administrator rights needed'),
-        tool('bash', 'ffmpeg -i stall.mov -vf scdet,metadata=print -f null -', '41 shot changes in 6 min 12 s\npicked 12 shots: stalls, inking, printing, the blocks, indigo'),
+        tool('bash', 'ffmpeg -i stall.mov -vf scdet,metadata=print -f null -', '38 shot changes in 6 min 12 s\npicked 8 shots: the stall, the block, inking, the print, the repeat, the blocks, the stack'),
         tool('write', 'video/market-2026-11-21/captions.srt', SRT, 'new · 5 captions'),
-        tool('bash', 'ffmpeg -f concat -i shots.txt -vf "subtitles=captions.srt:force_style=\'FontName=Instrument Sans\'" -c:v libx264 -b:v 470k -an -movflags +faststart market-30s.mp4', 'pass 1/2 … pass 2/2\nmarket-30s.mp4  30.0 s · 720×1280 · 25 fps · 1.7 MB'),
-        tool('bash', 'ffmpeg -ss 7.6 -i market-30s.mp4 -frames:v 1 market-30s.webp', 'poster: the block going down, with its caption'),
+        tool('bash', 'ffmpeg -f concat -i shots.txt -vf "subtitles=captions.srt:force_style=\'FontName=Instrument Sans\'" -c:v libx264 -b:v 480k -an -movflags +faststart market-30s.mp4', 'pass 1/2 … pass 2/2\nmarket-30s.mp4  30.0 s · 720×1280 · 25 fps · 1.8 MB'),
+        tool('bash', 'ffmpeg -ss 21.0 -i market-30s.mp4 -frames:v 1 market-30s.webp', 'poster: the carved blocks, with their caption'),
       ],
       time: '42 min 14 s',
-      reply: 'A 30-second vertical cut: the stalls in the snow, the printing up close, an armful of indigo, and your shop address at the end. Five captions, readable with the sound off. It is open beside this conversation; nothing is posted until you post it.',
-      extra: offer('market-30s.mp4', 'Video · 30 s · 9:16 · 1.7 MB'),
+      reply: 'A 30-second vertical cut: the stall at dusk, the block inked and pressed, the repeat growing across the linen, and your shop address at the end. Five captions, readable with the sound off. It is open beside this conversation; nothing is posted until you post it.',
+      extra: offer('market-30s.mp4', 'Video · 30 s · 9:16 · 1.8 MB'),
     }),
     view('market-30s.mp4', player())),
 };

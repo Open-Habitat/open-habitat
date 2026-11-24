@@ -11,7 +11,6 @@
 [data-block="alice-04-market-video"] .mv-caps { margin: 0; padding: var(--ah-s3) 0 0; border-top: 1px solid var(--ah-line-soft); list-style: none; counter-reset: mv; display: flex; flex-direction: column; gap: 5px; }
 [data-block="alice-04-market-video"] .mv-caps li { counter-increment: mv; color: var(--ah-ink-2); }
 [data-block="alice-04-market-video"] .mv-caps li::before { content: counter(mv); display: inline-block; width: 1.4em; color: var(--ah-faint); font-family: var(--ah-mono); font-size: 0.92em; }
-[data-block="alice-04-market-video"] .mv-credit { margin: 0; font-size: 11px; line-height: 1.4; color: var(--ah-faint); }
 [data-block="alice-04-market-video"] .mv-play { position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%); display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px 10px 12px; border: 0; border-radius: var(--ah-r-pill); background: rgba(255, 255, 255, .92); color: #17201a; font: 600 var(--ah-size-ui) / 1 var(--ah-font); font-variant-numeric: tabular-nums; box-shadow: 0 4px 18px rgba(0, 0, 0, .28); cursor: pointer; transition: transform 120ms ease-out, background 120ms ease-out; }
 [data-block="alice-04-market-video"] .mv-play svg { width: 22px; height: 22px; }
 [data-block="alice-04-market-video"] .mv-play:hover { background: #fff; transform: translate(-50%, -50%) scale(1.04); }
