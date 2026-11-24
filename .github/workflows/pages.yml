@@ -7,6 +7,7 @@ name: Website
 # Only an explicit dispatch publishes, never a push: main is shared, and a
 # change there is not live until someone publishes that exact commit. The
 # maintainer's publish script lives outside this repository.
+run-name: Publish ${{ inputs.sha }}
 on:
   workflow_dispatch:
     inputs:
