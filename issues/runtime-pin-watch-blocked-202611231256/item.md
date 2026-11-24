@@ -1,14 +1,15 @@
 ---
 created: 2026-11-23
-updated: 2026-11-23
+updated: 2026-11-24
 type: chore
 reporter: runtime-pin-watch
-status: untriaged
+status: done
 priority: normal
 labels: [runtime-pin-watch]
 provenance: other
 provenance_detail: runtime pin watch
 source_ref: runtime-pin-watch:blocked@2026-11-23T12:56:09Z
+closed: 2026-11-24
 ---
 
 # Runtime pin watch cannot publish its commits (since 2026-11-23 12:56 UTC)
