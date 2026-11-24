@@ -18,14 +18,8 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'Open Habitat',
-      // English at the root, because the project, its repository and its
-      // documents are English-first; Finnish is a full translation of the
-      // site's own pages under /fi/.
-      defaultLocale: 'root',
-      locales: {
-        root: { label: 'English', lang: 'en' },
-        fi: { label: 'Suomi', lang: 'fi' },
-      },
+      // English only (Jari, 24.11.2026: the Finnish pages were removed).
+      locales: { root: { label: 'English', lang: 'en' } },
       favicon: '/favicon.svg',
       head: [
         { tag: 'script', content: contrastScript },
@@ -63,7 +57,6 @@ export default defineConfig({
       sidebar: [
         {
           label: 'Documentation',
-          translations: { fi: 'Dokumentaatio' },
           items: [
             { slug: 'docs' },
             { slug: 'docs/try' },
@@ -72,24 +65,19 @@ export default defineConfig({
         },
         {
           label: 'Reference',
-          translations: { fi: 'Lähdedokumentit' },
           items: [
             {
               slug: 'docs/product',
               label: 'Goal and user journeys',
-              translations: { fi: 'Tavoite ja käyttöpolut' },
             },
             {
               slug: 'docs/operations',
               label: 'Install and operate',
-              translations: { fi: 'Asennus ja ylläpito' },
             },
           ],
         },
       ],
-      // The repository documents are English only; their /fi/ pages are
-      // Starlight's untranslated fallbacks, so links to them are valid.
-      plugins: [starlightLinksValidator({ errorOnFallbackPages: false })],
+      plugins: [starlightLinksValidator()],
     }),
   ],
 });

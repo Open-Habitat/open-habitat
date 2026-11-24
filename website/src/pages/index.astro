@@ -28,8 +28,6 @@ const script = landing.js.replace(/<\/script/gi, '<\\/script');
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
-    <link rel="alternate" hreflang="en" href={canonical} />
-    <link rel="alternate" hreflang="fi" href={new URL('/fi/', Astro.site)} />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     {!indexable && <meta name="robots" content="noindex, nofollow" />}
     <script is:inline>document.documentElement.classList.replace('no-js', 'js');</script>
@@ -41,7 +39,6 @@ const script = landing.js.replace(/<\/script/gi, '<\\/script');
       <a href="/docs/">Documentation</a>
       <a href="/docs/security/">Security model</a>
       <a href="/docs/operations/">Install and operate</a>
-      <a href="/fi/" hreflang="fi" lang="fi">Suomeksi</a>
       <span>Fonts: Instrument Sans and JetBrains Mono, <a href={`${repo}/tree/main/design-system/fonts`}>SIL Open Font License</a>.</span>
     </footer>
     <script is:inline set:html={script}></script>

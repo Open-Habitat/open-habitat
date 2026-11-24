@@ -13,8 +13,6 @@ const ownDir = 'website/src/content/docs';
 const repoUrl = 'https://github.com/Open-Habitat/open-habitat';
 
 // Repository documents shown on the site, by repository path → site slug.
-// They are in English; Starlight shows the English page under /fi/ too, with
-// its notice that the page has not been translated.
 export const repoDocs = {
   'docs/product.md': 'docs/product',
   'docs/operations.md': 'docs/operations',

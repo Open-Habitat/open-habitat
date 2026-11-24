@@ -6,8 +6,7 @@ build` here writes `dist/`; `npm run dev` previews it.
 
 ## Layout
 
-English is the root locale (`/`), Finnish a translation of the site's own
-pages under `/fi/`.
+English only, at the root (`/`).
 
 The English front page (`src/pages/index.astro`) is the landing page's
 blocks, rendered at build time by the round's own `render.mjs`, the same
@@ -19,8 +18,7 @@ moving the round changes that line and the matching path in
 rendered HTML, the engine's and blocks' CSS and the browser script
 (`engine/client.js` plus each block's `client.js`). The blocks render in the
 build's Node process, not in Vite's bundle, because they find their own files
-through `import.meta.url`. The page's shell is thin: the head, a bar with the
-documentation and the Finnish page, and a footer line with the
+through `import.meta.url`. The page's shell is thin: the head and a footer line with the
 documentation's links and the font licence; the blocks bring their own top
 bar and footer. The blocks are drawn and checked in the light theme only, so
 the page is Päivä whatever the theme menu on the documentation says.
@@ -33,25 +31,17 @@ removes files it no longer uses, and `--check` only reports. The conductor
 reviews each file at full size and commits `public/landing/` by hand. The
 build fails, listing the files, while an asset the page uses is missing
 there. `node scripts/check-landing.mjs dist <shots>` serves a build, scrolls
-`/` and `/fi/` at 1440 and 390 px, opens work, plays a video and fails on a
+`/` at 1440 and 390 px, opens work, plays a video and fails on a
 console error, a failed request or a request to another origin; the round's
 `check.mjs` checks each block in depth.
 
-`/fi/` is still the earlier landing page, `src/components/Landing.astro`
-with `lang="fi"` (its English half no longer renders), until the blocks are
-translated. A translation would plug in as a locale argument to the round's
-`render()` that each block's text is chosen by, rendered by a second page
-`src/pages/fi/index.astro` through the same plugin (one virtual module per
-locale) with the shell's few strings translated; `Landing.astro` then goes.
-
-The old landing page's screenshots are the root README's images, imported
-from `docs/assets/readme/` and resized at build time, never copied here.
+The site is English only. The Finnish pages (the old `/fi/` landing page and
+the translated documentation) were removed on 24.11.2026 at Jari's request.
 
 The documentation collection (`docs.mjs`) is the site's own pages under
 `src/content/docs/` plus the repository's `docs/product.md` and
 `docs/operations.md`, rendered in place at build time. Those two are never
-copied here: they are the source of truth, and a copy would drift. They are
-English only, so their `/fi/` pages are Starlight's untranslated fallback.
+copied here: they are the source of truth, and a copy would drift.
 
 The look is the product's design system itself: `astro.config.mjs` loads
 `../design-system/styles.css` (tokens and bundled fonts), and

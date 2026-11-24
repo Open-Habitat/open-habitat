@@ -1,6 +1,6 @@
 // node scripts/check-landing.mjs <site-dir> <shots-dir> [<path>...]
 // Serves a built site (dist/, or the round's `node build.mjs <out>` for
-// comparison) on 127.0.0.1 and opens each path (default / and /fi/) in
+// comparison) on 127.0.0.1 and opens each path (default /) in
 // Chromium at 1440 and 390 px with reduced motion. It scrolls the whole page,
 // opens Show work in a few blocks, plays a video, and fails on a console error,
 // an uncaught exception, a failed or 4xx/5xx request, any request to another
@@ -65,7 +65,7 @@ const SECTIONS = [
 ];
 
 const browser = await chromium.launch();
-for (const p of paths.length ? paths : ['/', '/fi/']) {
+for (const p of paths.length ? paths : ['/']) {
   for (const width of [1440, 390]) {
     const tag = `${width}${p.replace(/\//g, '-').replace(/-$/, '')}`;
     const page = await browser.newPage({ viewport: { width, height: width > 600 ? 900 : 844 }, reducedMotion: 'reduce' });
@@ -153,4 +153,4 @@ if (fails.length) {
   console.log(`${fails.length} failure(s)`);
   process.exit(1);
 }
-console.log(`ok: ${(paths.length ? paths : ['/', '/fi/']).join(' ')} at 1440 and 390 px; screenshots in ${shots}`);
+console.log(`ok: ${(paths.length ? paths : ['/']).join(' ')} at 1440 and 390 px; screenshots in ${shots}`);
