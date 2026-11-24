@@ -1,11 +1,13 @@
 ---
 created: 2026-11-23
-updated: 2026-11-23
+updated: 2026-11-24
 type: chore
 reporter: runtime-pin-watch
 status: open
 priority: normal
-labels: [runtime-pin]
+labels:
+- runtime-pin
+- runtime-pin:bump-prepared
 provenance: other
 provenance_detail: runtime pin watch
 source_ref: runtime-pin:@earendil-works/pi-coding-agent@1.6.0
@@ -29,3 +31,9 @@ A research run assesses this release before it is scheduled and writes its
 findings and a verdict (safe-to-bump, needs-work or hold) to research.md in
 this issue directory. A safe-to-bump release is raised automatically; anything
 else stays here for the conductor.
+
+## Comments
+
+### 2026-11-24T19:14:21Z · @runtime-pin-watch
+
+The automatic bump stopped before landing (run 01m87er69vv3vet8krfrcyt2s5, status failed); its prepared work and result are left for the conductor.
