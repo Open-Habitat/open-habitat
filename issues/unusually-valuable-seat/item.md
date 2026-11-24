@@ -2,7 +2,7 @@
 created: 2026-11-23
 updated: 2026-11-24
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: agent
 source_ref: taskfleet:01m84ybwhn4y53av81q1z8cwq4/observation:gate-load-flakes-v017
@@ -10,6 +10,7 @@ originating_run: 01m84ybwhn4y53av81q1z8cwq4
 originating_run_kind: spinoff
 lane: unlaned
 preparation: ready
+closed: 2026-11-24
 ---
 
 # Clean gate flakes under its own load (gate-storage SIGPIPE, design-system, lab scroll)
@@ -52,3 +53,9 @@ Every gate round has had one to three different specs fail under the whole suite
 ### 2026-11-23T23:09:40Z · @agent
 
 Conductor 24.11.2026 01:10: accepted as a gate (tooling) defect, fixed proactively per the working agreement: it blocks v0.1.7, which Jari authorized for tonight. Scope: every check that failed only under the clean gate's own load in the v0.1.7 rounds (see the notes above and /var/tmp/agent-keep/oh-v017-qualification/).
+
+## Resolution
+
+### 2026-11-24T00:22:55Z · @issuectl
+
+Every listed check traced and fixed in test, harness or product, or shown to come from the disk-full scratch rounds; see result.md.

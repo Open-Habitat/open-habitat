@@ -306,7 +306,8 @@ func TestCloneStartWaitsOutABriefWriter(t *testing.T) {
 	f.waitFile(f.ready)
 	began := time.Now()
 	code, reply := f.action(`{"action":"start","full_name":"org/repo","mode":"full"}`)
-	if errorCode, _ := reply["error"].(map[string]any)["code"].(string); code != 409 || errorCode != "clone_running" || time.Since(began) > time.Second {
+	refusal, _ := reply["error"].(map[string]any)
+	if errorCode, _ := refusal["code"].(string); code != 409 || errorCode != "clone_running" || time.Since(began) > time.Second {
 		t.Fatalf("start beside a running clone: %d %v after %s", code, reply, time.Since(began))
 	}
 	if err := os.Remove(f.gate); err != nil {
