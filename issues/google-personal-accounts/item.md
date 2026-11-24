@@ -41,3 +41,8 @@ Jari 24.11.2026: a person on another installation could not connect a second per
 ### 2026-11-21T07:14:11Z · @jari
 
 Jari 21.11.2026: Admin guide: A Kysymys ensin; Habitat does not remember the audience choice; keep the warning illustration; audience change as its own row menu item; (privacy-policy URL not required, recommendation). Person's flow: A Muistutus, short and even more concise; 'you stopped at Google' on cancel: yes; the connected dialog lists granted services: yes; admin app-name field: not now. Screenshots: yes — the way the Microsoft dialog shows screenshots in complex integrations is good, and simple ones may have them too, especially where the person must click an option that is not the default (Google's Advanced → Go to …). Next action: implement both views with screenshots.
+
+### 2026-11-24T17:39:30Z · @jari
+
+Jari 24.11.2026 on the External admin round 1: none of A/B/C. They were more confusing than today's flow, which already asks the administrator Internal/External with a recommendation. Habitat keeps not remembering the audience (21.11. decision stands). Instead: in the person's flow for connecting a personal Google account, say plainly up front that if it does not work (Google says "Pääsy estetty"), the person asks the server's administrator for help. The administrator can ask their own Habitat agent how to allow personal accounts; the agent's UI skill already carries the guide's texts (External, publishing, Testing's 7-day expiry), which Jari considers sufficient guidance.
+Next action (approved): that one small change on the person's side.
