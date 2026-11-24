@@ -1,10 +1,91 @@
-# Ajat keskustelussa – kierros 1
+# Ajat keskustelussa
+
+## Kierros 2
+
+Kierros: `design-system/prototypes/rounds/2026-11-24-times-conversations-2/`
+(rakennus ja tarkistus: `NOTES.md`). Tuotantokomponentit ovat
+muuttamattomia, ja data on synteettistä. Sama keskustelu kuin
+kierroksella 1.
+
+Lähtökohta on päätöksesi kierroksesta 1: B Kello ja päiväerottimet.
+Kierros tutkii sen päällä kahta asiaa: missä aika on viestissä ja miten
+pitkä vuoro päättyy. Jokainen suunta yhdistää yhden paikan ja yhden
+loppusäännön. Sivupalkin ikä jää kuluneeksi ajaksi, kuten päätit.
+
+Ennen suuntia yksi havainto. Tuotannon työrivi mittaa vaiheen edellisestä
+merkinnästä vaiheen päättävään vastaukseen. Yksivaiheisessa vuorossa se
+on siis täsmälleen vuoron kesto: ”2 työkalua · 23 min 05 s” on
+vastauskortin yläpuolella jo nyt. Loppurivi tuo uutta tietoa vain
+monivaiheiseen vuoroon (välivastauksen jälkeen työrivit näyttävät
+vaiheet, eivät summaa). Muuten se kokoaa saman tiedon sinne, mihin
+silmä päätyy: vuoron loppuun valmistumisajan viereen. Vastauksen aika on
+jo valmistumisaika, koska host tallentaa vastauksen vasta valmiina, joten
+loppurivi ei saa toistaa sitä.
+
+- **Nyt (kierroksen 1 B).** Aika otsakkeessa: sinun viestissäsi
+  kopioi-painikkeen jälkeen, agentin vastauksessa oikeassa reunassa.
+  Loppuriviä ei ole. Kesto on työrivillä ja loppuaika vastauksen ajassa.
+- **A Otsake.** Aika heti nimen perässä kummankin viesteissä (”Sinä
+  16.40”, ”✓ Vastaus valmis 17.03”), kopioi-painike sen jälkeen. Yli
+  5 minuutin vuoron viimeinen vastaus jatkaa samaa riviä: ”✓ Vastaus valmis
+  17.03 · vuoro kesti 23 min”. Uutta riviä ei tule, eikä aika toistu.
+- **B Kuplan alla.** Otsakkeessa ei ole aikaa. Pieni aika on kortin alla
+  kortin puolella, sinun oikealla ja agentin vasemmalla. Yli 2 minuutin
+  vuoron viimeisen vastauksen alla rivi kuuluu ”Valmis 17.03 · vuoro kesti
+  23 min”: kierroksen 1 C:n loppurivi on vastauksen oma aikarivi.
+- **C Marginaali.** Aika on keskustelun reunassa otsakkeen korkeudella,
+  agentin vasemmalla ja sinun oikealla, ja sarakkeen voi lukea alas kuin
+  lokia. Yli 10 minuutin vuorossa vastauksen ajan alla on kesto
+  (”23 min”). Reunat vievät puhelimella noin 80 px leveyttä.
+
+Kynnys näkyy tässä keskustelussa näin: vuorot kestävät 41 s, 6 min, 1 min,
+12 s, 23 min ja 15 min. Kahden ja viiden minuutin kynnys valitsevat samat
+kolme vuoroa, kymmenen minuutin kynnys pudottaa 6 minuutin vuoron.
+
+**Suositus: A Otsake, kynnys 5 minuuttia.** Aika on samassa kohdassa
+kummankin viesteissä, nimen vieressä, ja otsake luetaan yhtenä lauseena:
+kuka, milloin ja pitkässä vuorossa kuinka kauan. Loppu ei vie riviä eikä
+toista valmistumisaikaa. Toteutus on pieni: `Message` järjestää otsakkeen
+nimi, aika, kopioi, `HistoryView` antaa `time`-propsin ja `AgentTurn`in
+vastauskortti saa ajan ja keston propseina. Host-tietoa ei tarvita lisää.
+B on tuttu viestisovelluksista, mutta jokaisen kortin alle tulee rivi, ja
+13 viestin keskustelu kasvaa yhtä monella rivillä. C antaa leveällä
+ruudulla siistin aikasarakkeen, mutta puhelimella reunat ovat poissa
+tekstiltä, ja aika irtoaa kortista, josta se kertoo.
+
+### Päätökset myöhempään katselmointiin
+
+- Vuoron kesto lasketaan käyttäjän viestin natiivista ajasta viimeisen
+  vastauksen natiiviin aikaan. Se on sama väli kuin työrivien summa, ja
+  host tietää vain sen.
+- Kesto pyöristetään alas minuuteiksi (15 min 30 s → ”15 min”), jotta se
+  ei koskaan sano enemmän kuin työrivi. Yli tunnin vuoro: ”1 t 12 min”.
+- Kesto tulee vain viimeiseen vastaukseen. Välivastaus saa pelkän ajan.
+- Käynnissä olevalla vuorolla ei ole kestoa. Elävä kello kertoo sen, ja
+  kesto ilmestyy, kun vastaus on tallentunut.
+- Pysäytetty vuoro pitää tuotannon rivinsä ”Keskeytit · 14.05” ilman
+  kestoa (kysymys 3).
+- Työrivin kesto pysyy ennallaan, myös kun se on sama kuin vuoron kesto.
+- Kynnys on vakio, ei asetus.
+- Jaetun keskustelun osallistujan viesti saa ajan samalla säännöllä kuin
+  sinun viestisi. Selitystilaa ei kierroksella näytetty.
+
+### Kysymykset Jarille
+
+1. A (aika nimen perässä kummankin viesteissä) vai Nyt (vastauksessa
+   oikeassa reunassa)?
+2. Kesto yli 5 minuutin vuoroihin, vai vain monivaiheisiin vuoroihin,
+   joissa työrivi ei jo kerro sitä?
+3. Saako pysäytetty pitkä vuoro saman keston (”Keskeytit 14.05 · vuoro
+   kesti 8 min”)?
+
+## Kierros 1
 
 Kierros: `design-system/prototypes/rounds/2026-11-24-times-conversations/`
 (rakennus- ja tarkistuskomennot ovat sen `NOTES.md`:ssä). Tuotantokomponentit
 ovat muuttamattomia, ja data on synteettistä.
 
-## Host-tiedot
+### Host-tiedot
 
 **Natiivi historia.** Pi kirjoittaa sessiotiedostoonsa jokaiselle merkinnälle
 `timestamp`-kentän (RFC 3339) sillä hetkellä, kun se lisää merkinnän. Käyttäjän
@@ -43,7 +124,7 @@ erikseen vain vastauskielen arvaukseen (`answerLanguage.ts`). Kierros seuraa
 samaa sääntöä, ja sen vyöhykevalinta näyttää, miten ajat ja päivänrajat
 siirtyvät.
 
-## Suunnat
+### Suunnat
 
 Akseli: kuinka paljon aikaa oletusnäkymä näyttää. Sama keskustelu kaikissa
 suunnissa: se alkaa perjantaina ja jatkuu maanantaina ja tänään, siinä on
@@ -62,7 +143,7 @@ käynnissä olevaksi.
   tauon jälkeen”). Yli kahden minuutin vuoro päättyy riviin ”Valmis 17.03 ·
   vuoro kesti 23 min”.
 
-## Suositus
+### Suositus
 
 B. Aika on aina samassa paikassa, myös puhelimella ilman osoitinta, ja
 päiväerotin näyttää jatketun keskustelun yhdellä silmäyksellä. Tuotannon
@@ -72,7 +153,7 @@ antaa `time`-propsin ja `AgentTurn`in vastauskortti saa samanlaisen propsin
 kun joku kysyy, milloin jokin tehtiin. A piilottaa ajan puhelimelta, ja
 saavutettavuusohje kieltää olennaisen tiedon pelkässä hoverissa.
 
-## Päätökset myöhempään katselmointiin
+### Päätökset myöhempään katselmointiin
 
 - Agentin vastauksen aika on sen tallennushetki eli valmistumisaika, koska host
   tietää vain sen. Suoratoistuva vastaus saa ajan vasta tallennuttuaan.
@@ -86,7 +167,7 @@ saavutettavuusohje kieltää olennaisen tiedon pelkässä hoverissa.
 - Selitystilaa ja jaetun keskustelun osallistujan viestejä ei kierroksella
   näytetty. Osallistujan viesti saisi ajan samalla säännöllä.
 
-## Kysymykset Jarille
+### Kysymykset Jarille
 
 1. B (aika jokaisessa viestissä) vai C (aika vain taukojen jälkeen)?
 2. Otetaanko C:n vuoron loppurivi (”Valmis 17.03 · vuoro kesti 23 min”) mukaan
