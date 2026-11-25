@@ -1,5 +1,100 @@
 # Ajat keskustelussa
 
+## Kierros 3
+
+Kierros: `design-system/prototypes/rounds/2026-11-25-times-conversations-3/`
+(rakennus ja tarkistus: `NOTES.md`). Tuotantokomponentit ovat
+muuttamattomia, ja data on synteettistä.
+
+Lähtökohta on päätöksesi kierroksesta 2: A Otsake, eli aika heti nimen
+perässä (”Sinä 16.40”, ”✓ Vastaus valmis 17.03”). Kierros tutkii kahta
+avointa kohtaa: milloin vuoron kesto näkyy ja miten pysäytetty vuoro
+kertoo, kauanko se kesti. Kynnys on kaikissa suunnissa 5 minuuttia.
+Keskusteluun on lisätty kierroksen 2 vuorojen rinnalle neljän vaiheen
+vuoro (48 min), kesken työkalun pysäytetty vuoro (12 min), pysäytetty
+kaksivaiheinen vuoro (8 min) ja palvelimen uudelleenkäynnistyksen
+katkaisema vuoro (11 min). Lyhyet vuorot (41 s, 1 min, 12 s) eivät saa
+kestoa missään suunnassa.
+
+Kierroksen 2 havainto pätee myös pysäytettyyn vuoroon. Yksivaiheisessa
+vuorossa työrivi on vuoron kesto. Pysäytetyssä yksivaiheisessa vuorossa
+työrivi mittaa viimeiseen tallennettuun työhön, joka on käytännössä
+pysäytyshetki: kesken työkalun pysäytetyn vuoron rivi on ”1 työkalu ·
+12 min 30 s”, ja työkalu lukee Keskeytetty.
+
+- **Nyt (kierroksen 2 A).** Valmiin yli 5 minuutin vuoron viimeinen
+  vastaus: ”✓ Vastaus valmis 17.03 · vuoro kesti 23 min”, myös kun
+  työrivi juuri yläpuolella sanoo ”2 työkalua · 23 min 05 s”.
+  Pysäytetty vuoro pitää tuotannon rivin ”Keskeytit · 14.52” ilman
+  kestoa.
+- **A Jokainen pitkä.** Kuten Nyt, ja pysäytetty tai katkennut yli
+  5 minuutin vuoro saa saman lauseen: ”Keskeytit 14.52 · vuoro kesti
+  12 min”, ”Katkesi palvelimen uudelleenkäynnistyksessä 17.41 · vuoro
+  kesti 11 min”. Jokainen pitkä vuoro kertoo kestonsa samassa muodossa.
+- **B Vain uusi tieto.** Kesto vain yli 5 minuutin vuoroon, jossa on
+  useampi vaihe: 6 minuutin ja 48 minuutin vuorot sekä pysäytetty
+  kaksivaiheinen vuoro (”Keskeytit 13.18 · vuoro kesti 8 min”).
+  Yksivaiheisen vuoron otsake on pelkkä ”✓ Vastaus valmis 17.03”, koska
+  työrivi on jo sen kesto, ja yksivaiheinen pysäytetty vuoro on
+  ”Keskeytit 14.52”.
+- **C Loppurivi.** Otsakkeessa on vain aika. Jokainen yli 5 minuutin
+  vuoro päättyy hiljaiseen riviin pysäytetyn vuoron rivin paikalla:
+  valmis ”Vuoro kesti 23 min” pyöreällä merkillä, pysäytetty
+  ”Keskeytit 14.52 · vuoro kesti 12 min” tuotannon pysäytysneliöllä.
+  Valmis ja pysäytetty vuoro päättyvät samalla tavalla, mutta jokainen
+  pitkä vuoro saa rivin lisää.
+
+A:ssa, B:ssä ja C:ssä pysäytysrivin aika on verbin perässä ilman
+väliviivaa (”Keskeytit 14.52”), samassa kieliopissa kuin otsakkeen ”Sinä
+16.40”. Nyt-suunnassa rivi on tuotannon ”Keskeytit · 14.52”.
+
+**Suositus: B Vain uusi tieto.** Jokainen näytetty aika kertoo silloin
+jotain uutta. Yksivaiheisessa vuorossa työrivi on jo vuoron kesto kolmen
+rivin päässä, ja A ja C toistavat sen eri tarkkuudella (”23 min 05 s” ja
+”23 min”). Lukija joutuu silloin kysymään, ovatko ne eri asioita.
+Monivaiheisessa vuorossa summaa ei näe mistään muualta: 48 minuutin
+vuoron neljä työriviä sanovat 12, 13, 10 ja 12 minuuttia. B näyttää
+keston juuri siellä, myös pysäytetyssä vuorossa. Hinta on se, että kesto
+ei ole aina samassa kohdassa: yksivaiheisessa vuorossa se on työrivillä,
+monivaiheisessa otsakkeessa. A on ennustettavampi ja on hyvä vaihtoehto,
+jos toisto ei haittaa sinua. C erottuu selvimmin, mutta se purkaa
+kierroksen 2 päätöksen (kesto otsakkeessa) ja lisää rivin jokaiseen
+pitkään vuoroon. Toteutus on B:ssäkin pieni: `AgentTurn` tietää jo
+vaiheensa, joten se voi päättää keston paikan itse, kun se saa vuoron
+lopun ajan ja pysäytyksen ajan propseina. Host-tietoa ei tarvita lisää.
+
+### Päätökset myöhempään katselmointiin
+
+- Pysäytetyn vuoron kesto lasketaan käyttäjän viestin natiivista ajasta
+  keskeytetyn merkinnän (`stop_reason: aborted`) natiiviin aikaan.
+  Uudelleenkäynnistyksen katkaisema vuoro lasketaan samoin.
+- Kesto pyöristetään alas minuuteiksi kuten kierroksella 2, joten se ei
+  koskaan sano enemmän kuin työrivi.
+- ”Monivaiheinen” tarkoittaa tuotannon vaiheita: välivastaus sulkee
+  vaiheen. Pysäytetty vuoro, jossa on välivastaus ja sen jälkeen työtä, on
+  kaksivaiheinen.
+- Pysäytysrivi seuraa otsakkeen kielioppia (”Keskeytit 14.52”), kun
+  sille tulee kesto, ja myös silloin kun ei tule, jotta rivit näyttävät
+  samalta yhden keskustelun sisällä. Koko aika jää titleen kuten nyt.
+- Valmiin vuoron kesto on vain viimeisessä vastauksessa. Välivastaus ja
+  käynnissä oleva vuoro eivät saa kestoa.
+- Kesken työkalun pysäytetty vuoro ei saa omaa merkintää: työkalun
+  Keskeytetty-tila ja pysäytysrivi riittävät.
+- Kynnys on vakio 5 min kaikissa suunnissa.
+- Kierros käyttää laitteen aikavyöhykettä myös tuotannon pysäytysrivissä.
+  Tuotannossa se on jo selaimen vyöhyke, joten toteutus ei tarvitse
+  vyöhykkeelle mitään.
+
+### Kysymykset Jarille
+
+1. B (kesto vain monivaiheisiin vuoroihin, joissa työrivi ei jo kerro
+   sitä) vai A (jokaiseen yli 5 minuutin vuoroon, toistosta huolimatta)?
+2. Saako pysäytetty tai katkennut pitkä vuoro keston samalla säännöllä
+   kuin valmis (”Keskeytit 14.52 · vuoro kesti 12 min”), vai jääkö se
+   ilman kestoa kuten nyt?
+3. Muutetaanko pysäytysrivin kielioppi otsakkeen mukaiseksi
+   (”Keskeytit 14.52” eikä ”Keskeytit · 14.52”)?
+
 ## Kierros 2
 
 Kierros: `design-system/prototypes/rounds/2026-11-24-times-conversations-2/`
