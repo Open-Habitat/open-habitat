@@ -293,6 +293,15 @@ func commandHelp(args []string) (any, error) {
 			flags = append(flags, flag)
 		}
 	}
+	if key == "agent workspace update" {
+		for _, hidden := range []string{"true", "false"} {
+			description := "Hide a workspace using a fresh observation from workspace show"
+			if hidden == "false" {
+				description = "Unhide a workspace using a fresh observation from workspace show"
+			}
+			examples = append(examples, map[string]any{"description": description, "argv": strings.Fields("open-habitat agent workspace update --workspace ws_example123 --hidden " + hidden + " --observation-token obs_example --json")})
+		}
+	}
 	arguments := []any{}
 	switch key {
 	case "agent browser goto", "agent browser download":
@@ -315,7 +324,12 @@ func commandHelp(args []string) (any, error) {
 	return envelope(map[string]any{"name": "open-habitat", "command_path": append([]string{"open-habitat"}, path...), "description": description, "subcommands": subs, "flags": flags, "args": arguments, "examples": examples, "exit_codes": map[string]string{"0": "success (including help/version)", "1": "caller or domain error", "2": "system or internal error", "130": "SIGINT", "143": "SIGTERM"}}), nil
 }
 func helpFlag(name string) map[string]any {
-	v := map[string]any{"long": name, "description": name, "default": nil, "env": nil, "possible_values": []string{}, "deprecated": false}
+	v := map[string]any{"long": name, "description": name, "default": nil, "env": nil, "possible_values": []string{}, "deprecated": false, "takes_value": true}
+	// Value-taking options are the default; these are the parser's switches.
+	switch name {
+	case "--json", "--verbose", "--help", "--version", "--dry-run", "--force", "--finished-only", "--current", "--all", "--on", "--off", "--clear", "--now", "--approve-maintenance", "--approve-interruption", "--approve-disruption", "--immediate", "--deletion", "--checkout", "--merged-only", "--interrupted-only", "--empty-only", "--held":
+		v["takes_value"] = false
+	}
 	switch name {
 	case "--on", "--off":
 		v["description"] = "Enable or disable the named experimental feature; exactly one of --on and --off is required"
@@ -403,9 +417,14 @@ func helpFlag(name string) map[string]any {
 		v["description"] = "Exact typed name for permanent Trash deletion or forced worktree removal"
 	case "--listing-token", "--user-observation-token":
 		v["description"] = "Fresh token from the matching native listing; never infer or reuse across targets"
-	case "--git", "--hidden":
+	case "--git":
+		v["description"] = "Initialize Git in the new workspace; requires an explicit true or false"
+		v["possible_values"] = []string{"true", "false"}
+	case "--hidden":
+		v["description"] = "Hide (true) or unhide (false) the workspace; requires an explicit value"
 		v["possible_values"] = []string{"true", "false"}
 	case "--archived":
+		v["description"] = "Archive (true) or restore (false) the conversation; requires an explicit value"
 		v["possible_values"] = []string{"true", "false"}
 	case "--previous-archive":
 		v["possible_values"] = []string{"active", "archived"}
@@ -474,6 +493,7 @@ func helpFlag(name string) map[string]any {
 	case "--current":
 		v["description"] = "Resolve inherited OPEN_HABITAT_CONVERSATION_ID, OPEN_HABITAT_WORKSPACE_ID and OPEN_HABITAT_LAUNCH_GENERATION against the daemon"
 	case "--administrator":
+		v["description"] = "Grant (true) or revoke (false) the administrator role; requires an explicit value"
 		v["possible_values"] = []string{"true", "false"}
 	case "--file":
 		v["description"] = "Onboarding JSON from FILE or - for stdin, at most 7680 bytes; admin onboarding show output (envelope or data) is accepted, its version must equal --expected-version"
@@ -509,7 +529,15 @@ func helpText(out any) string {
 	}
 	for _, f := range data["flags"].([]any) {
 		v := f.(map[string]any)
-		fmt.Fprintf(&b, "  %s  %s\n", v["long"], v["description"])
+		name := v["long"].(string)
+		if v["takes_value"] == true && !strings.Contains(name, "=") {
+			value := "value"
+			if choices := v["possible_values"].([]string); len(choices) > 0 {
+				value = strings.Join(choices, "|")
+			}
+			name += " <" + value + ">"
+		}
+		fmt.Fprintf(&b, "  %s  %s\n", name, v["description"])
 	}
 	for _, e := range data["examples"].([]any) {
 		v := e.(map[string]any)

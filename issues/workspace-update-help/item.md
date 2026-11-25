@@ -3,10 +3,11 @@ created: 2026-11-25
 updated: 2026-11-25
 type: bug
 reporter: agent
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 preparation: ready
+closed: 2026-11-25
 ---
 
 # workspace update --help does not show that --hidden takes a value

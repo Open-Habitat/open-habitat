@@ -74,7 +74,7 @@ func parseWorkspaceRequest(args []string) (conversationRequest, error) {
 			continue
 		}
 		i++
-		if i == len(args) {
+		if i == len(args) || (flag == "--hidden" || flag == "--git") && strings.HasPrefix(args[i], "--") {
 			return req, usage("missing value for " + flag)
 		}
 		v := args[i]

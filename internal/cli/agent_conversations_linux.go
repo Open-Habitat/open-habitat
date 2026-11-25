@@ -159,7 +159,7 @@ func parseConversationRequest(args []string) (conversationRequest, error) {
 			continue
 		}
 		i++
-		if i == len(args) {
+		if i == len(args) || flag == "--archived" && strings.HasPrefix(args[i], "--") {
 			return req, usage("missing value for " + flag)
 		}
 		if args[i] == "" || strings.TrimSpace(args[i]) != args[i] {
