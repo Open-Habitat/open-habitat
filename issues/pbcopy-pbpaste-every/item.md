@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 lane: unlaned
-preparation: ready
+preparation: pending
 ---
 
 # pbcopy/pbpaste on every installation, bridged to the person's browser clipboard

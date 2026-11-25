@@ -1,0 +1,96 @@
+/* Review chrome: one scrolling document (a Habitat view has no frames). */
+html, body { margin: 0; background: var(--ah-bg); color: var(--ah-ink); }
+body { padding-bottom: 96px; font: var(--ah-size-ui)/var(--ah-lh-ui) var(--ah-font); }
+.pbc-review { display: grid; gap: var(--ah-s4); padding: 0 var(--ah-s4); }
+.pbc-bar {
+  display: grid; gap: var(--ah-s1); margin: 0 calc(-1 * var(--ah-s4));
+  padding: var(--ah-s2) var(--ah-s4); background: var(--ah-surface);
+  border-bottom: 1px solid var(--ah-line); font-size: var(--ah-size-meta); line-height: 1.4;
+}
+.pbc-controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s1) var(--ah-s4); }
+.pbc-bar strong { font-weight: 600; }
+.pbc-bar select, .pbc-bar button { font: inherit; }
+.pbc-hint { color: var(--ah-muted); }
+.pbc-steps { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s1); }
+.pbc-study h2 { margin: 0 0 2px; font-size: var(--ah-size-meta); font-weight: 600; }
+.pbc-study ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; color: var(--ah-ink-2); }
+.pbc-study li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.pbc-recommend { margin: var(--ah-s1) 0 0; color: var(--ah-accent-ink); }
+.pbc-all-toggle { display: none; }
+@media (max-width: 800px) {
+  .pbc-review { padding: 0 var(--ah-s2); }
+  .pbc-bar { margin: 0 calc(-1 * var(--ah-s2)); padding: var(--ah-s2); }
+  .pbc-hint { display: none; }
+  .pbc-all-toggle { display: inline; justify-self: start; }
+  .pbc-bar:not([data-all]) :is(.pbc-study li:not([aria-current]), .pbc-recommend, .pbc-study h2) { display: none; }
+}
+
+/* ---------- One conversation and what the agent gets ---------- */
+.pbc-live { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 360px); gap: var(--ah-s4); align-items: start; }
+.pbc-frame { height: max(600px, calc(100dvh - 300px)); border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); overflow: hidden; min-width: 0; }
+.pbc-native { margin: 0; min-width: 0; }
+.pbc-native figcaption { color: var(--ah-muted); font-size: var(--ah-size-meta); margin-bottom: 2px; }
+.pbc-native pre {
+  margin: 0; padding: var(--ah-s2) var(--ah-s3); white-space: pre-wrap; overflow-wrap: anywhere;
+  font: var(--ah-size-meta)/1.45 var(--ah-mono); color: var(--ah-ink);
+  background: var(--ah-surface); border: 1px solid var(--ah-line); border-radius: var(--ah-r-md);
+}
+@media (max-width: 800px) {
+  .pbc-live { grid-template-columns: minmax(0, 1fr); }
+  .pbc-frame { height: 700px; margin-inline: calc(-1 * var(--ah-s2)); border-radius: 0; border-inline: 0; }
+}
+.pbc-tools { display: grid; gap: var(--ah-s1); }
+.pbc-msg { max-width: min(var(--ah-measure), 100%); }
+.pbc-meta { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.pbc-kind { font: var(--ah-size-meta) var(--ah-mono); color: var(--ah-muted); padding: 0 4px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-sm); }
+.pbc-push { margin-inline-start: auto; }
+
+/* The text itself: what was copied, or what would be given. */
+.pbc-clip { min-width: 0; border-radius: var(--ah-r-md); background: var(--ah-surface-2); border: 1px solid var(--ah-line); }
+.pbc-clip pre { margin: 0; padding: var(--ah-s2) var(--ah-s3); white-space: pre-wrap; overflow-wrap: anywhere; font: var(--ah-size-meta)/1.45 var(--ah-mono); color: var(--ah-ink); }
+.pbc-clip-more { margin: 0; padding: 0 var(--ah-s3) var(--ah-s2); color: var(--ah-muted); font-size: var(--ah-size-meta); }
+
+.pbc-btn {
+  display: inline-flex; align-items: center; min-height: 32px; padding: 0 var(--ah-s3); box-sizing: border-box;
+  font: inherit; border-radius: var(--ah-r-md); border: 1px solid var(--ah-line-strong);
+  background: var(--ah-surface); color: var(--ah-ink); cursor: pointer; white-space: nowrap;
+}
+.pbc-btn-primary { background: var(--ah-accent); border-color: var(--ah-accent); color: var(--ah-on-accent); }
+.pbc-btn:focus-visible, .pbc-linkish:focus-visible, .pbc-field:focus-visible { outline: var(--ah-focus-width) solid var(--ah-focus); outline-offset: 2px; }
+.pbc-linkish { font: inherit; background: none; border: 0; padding: 0; color: var(--ah-accent-ink); cursor: pointer; text-decoration: underline; }
+
+/* A Card: Habitat's card in the turn. */
+.pbc-card { max-width: min(560px, 100%); box-sizing: border-box; display: grid; gap: var(--ah-s2); }
+.pbc-card p { margin: 0; }
+.pbc-card-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s1) var(--ah-s2); }
+.pbc-card-head > svg { width: 16px; height: 16px; color: var(--ah-accent-ink); flex: none; }
+.pbc-card-foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s2); }
+.pbc-card[data-done] .pbc-clip { opacity: .85; }
+.pbc-wait { margin: 0; }
+.pbc-warn { display: flex; gap: var(--ah-s2); align-items: flex-start; margin: 0; padding: var(--ah-s2); border-radius: var(--ah-r-md); border: 1px solid var(--ah-err-line); color: var(--ah-ink); }
+.pbc-warn svg { flex: none; width: 16px; height: 16px; margin-top: 2px; color: var(--ah-err); }
+.pbc-line { margin: 0; }
+
+/* B By the field: a line in the turn, the request docked above the composer. */
+.pbc-copyline { display: grid; gap: var(--ah-s1); max-width: min(560px, 100%); }
+.pbc-copyline .ah-mp-line { flex-wrap: wrap; align-items: center; margin: 0; }
+.pbc-dock {
+  display: grid; gap: var(--ah-s2); box-sizing: border-box; width: min(100%, var(--ah-conversation-width)); margin: 0 auto var(--ah-s2); padding: var(--ah-s3);
+  border: 1px solid var(--ah-accent); border-radius: 10px; background: var(--ah-surface);
+}
+.pbc-dock-wrap { flex: none; padding: 0 var(--ah-s4); }
+@media (max-width: 800px) { .pbc-dock-wrap { padding: 0 var(--ah-s3); } }
+.pbc-dock p { margin: 0; }
+.pbc-field {
+  width: 100%; box-sizing: border-box; resize: vertical; padding: var(--ah-s2) var(--ah-s3);
+  font: var(--ah-size-meta)/1.45 var(--ah-mono); color: var(--ah-ink); background: var(--ah-surface-2);
+  border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-md);
+}
+.pbc-dock .pbc-field { max-height: 30vh; }
+
+/* C Notice: the production page banner, between the header and the stream. */
+.pbc-notices { display: grid; gap: var(--ah-s1); }
+.pbc-notices:empty { display: none; }
+.pbc-sheet { display: grid; gap: var(--ah-s2); margin-top: var(--ah-s2); max-width: 640px; }
+.pbc-sheet p { margin: 0; }
+.pbc-notices .pbc-clip { margin-top: var(--ah-s1); max-width: 640px; }
