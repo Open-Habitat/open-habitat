@@ -1,12 +1,14 @@
 ---
 created: 2026-11-24
-updated: 2026-11-24
+updated: 2026-11-25
 type: feature
 reporter: Jari
 status: untriaged
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-24/multiplayer-own-kind
+lane: multiplayer
+lane_seq: 1
 ---
 
 # Multiplayer conversations are their own kind, started with a multiplayer button, always on an API-key model

@@ -1,12 +1,14 @@
 ---
 created: 2026-11-24
-updated: 2026-11-24
+updated: 2026-11-25
 type: feature
 reporter: Jari
 status: untriaged
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-24/chinese-interface
+lane: i18n
+lane_seq: 1
 ---
 
 # Chinese interface (zh-CN, zh-TW), after opening the text catalogs to more languages

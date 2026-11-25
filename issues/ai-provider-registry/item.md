@@ -1,12 +1,14 @@
 ---
 created: 2026-11-24
-updated: 2026-11-24
+updated: 2026-11-25
 type: feature
 reporter: Jari
 status: untriaged
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-24/ai-provider-registry
+lane: ai-providers
+lane_seq: 1
 ---
 
 # AI options: a provider registry with GLM, Kimi, MiniMax, Qwen and other Pi providers, global and China endpoints

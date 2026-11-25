@@ -1,12 +1,14 @@
 ---
 created: 2026-11-24
-updated: 2026-11-24
+updated: 2026-11-25
 type: feature
 reporter: Jari
 status: untriaged
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-24/oidc-sign-in
+lane: sign-in
+lane_seq: 1
 ---
 
 # Sign-in with generic OpenID Connect beside GitHub, configured by the administrator

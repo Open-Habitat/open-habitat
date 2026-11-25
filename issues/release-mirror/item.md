@@ -1,12 +1,15 @@
 ---
 created: 2026-11-24
-updated: 2026-11-24
+updated: 2026-11-25
 type: improvement
 reporter: Jari
 status: untriaged
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-24/release-mirror
+lane: ai-providers
+lane_seq: 2
+blocked_by: ['@ai-provider-registry']
 ---
 
 # Install and upgrade from a release mirror for servers that reach GitHub poorly
