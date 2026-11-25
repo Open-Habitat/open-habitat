@@ -1,12 +1,12 @@
 ---
 created: 2026-11-24
-updated: 2026-11-24
+updated: 2026-11-25
 type: feature
 reporter: jari
 status: open
 priority: normal
 lane: unlaned
-preparation: pending
+preparation: ready
 ---
 
 # Agent-to-agent message between the person's conversations (design and prototype)
@@ -53,3 +53,7 @@ Next action (approved): prototype round 2 to this model.
 ### 2026-11-24T19:56:56Z · @jari
 
 Jari 24.11.2026 on round 2: A Kirjeet. Hop limit: Jari does not see why agents should not talk more; the conductor explains the runaway-loop concern and proposes a guard instead of a hop limit (decision pending). Prototype next: riffs on the outgoing message bubble (always shown vs. only when the agent does not say it sent one, and its shape). Next action (approved): prototype round 3.
+
+### 2026-11-25T18:13:12Z · @jari
+
+Jari 25.11.2026 on round 3: A Peili (the outgoing message is always its own bubble, the mirror of the incoming letter). No runaway guard and no hop limit: agents may message each other freely. Prototype next: the texts and details in the message blocks, which carried unnecessary words and details (e.g. "Viittaa viestiin"). Next action (approved): prototype round 4 on the copy, then implementation once Jari accepts it.
