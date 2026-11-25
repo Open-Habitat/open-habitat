@@ -205,14 +205,17 @@ func validHeadlessShell(files map[string]RuntimeFile, components map[string]Runt
 
 // CoreAgentTools are the commands every installation's core runtime puts on
 // its agents' PATH, at the versions this release pins: Taskfleet, the workmux
-// it creates worktrees with, and the launcher that runs the release's Pi for
-// Taskfleet's Pi workers. The daemon appends runtime/agent-bin to agents'
-// PATH, so that directory holds exactly these and nothing else.
-var CoreAgentTools = map[string]string{"taskfleet": "0.20.0", "workmux": "0.1.278", "pi": ""}
+// it creates worktrees with, the launcher that runs the release's Pi for
+// Taskfleet's Pi workers, and pbcopy and pbpaste for commands in a Habitat
+// terminal. The daemon appends runtime/agent-bin to agents' PATH, so that
+// directory holds exactly these and nothing else. The first-party commands
+// have no version of their own.
+var CoreAgentTools = map[string]string{"taskfleet": "0.20.0", "workmux": "0.1.278", "pi": "", "pbcopy": "", "pbpaste": ""}
 
-// coreAgentToolOwner is the closure component that owns each command.
+// coreAgentToolOwner is the closure component that owns each command: the
+// unversioned ones are the product's own launcher files.
 func coreAgentToolOwner(name string) string {
-	if name == "pi" {
+	if CoreAgentTools[name] == "" {
 		return "agent-launcher"
 	}
 	return name

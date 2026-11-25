@@ -827,7 +827,11 @@ Cargo.lock it was released from and every locked crate's licence record in the
 closure. A person's agents and terminal find these commands last on their
 `PATH`, so `taskfleet run create` works from any conversation and its Pi
 workers run the release's own Node and Pi through the launcher; a Taskfleet or
-Pi the person installed in `~/.local/bin` takes precedence. The skills reach
+Pi the person installed in `~/.local/bin` takes precedence. The same directory
+holds `pbcopy` and `pbpaste` for commands run in a browser terminal: `pbcopy`
+offers text to the browser's clipboard through the terminal's tmux (OSC 52)
+and `pbpaste` prints tmux's newest paste buffer; neither reads the browser's
+clipboard, and outside a terminal both fail at once. The skills reach
 Pi through a shipped extension (`/opt/open-habitat/core/taskfleet/extension.mjs`)
 that offers them after Pi's own discovery, so a skill of the same name the
 person or the repository has wins. Nothing is written into a person's Pi

@@ -13,8 +13,13 @@ profiles.
 agents' `PATH`, so it holds only commands meant for agents and the release
 closure refuses anything else there. A person's own installation of any of
 them comes first and is never replaced or edited, and nothing writes their Pi
-settings. The skills reach Pi through `taskfleet-skills.mjs`, an extension that
-offers them after Pi's own discovery, so a person's or repository's skill of
+settings. `pbcopy` and `pbpaste` there are for commands run in a Habitat
+terminal and add no interface of their own (Jari, 2026-11-25): `pbcopy` goes
+through the terminal's tmux and OSC 52 to the Copy action the browser terminal
+already has, and `pbpaste` prints tmux's newest paste buffer, never the
+browser's clipboard. Where no terminal is attached they fail at once instead of
+reporting a copy nobody can receive. The skills reach Pi through
+`taskfleet-skills.mjs`, an extension that offers them after Pi's own discovery, so a person's or repository's skill of
 the same name wins; `--skill` flags would outrank both. Taskfleet's skills are
 written by the pinned Taskfleet binary at build time, never copied from a
 machine's installed skills.

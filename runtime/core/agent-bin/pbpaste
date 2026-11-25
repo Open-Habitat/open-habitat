@@ -1,0 +1,56 @@
+#!/bin/sh
+# pbpaste for commands run in a Habitat terminal (Jari 25.11.2026: the
+# commands, not a new interface). The browser's clipboard cannot be read
+# without the person's action, so this prints what the terminal already
+# holds: tmux's newest paste buffer. A person's own pbpaste earlier on PATH
+# takes precedence over this one.
+set -u
+
+case $# in
+0) ;;
+*)
+	case $1 in
+	-h | --help)
+		cat <<'EOF'
+Usage: pbpaste
+
+Print this terminal's newest tmux paste buffer.
+
+That buffer holds the text most recently copied inside tmux: selected with
+the mouse in a Habitat terminal, or given to pbcopy. The buffers belong to
+the tmux server, so every Habitat terminal of yours shares them. pbpaste
+does not read the browser's or the device's clipboard: text pasted into the
+terminal from the browser goes to the shell as typing and is not kept, so
+it is not what pbpaste prints.
+
+Exit status:
+  0  printed the buffer
+  1  tmux holds no paste buffer yet, or tmux failed
+  2  usage error
+  3  not in a terminal session (no tmux), e.g. a browser-started
+     conversation, a worker or cron
+EOF
+		exit 0
+		;;
+	*)
+		echo "pbpaste: unexpected argument '$1'; pbpaste takes none (see pbpaste --help)" >&2
+		exit 2
+		;;
+	esac
+	;;
+esac
+
+if [ -z "${TMUX-}" ] || ! command -v tmux >/dev/null 2>&1; then
+	echo "pbpaste: not in a Habitat terminal (no tmux session); the browser's clipboard cannot be read from here, so ask the person to paste the text instead" >&2
+	exit 3
+fi
+if ! tmux display-message -p '' </dev/null >/dev/null 2>&1; then
+	echo "pbpaste: cannot reach this terminal's tmux server" >&2
+	exit 1
+fi
+# Without -b, save-buffer prints the newest automatic buffer, the one tmux's
+# own paste would insert.
+if ! tmux save-buffer - </dev/null 2>/dev/null; then
+	echo "pbpaste: tmux holds no paste buffer yet; select text with the mouse in the terminal or use pbcopy first" >&2
+	exit 1
+fi

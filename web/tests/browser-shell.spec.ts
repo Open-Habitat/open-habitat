@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import AxeBuilder from "@axe-core/playwright";
 import { hostOrigin } from "../test-ports.mjs";
 import { expect, type Page, test } from "./worker-host";
@@ -382,6 +383,35 @@ test("@browser-shell multi-line paste asks first and a selection goes to the com
   await expect(
     page.getByRole("textbox").and(page.getByTestId("message-input")),
   ).toBeFocused();
+});
+
+test("@browser-shell pbcopy reaches the page's clipboard and pbpaste reads it back", async ({
+  page,
+}) => {
+  // The core runtime's commands, run by path: the fixture host has no
+  // installed runtime on the shells' PATH.
+  const bin = fileURLToPath(
+    new URL("../../runtime/core/agent-bin/", import.meta.url),
+  );
+  await conversation(page);
+  await openFirstShell(page);
+  await page.keyboard.type(`printf 'hi from pbcopy' | '${bin}pbcopy'`);
+  await page.keyboard.press("Enter");
+  // tmux's OSC 52 becomes the selection's Copy action, as after a mouse
+  // selection in tmux.
+  const copy = page.getByRole("button").and(page.getByTestId("copy-selection"));
+  await expect(copy).toBeVisible();
+  await expect(screen(page)).toContainText(
+    "sent 14 bytes to the terminal",
+  );
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await copy.click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+    "hi from pbcopy",
+  );
+  await page.keyboard.type(`'${bin}pbpaste' | tr a-z A-Z; echo`);
+  await page.keyboard.press("Enter");
+  await expect(screen(page)).toContainText("HI FROM PBCOPY");
 });
 
 test("@browser-shell phone: the panel covers the conversation and the key row types", async ({

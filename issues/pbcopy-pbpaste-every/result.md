@@ -1,90 +1,73 @@
-# pbcopy ja pbpaste: kierros 1
+# pbcopy ja pbpaste terminaalissa: tulos
 
-Kierros: `design-system/prototypes/rounds/2026-11-25-pbcopy-pbpaste/`. Sivu
-rakennetaan sieltä (`NOTES.md`) hakemistoon
-`design-system/prototypes/dist/pbcopy-pbpaste/offline.html`, ja se on koottu
-tuotannon komponenteista. Malli, host-tiedot, exit-koodit ja rajat ovat
-[design.md](design.md):ssä. Tarkistus (`check.mjs`): 920 tarkistusta, neljä
-suuntaa, kolme teemaa, 1440 ja 390 px, vähennetty liike, suomi ja englanti,
-konsoli puhdas.
+Toteutettu Jarin 25.11.2026 päätöksen mukaan: ei kortteja, kenttiä eikä
+ilmoituksia, vain komennot Habitatin terminaaliin. design.md:n kortti-,
+pyyntö- ja worker-mallia ei rakennettu; se jää historiaan.
 
-## Host-tiedot lyhyesti
+## Mitä tuli
 
-- `runtime/core/agent-bin` on viimeisenä PATHissa selaimen Pi-keskusteluilla,
-  Taskfleetin workereilla ja selaimen terminaalilla ja editorilla. Komennot
-  menevät sinne (`CoreAgentTools` sallii ne), ja ihmisen oma `pbcopy` voittaa.
-- Selaimen Pi tietää keskustelunsa (`OPEN_HABITAT_CONVERSATION_ID` ja
-  launch-tunnisteet). Worker tietää vain luojansa
-  (`TASKFLEET_CREATOR_SESSION`), ja terminaali ei kumpaakaan.
-- Terminaali muuttaa OSC 52:n jo nyt Kopioi-toiminnoksi, joten `pbcopy`
-  terminaalissa on lähes valmis ja toimii myös SSH:n yli.
-- Ainoa kaikissa selaimissa toimiva tie on painallus. Chromium kirjoittaa
-  ilman elettä, jos keskustelu on fokuksessa, ja lukee luvan jälkeen
-  huomaamatta. Firefox ja Safari vaativat eleen ja näyttävät lukiessaan
-  oman Liitä-painikkeensa. Paste-tapahtuma (⌘V) toimii kaikkialla.
+- `runtime/core/agent-bin/pbcopy` ja `pbpaste`, ytimen ajonaikaisessa
+  ympäristössä `pi`:n rinnalla (`agent-launcher`-komponentti). Daemon laittaa
+  `agent-bin`:n viimeiseksi terminaalin PATHiin, joten ne löytyvät joka
+  asennuksesta ja oma `pbcopy` aiemmin PATHissa voittaa. Release closure
+  (`CoreAgentTools`) vaatii nyt molemmat.
+- `pbcopy` lukee stdinin tmuxin nimettyyn puskuriin, tarkistaa koon (enintään
+  1 MiB, terminaalin OSC 52 -dekooderin 1,4 Mt base64:n alla) ja lähettää sen
+  `tmux load-buffer -w`:llä: teksti on tmuxin uusin puskuri ja menee liitetylle
+  terminaalille OSC 52:na. Selaimen terminaali näyttää siitä saman Kopioi-
+  toiminnon kuin tmuxin hiirivalinnasta. stderr kertoo tavumäärän ja sen,
+  että selaimessa teksti on leikepöydällä vasta, kun Kopioi on painettu.
+- `pbpaste` tulostaa tmuxin uusimman automaattisen puskurin (`save-buffer -`).
+  `--help` sanoo tarkasti: hiirellä valittu tai pbcopylle annettu teksti,
+  yhteinen kaikille saman henkilön terminaaleille, ei selaimen eikä laitteen
+  leikepöytää.
+- Ilman tmuxia (selaimen Pi-keskustelu, worker, cron) molemmat kertovat sen
+  heti ja palauttavat 3. Jos tmuxissa ei ole liitettyä terminaalia, joka
+  hyväksyy leikepöytäkirjoitukset (`#{client_termfeatures}` ilman
+  `clipboard`), `pbcopy` palauttaa 3, sillä teksti ei päätyisi millekään
+  leikepöydälle.
 
-## Akseli ja suunnat
+## Todisteet
 
-Akseli: missä kopiointi ja leikepöydän pyyntö näkyvät. Kaikissa suunnissa
-lukeminen vaatii painalluksen, teksti näytetään ennen kuin se lähtee, ja
-avaimen näköisestä tekstistä varoitetaan. Tarina etenee kopioinnista
-pyyntöön, antamiseen, avaimeen, kieltäytymiseen ja vanhenemiseen.
+- `TestClipboardCommands` (internal/daemon): oikea tmux ja PTY:n kautta
+  liitetty xterm-256color-asiakas. Testi kattaa ohjeen, käyttövirheet,
+  tapauksen ilman tmuxia, irrotetun istunnon, OSC 52 -tavut asiakkaan
+  tulosteessa, `pbpaste`:n palauttaman tekstin tavu tavulta, 1 MiB:n rajan
+  kummaltakin puolelta, tyhjän syötteen ja sen, ettei mittauspuskuria jää.
+  Mutaatio (ilman `-w`) kaataa testin.
+- `browser-shell.spec.ts` › pbcopy: oikea tmux ja bash fixture-isännässä.
+  `printf … | pbcopy` tuo Kopioi-toiminnon, painallus vie tekstin selaimen
+  leikepöydälle ja `pbpaste` lukee sen takaisin. Kaikki 13 browser-shell-
+  testiä läpi.
+- `TestReleaseClosureCoreAgentTools` kattaa puuttuvan ja väärän omistajan
+  komennon. Verifioijan lähdekoodin golden päivitettiin ilman
+  sopimusversion nostoa: vaatimuksiin tuli kaksi tiedostoa, mutta logiikka
+  pysyi samana, kuten Node 22.23.5 -nostossa.
+- Ydinarkisto (linux-arm64) rakennettiin `build-core-runtime.sh`:lla, ja
+  `TestReleaseClosureBuiltCore` hyväksyi sen. Arkiston `pbcopy` ja `pbpaste`
+  ovat tiloissa 0755 ja tavu tavulta samat kuin lähteessä. amd64-ydintä ei
+  rakennettu; julkaisu rakentaa molemmat.
 
-- **Nyt.** Komennot puuttuvat (`exit 127`). Agentti kirjoittaa tekstin
-  koodilohkoon, ja sinä liität leikepöydän omana viestinäsi. Avaimesta ei
-  varoiteta, ja se menee keskusteluun sinun kuplassasi.
-- **A Kortti.** Habitatin kortti agentin vuorossa heti komentorivin
-  jälkeen. Kopiointikortissa on tekstin alku ja *Kopioi*. Pyyntökortissa
-  on *Liitä leikepöydältä* ja *Älä anna*, sitten esikatselu ja *Anna
-  agentille*. Ratkennut pyyntö jää yhdeksi riviksi (annettu, ei annettu,
-  vanheni).
-- **B Kenttä.** Chromiumissa kopiointi menee suoraan, ja aikajanalla lukee
-  *Kopioitu leikepöydällesi*. Safarissa ja Firefoxissa samassa rivissä on
-  *Kopioi*. Pyyntö telakoituu kentän yläpuolelle, ja liitettyä tekstiä voi
-  muokata ennen antamista.
-- **C Ilmoitus.** Kumpikin näkyy sivun ilmoituksena (tuotannon
-  `WarningBannerView`) missä keskustelussa tahansa olet. Aikajanalla on
-  vain komennon rivi.
-
-**Suositus: A Kortti.** Kopiointi ja pyyntö jäävät siihen kohtaan, jossa
-agentti ne teki, joten näet, mihin ne liittyvät. Ne säilyvät ja näkyvät
-joka laitteella. Jos olet poissa, löydät pyynnön palatessasi. A toimii
-samoin kaikissa selaimissa. B:n suora kirjoitus toimii vain Chromiumissa,
-ja silloin kaksi selainta käyttäytyy eri tavalla. Se myös korvaa
-leikepöydälläsi olleen tekstin kysymättä. B:n muokattava kenttä on hyvä
-idea, ja sen voi ottaa A:n esikatseluun myöhemmin. C tavoittaa sinut
-toisesta keskustelusta, mutta ilmoitus irtoaa yhteydestään ja katoaa, kun
-se on käsitelty. Odottavasta pyynnöstä kertovat jo nyt yläpalkin *Odottaa
-sinua* ja rail, joten A:n kortti tavoittaa sinut samoin kuin agentin
-kysymys.
+Ei todistettu: oikeaa asennusta, Safaria tai Firefoxia (Kopioi-painike on
+olemassa oleva polku), eikä sisäkkäistä omaa tmuxia Habitatin terminaalissa.
 
 ## Päätökset myöhempään katselmointiin
 
-- Pyynnön oletusaika 10 min, enintään 60 min. Pyyntö ei herätä mitään
-  uutta ilmoituskanavaa, vaan se käyttää odottavan vuoron nykyistä
-  huomiota.
-- Worker ja cron eivät voi pyytää leikepöytää (`exit 3 no_person`), mutta
-  workerin `pbcopy` menee luojan keskusteluun.
-- Rajat: `pbcopy` 1 MiB (sama kuin terminaalin OSC 52 -raja), `pbpaste`
-  256 KiB. Suuremmat ohjataan tiedostoksi.
-- Exit-koodit 0–6 design.md:n taulukon mukaan.
-- Ei `xclip`/`xsel`/`wl-copy`-aliaksia. Agenttiohje nimeää `pbcopy`n ja
-  `pbpaste`n.
-- Avainvaroitus on heuristiikka (`…TOKEN=`, `…KEY=`, `PRIVATE KEY`). Se
-  varoittaa, mutta ei estä.
-- Selaimesta tuleva vastaus on uusi komento `contracts/v1/`:ssä.
-  Auktoriteetti ei siirry: daemon pitää pyynnön ja odottavan kutsun.
-
-## Kysymykset
-
-1. Saako `pbcopy` kirjoittaa leikepöydällesi ilman painallusta, kun selain
-   sen sallii (B)? Suositus on, että ei saa: painallus aina, koska suora
-   kirjoitus korvaa leikepöydälläsi olleen tekstin ja toimii vain
-   Chromiumissa.
-2. Riittääkö yksi painallus antamiseen, kun teksti näkyy kortissa jo
-   ennen painallusta? Nyt painalluksia on kaksi: *Liitä* lukee ja *Anna*
-   lähettää. Kahden painalluksen syy on se, että näet ennen lähettämistä,
-   mitä mallin tarjoaja saa.
-3. Pitäisikö terminaalin `pbpaste` toteuttaa ensimmäisessä versiossa (vaatii
-   paneelin tunnisteen shellin ympäristöön), vai riittääkö aluksi
-   keskustelun `pbpaste` ja terminaalin `pbcopy` (OSC 52)?
+- Selaimesta terminaaliin liitetty teksti ei näy `pbpaste`:lle. Liitos menee
+  shellille kirjoituksena eikä tmuxin puskuriin, ja sen muuttaminen olisi
+  uusi käyttöliittymäpolku. `--help` sanoo tämän suoraan.
+- `pbcopy` ei kirjoita selaimen leikepöydälle ilman painallusta. Se käyttää
+  terminaalin nykyistä Kopioi-toimintoa, joten teksti on tarjolla eikä vielä
+  kopioitu, ja stderr sanoo sen. Muussa tmuxissa, jonka pääte hyväksyy
+  OSC 52:n (esim. SSH ja iTerm2), kirjoitus menee suoraan.
+- Toimii missä tahansa tmuxissa, ei vain Habitatin omassa: liitetty pääte
+  ratkaisee. Irrotetussa worker-tmuxissa `pbcopy` epäonnistuu (exit 3) eikä
+  raportoi kopiota, jota kukaan ei saa.
+- Ei OSC 52 -kirjoitusta suoraan `/dev/tty`:lle ilman tmuxia: Habitatin
+  terminaali on aina tmux, eikä paljaan päätteen vastaanottoa voi tietää.
+- Tyhjä syöte on virhe (exit 1), toisin kuin macOS:ssä, jossa se tyhjentää
+  leikepöydän. tmux ei luo tyhjää puskuria.
+- Exit-koodit: 0 ok, 1 tyhjä, liian suuri tai tmux-virhe, 2 käyttövirhe,
+  3 ei terminaalia.
+- Ei `xclip`/`xsel`/`wl-copy`-aliaksia eikä agenttiohjeen mainintaa:
+  selaimen keskustelussa komennot eivät toimi.

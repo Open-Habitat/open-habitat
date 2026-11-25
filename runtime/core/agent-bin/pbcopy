@@ -1,0 +1,101 @@
+#!/bin/sh
+# pbcopy for commands run in a Habitat terminal (Jari 25.11.2026: the
+# commands, not a new interface). The server has no clipboard; the person's
+# is in the browser showing the terminal. The text goes there by the route
+# the terminal already uses for tmux's own mouse selection: tmux keeps it as
+# its newest paste buffer and sends it to the attached terminal as OSC 52,
+# which the browser terminal offers as its Copy action. The same works in any
+# tmux whose client terminal accepts OSC 52, such as one reached over SSH.
+#
+# Without an attached tmux client nothing could reach a clipboard, so the
+# command fails at once rather than reporting a copy that did not happen. A
+# person's own pbcopy earlier on PATH takes precedence over this one.
+set -u
+# The browser terminal ignores an OSC 52 payload over 1.4 MB of base64;
+# 1 MiB of text stays below it.
+max=1048576
+
+case $# in
+0) ;;
+*)
+	case $1 in
+	-h | --help)
+		cat <<'EOF'
+Usage: pbcopy < FILE
+       COMMAND | pbcopy
+
+Copy standard input to the clipboard of the browser showing this Habitat
+terminal.
+
+The text becomes this terminal's newest tmux paste buffer (what pbpaste
+prints) and is sent to the browser terminal as an OSC 52 clipboard write,
+the same way a mouse selection in the terminal is. The browser then offers
+it as the terminal's Copy action; it is on the person's clipboard once they
+press Copy (or the copy shortcut). The same works in any tmux attached to a
+terminal that accepts OSC 52.
+
+Limits: at most 1 MiB of text; empty input copies nothing.
+
+Exit status:
+  0  sent to the attached terminal
+  1  input empty or over 1 MiB, or tmux failed; nothing was copied
+  2  usage error
+  3  not in a terminal session that can receive it (no tmux, or no
+     terminal attached to this tmux session), e.g. a browser-started
+     conversation, a worker or cron
+EOF
+		exit 0
+		;;
+	*)
+		echo "pbcopy: unexpected argument '$1'; pbcopy takes text on standard input only (see pbcopy --help)" >&2
+		exit 2
+		;;
+	esac
+	;;
+esac
+
+if [ -z "${TMUX-}" ] || ! command -v tmux >/dev/null 2>&1; then
+	echo "pbcopy: not in a Habitat terminal (no tmux session), so there is no browser clipboard to reach; save the text to a file instead" >&2
+	exit 3
+fi
+# The client tmux would send to: the most recently active one on this
+# session. tmux reports its terminal's features; without "clipboard" an
+# OSC 52 write would be dropped.
+case $(tmux display-message -p '#{client_termfeatures}' </dev/null 2>/dev/null) in
+*clipboard*) ;;
+*)
+	echo "pbcopy: no terminal that accepts clipboard writes is attached to this tmux session, so the text would reach no clipboard; save it to a file instead" >&2
+	exit 3
+	;;
+esac
+
+# Measure in a named tmux buffer first, so text over the limit is neither
+# sent nor left as the newest paste buffer, and nothing touches the disk.
+buffer="pbcopy-$$"
+cleanup() { tmux delete-buffer -b "$buffer" </dev/null >/dev/null 2>&1; }
+trap cleanup EXIT
+trap 'exit 1' HUP INT TERM
+if ! head -c $((max + 1)) | tmux load-buffer -b "$buffer" - 2>/dev/null; then
+	echo "pbcopy: tmux could not take the text; nothing was copied" >&2
+	exit 1
+fi
+size=$(tmux list-buffers -F '#{buffer_name} #{buffer_size}' </dev/null 2>/dev/null | while read -r name n; do
+	if [ "$name" = "$buffer" ]; then
+		echo "$n"
+	fi
+done)
+if [ -z "$size" ]; then
+	echo "pbcopy: input is empty; nothing was copied" >&2
+	exit 1
+fi
+if [ "$size" -gt "$max" ]; then
+	echo "pbcopy: input is over 1 MiB, the terminal clipboard's limit; nothing was copied (save it to a file instead)" >&2
+	exit 1
+fi
+# -w: also send it to the client's clipboard (OSC 52). Without -b it becomes
+# an automatic buffer, the newest one pbpaste and tmux's paste read.
+if ! tmux save-buffer -b "$buffer" - </dev/null | tmux load-buffer -w - 2>/dev/null; then
+	echo "pbcopy: tmux could not send the text to the terminal; nothing was copied" >&2
+	exit 1
+fi
+echo "pbcopy: sent $size bytes to the terminal; in a Habitat browser terminal it is on the clipboard once Copy is pressed there" >&2

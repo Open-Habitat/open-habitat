@@ -150,6 +150,8 @@ func coreClosure(mutate func(files map[string]RuntimeFile, versions map[string]s
 	files["runtime/agent-bin/taskfleet"] = RuntimeFile{Component: "taskfleet", Mode: 0755}
 	files["runtime/agent-bin/workmux"] = RuntimeFile{Component: "workmux", Mode: 0755}
 	files["runtime/agent-bin/pi"] = RuntimeFile{Component: "agent-launcher", Mode: 0755}
+	files["runtime/agent-bin/pbcopy"] = RuntimeFile{Component: "agent-launcher", Mode: 0755}
+	files["runtime/agent-bin/pbpaste"] = RuntimeFile{Component: "agent-launcher", Mode: 0755}
 	files["runtime/taskfleet/skills/worktree-merge/SKILL.md"] = RuntimeFile{Component: "taskfleet", Mode: 0644}
 	files["runtime/taskfleet/extension.mjs"] = RuntimeFile{Component: "agent-launcher", Mode: 0644}
 	files["runtime/web-search/extension.mjs"] = RuntimeFile{Component: "npm:node_modules/@open-habitat/pi-web-search", Mode: 0644}
@@ -198,6 +200,8 @@ func TestReleaseClosureCoreAgentTools(t *testing.T) {
 		"taskfleet missing":        func(f map[string]RuntimeFile, _ map[string]string) { delete(f, "runtime/agent-bin/taskfleet") },
 		"workmux missing":          func(f map[string]RuntimeFile, _ map[string]string) { delete(f, "runtime/agent-bin/workmux") },
 		"launcher missing":         func(f map[string]RuntimeFile, _ map[string]string) { delete(f, "runtime/agent-bin/pi") },
+		"pbcopy missing":           func(f map[string]RuntimeFile, _ map[string]string) { delete(f, "runtime/agent-bin/pbcopy") },
+		"pbpaste missing":          func(f map[string]RuntimeFile, _ map[string]string) { delete(f, "runtime/agent-bin/pbpaste") },
 		"taskfleet unpinned":       func(_ map[string]RuntimeFile, v map[string]string) { v["taskfleet"] = "0.18.0" },
 		"workmux unpinned":         func(_ map[string]RuntimeFile, v map[string]string) { v["workmux"] = "0.1.276" },
 		"skills extension missing": func(f map[string]RuntimeFile, _ map[string]string) { delete(f, "runtime/taskfleet/extension.mjs") },
@@ -243,6 +247,9 @@ func TestReleaseClosureCoreAgentTools(t *testing.T) {
 		},
 		"command of another part": func(f map[string]RuntimeFile, _ map[string]string) {
 			f["runtime/agent-bin/pi"] = RuntimeFile{Component: "taskfleet", Mode: 0755}
+		},
+		"pbpaste of another part": func(f map[string]RuntimeFile, _ map[string]string) {
+			f["runtime/agent-bin/pbpaste"] = RuntimeFile{Component: "workmux", Mode: 0755}
 		},
 	} {
 		t.Run(name, func(t *testing.T) {

@@ -112,6 +112,10 @@ def build(work, out, release_target, inputs=Path('/inputs')):
     scratch.mkdir()
     rust_tools.add_tools(artifact_lock, release_target, root, scratch, put_bytes, components)
     put(inputs / 'agent-bin/pi', 'runtime/agent-bin/pi', 'agent-launcher')
+    # pbcopy and pbpaste for commands in a Habitat terminal (Jari 25.11.2026),
+    # first-party scripts over the terminal's tmux.
+    for name in ('pbcopy', 'pbpaste'):
+        put(inputs / 'agent-bin' / name, 'runtime/agent-bin/' + name, 'agent-launcher')
     put(inputs / 'taskfleet-skills.mjs', 'runtime/taskfleet/extension.mjs', 'agent-launcher')
     # Keep the loader's runtime entry point stable, but attribute its bytes
     # and licence to the digest-locked upstream package, not our launcher.
