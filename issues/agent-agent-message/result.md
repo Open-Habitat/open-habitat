@@ -1,5 +1,118 @@
 # Agentin viesti toiselle keskustelulle
 
+## Kierros 4
+
+Kierros: `design-system/prototypes/rounds/2026-11-25-agent-agent-message-4/`
+(rakennus ja tarkistus: `NOTES.md`). Malli ja host-tiedot:
+[design.md](design.md). Sivu on rakennettu tuotannon komponenteista, joita
+ei muutettu. Avattava sivu kaikkine fontteineen:
+`design-system/prototypes/dist/2026-11-25-agent-agent-message-4/offline.html`,
+kuvat (DPR 2) sen vieressä hakemistossa `shots/`.
+
+Valitsit kierroksella 3 A Peilin etkä halua vahtia etkä hyppyrajaa. Tuleva
+viesti on siis kierroksen 2 A Kirjeet ja lähtevä kierroksen 3 A Peili, ja
+tarina on taas kierroksen 2 viisi vaihetta. Vaiheet 6–7, vahdin kortti ja
+hyppyraja on poistettu sivulta ja design.md:stä. Host ei tarvitse niitä
+varten mitään: ei lohkon laskuria, ei pidätystä eikä sen snapshot-tietoa,
+ei *Jatka*- ja *Älä lähetä* -komentoja, ei tilaa `held_for_person`, ei
+virhekoodeja `agent_message_held` ja `agent_message_chain` eikä
+lopputuloksen Habitat-riviä.
+
+Akseli: kuinka paljon viestilohko sanoo nimen ja viestin lisäksi. Kaikissa
+suunnissa aika on nimen perässä, kuten aikaleimojen kierroksella 2 valitsit
+(A Otsake).
+
+- **Nyt (kierroksen 3 A Peili).** Tulevassa lukee *Kvartaaliraportti ·
+  agentti*, lähtevässä *Tämä agentti › Kaaviot*, aika on oikeassa
+  reunassa, lainauksen otsikko on *Viittaa viestiin · Kaaviot · 9.46* ja
+  ote on sen alla, ja jonoon mennyt viesti sanoo *Jonossa: Kvartaaliraportti
+  oli kesken*.
+- **A Minimi.** Kuvake, keskustelun nimi linkkinä, aika ja viesti. Tulevan
+  kuvake on agentti ja lähtevän lähetysnuoli. Lainausta ja tilaa ei näy;
+  Pi saa lainauksen yhä lohkossaan.
+- **B Hiljainen.** A, ja lainaus yhtenä rivinä (kuvake ja otteen alku),
+  kun agentti lainasi viestiä. Rivi vie lainattuun viestiin. Tilaa ei näy.
+- **C Konteksti.** B, ja tila yhdellä sanalla vain silloin, kun viesti ei
+  mennyt suoraan perille: *Meni jonoon* (syy osoittimen alla:
+  *Kvartaaliraportti oli kesken, joten viesti odotti sen vuoron loppuun.*).
+
+**Suositus: B Hiljainen.** Nimi kertoo, keneltä tai kenelle viesti on, ja
+linkki vie samaan viestiin toisessa keskustelussa, joten *agentti*, *Tämä
+agentti* ja *Viittaa viestiin* eivät kerro mitään lisää. Lainausrivi
+kannattaa pitää, koska se näkyy vain, kun agentti lainasi, ja silloin se
+kertoo, mihin viestiin vastataan, jos välissä on muuta. Tila jää pois,
+koska agentti sanoo jonon joka tapauksessa omassa lauseessaan ja
+vastaanottajan kentän jono nimeää lähettäjän niin kauan kuin viesti odottaa.
+Lisäksi tila jäisi lohkoon pysyvästi, vaikka viesti on jo perillä, koska
+näkymä ei seuraa toista keskustelua. A on siistein, mutta silloin
+lainauksen joutuu päättelemään tekstistä. C on rehellisin hetkellä, jolloin
+viesti lähti, mutta lisää sanan, joka vanhenee.
+
+### Tekstit, jotka poistuivat tai muuttuivat kierroksesta 3
+
+Kierroksen 3 A Peiliin verrattuna. "A–C" tarkoittaa kaikkia uusia suuntia.
+
+| Kierroksella 3 (fi / en) | Kierroksella 4 | Suunnat |
+|---|---|---|
+| Tulevan otsikossa *· agentti* / *· agent* | poistettu; agentin kuvake jää | A–C |
+| Lähtevän otsikossa *Tämä agentti* ja ›-kuvake / *This agent* › | poistettu; lähetysnuoli ja vastaanottajan nimi | A–C |
+| Aika otsikon oikeassa reunassa | heti nimen perässä | A–C |
+| Tulevan saavutettava nimi *Agentin viesti keskustelusta {nimi}* / *Agent message from {name}* | *Viesti keskustelusta {nimi}* / *Message from {name}* | A–C |
+| Lähtevällä ei saavutettavaa nimeä | *Viesti keskusteluun {nimi}* / *Message to {name}* (uusi) | A–C |
+| Lainauksen otsikko *Viittaa viestiin* / *Refers to* | poistettu | A–C |
+| Lainauksen *{kuka} · {aika}*, esim. *Tämä agentti · 9.46* / *This agent · 9.46* | poistettu näkyvistä; kuka ja aika saavutettavassa nimessä | A–C |
+| Lainauksen ote omana kappaleenaan | yksi rivi, katkeaa ellipsiin | B, C |
+| Lainaus kokonaan | poistettu | A |
+| Lainauksen saavutettava nimi *Siirry lainattuun viestiin (klo {aika})* / *Go to the quoted message ({time})* | *Lainaus: {kuka} klo {aika}. Siirry viestiin.* / *Quote: {who} at {time}. Go to the message.* | B, C |
+| Tila *Jonossa: {nimi} oli kesken* / *Queued: {name} was busy* | poistettu | A, B |
+| sama | *Meni jonoon* / *Queued*, syy otsikkotekstinä *{nimi} oli kesken, joten viesti odotti sen vuoron loppuun.* / *{name} was busy, so the message waited for its turn to end.* | C |
+| Jonorivin alku *Agentti keskustelusta {nimi}:* / *Agent from {name}:* | *{nimi}:* / *{name}:* | A–C |
+| Vahdin kortti: *Agentit odottavat sinua*, *{a} ja {b} ovat vaihtaneet 10 viestiä peräkkäin…*, *Tämä viesti keskusteluun {b} lähtee, kun jatkat.*, *Keskustelusta {a} on tulossa viesti…*, *Jatka*, *Älä lähetä*, *Näytä viesti* | poistettu vahdin mukana | kaikki |
+| Pidätetyn tila *Odottaa sinua*, *Ei lähetetty*; rivit *Jatkoit klo {aika}…* | poistettu vahdin mukana | kaikki |
+| Agentin lauseet pidätyksestä ja hyppyrajasta (*Viesti Kaavioille odottaa sinua…*, *Habitat ei päästänyt viestiä…*) | poistettu vaiheiden 6–7 mukana | kaikki |
+| Pi:n lohkossa `count="n"` (Nyt-suunnassa `hop`) ja rivi *The person let this message through after 10 agent messages in a row.* | poistettu; muuten lohko ja sen otsikkorivi ennallaan | kaikki |
+
+Suunta C Konteksti sanoisi pysähtyneestä keskustelusta *Käynnisti
+keskustelun* / *Started the conversation*; tarinassa sitä ei ole.
+
+### Tarkistus
+
+`check.mjs` kävi kaikki neljä suuntaa Päivä-, Yö- ja Korkea kontrasti
+-teemassa 1440 ja 390 px vähennetyllä liikkeellä suomeksi, ja lisäksi
+englanniksi 1440 Päivä ja 390 Yö. Mukana olivat kaikki viisi vaihetta,
+merkintä (ei koskaan sinun kuplaasi), samat lohkot jokaisessa suunnassa,
+kunkin suunnan sanat ja niiden puuttuminen, aika nimen perässä, yhden rivin
+lainaus, tila vain Nyt- ja C-suunnassa, jonorivin alku, linkit paneelien
+välillä, lainauksesta alkuperäiseen ja Pi:n saama teksti ilman laskuria.
+1128 tarkistusta meni läpi, ja konsoli pysyi puhtaana.
+
+### Decisions for later review
+
+- Aika on lohkon otsikossa nimen perässä, kuten aikaleimojen kierroksen 2
+  A Otsake sanoo kaikista viesteistä.
+- Lähtevän lohkon kuvake on lähetysnuoli (`arrowUp`, sama kuin kentän
+  Lähetä), tulevan agentin kuvake. Sanoja suunnan erottamiseen ei ole;
+  saavutettava nimi kertoo sen.
+- Lainausrivi näkyy aina, kun agentti käytti `--quote`a. Se ei piiloudu,
+  vaikka lainattu viesti olisi heti yllä.
+- Agentin ohjeesta poistui käsky sanoa vastauksessa, että viesti lähti:
+  lohko näkyy aina, joten agentti mainitsee viestin vain sen verran kuin
+  sinun tarvitsee tietää (esimerkiksi että se meni jonoon) eikä toista
+  sen tekstiä. Tarinan agenttien lauseet ovat ennallaan, jotta suunnat
+  eroavat vain lohkoissa.
+- Jaetussa keskustelussa osallistuja näkee tulevan lohkon otsikossa
+  *Omistajan toinen keskustelu* / *The owner's other conversation* ilman
+  linkkiä.
+- Pi:n lohkon otsikkorivi pysyy ennallaan; se on Pi:lle eikä näy sinulle.
+
+### Kysymykset Jarille
+
+1. Kelpaako B Hiljainen, vai haluatko vielä vähemmän (A, ei lainausta) tai
+   tilan jonoon menneestä viestistä (C)?
+2. Riittääkö pelkkä lohko kertomaan, että viesti lähti, eli saako agentti
+   jättää *Lähetin viestin keskusteluun Kaaviot* -lauseen kokonaan pois?
+3. Piilotetaanko lainausrivi, kun lainattu viesti on heti lohkon yllä?
+
 ## Kierros 3
 
 Kierros: `design-system/prototypes/rounds/2026-11-24-agent-agent-message-3/`

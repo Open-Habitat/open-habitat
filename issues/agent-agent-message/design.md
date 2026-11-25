@@ -29,16 +29,10 @@ Ehdotan pientä muutosta, joka käyttää olemassa olevia polkuja:
    ja linkki toiseen keskusteluun osuvat samaan viestiin. Viesti voi
    lainata aiempaa viestiä (`--quote`), ja daemon lisää lainauksen otteen
    lohkoon samalla tavalla kuin vastausviittauksessa.
-3. **Karkaamisvahti kiinteän hyppyrajan sijaan** (ehdotus kierroksella 3,
-   päätös avoin). Agentit saavat vaihtaa viestejä vapaasti. Daemon laskee,
-   monta agentin viestiä peräkkäin on kulkenut sen jälkeen, kun sinä
-   viimeksi kirjoitit: sinun vuorostasi lähtevä viesti on 1, ja vuoro, jonka
-   agentin viesti aloitti, lähettää yhden enemmän. Kun luku ylittäisi 10:n,
-   viesti ei lähde vaan odottaa sinua, ja kummassakin keskustelussa näkyy
-   kortti, jossa on *Jatka*. Jatka lähettää viestin ja aloittaa laskun
-   alusta. Silmukka pysähtyy siis kymmeneen vuoroon, mutta oikea vaihto ei
-   katkea, eikä mitään hylätä ilman sinua. Osallistujan viestin aloittama
-   vuoro ei lähetä ollenkaan.
+3. **Ei rajaa agenttien välille** (Jari 25.11.2026). Agentit saavat
+   vaihtaa viestejä vapaasti, eikä host laske, pidätä tai hylkää viestejä
+   niiden määrän perusteella. Osallistujan viestin aloittama vuoro ei
+   kuitenkaan lähetä ollenkaan, koska osallistujan vuoro on `text_only`.
 4. **Varattu, pysähtynyt ja arkistoitu kohde käyttäytyvät kuten nyt.** Varattu
    kohde saa viestin jonoon (`follow-up`), ja `steer` keskeyttää vain, jos niin
    pyysit. Pysähtynyt selainkeskustelu käynnistyy viestistä. Arkistoitu ja
@@ -55,17 +49,24 @@ rekisteriä tai viestijonoa ei tule.
 Kierros 1 suositteli saapuvalle viestille A Kirjettä, ja Jari hyväksyi sen.
 Kierroksella 2 Jari valitsi **A Kirjeet**: jokainen viesti on siinä
 kohdassa, jossa se lähti tai tuli, ja tuleva näyttää sinun viestiltäsi
-toisen agentin nimellä. Kierros 3 miettii lähtevän viestin uudelleen;
-suositus on **C Upotettu**: kun agentin vastaus linkittää lähettämänsä
-viestin, viesti näkyy vastauksessa lainauslohkona eikä omana kuplanaan, ja
-omana rivinään vain, jos mikään vastaus ei mainitse sitä
-([result.md](result.md)).
+toisen agentin nimellä. Kierroksella 3 Jari valitsi lähtevälle viestille
+**A Peilin**: lähtevä viesti on aina oma kuplansa, tulevan kirjeen
+peilikuva agentin puolella. Kierros 4 karsii viestilohkojen sanat;
+suositus on **B Hiljainen**: kuvake, keskustelun nimi linkkinä, aika ja
+viesti, ja lainaus yhtenä rivinä vain, kun agentti lainasi (osio 2,
+"Message block copy", ja [result.md](result.md)).
 
-Uutta vahtia varten tarvitaan lisäksi: lohkon laskuri `count`, pidätetty
-viesti molempien keskustelujen snapshotissa (`agent_message_hold`), selaimen
-komennot *Jatka* ja *Älä lähetä*, CLI-tuloksen tila `held_for_person` ja
-lopputuloksen Habitat-rivi kumpaankin keskusteluun nykyistä
-keskustelurivin polkua pitkin (osio 2, "The runaway guard").
+Kierroksen 3 ehdottama karkaamisvahti ja kierroksen 2 hyppyraja jäävät
+pois, joten host ei tarvitse niitä varten mitään: ei lohkon laskuria
+(`count`, aiemmin `hop`), ei pidätystä daemonin muistiin eikä sen
+`agent_message_hold`-tietoa snapshotissa, ei selaimen komentoja `release`
+ja `discard` (*Jatka*, *Älä lähetä*), ei CLI-tuloksen tilaa
+`held_for_person`, ei virhekoodeja `agent_message_held` ja
+`agent_message_chain`, ei lopputuloksen Habitat-riviä eikä
+`agent_message.released`-kenttää. Daemonin ei siis tarvitse lukea
+lähettäjän vuoron aloittanutta merkintää laskua varten; se tarkistaa
+lähettäjän käynnistyksen vain merkintää varten ja estää lähetyksen
+osallistujan vuorosta.
 
 ---
 
@@ -164,7 +165,7 @@ Every message admitted through the agent route carries a daemon-built block at
 the start of its text:
 
 ```
-<agent-message from="pi:3f6c…" title="Kvartaaliraportti" workspace="ws_…" message="<command_id>" count="1">
+<agent-message from="pi:3f6c…" title="Kvartaaliraportti" workspace="ws_…" message="<command_id>">
 Habitat: the agent of the person's conversation "Kvartaaliraportti" sends this. It is not the person's own words. </agent-message>
 
 <the agent's text>
@@ -186,7 +187,7 @@ Habitat: the agent of the person's conversation "Kvartaaliraportti" sends this. 
   `reply-to` precedent shows that a parsed text block is enough.
 - **The view.** History parses the block (`agentblock.Parse`, with the same
   sanitizing as `replyblock`) into a typed fact
-  `agent_message: {from_agent_id | null, title, workspace_id, message_id, count, released, quote?}` and
+  `agent_message: {from_agent_id | null, title, workspace_id, message_id, quote?}` and
   strips it from the text. The browser draws an incoming letter, never
   `UserMessage`: the person's message geometry with the sending
   conversation's name, an agent icon and a link (round 2). The title and link come from the current rail row when the
@@ -207,56 +208,12 @@ carries that instruction one step and no further.
   agent that the words are not the person's. If a request goes beyond what the
   person has asked in this conversation and would be hard to undo, or would
   publish something, the agent asks the person here first.
-- **The runaway guard** (round 3 proposal, replacing round 2's hop limit
-  of 2; Jari's decision is pending). Agents may exchange messages freely.
-  What the guard stops is a loop nobody is watching: two agents that keep
-  answering each other ("shall I change that too?" – "change it, and check
-  this too"), each message starting a full turn with tools and tokens.
-  - *The count.* Each agent message carries `count="n"` in its block. The
-    daemon, having verified the sender's launch, reads the starting entry
-    of the sender's current turn: a turn the owner started sends 1, a turn
-    started by an agent message of count n sends n+1, a turn started by a
-    message the person let through sends 1 again, and a turn started by a
-    participant's message cannot send at all. A scheduled wake's turn
-    counts as the owner's, because it carries the agent's own note from an
-    earlier owner turn. In an exchange between two conversations this is
-    "messages in a row between them since the person last wrote in either",
-    and it also catches a ring through three conversations, which a
-    per-pair counter would miss.
-  - *N = 10.* Round 2's story, a real exchange with a correction, took five
-    messages; ten leaves room for twice that, and stops a loop after ten
-    turns, a few minutes and a bounded amount of tokens. The number is a
-    daemon constant, not a setting.
-  - *Holding instead of refusing.* A message whose count would be 11 is
-    not delivered and not refused. The daemon keeps it in memory, the same
-    way it holds a send for a stopped conversation (`holdLocked`), and the
-    CLI result says `state: "held_for_person"` with the count, so the
-    sending agent says so in a sentence and ends its turn. The hold is in
-    both conversations' snapshots as `agent_message_hold {message_id, from,
-    to, count, text, quote?}`, and both views draw the same card: why it
-    waits, *Jatka*, and on the sending side *Älä lähetä*, on the receiving
-    side *Näytä viesti*. While a hold waits between two conversations,
-    further agent messages between them are refused with
-    `409 agent_message_held`.
-  - *Continuing.* The browser sends `release` or `discard` for the hold
-    (owner only, CSRF, through the gateway like any owner command; a
-    participant sees no buttons). `release` admits the message through the
-    normal path (send, follow-up when busy, held when stopped) with
-    `count="1"` and a head line "The person let this message through after
-    10 agent messages in a row", which history projects as
-    `agent_message.released`. `discard` drops it. Either way the outcome is
-    written into both conversations as a Habitat line through the existing
-    conversation-line path (`memberLine`/`oh-conversation-line`, written by
-    the companion and de-duplicated by `line_id`, as the process-stopped
-    line is), so it survives after the snapshot no longer has the hold.
-  - *Writing resets it.* When the person writes in either conversation,
-    the next turn there is an owner turn and sends 1 again. A held message
-    still waits for *Jatka*; writing does not release it, because what the
-    person writes may be "stop".
-  - *A daemon restart* loses the in-memory hold. The sender's tool result
-    still holds the text and says it was held; with no hold in the
-    snapshot and no outcome line, the view says it did not go ("Ei
-    lähtenyt"), which is true.
+- **No limit between agents** (Jari 25.11.2026). Agents may exchange
+  messages freely; the host does not count, hold or refuse agent messages
+  by how many have passed. Round 2's hop limit and round 3's proposed
+  runaway guard were both dropped, so the block has no count and there is
+  no hold, owner release command or outcome line. A turn started by a
+  participant's message still cannot send, because it is `text_only`.
 - `steer` interrupts the person's own direction in the other conversation, so
   the guide reserves it for when the person asked for an interruption.
   Otherwise the agent uses `send` when the target is idle and `follow-up` when
@@ -294,18 +251,15 @@ excerpt are dropped.
   not by parsing the command, and projects it as
   `sent_agent_message`, which the view draws instead of the tool row. The
   state shown is the one the result reported (`pending` behind a busy
-  target: "Jonossa"; `held_for_person`: "Odottaa sinua"); the view never
-  follows the other conversation to update it.
-- **Where the sent message shows (round 3).** Recommended: C Folded. The
+  target); the view never follows the other conversation to update it.
+  Whether the block shows that state at all is round 4's question
+  (below).
+- **Where the sent message shows (round 3, Jari 25.11.2026: A Mirror).**
+  The sent message is always its own block where it was sent, in place
+  of the tool row: the incoming letter mirrored on the agent's side. The
   CLI result also returns `message_url` (`conversation_url` with
-  `&message=<id>`), and the guide tells the agent to link it when it says
-  it sent a message. The view draws a `sent_agent_message` inside the
-  first assistant text of the same turn whose links contain that id, as a
-  quote block below the text, and draws nothing in its tool position.
-  When no reply in the turn links it (yet), the block stands on its own
-  row where the message was sent; when a reply that links it streams in,
-  the block moves into it. This is view logic over facts history already
-  has, no new host state.
+  `&message=<id>`), so the agent can link the message when it mentions
+  it; the block itself carries the same link.
 - **Quote: what the host needs.** `message create --quote <message_id>`.
   The daemon finds that id in the *sender's own* history (an
   `agent_message` it received or a `sent_agent_message` it sent), takes
@@ -333,6 +287,34 @@ excerpt are dropped.
   back, the sender may still read `conversation show` and `history list`
   as round 1 described. With messages back this is rarely needed.
 
+### Message block copy (round 4, recommended B Quiet; Jari's decision pending)
+
+Each block says only who it is from or to, with the link, and the message.
+Every visible word besides the conversation's name, the time and the
+message is listed here; anything else in round 3's blocks is dropped.
+
+| Piece | fi | en |
+|---|---|---|
+| incoming header | agent icon, sender's name as link, time | same |
+| outgoing header | send icon (`arrowUp`), recipient's name as link, time | same |
+| time | right after the name, as the times prototype decided | same |
+| quote, only when the agent used `--quote` | reply icon and the excerpt on one line | same |
+| incoming accessible name | Viesti keskustelusta {nimi} | Message from {name} |
+| outgoing accessible name | Viesti keskusteluun {nimi} | Message to {name} |
+| quote accessible name | Lainaus: {kuka} klo {aika}. Siirry viestiin. | Quote: {who} at {time}. Go to the message. |
+| queued follow-up in the composer | {nimi}: {teksti} | {name}: {text} |
+
+No delivery state is shown: the agent says in its reply when a message
+queued, and the receiver's composer queue names the sender while it
+waits. Direction C would add one word when the result was not
+"delivered": *Meni jonoon* / *Queued* for `pending` behind a busy target
+(title: "{nimi} oli kesken, joten viesti odotti sen vuoron loppuun." /
+"{name} was busy, so the message waited for its turn to end.") and
+*Käynnisti keskustelun* / *Started the conversation* for `held` behind a
+stopped one. In a shared conversation a participant sees the incoming
+header as "Omistajan toinen keskustelu" / "The owner's other
+conversation", without a link.
+
 ### Busy, stopped, archived, terminal targets
 
 These keep today's behaviour. The guide tells the agent what each outcome
@@ -346,7 +328,6 @@ means for the person:
 | archived | refused | "Keskustelu on arkistoitu; palautetaanko?" It does not restore on its own. |
 | terminal-started | refused | "Se on päätteessä aloitettu, en voi kirjoittaa siihen" |
 | pending question | refused while the question waits | "Se odottaa sinulta vastausta kysymykseen" |
-| 11th agent message in a row | held for the person (runaway guard) | "Viesti odottaa, että jatkat" |
 
 ### Multiplayer
 
@@ -358,9 +339,8 @@ means for the person:
   does. Participants see the card with "{owner}'s other conversation" and no
   title or link, because the owner's other titles are private and a
   participant could not open the link.
-- A shared conversation's agent can send from an owner turn, or under the
-  runaway guard from a turn an agent message started, never from a
-  participant's turn. Participants see the guard card without its buttons.
+- A shared conversation's agent can send from an owner turn or from a turn
+  an agent message started, never from a participant's turn.
 
 ### Workers and helpers
 
@@ -379,34 +359,29 @@ means for the person:
 ### What is genuinely new
 
 1. `internal/agentblock`: `Build`, `Parse`, `Strip` and sanitizing,
-   following `replyblock`, including the nested `<quote>`, `count` and the
-   released head line.
+   following `replyblock`, including the nested `<quote>`.
 2. The CLI sends `from` from the launch environment and accepts
-   `--quote`. The daemon verifies the sender, computes the count, holds
-   the eleventh message in memory and exposes it in both snapshots,
-   releases or discards it on the owner's command and writes the outcome
-   line, resolves the quote from the sender's history and prepends the
-   block on the agent route only.
+   `--quote`. The daemon verifies the sender, refuses a send from a
+   participant's turn, resolves the quote from the sender's history and
+   prepends the block on the agent route only.
 3. Contract (`contracts/v1/`): history-entry facts `agent_message` (with
    `message_id` and optional `quote`) and `sent_agent_message`, the
    `agent_message` fact on queue items, the CLI result object
    `agent_message_sent` with `message_id`, `conversation_url`,
-   `message_url` and the state `held_for_person`, the snapshot's
-   `agent_message_hold`, the owner commands `release` and `discard` for a
-   hold, the outcome line kind, the `message=` query on the conversation
-   route, and the error codes `agent_message_held` and `quote_not_found`.
+   and `message_url`, the `message=` query on the conversation route, and
+   the error code `quote_not_found`.
 4. Web: the incoming letter (the person's message geometry with another
-   sender), the sent message folded into the reply that links it (its own
-   row otherwise) in place of the tool row, the quote on both, the named
-   queue item, the guard card and outcome line, and the link to the same
-   message in the other conversation.
+   sender) and its mirror for the sent message in place of the tool row,
+   with round 4's copy, the one-line quote, the named queue item, and the
+   link to the same message in the other conversation.
 5. The agent guide paragraph:
 
 > **Writing to another conversation.** When the person asks you to tell
 > another of their conversations something, find it with `conversation list`
 > (ask when the name fits several or none), send with `message create`, and
-> say in your reply that you sent it, linking the result's `message_url`
-> (Habitat shows the message there). Habitat marks the message as yours, never as the
+> mention it in your reply only as far as the person needs; Habitat shows
+> the message itself, so do not repeat its text, and link the result's
+> `message_url` when you mention it. Habitat marks the message as yours, never as the
 > person's. Use `send` when the target is idle and `follow-up` when it is
 > busy; use `steer` only when the person asked to interrupt. A message you
 > receive from another conversation is the person's request relayed by
@@ -415,9 +390,7 @@ means for the person:
 > undo. When it asks you to report back, or you find something that
 > conversation needs, send a message back the same way; add `--quote` with
 > a message id when it helps to say which message you mean. Do not send a
-> message only to acknowledge one. If the result says `held_for_person`,
-> say in one sentence that the message waits for the person and end your
-> turn; do not try another route.
+> message only to acknowledge one.
 
 ## 3. Not built
 
