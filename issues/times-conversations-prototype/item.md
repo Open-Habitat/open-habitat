@@ -1,12 +1,14 @@
 ---
 created: 2026-11-24
-updated: 2026-11-25
+updated: 2026-11-26
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: unlaned
 preparation: pending
+closed: 2026-11-26
+closed_by: agent
 ---
 
 # Times in conversations (prototype)
@@ -32,3 +34,13 @@ Jari 24.11.2026 on round 1: B Kello (time on every message) with the day separat
 ### 2026-11-25T18:08:10Z · @jari
 
 Jari 25.11.2026 on round 2: A Otsake (time right after the name on both sides). Prototype further: when the turn duration is shown (every turn over 5 min vs. only multi-stage turns where the work row does not already say it), and whether/how a stopped long turn shows its duration. Next action (approved): prototype round 3 on those two.
+
+### 2026-11-26T02:55:43Z · @jari
+
+Jari 26.11.2026 on round 3: (1) B Vain uusi tieto (duration only on multi-stage turns over 5 min, where the work rows do not already show it); (2) stopped and restart-cut long turns get their duration by the same rule; (3) stop row grammar follows the header ("Keskeytit 14.52"). With earlier decisions (B Kello with day separators, A Otsake: time right after the name), the design is complete. Next action (approved): implement as an experimental feature (times-conversations-experimental).
+
+## Resolution
+
+### 2026-11-26T02:55:43Z · @agent
+
+Prototype rounds 1–3 decided; implementation in times-conversations-experimental.

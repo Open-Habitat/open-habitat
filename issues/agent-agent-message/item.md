@@ -1,12 +1,14 @@
 ---
 created: 2026-11-24
-updated: 2026-11-25
+updated: 2026-11-26
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: unlaned
 preparation: pending
+closed: 2026-11-26
+closed_by: agent
 ---
 
 # Agent-to-agent message between the person's conversations (design and prototype)
@@ -57,3 +59,13 @@ Jari 24.11.2026 on round 2: A Kirjeet. Hop limit: Jari does not see why agents s
 ### 2026-11-25T18:13:12Z · @jari
 
 Jari 25.11.2026 on round 3: A Peili (the outgoing message is always its own bubble, the mirror of the incoming letter). No runaway guard and no hop limit: agents may message each other freely. Prototype next: the texts and details in the message blocks, which carried unnecessary words and details (e.g. "Viittaa viestiin"). Next action (approved): prototype round 4 on the copy, then implementation once Jari accepts it.
+
+### 2026-11-26T02:55:43Z · @jari
+
+Jari 26.11.2026 on round 4: (1) B Hiljainen (icon, conversation name as link, time, message; a one-line quote only when the agent quoted); (2) the agent may leave out its own "I sent a message to …" sentence, the block says it; (3) hide the quote row when the quoted message is directly above the block. Also: a quote preview cut short must end with "…" (or similar) so it is clear the message continues. Design complete (incoming A Kirjeet, outgoing A Peili, no guard, no hop limit). Next action (approved): implement as an experimental feature (agent-agent-messages).
+
+## Resolution
+
+### 2026-11-26T02:55:43Z · @agent
+
+Prototype rounds 1–4 decided; implementation in agent-agent-messages.
