@@ -401,9 +401,7 @@ test("@browser-shell pbcopy reaches the page's clipboard and pbpaste reads it ba
   // selection in tmux.
   const copy = page.getByRole("button").and(page.getByTestId("copy-selection"));
   await expect(copy).toBeVisible();
-  await expect(screen(page)).toContainText(
-    "sent 14 bytes to the terminal",
-  );
+  await expect(screen(page)).toContainText("sent 14 bytes to the terminal");
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
   await copy.click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
