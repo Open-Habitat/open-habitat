@@ -2,13 +2,15 @@
 created: 2026-11-26
 updated: 2026-11-26
 type: bug
-status: untriaged
+status: open
 priority: high
 provenance: other
 provenance_detail: release driver gate
 source_ref: taskfleet:01m8b78ckjycq9km1mxd7zcdkp/gate:f698d5366
 originating_run: 01m8b78ckjycq9km1mxd7zcdkp
 originating_run_kind: spinoff
+lane: unlaned
+preparation: ready
 ---
 
 # Gate red at f698d5366: dictation's warm AudioContext fails attention-sound spec; views_linux_test.go unformatted
@@ -35,3 +37,9 @@ The clean gate of `f698d5366` (the planned v0.1.9 source) is red for two determi
 2. `internal/gateway/views_linux_test.go` is not gofmt-formatted (the map literal in `newViewDesk`, since `f7c761b08`/`d93aa1844`, offered-html-file), so the gate's formatter changes the tree and the final check fails with "green gate changed the clean tree". `gofmt -w internal/gateway/views_linux_test.go` fixes it.
 
 Load flakes in the same gate that passed when rerun alone: `internal/daemon` (10 min package timeout under load; 3/3 alone, ~255 s), `attachments.spec.ts` (2 tests), `browser-conversation.spec.ts:459`; intermittent alone: `browser-terminal.spec.ts:175` (1/3 pass, run outside tmux) and `loading-landing.spec.ts:249` (2/3).
+
+## Comments
+
+### 2026-11-26T06:51:43Z · @agent
+
+Conductor 26.11.2026: accepted; it blocks v0.1.9, which Jari wants today.
