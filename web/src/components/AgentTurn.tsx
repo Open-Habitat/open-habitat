@@ -8,18 +8,23 @@ import {
 } from "react";
 import { formatDate, liveText } from "../i18n";
 import { agentTurnText } from "../text/agentTurn";
+import { conversationTimesText } from "../text/conversationTimes";
 import { getWorkPreference } from "../workPreference";
 import { ControlButton } from "./ControlElements";
 import {
   AssistantMessage,
   ConversationVoice,
   InterimMessage,
+  type MessageAt,
 } from "./Conversation";
+import { MessageTime } from "./ConversationTimes";
+import { minutesLabel, turnMinutes } from "./conversationTimes";
 import { Markdown } from "./Markdown";
 import { ReplyCornerButton } from "./ReplyQuote";
 import { StatusMark } from "./Status";
 
 const txt = liveText(agentTurnText);
+const timesTxt = liveText(conversationTimesText);
 
 /**
  * A one-line title for reasoning that brings none (Claude's, for example): the
@@ -264,9 +269,12 @@ function StageRow({
 function StageReply({
   step,
   role,
+  at,
 }: {
   step: Extract<TurnStep, { kind: "text" }>;
   role: "interim" | "final" | "streaming" | "failed";
+  /** The saved time after the name (conversation-times). */
+  at?: MessageAt;
 }) {
   const copy = () => void navigator.clipboard?.writeText(step.text);
   // Only a finished message is answered: a streamed one has no saved text.
@@ -292,7 +300,7 @@ function StageReply({
       className={`ah-turn-reply${role === "interim" ? " ah-turn-interim" : ""}`}
     >
       {role === "interim" ? (
-        <InterimMessage onCopy={copy} actions={actions}>
+        <InterimMessage onCopy={copy} actions={actions} at={at}>
           {step.node}
         </InterimMessage>
       ) : (
@@ -306,6 +314,7 @@ function StageReply({
           }
           onCopy={copy}
           actions={actions}
+          at={at}
         >
           {step.node}
         </AssistantMessage>
@@ -320,8 +329,34 @@ function StageReply({
  * daemon's restart cut the same way; that one says the server cut it, since
  * the person did nothing.
  */
-function StoppedRow({ at, by }: { at?: number; by?: "restart" }) {
+function StoppedRow({
+  at,
+  by,
+  times = false,
+  took,
+}: {
+  at?: number;
+  by?: "restart";
+  /** conversation-times: the time follows the verb as it follows a
+   * message's name ("Keskeytit 14.52"), and a long multi-stage turn's
+   * duration joins it. */
+  times?: boolean;
+  took?: string;
+}) {
   const time = at === undefined ? undefined : new Date(at);
+  if (times && at !== undefined)
+    return (
+      <div
+        data-testid="turn-stopped"
+        data-by={by ?? "person"}
+        className="ah-turn-stopped"
+      >
+        <span className="ah-turn-stopped-text">
+          {by === "restart" ? txt.stoppedRestart : txt.stopped}{" "}
+          <MessageTime at={at} took={took} />
+        </span>
+      </div>
+    );
   return (
     <div
       data-testid="turn-stopped"
@@ -366,6 +401,7 @@ export function AgentTurn({
   duration,
   changes,
   browser,
+  times = false,
 }: {
   steps: TurnStep[];
   /** When native history saved the message that started the turn. */
@@ -385,6 +421,10 @@ export function AgentTurn({
   /** The Selain card: the browser the turn used, under its working row
    * while it runs and beside Muutokset once it has finished. */
   browser?: ReactNode;
+  /** Times in a conversation (conversation-times, experimental): each
+   * saved reply's time after its name, and a settled multi-stage turn's
+   * duration on its final answer or its stopped row. */
+  times?: boolean;
 }) {
   const voice = useContext(ConversationVoice);
   const stages = turnStages(steps);
@@ -425,6 +465,28 @@ export function AgentTurn({
   };
   const lastStage = stages.at(-1);
   const finalStep = !working ? lastStage?.end : undefined;
+  const minutes =
+    times && !working && (stopped || !failed)
+      ? turnMinutes({
+          startedAt,
+          endedAt: stopped ? stopped.at : finalStep?.at,
+          stages: stages.length,
+        })
+      : undefined;
+  const took =
+    minutes === undefined
+      ? undefined
+      : timesTxt.turnTook(minutesLabel(minutes));
+  const replyAt = (
+    step: Extract<TurnStep, { kind: "text" }>,
+    role: string,
+  ): MessageAt | undefined =>
+    times && role !== "streaming" && step.at !== undefined
+      ? {
+          ms: step.at,
+          took: !stopped && step === finalStep ? took : undefined,
+        }
+      : undefined;
   return (
     // Unnamed, so not a landmark: a conversation holds many turns, and
     // landmark navigation would list them as identical entries. The
@@ -505,7 +567,11 @@ export function AgentTurn({
               </div>
             ) : null}
             {stage.end && role ? (
-              <StageReply step={stage.end} role={role} />
+              <StageReply
+                step={stage.end}
+                role={role}
+                at={replyAt(stage.end, role)}
+              />
             ) : null}
           </Fragment>
         );
@@ -529,7 +595,7 @@ export function AgentTurn({
       {!working ? changes : null}
       {browser}
       {stopped && !working ? (
-        <StoppedRow at={stopped.at} by={stopped.by} />
+        <StoppedRow at={stopped.at} by={stopped.by} times={times} took={took} />
       ) : null}
     </section>
   );

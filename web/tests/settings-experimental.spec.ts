@@ -16,6 +16,7 @@ const features = [
   "rail-state-motion",
   "workspace-header-c2a",
   "reply-to-message",
+  "conversation-times",
 ];
 const retired = [
   "agent-instructions",

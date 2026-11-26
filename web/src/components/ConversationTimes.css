@@ -1,0 +1,33 @@
+/* Times in a conversation (round 2026-11-25-times-conversations-3, B Vain
+   uusi tieto on round 2's A Otsake and round 1's B Kello). Quiet meta text:
+   the time follows the name and Kopioi follows the time. */
+/* Inline content, so the space before " · vuoro kesti" stays. */
+.ah-message-when {
+  display: inline-block;
+  min-width: 0;
+  color: var(--ah-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ah-message header .ah-message-when time {
+  margin-inline-start: 0;
+}
+.ah-message header:has(> .ah-message-when) {
+  flex-wrap: wrap;
+  row-gap: 0;
+}
+
+/* Where the date changes: a centred word between two hairlines. */
+.ah-day-separator {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s3);
+  color: var(--ah-muted);
+  font: 600 var(--ah-size-meta) var(--ah-font);
+}
+.ah-day-separator::before,
+.ah-day-separator::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--ah-line);
+}

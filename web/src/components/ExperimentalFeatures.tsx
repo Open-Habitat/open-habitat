@@ -47,7 +47,8 @@ function Picture({ id, on }: { id: string; on: boolean }) {
     id === "sounds-active-device" ||
     id === "rail-state-motion" ||
     id === "workspace-header-c2a" ||
-    id === "reply-to-message"
+    id === "reply-to-message" ||
+    id === "conversation-times"
   )
     body = (
       <>

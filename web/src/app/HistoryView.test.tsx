@@ -1428,3 +1428,62 @@ it("says a server restart, not the person, ended a turn the restart cut", () => 
     ),
   ).toEqual(["restart"]);
 });
+
+// conversation-times: a day separator where a turn begins on a new day, never
+// inside a turn that runs past midnight, and only with the switch on. Noon
+// UTC keeps each moment on its own calendar day in any real zone.
+it("separates days between turns and gives saved messages their time", () => {
+  const message = (
+    key: string,
+    kind: "user" | "assistant",
+    timestamp: string,
+  ): HistoryEntry => ({
+    entry_key: key,
+    kind,
+    timestamp,
+    blocks: [{ type: "text", text: key }],
+    content: { media_type: "text/plain", text: key, complete: true },
+  });
+  const entries = [
+    message("u1", "user", "2026-11-20T12:00:00Z"),
+    message("a1", "assistant", "2026-11-20T12:01:00Z"),
+    // This turn runs into the next day; the next one starts on that day.
+    message("u2", "user", "2026-11-22T12:00:00Z"),
+    message("a2", "assistant", "2026-11-23T12:00:00Z"),
+    message("u3", "user", "2026-11-23T12:05:00Z"),
+    message("a3", "assistant", "2026-11-23T12:06:00Z"),
+    { ...message("u4", "user", ""), timestamp: undefined },
+    message("a4", "assistant", "2026-11-24T12:00:00Z"),
+  ];
+  const on = timelineItems(
+    entries,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    true,
+  );
+  expect(on.map((item) => item.kind)).toEqual([
+    "day",
+    "user",
+    "assistant",
+    "day",
+    "user",
+    "assistant",
+    "user",
+    "assistant",
+    "user",
+    "assistant",
+  ]);
+  render(on.map((item) => <div key={item.id}>{item.content}</div>));
+  // Every saved message carries its time; the one without a timestamp none.
+  expect(screen.getAllByTestId("message-time")).toHaveLength(7);
+  expect(timelineItems(entries).some((item) => item.kind === "day")).toBe(
+    false,
+  );
+});

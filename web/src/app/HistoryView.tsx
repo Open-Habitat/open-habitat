@@ -26,7 +26,9 @@ import { BackgroundStrip } from "../components/BackgroundStrip";
 import { BashToolCard } from "../components/BashToolCard";
 import { ControlButton, LinkRow } from "../components/ControlElements";
 import { ArchivedFoot } from "../components/ConversationArchive";
+import { DaySeparator } from "../components/ConversationTimes";
 import { CommandRun } from "../components/composer/CommandRun";
+import { localDay, messageClock } from "../components/conversationTimes";
 import { FileToolCard, fileStat } from "../components/FileToolCard";
 import type { MarkState } from "../components/HabitatMark";
 import { Icon } from "../components/Icon";
@@ -55,6 +57,7 @@ import { WaitReminderMarker } from "../components/WaitReminder";
 import { formatDate, liveText } from "../i18n";
 import { historyViewText } from "../text/historyView";
 import { largeContentText } from "../text/largeContent";
+import { useExperimentalFeature } from "./accountPreferences";
 import { agentTitle } from "./agentTitle";
 import { refusedTurnLine } from "./aiSignIn";
 import { useBrowserShell } from "./BrowserShell";
@@ -857,8 +860,11 @@ export function Entry({
   results,
   liveTools,
   toolExpansion,
+  times = false,
 }: {
   entry: HistoryEntry;
+  /** The saved time after the name (conversation-times, experimental). */
+  times?: boolean;
   /** Local presentation only; never enters the native-history store. */
   pending?: {
     waiting?: "waiting" | "failed";
@@ -917,6 +923,7 @@ export function Entry({
       {entry.kind === "user" ? (
         <UserMessage
           sourceText={content.text}
+          at={times && !pending ? atOf(entry) : undefined}
           onCopy={copy}
           actions={pending ? undefined : rewind?.menu(entry)}
           quote={
@@ -1279,6 +1286,9 @@ export function timelineItems(
   restartCut?: boolean,
   /** Whether the last commit drew this turn as the running turn. */
   wasRunning?: (id: string) => boolean,
+  /** Times in a conversation (conversation-times, experimental): day
+   * separators, each saved message's time and long turns' durations. */
+  times = false,
 ) {
   const cutByRestart = restartCutReplies(entries, restartCut);
   const results = new Map<string, HistoryEntry>();
@@ -1419,6 +1429,7 @@ export function timelineItems(
       live: merged || undefined,
       content: (
         <AgentTurn
+          times={times}
           startedAt={startedAt}
           failed={group.at(-1)?.stop_reason === "error"}
           failure={failure}
@@ -1462,18 +1473,41 @@ export function timelineItems(
       ),
     });
   };
+  // conversation-times: the day of the last saved entry drawn. A turn
+  // begins on a new day when its first message's day differs from it, so a
+  // turn that runs past midnight stays whole and the next one says the day.
+  let lastDay: number | undefined;
+  const daySeparator = (entry: HistoryEntry) => {
+    const at = savedAt(entry);
+    if (!times || at === undefined) return;
+    const day = localDay(at);
+    if (day !== lastDay)
+      items.push({
+        id: `day:${entry.entry_key}`,
+        kind: "day",
+        content: <DaySeparator at={at} />,
+      });
+  };
   for (const entry of visible) {
     // A shared conversation's participant message starts a turn as the
     // owner's message does; Habitat's line stands between turns.
     if (entry.participant_message) {
       flush();
+      daySeparator(entry);
       turnId = `turn:${entry.entry_key}`;
       turnStart = savedAt(entry);
+      const at = times ? savedAt(entry) : undefined;
       items.push({
         id: entry.entry_key,
         kind: "participant",
-        content: <ParticipantMessage fact={entry.participant_message} />,
+        content: (
+          <ParticipantMessage
+            fact={entry.participant_message}
+            at={at === undefined ? undefined : messageClock(at)}
+          />
+        ),
       });
+      if (times) lastDay = dayOf(entry) ?? lastDay;
       continue;
     }
     if (entry.conversation_line) {
@@ -1516,6 +1550,7 @@ export function timelineItems(
       )
         flush();
       if (entry.kind === "user") {
+        daySeparator(entry);
         turnId = `turn:${entry.entry_key}`;
         turnStart = savedAt(entry);
       }
@@ -1536,10 +1571,12 @@ export function timelineItems(
               onLogin={onLogin}
               agentId={agentId}
               revision={revision}
+              times={times}
             />
           ),
         });
     }
+    if (times) lastDay = dayOf(entry) ?? lastDay;
   }
   if (turn.length) flush(true);
   else if (
@@ -1583,6 +1620,14 @@ function savedAt(entry: HistoryEntry): number | undefined {
   const at = entry.timestamp ? Date.parse(entry.timestamp) : Number.NaN;
   return Number.isFinite(at) ? at : undefined;
 }
+const atOf = (entry: HistoryEntry) => {
+  const ms = savedAt(entry);
+  return ms === undefined ? undefined : { ms };
+};
+const dayOf = (entry: HistoryEntry) => {
+  const ms = savedAt(entry);
+  return ms === undefined ? undefined : localDay(ms);
+};
 
 /** The running turn's unsaved tail, shown as the end of its turn. */
 export type LiveTurnInput = {
@@ -1655,6 +1700,7 @@ function HistoryViewContent({
   archiveBusy?: boolean;
 }) {
   const openMachines = useOpenMachines();
+  const timesOn = useExperimentalFeature("conversation-times");
   const window = useWindow(store, agent.agent_id);
   const storagePressure = useStoragePressure();
   useEffect(() => {
@@ -2128,6 +2174,8 @@ function HistoryViewContent({
               undefined,
               undefined,
               agent.rest?.cause === "restart" && !!agent.interrupted_turn,
+              undefined,
+              timesOn,
             )}
             emptyLabel={txt.empty}
             onJumpToLatest={() => {}}

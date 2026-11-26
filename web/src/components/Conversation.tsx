@@ -11,6 +11,7 @@ import { conversationText } from "../text/conversation";
 import { AttachmentChips, attachmentsIn, messageText } from "./AttachmentChips";
 import { DisclosureButton } from "./ControlElements";
 import { ConversationFloatingAction } from "./ConversationFrame";
+import { MessageTime } from "./ConversationTimes";
 import { Icon } from "./Icon";
 import { Markdown } from "./Markdown";
 import { SharedViewer } from "./Multiplayer";
@@ -110,6 +111,9 @@ export function ConversationTimeline({
     </section>
   );
 }
+/** A message's saved time in epoch milliseconds and, on a long turn's final
+ * answer, the turn's duration in words (conversation-times). */
+export type MessageAt = { ms: number; took?: string };
 /**
  * Whose conversation the messages belong to. A worker's conversation is not
  * the person's: its prompts come from the main agent, and the first is the
@@ -123,6 +127,7 @@ function Message({
   person = false,
   children,
   time,
+  at,
   state,
   stateTone = "neutral",
   stateAnimated = false,
@@ -150,6 +155,9 @@ function Message({
   replying?: boolean;
   children: ReactNode;
   time?: string;
+  /** The saved time right after the name, and a long turn's duration with
+   * it (conversation-times, experimental). */
+  at?: MessageAt;
   state?: string;
   stateTone?: Tone;
   stateAnimated?: boolean;
@@ -183,6 +191,7 @@ function Message({
           {interim ? <Icon name="message" /> : null}
           {speaker}
         </strong>
+        {at ? <MessageTime at={at.ms} took={at.took} /> : null}
         <Button
           data-testid="message-copy"
           ariaLabel={txt.copyMessage(speaker)}
@@ -216,6 +225,7 @@ export function UserMessage({
   quote,
   children,
   time,
+  at,
   deliveryState,
   deliveryTone = "neutral",
   delivery,
@@ -232,6 +242,7 @@ export function UserMessage({
   skill?: ReactNode;
   children?: ReactNode;
   time?: string;
+  at?: MessageAt;
   deliveryState?: string;
   deliveryTone?: Tone;
   onCopy: () => void;
@@ -257,6 +268,7 @@ export function UserMessage({
       speaker={shared ? shared.owner : txt.you}
       person
       time={time}
+      at={at}
       state={
         waiting
           ? waiting === "failed"
@@ -305,6 +317,7 @@ export function UserMessage({
 export function AssistantMessage({
   children,
   time,
+  at,
   streamState,
   onCopy,
   actions,
@@ -314,6 +327,7 @@ export function AssistantMessage({
   sourceText?: string;
   children: ReactNode;
   time?: string;
+  at?: MessageAt;
   streamState?: "streaming" | "complete" | "interrupted" | "failed" | "unknown";
   onCopy: () => void;
 }) {
@@ -330,6 +344,7 @@ export function AssistantMessage({
       replyComplete={streamState === "complete"}
       replying={streamState === "streaming"}
       time={time}
+      at={at}
       state={
         streamState && streamState !== "complete" && streamState !== "streaming"
           ? labels[streamState]
@@ -369,13 +384,21 @@ export function InterimMessage({
   children,
   onCopy,
   actions,
+  at,
 }: {
   children: ReactNode;
   onCopy: () => void;
   actions?: ReactNode;
+  at?: MessageAt;
 }) {
   return (
-    <Message speaker={txt.interim} interim onCopy={onCopy} actions={actions}>
+    <Message
+      speaker={txt.interim}
+      interim
+      onCopy={onCopy}
+      actions={actions}
+      at={at}
+    >
       {children}
     </Message>
   );

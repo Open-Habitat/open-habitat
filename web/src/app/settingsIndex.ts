@@ -763,6 +763,22 @@ export const settingsSections = [
         ],
         desc: "Vastaa agentin aiempaan viestiin; agentti saa lainauksen mukaan.",
       },
+      {
+        id: "conversation-times",
+        label: "Ajat keskustelussa",
+        kw: [
+          "aika",
+          "time",
+          "kellonaika",
+          "päivä",
+          "day",
+          "eilen",
+          "yesterday",
+          "kesto",
+          "duration",
+        ],
+        desc: "Viestin aika nimen perässä, päiväerottimet ja pitkän monivaiheisen vuoron kesto.",
+      },
     ],
   },
   {

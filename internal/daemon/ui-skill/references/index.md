@@ -118,6 +118,7 @@ A label alone does not establish that a control is available to this person.
 - [text/conversationGitStatus.ts](text--conversationGitStatus.ts.md)
 - [text/conversationJournal.ts](text--conversationJournal.ts.md)
 - [text/conversationModelDetails.ts](text--conversationModelDetails.ts.md)
+- [text/conversationTimes.ts](text--conversationTimes.ts.md)
 - [text/conversationWeight.ts](text--conversationWeight.ts.md)
 - [text/devices.ts](text--devices.ts.md)
 - [text/dictation.tsx](text--dictation.tsx.md)

@@ -2264,6 +2264,7 @@ function BrowserConversationContent({
   const runningTurn = useRef<
     { id?: string; liveRow: boolean; known: Set<string> } | undefined
   >(undefined);
+  const timesOn = useExperimentalFeature("conversation-times");
   const savedTimeline = timelineItems(
     entries,
     onLogin,
@@ -2297,6 +2298,7 @@ function BrowserConversationContent({
           );
         }
       : undefined,
+    timesOn,
   );
   const liveMerged = savedTimeline.some((item) => item.live);
   const liveRow = !!liveTurn && !liveMerged && provisional.length > 0;

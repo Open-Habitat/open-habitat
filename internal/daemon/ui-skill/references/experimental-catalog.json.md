@@ -12,7 +12,8 @@ Generated from internal/experimental/catalog.json; do not edit.
     { "id": "sounds-active-device", "landed": true },
     { "id": "rail-state-motion", "landed": true },
     { "id": "workspace-header-c2a", "landed": true },
-    { "id": "reply-to-message", "landed": true }
+    { "id": "reply-to-message", "landed": true },
+    { "id": "conversation-times", "landed": true }
   ],
   "fi": {
     "features": {
@@ -79,6 +80,14 @@ Generated from internal/experimental/catalog.json; do not edit.
         "shows": "Lähetetyn viestisi yllä näkyy lainaus. Lainauksen napautus vie alkuperäiseen viestiin ja korostaa sen hetkeksi.",
         "needs": "Agentti saa viestin ensimmäisen virkkeen, enintään 160 merkkiä. Viestin pitää olla yhä tässä keskustelussa; Palaa tähän -toiminnolla sivuun jäänyttä viestiä ei voi lainata.",
         "caption": "Vastaat agentin viestiin"
+      },
+      "conversation-times": {
+        "name": "Ajat keskustelussa",
+        "desc": "Keskustelu näyttää, milloin mikin viesti kirjoitettiin. Päivän vaihtuessa on erotin, ja pitkä monivaiheinen vuoro kertoo, kauanko se kesti.",
+        "where": "Jokaisen viestin otsakkeessa heti nimen perässä (”Sinä 16.40”, ”Vastaus valmis 17.03”) ja keskustelussa päivän vaihtuessa (Tänään, Eilen, päivämäärä).",
+        "shows": "Viestin tallennusajan laitteesi aikavyöhykkeessä. Yli viiden minuutin vuoro, jossa on useampi vaihe, saa viimeiseen vastaukseensa keston (”vuoro kesti 48 min”); keskeytetty vuoro saa sen keskeytysriville. Yksivaiheisen vuoron kesto on jo työrivillä.",
+        "needs": "Ajat tulevat agentin omasta historiasta. Viesti, jolle historia ei ole tallentanut aikaa, näkyy ilman aikaa.",
+        "caption": "Sinä 16.40"
       }
     },
     "picture": {
@@ -170,6 +179,14 @@ Generated from internal/experimental/catalog.json; do not edit.
         "shows": "The quote shows above your sent message. Tapping the quote takes you to the original message and highlights it for a moment.",
         "needs": "The agent gets the message's first sentence, at most 160 characters. The message must still be in this conversation; a message set aside with Go back here cannot be quoted.",
         "caption": "Replying to the agent's message"
+      },
+      "conversation-times": {
+        "name": "Times in a conversation",
+        "desc": "The conversation shows when each message was written. A separator marks a new day, and a long multi-stage turn says how long it took.",
+        "where": "In every message's header right after the name (“You 16:40”, “Reply done 17:03”) and in the conversation where the day changes (Today, Yesterday, the date).",
+        "shows": "When the message was saved, in your device's time zone. A turn longer than five minutes with more than one stage gets its duration on its last reply (“the turn took 48 min”); a stopped turn on its stopped row. A single-stage turn's duration is already on its work row.",
+        "needs": "The times come from the agent's own history. A message the history saved no time for shows none.",
+        "caption": "You 16:40"
       }
     },
     "picture": {

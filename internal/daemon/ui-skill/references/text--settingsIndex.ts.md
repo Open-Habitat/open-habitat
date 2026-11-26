@@ -350,6 +350,10 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
         label: "Reply to an agent message",
         desc: "Reply to an earlier agent message; the agent gets the quote with it.",
       },
+      "conversation-times": {
+        label: "Times in a conversation",
+        desc: "A message's time after its name, day separators and a long multi-stage turn's duration.",
+      },
     },
   },
   palvelin: {
