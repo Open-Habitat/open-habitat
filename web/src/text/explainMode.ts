@@ -1845,7 +1845,11 @@ const fi = {
     AS01: {
       name: "Äänet tällä laitteella",
       lead: "Hiljentää huomioäänen vain tässä selaimessa tai palauttaa sen.",
-      know: "Rivin alla näet kaikki hiljaisuuden syyt ja niiden korjaukset. Laitteen mykistys koskee vain tätä selainta; äänten ja yöhiljaisuuden valinnat koskevat kaikkia laitteitasi.",
+      know: "Rivin alla näkyy hiljaisuuden pääsyy; kaikki syyt korjauksineen ovat Asetusten Äänet-osiossa. Laitteen mykistys koskee vain tätä selainta; äänten ja yöhiljaisuuden valinnat koskevat kaikkia laitteitasi.",
+    },
+    AS12: {
+      name: "Ääniasetukset",
+      lead: "Avaa Asetusten Äänet-osion, jossa näkyvät kaikki hiljaisuuden syyt ja niiden korjaukset.",
     },
     AS02: {
       name: "Laite hiljaa",
@@ -3919,7 +3923,11 @@ export const explainModeText = catalog(fi, {
     AS01: {
       name: "Sounds on this device",
       lead: "Mutes the attention sound in this browser only, or brings it back.",
-      know: "Below the row are all reasons for silence and their fixes. Device mute affects only this browser; sounds and night quiet choices affect all your devices.",
+      know: "Below the row is the main reason for silence; every reason with its fix is in Settings › Sounds. Device mute affects only this browser; sounds and night quiet choices affect all your devices.",
+    },
+    AS12: {
+      name: "Sound settings",
+      lead: "Opens Settings › Sounds, which lists every reason for silence and its fix.",
     },
     AS02: {
       name: "Device quiet",

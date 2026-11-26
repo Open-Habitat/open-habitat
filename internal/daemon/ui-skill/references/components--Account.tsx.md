@@ -21,16 +21,12 @@ import { createPortal } from "react-dom";
 import { AccountKeys } from "../app/AccountKeys";
 import { AgentInstructionsSettings } from "../app/AgentInstructionsSettings";
 import { useAISignIn } from "../app/AISignIn";
-import {
-  chooseSound,
-  type SoundChoice,
-  useSessionPreferences,
-} from "../app/accountPreferences";
+import { useSessionPreferences } from "../app/accountPreferences";
 import { announceSignedIn } from "../app/aiSignIn";
 import { EditorSettings } from "../app/EditorSettings";
 import { ExperimentalFeatures } from "../app/ExperimentalFeatures";
 import { OwnMachines } from "../app/OwnMachines";
-import { SoundStatus } from "../app/SoundStatus";
+import { SoundSummary } from "../app/SoundStatus";
 import { serverSettingsText } from "../text/serverSettings";
 import "./Settings.css";
 import "./AccountSheet.css";
@@ -405,7 +401,8 @@ function Speaker({ muted }: { muted?: boolean }) {
   );
 }
 
-/** The same reasons and permanent fixes as Settings, beside device mute. */
+/** Device mute and the main reason for silence; Settings › Äänet lists
+ * every reason with its fix, which would crowd the menu. */
 function SoundMenuRow({
   onSettings,
   closeOnSettings,
@@ -415,25 +412,14 @@ function SoundMenuRow({
 }) {
   const t = useText(attentionSoundText);
   const preferences = useSessionPreferences();
-  const { sound, identity, csrf } = preferences;
+  const { sound } = preferences;
   const deviceSound = useDeviceSound();
   const night = useDeviceNight(sound);
   const menu = useContext(RootMenuTriggerStateContext);
-  const row = useRef<HTMLDivElement>(null);
   const confirmed = preferences.loaded && preferences.error !== "read";
-  const writable = confirmed && !!identity && !!csrf && !preferences.busy;
   const status = silence({ sound, muted: deviceSound.muted, night });
-  const choose = (choice: SoundChoice) => {
-    row.current?.focus();
-    if (identity && csrf) void chooseSound(identity, choice, csrf);
-  };
   return (
-    <div
-      className="ah-sound-menu"
-      data-testid="sound-menu-row"
-      ref={row}
-      tabIndex={-1}
-    >
+    <div className="ah-sound-menu" data-testid="sound-menu-row">
       <div className="ah-account-menu-theme-row">
         <span className="ah-account-row-label">
           <Speaker muted={!!status} />
@@ -453,32 +439,20 @@ function SoundMenuRow({
       </div>
       <div data-testid="sound-menu-state" data-status={status ?? "plays"}>
         {confirmed ? (
-          <SoundStatus
+          <SoundSummary
             off={!sound.enabled}
             muted={deviceSound.muted}
             night={sound.night && night}
             nightStart={sound.night_start}
             nightEnd={sound.night_end}
-            writable={writable}
-            onEnable={() => choose({ enabled: true })}
-            onUnmute={() => {
-              row.current?.focus();
-              setDeviceMuted(false);
-            }}
-            onDisableNight={() => choose({ night: false })}
-            onEditNight={() => {
+            onDetails={() => {
               // The phone owner closes its history entry before navigating.
               if (closeOnSettings) menu?.close();
-              onSettings(settingsHref("aanet", "attention-sound-night"));
+              onSettings(settingsHref("aanet"));
             }}
           />
         ) : null}
         {!status ? <p className="ah-sound-state">{t.menuScope}</p> : null}
-        {preferences.error?.startsWith("sound.") ? (
-          <p className="ah-sound-state" role="alert">
-            {t.writeError}
-          </p>
-        ) : null}
       </div>
     </div>
   );

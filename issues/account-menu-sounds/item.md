@@ -3,10 +3,11 @@ created: 2026-11-26
 updated: 2026-11-26
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: unlaned
 preparation: ready
+closed: 2026-11-26
 ---
 
 # Account menu: sounds-off status takes too much space
@@ -26,3 +27,9 @@ The full list belongs to Settings › Äänet; the menu should be the tidy versi
   Äänet for the details; no expanded list of reasons and buttons in the menu.
 - Settings › Äänet keeps the full list.
 - Phone sheet and Explain mode follow; touched specs and UI references updated.
+
+## Resolution
+
+### 2026-11-26T05:37:35Z · @issuectl
+
+Compact row with main reason and Ääniasetukset link; see result.md.

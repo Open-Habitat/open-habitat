@@ -89,6 +89,7 @@ const fi = {
   // The account menu's row
   menuRow: "Äänet",
   menuScope: "Vain tämä laite",
+  menuDetails: "Ääniasetukset",
   stateMuted: "Hiljaa tällä laitteella",
   stateNight: (time: string) => `Yö: hiljaa klo ${time} asti`,
   menuOf: (account: string, state: string) => `${account}, ${state}`,
@@ -208,6 +209,7 @@ export const attentionSoundText = catalog(fi, {
   retry: "Try again",
   menuRow: "Sounds",
   menuScope: "This device only",
+  menuDetails: "Sound settings",
   stateMuted: "Quiet on this device",
   stateNight: (time: string) => `Night: quiet until ${time}`,
   menuOf: (account: string, state: string) => `${account}, ${state}`,

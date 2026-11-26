@@ -665,6 +665,7 @@ export const parts: Record<CardId, Part> = {
   AS09: { kind: "nav", sel: '[data-testid="sound-night-settings"]' },
   AS10: { kind: "once", sel: '[data-testid="sound-fix-off"]' },
   AS11: { kind: "once", sel: '[data-testid="sound-fix-muted"]' },
+  AS12: { kind: "nav", sel: '[data-testid="sound-menu-details"]' },
   AS03: { kind: "panel", sel: '[data-testid="workspace-strip"]' },
   AS04: { kind: "panel", sel: '[data-testid="strip-icon"]', opens: true },
   AS05: { kind: "input", sel: '[data-testid="strip-name"]' },

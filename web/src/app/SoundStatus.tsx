@@ -126,3 +126,50 @@ export function SoundStatus({
     </div>
   );
 }
+
+/** The account menu's tidy version: the reason that decides first, on one
+ * line, and the way to Settings › Äänet, where every reason and its fix is
+ * listed. Off outranks the others because nothing else matters until sounds
+ * are on; night outranks mute, which the row's own control already shows. */
+export function SoundSummary({
+  off,
+  muted,
+  night,
+  nightStart,
+  nightEnd,
+  onDetails,
+}: {
+  off: boolean;
+  muted: boolean;
+  night: boolean;
+  nightStart: number;
+  nightEnd: number;
+  onDetails: () => void;
+}) {
+  const t = useText(attentionSoundText);
+  const reason = off
+    ? t.offReason
+    : night
+      ? t.nightReason(nightHourLabel(nightStart), nightHourLabel(nightEnd))
+      : muted
+        ? t.mutedReason
+        : null;
+  if (!reason) return null;
+  return (
+    <p
+      className="ah-sound-state ah-sound-summary"
+      role="status"
+      data-testid="sound-summary"
+    >
+      <span data-testid="sound-summary-reason">{reason}</span>
+      <ControlButton
+        size="row"
+        variant="quiet"
+        data-testid="sound-menu-details"
+        onPress={onDetails}
+      >
+        {t.menuDetails}
+      </ControlButton>
+    </p>
+  );
+}

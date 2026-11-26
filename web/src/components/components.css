@@ -2019,15 +2019,16 @@ details[open] > summary:not([class])::before {
   font-size: var(--ah-size-meta, 12px);
   line-height: 1.4;
 }
-.ah-sound-menu .ss-status {
-  margin: var(--ah-s2) 6px;
-  padding: var(--ah-s2);
-  gap: var(--ah-s2);
-  font-size: var(--ah-size-meta);
+/* The main reason and the way to its details share one line; a long reason
+   wraps rather than widening the menu. */
+.ah-sound-summary {
+  max-width: none;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: space-between;
 }
-.ah-sound-menu .ss-reasons li {
-  gap: var(--ah-s2);
-  padding: var(--ah-s2) 0;
+.ah-sound-summary > button {
+  margin-inline-start: auto;
 }
 @media (max-width: 800px) {
   /* Keep all observed status words, but put them alongside the title rather
