@@ -3,7 +3,7 @@ created: 2026-11-26
 updated: 2026-11-26
 type: bug
 reporter: jari
-status: open
+status: testing
 priority: normal
 lane: unlaned
 preparation: ready
