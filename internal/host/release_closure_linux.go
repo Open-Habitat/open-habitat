@@ -210,7 +210,7 @@ func validHeadlessShell(files map[string]RuntimeFile, components map[string]Runt
 // terminal. The daemon appends runtime/agent-bin to agents' PATH, so that
 // directory holds exactly these and nothing else. The first-party commands
 // have no version of their own.
-var CoreAgentTools = map[string]string{"taskfleet": "0.20.0", "workmux": "0.1.278", "pi": "", "pbcopy": "", "pbpaste": ""}
+var CoreAgentTools = map[string]string{"taskfleet": "0.21.0", "workmux": "0.1.278", "pi": "", "pbcopy": "", "pbpaste": ""}
 
 // coreAgentToolOwner is the closure component that owns each command: the
 // unversioned ones are the product's own launcher files.

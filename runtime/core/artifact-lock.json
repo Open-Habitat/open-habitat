@@ -19,31 +19,31 @@
   "tools": [
     {
       "name": "taskfleet",
-      "version": "0.20.0",
-      "repository": "jarimustonen/taskfleet",
-      "commit": "6ad8d7ca22246804c6c79f038e57bba4c45acee5",
+      "version": "0.21.0",
+      "repository": "Open-Habitat/taskfleet",
+      "commit": "7d1f83a9ae8e57b3f5751677da46b049e55f251c",
       "targets": {
         "linux-amd64": {
-          "url": "https://github.com/jarimustonen/taskfleet/releases/download/v0.20.0/taskfleet-x86_64-unknown-linux-gnu.tar.xz",
-          "sha256": "52303a3d4b7e71364340264db003b2340de8ce8aaae4f032dd9aabd8c5180e56",
+          "url": "https://github.com/Open-Habitat/taskfleet/releases/download/v0.21.0/taskfleet-x86_64-unknown-linux-gnu.tar.xz",
+          "sha256": "a8262afe1abc35bb541fc5ca1226f04195bef9cbc9e58f256144bce3beb4d949",
           "member": "taskfleet-x86_64-unknown-linux-gnu/taskfleet"
         },
         "linux-arm64": {
-          "url": "https://github.com/jarimustonen/taskfleet/releases/download/v0.20.0/taskfleet-aarch64-unknown-linux-gnu.tar.xz",
-          "sha256": "804fc81a48ed52829f4e11896e402a684a7824f01925f83391464a7d7d1c900e",
+          "url": "https://github.com/Open-Habitat/taskfleet/releases/download/v0.21.0/taskfleet-aarch64-unknown-linux-gnu.tar.xz",
+          "sha256": "12acdaa0416d40b84dc667eff5b62f217f0535d7656ca6dbe92bab9dedac956c",
           "member": "taskfleet-aarch64-unknown-linux-gnu/taskfleet"
         }
       },
       "files": [
         {
           "filename": "LICENSE",
-          "url": "https://raw.githubusercontent.com/jarimustonen/taskfleet/6ad8d7ca22246804c6c79f038e57bba4c45acee5/LICENSE",
+          "url": "https://raw.githubusercontent.com/Open-Habitat/taskfleet/7d1f83a9ae8e57b3f5751677da46b049e55f251c/LICENSE",
           "sha256": "4b3e68f175af4696e2617c7273e508abc9e97aa0a34c9c4fb427868536734032"
         },
         {
           "filename": "Cargo.lock",
-          "url": "https://raw.githubusercontent.com/jarimustonen/taskfleet/6ad8d7ca22246804c6c79f038e57bba4c45acee5/Cargo.lock",
-          "sha256": "95d1d77aeb6d25f1413a8bead45f855d7b9d97f07096b59e3e75b95408999503"
+          "url": "https://raw.githubusercontent.com/Open-Habitat/taskfleet/7d1f83a9ae8e57b3f5751677da46b049e55f251c/Cargo.lock",
+          "sha256": "9ebc1510d846aabe27db8c0239869b9b8ee48a9893f2ae7b025c5af2ed5e26b2"
         }
       ],
       "crates": [
@@ -53,13 +53,6 @@
           "license": "Unlicense OR MIT",
           "sha256": "c982642fa9e8606056828ee9a8505737230110bb1099153c79efe865c59d12ba",
           "url": "https://static.crates.io/crates/aho-corasick/aho-corasick-1.1.5.crate"
-        },
-        {
-          "name": "android_system_properties",
-          "version": "0.1.6",
-          "license": "MIT OR Apache-2.0",
-          "sha256": "ae221649c9976a6f6c56ae1facf410f3ddb33cc661c4b7b61020a912d4237fbc",
-          "url": "https://static.crates.io/crates/android_system_properties/android_system_properties-0.1.6.crate"
         },
         {
           "name": "anstream",
@@ -146,13 +139,6 @@
           "url": "https://static.crates.io/crates/bumpalo/bumpalo-3.20.3.crate"
         },
         {
-          "name": "cc",
-          "version": "1.4.5",
-          "license": "MIT OR Apache-2.0",
-          "sha256": "005ec2760ca554fae18df7a11195552ec576cd665632a881bc011d5bb2fd4d80",
-          "url": "https://static.crates.io/crates/cc/cc-1.4.5.crate"
-        },
-        {
           "name": "cfg-if",
           "version": "1.0.4",
           "license": "MIT OR Apache-2.0",
@@ -165,13 +151,6 @@
           "license": "MIT",
           "sha256": "f079e83a288787bcd14a6aea84cee5c87a67c5a3e660c30f557a3d24761b3527",
           "url": "https://static.crates.io/crates/cfg_aliases/cfg_aliases-0.2.2.crate"
-        },
-        {
-          "name": "chrono",
-          "version": "0.4.45",
-          "license": "MIT OR Apache-2.0",
-          "sha256": "1aa79e62e7697b8e29b513a68abacf485adcd1fe8284a4316c5ae868e6633327",
-          "url": "https://static.crates.io/crates/chrono/chrono-0.4.45.crate"
         },
         {
           "name": "clap",
@@ -314,13 +293,6 @@
           "url": "https://static.crates.io/crates/fastrand/fastrand-2.5.0.crate"
         },
         {
-          "name": "find-msvc-tools",
-          "version": "0.1.12",
-          "license": "MIT OR Apache-2.0",
-          "sha256": "3e0f1c7c3a72c66fd80abe965175f7523475c0489a87d3ff9d6e8c87d87a9d2d",
-          "url": "https://static.crates.io/crates/find-msvc-tools/find-msvc-tools-0.1.12.crate"
-        },
-        {
           "name": "float-cmp",
           "version": "0.10.0",
           "license": "MIT",
@@ -398,27 +370,6 @@
           "url": "https://static.crates.io/crates/heck/heck-0.5.0.crate"
         },
         {
-          "name": "humantime",
-          "version": "2.4.0",
-          "license": "MIT OR Apache-2.0",
-          "sha256": "15cdd26707701c53297e2fa6afb323d55fbc1d0810c3aec078ae3ef0424c3c15",
-          "url": "https://static.crates.io/crates/humantime/humantime-2.4.0.crate"
-        },
-        {
-          "name": "iana-time-zone",
-          "version": "0.1.65",
-          "license": "MIT OR Apache-2.0",
-          "sha256": "e31bc9ad994ba00e440a8aa5c9ef0ec67d5cb5e5cb0cc7f8b744a35b389cc470",
-          "url": "https://static.crates.io/crates/iana-time-zone/iana-time-zone-0.1.65.crate"
-        },
-        {
-          "name": "iana-time-zone-haiku",
-          "version": "0.1.2",
-          "license": "MIT OR Apache-2.0",
-          "sha256": "f31827a206f56af32e590ba56d5d2d085f558508192593743f16b2306495269f",
-          "url": "https://static.crates.io/crates/iana-time-zone-haiku/iana-time-zone-haiku-0.1.2.crate"
-        },
-        {
           "name": "indexmap",
           "version": "2.14.2",
           "license": "Apache-2.0 OR MIT",
@@ -445,6 +396,27 @@
           "license": "MIT OR Apache-2.0",
           "sha256": "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682",
           "url": "https://static.crates.io/crates/itoa/itoa-1.0.18.crate"
+        },
+        {
+          "name": "jiff",
+          "version": "1.0.1",
+          "license": "Unlicense OR MIT",
+          "sha256": "ed5d126d72eb017f10b302e73bdeca446bea405ee449af4d9e7866d6b082d83e",
+          "url": "https://static.crates.io/crates/jiff/jiff-1.0.1.crate"
+        },
+        {
+          "name": "jiff-core",
+          "version": "1.0.1",
+          "license": "Unlicense OR MIT",
+          "sha256": "b6b46a105a9874634dd96231021526bf24ca04955a5998c59a9c7666e634b7b8",
+          "url": "https://static.crates.io/crates/jiff-core/jiff-core-1.0.1.crate"
+        },
+        {
+          "name": "jiff-static",
+          "version": "1.0.1",
+          "license": "Unlicense OR MIT",
+          "sha256": "c0127e9bde3c6130d6169e7d8d68676e4be69c4bf7573c308b6f960a5089c428",
+          "url": "https://static.crates.io/crates/jiff-static/jiff-static-1.0.1.crate"
         },
         {
           "name": "js-sys",
@@ -594,6 +566,20 @@
           "url": "https://static.crates.io/crates/pin-project-lite/pin-project-lite-0.2.17.crate"
         },
         {
+          "name": "portable-atomic",
+          "version": "1.15.0",
+          "license": "Apache-2.0 OR MIT",
+          "sha256": "05c8b63e8d9609db387f0324918f81d68fe27748f084ef092fb35954d0539a85",
+          "url": "https://static.crates.io/crates/portable-atomic/portable-atomic-1.15.0.crate"
+        },
+        {
+          "name": "portable-atomic-util",
+          "version": "0.2.8",
+          "license": "Apache-2.0 OR MIT",
+          "sha256": "10ab3eb7f3becc3a1cbc4f2c6f20267996cfc1a6467a873763411b136a122715",
+          "url": "https://static.crates.io/crates/portable-atomic-util/portable-atomic-util-0.2.8.crate"
+        },
+        {
           "name": "powerfmt",
           "version": "0.2.0",
           "license": "MIT OR Apache-2.0",
@@ -707,10 +693,10 @@
         },
         {
           "name": "rustix",
-          "version": "1.1.4",
+          "version": "1.1.6",
           "license": "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT",
-          "sha256": "b6fe4565b9518b83ef4f91bb47ce29620ca828bd32cb7e408f0062e9930ba190",
-          "url": "https://static.crates.io/crates/rustix/rustix-1.1.4.crate"
+          "sha256": "e5e76742e5294153d4dde1207dbec5bdd81eef6fabdc0d2118babadabfd858aa",
+          "url": "https://static.crates.io/crates/rustix/rustix-1.1.6.crate"
         },
         {
           "name": "rustversion",
@@ -809,13 +795,6 @@
           "license": "MIT",
           "sha256": "f40ca3c46823713e0d4209592e8d6e826aa57e928f09752619fc696c499637f6",
           "url": "https://static.crates.io/crates/sharded-slab/sharded-slab-0.1.7.crate"
-        },
-        {
-          "name": "shlex",
-          "version": "2.0.1",
-          "license": "MIT OR Apache-2.0",
-          "sha256": "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba",
-          "url": "https://static.crates.io/crates/shlex/shlex-2.0.1.crate"
         },
         {
           "name": "similar",
@@ -1154,13 +1133,6 @@
           "url": "https://static.crates.io/crates/windows-core/windows-core-0.57.0.crate"
         },
         {
-          "name": "windows-core",
-          "version": "0.62.2",
-          "license": "MIT OR Apache-2.0",
-          "sha256": "b8e83a14d34d0623b51dce9581199302a221863196a1dde71a7663a4c2be9deb",
-          "url": "https://static.crates.io/crates/windows-core/windows-core-0.62.2.crate"
-        },
-        {
           "name": "windows-implement",
           "version": "0.57.0",
           "license": "MIT OR Apache-2.0",
@@ -1168,25 +1140,11 @@
           "url": "https://static.crates.io/crates/windows-implement/windows-implement-0.57.0.crate"
         },
         {
-          "name": "windows-implement",
-          "version": "0.60.2",
-          "license": "MIT OR Apache-2.0",
-          "sha256": "053e2e040ab57b9dc951b72c264860db7eb3b0200ba345b4e4c3b14f67855ddf",
-          "url": "https://static.crates.io/crates/windows-implement/windows-implement-0.60.2.crate"
-        },
-        {
           "name": "windows-interface",
           "version": "0.57.0",
           "license": "MIT OR Apache-2.0",
           "sha256": "29bee4b38ea3cde66011baa44dba677c432a78593e202392d1e9070cf2a7fca7",
           "url": "https://static.crates.io/crates/windows-interface/windows-interface-0.57.0.crate"
-        },
-        {
-          "name": "windows-interface",
-          "version": "0.59.3",
-          "license": "MIT OR Apache-2.0",
-          "sha256": "3f316c4a2570ba26bbec722032c4099d8c8bc095efccdc15688708623367e358",
-          "url": "https://static.crates.io/crates/windows-interface/windows-interface-0.59.3.crate"
         },
         {
           "name": "windows-link",
@@ -1201,20 +1159,6 @@
           "license": "MIT OR Apache-2.0",
           "sha256": "5e383302e8ec8515204254685643de10811af0ed97ea37210dc26fb0032647f8",
           "url": "https://static.crates.io/crates/windows-result/windows-result-0.1.2.crate"
-        },
-        {
-          "name": "windows-result",
-          "version": "0.4.1",
-          "license": "MIT OR Apache-2.0",
-          "sha256": "7781fa89eaf60850ac3d2da7af8e5242a5ea78d1a11c49bf2910bb5a73853eb5",
-          "url": "https://static.crates.io/crates/windows-result/windows-result-0.4.1.crate"
-        },
-        {
-          "name": "windows-strings",
-          "version": "0.5.1",
-          "license": "MIT OR Apache-2.0",
-          "sha256": "7837d08f69c77cf6b07689544538e017c1bfcf57e34b4c0ff58e6c2cd3b37091",
-          "url": "https://static.crates.io/crates/windows-strings/windows-strings-0.5.1.crate"
         },
         {
           "name": "windows-sys",

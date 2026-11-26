@@ -31,7 +31,8 @@ From then on use the returned run id. A round goes like this:
 - Start `taskfleet run wait <run-id> --output json` with the process tool and
   turn notifications, set the conversation `running`, and end your turn. The
   wait settles when a round is reported (`round_reported: true`, its summary
-  in `resident.last_round`), but also on attention; a timeout needs a new wait.
+  in `resident.last_round`), but also on attention or a worker question
+  (`asked: true`, answered like any run's); a timeout needs a new wait.
 - Land the round with `taskfleet run land <run-id> --output json` and tell the
   person what it did. A `land_conflict` lands nothing; your next message hands
   the conflict to the helper.

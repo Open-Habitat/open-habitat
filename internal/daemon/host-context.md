@@ -154,6 +154,14 @@ in another repository: set the conversation `running` and end your turn.
 On waking, inspect the outcome: attention or timeout is not completion, and
 a still-running run needs a fresh wait, not polling.
 
+A wait that settles with `asked: true` is the worker asking you a blocking
+question (`open_ask`, with its default and deadline). Answer it with
+`taskfleet run answer <run-id> --ask <id>` when the brief or this conversation
+settles it. Otherwise ask the person, run
+`taskfleet run escalate <run-id> --ask <id> --extend 4h` so the worker keeps
+waiting, and answer with `--decided-by person` once they decide. Then start a
+fresh wait.
+
 ## Editor and shell
 
 The browser has a workspace editor (code-server) and a shell backed by the
