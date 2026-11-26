@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 lane: unlaned
-preparation: ready
+preparation: pending
 ---
 
 # Reply to a view or file card (prototype)

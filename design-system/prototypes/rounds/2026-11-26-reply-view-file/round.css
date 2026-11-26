@@ -1,0 +1,83 @@
+/* Review chrome: one scrolling document (a Habitat view has no frames). */
+html, body { margin: 0; background: var(--ah-bg); color: var(--ah-ink); }
+body { padding-bottom: 96px; font: var(--ah-size-ui)/var(--ah-lh-ui) var(--ah-font); }
+.or-review { display: grid; gap: var(--ah-s4); padding: 0 var(--ah-s4); }
+.or-bar {
+  display: grid; gap: var(--ah-s1); margin: 0 calc(-1 * var(--ah-s4));
+  padding: var(--ah-s2) var(--ah-s4); background: var(--ah-surface);
+  border-bottom: 1px solid var(--ah-line); font-size: var(--ah-size-meta); line-height: 1.4;
+}
+.or-controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s1) var(--ah-s4); }
+.or-bar strong { font-weight: 600; }
+.or-bar select, .or-bar button { font: inherit; }
+.or-hint { color: var(--ah-muted); }
+.or-study h2 { margin: 0 0 2px; font-size: var(--ah-size-meta); font-weight: 600; }
+.or-study ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; color: var(--ah-ink-2); }
+.or-study li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.or-recommend { margin: var(--ah-s1) 0 0; color: var(--ah-accent-ink); }
+.or-all-toggle { display: none; }
+@media (max-width: 800px) {
+  .or-review { padding: 0 var(--ah-s2); }
+  .or-bar { margin: 0 calc(-1 * var(--ah-s2)); padding: var(--ah-s2); }
+  .or-all-toggle { display: inline; justify-self: start; }
+  .or-bar:not([data-all]) :is(.or-study li:not([aria-current]), .or-recommend, .or-study h2) { display: none; }
+}
+
+/* ---------- The conversation, the opened item beside it and what the agent gets ---------- */
+.or-live { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: var(--ah-s4); align-items: start; }
+.or-frame {
+  position: relative; display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0;
+  height: max(640px, calc(100dvh - 280px)); border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); overflow: hidden;
+}
+.or-frame[data-pane] { grid-template-columns: minmax(0, 1fr) minmax(0, 420px); }
+.or-convo { min-width: 0; min-height: 0; display: grid; }
+.or-pane { min-width: 0; min-height: 0; overflow: auto; border-inline-start: 1px solid var(--ah-line); background: var(--ah-bg); }
+.or-pane > .ah-view-pane { height: auto; }
+.or-pane-note { margin: var(--ah-s3) var(--ah-s4); color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.or-agent { min-width: 0; display: grid; gap: var(--ah-s2); font-size: var(--ah-size-meta); }
+.or-agent h2 { margin: 0; font-size: var(--ah-size-ui); }
+.or-agent h3 { margin: var(--ah-s2) 0 0; font-size: var(--ah-size-meta); color: var(--ah-ink-2); }
+.or-agent-note { margin: 0; color: var(--ah-muted); line-height: 1.4; }
+.or-agent pre {
+  margin: 0; padding: var(--ah-s2) var(--ah-s3); border: 1px solid var(--ah-line-soft); border-radius: var(--ah-r-md);
+  background: var(--ah-sunken); font: 12px/1.45 var(--ah-mono); white-space: pre-wrap; overflow-wrap: anywhere;
+}
+@media (max-width: 1100px) { .or-live { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 800px) {
+  .or-frame { height: 760px; margin-inline: calc(-1 * var(--ah-s2)); border-radius: 0; border-inline: 0; }
+  /* On a phone the opened item covers the conversation, as the app's panel does. */
+  .or-frame[data-pane] { grid-template-columns: minmax(0, 1fr); }
+  .or-pane { position: absolute; inset: 0; z-index: 5; border: 0; }
+}
+.or-user { display: grid; justify-items: end; max-width: 100%; }
+.or-turn[data-flash] .ah-message { outline: var(--ah-focus-width) solid var(--ah-focus); outline-offset: 2px; }
+
+/* ---------- The card wrapper: production's offer column ---------- */
+.ah-reading-view .ah-offer-row > .or-cardwrap { margin-inline-start: calc(18px + var(--ah-turn-column-gap)); }
+.or-cardwrap { position: relative; min-width: 0; }
+.ah-offer-row > .or-cardwrap > .ah-offer { width: 100%; max-width: none; margin: 0; }
+
+/* ---------- A and C: ↩ always in the card's top-right corner ---------- */
+/* Kopioi's pair, as on an agent message; the card's own icon row floats
+   beside it under the pointer, and the chevron moves to the bottom. */
+.or-cardwrap[data-corner] > .ah-offer { padding-inline-end: 48px; }
+.or-cardwrap[data-corner] > .or-reply-corner { position: absolute; top: 6px; right: 6px; z-index: 2; }
+.or-cardwrap[data-corner] > .ah-offer > .ah-offer-acts { right: 44px; }
+.or-cardwrap[data-corner] > .ah-offer > .ah-offer-chev { align-self: flex-end; margin-inline-end: -36px; }
+@media (hover: none) {
+  /* The card's touch row reaches under the corner ↩, so its icons end where ↩ does. */
+  .or-cardwrap[data-corner] > .ah-offer > .ah-offer-acts { flex-basis: calc(100% + 42px); margin-inline-end: -42px; }
+}
+
+/* ---------- B: ↩ is one more icon of the card's row ---------- */
+.or-reply-ib[aria-pressed="true"] { background: var(--ah-surface-press); --i-fg: var(--ah-ink); }
+
+/* ---------- C: ↩ on each row of the package's file list ---------- */
+.or-row-host { display: inline-flex; }
+
+/* ---------- The offer quote: production's quote, the card's mark and facts (B, C) ---------- */
+.or-qcard { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--ah-s2); align-items: start; min-width: 0; }
+.or-qtext { display: grid; min-width: 0; }
+.or-qtitle { color: var(--ah-ink); font-weight: 600; }
+.or-qfacts { overflow: hidden; color: var(--ah-muted); font-size: var(--ah-size-meta); white-space: nowrap; text-overflow: ellipsis; }
+.or-sent { text-align: start; }
