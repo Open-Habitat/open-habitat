@@ -38,7 +38,8 @@ const fi = {
   micTip: (keys: ReactNode) => (
     <>{keys} · napauta aloittaaksesi, pidä pohjassa puhuaksesi</>
   ),
-  listeningConnecting: "kuuntelee · yhdistää…",
+  opening: "avataan mikrofonia…",
+  openingShort: "avataan…",
   listening: "kuuntelee",
   reconnecting: "Yhdistetään uudelleen…",
   finishing: "Viimeistellään…",
@@ -98,7 +99,8 @@ export const dictationText = catalog(fi, {
   unavailableText: "Dictation did not start. Try again in a moment.",
   dictate: "Dictate",
   micTip: (keys) => <>{keys} · tap to start, hold to talk</>,
-  listeningConnecting: "listening · connecting…",
+  opening: "opening the microphone…",
+  openingShort: "opening…",
   listening: "listening",
   reconnecting: "Reconnecting…",
   finishing: "Finishing…",

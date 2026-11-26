@@ -3,10 +3,11 @@ created: 2026-11-26
 updated: 2026-11-26
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 preparation: ready
+closed: 2026-11-26
 ---
 
 # Dictation starts slowly and loses the first word
@@ -29,3 +30,9 @@ in the text.
 - The button shows "listening" as soon as audio is being captured, not only when the service
   answers.
 - Tests cover buffered audio reaching the service after a delayed connect.
+
+## Resolution
+
+### 2026-11-26T05:42:07Z · @issuectl
+
+Implemented; see result.md.

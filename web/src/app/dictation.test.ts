@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  AudioInput,
   chainAtMs,
   chainLatestMs,
   Dictation,
@@ -532,9 +533,11 @@ describe("Dictation", () => {
       let grant: () => void = () => {};
       const keys: ((ok: boolean) => void)[] = [];
       let tracksStopped = 0;
+      let warmed = 0;
       const d = new Dictation(
         {
           ...base,
+          warm: () => warmed++,
           microphone: () =>
             new Promise<MediaStream>((r) => {
               grant = () =>
@@ -562,15 +565,18 @@ describe("Dictation", () => {
         },
         keysAsked: () => keys.length,
         tracksStopped: () => tracksStopped,
+        warmed: () => warmed,
       };
     }
 
-    it("asks for the key while the microphone opens and listens before the stream is ready", async () => {
+    it("asks for the key and readies the audio while the microphone opens, and listens before the stream is ready", async () => {
       const h = gated([session(1)]);
       void h.d.start();
       await flush();
-      // The key is on its way before the microphone has answered.
+      // The key and the audio graph are on their way before the
+      // microphone has answered, so the press waits only for it.
       expect(h.keysAsked()).toBe(1);
+      expect(h.warmed()).toBe(1);
       expect(h.d.view.phase).toBe("connecting");
       await h.grant();
       expect(h.d.view.phase).toBe("live");
@@ -649,5 +655,89 @@ describe("Dictation", () => {
         failure: "speech_unavailable",
       });
     });
+  });
+});
+
+describe("AudioInput", () => {
+  // A Web Audio stand-in that counts contexts and worklet loads.
+  function fakeAudio(failFirstLoad = false) {
+    const made: FakeContext[] = [];
+    let loads = 0;
+    class FakeNode {
+      port = { onmessage: null as unknown };
+      connect() {}
+      disconnect() {}
+    }
+    class FakeContext {
+      state = "running";
+      sampleRate = 48_000;
+      destination = {};
+      audioWorklet = {
+        addModule: async () => {
+          loads++;
+          if (failFirstLoad && loads === 1) throw new Error("load");
+        },
+      };
+      constructor() {
+        made.push(this);
+      }
+      async suspend() {
+        this.state = "suspended";
+      }
+      async resume() {
+        this.state = "running";
+      }
+      async close() {
+        this.state = "closed";
+      }
+      createMediaStreamSource() {
+        return new FakeNode();
+      }
+      createGain() {
+        return { gain: { value: 1 }, connect() {}, disconnect() {} };
+      }
+    }
+    vi.stubGlobal("AudioContext", FakeContext);
+    vi.stubGlobal("AudioWorkletNode", FakeNode);
+    vi.stubGlobal("URL", {
+      ...URL,
+      createObjectURL: () => "blob:x",
+      revokeObjectURL: () => {},
+    });
+    return { made, loads: () => loads };
+  }
+  const stream = {} as MediaStream;
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("readies one context ahead of the press, keeps it quiet until then and reuses it for every dictation", async () => {
+    const audio = fakeAudio();
+    const input = new AudioInput();
+    input.warm();
+    input.warm();
+    await flush();
+    expect(audio.made).toHaveLength(1);
+    expect(audio.loads()).toBe(1);
+    // Made outside a press, it does not run on its own.
+    expect(input.output).toBeNull();
+    const first = await input.capture(stream, () => {});
+    first.close();
+    const second = await input.capture(stream, () => {});
+    second.close();
+    expect(audio.made).toHaveLength(1);
+    expect(audio.loads()).toBe(1);
+    // Closing a capture keeps the context for cues; leaving closes it.
+    expect(input.output).not.toBeNull();
+    input.close();
+    expect(audio.made[0]?.state).toBe("closed");
+  });
+
+  it("tries a failed worklet load again at the press", async () => {
+    const audio = fakeAudio(true);
+    const input = new AudioInput();
+    input.warm();
+    await flush();
+    await input.capture(stream, () => {});
+    expect(audio.loads()).toBe(2);
   });
 });

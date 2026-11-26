@@ -14,6 +14,7 @@ import {
   useState,
 } from "react";
 import {
+  AudioInput,
   browserDictationDeps,
   Dictation,
   type DictationDeps,
@@ -272,7 +273,7 @@ export function useDictation(
   const [notice, setNotice] = useState<DictationNotice | null>(null);
   const [holding, setHolding] = useState(false);
   const engine = useRef<Dictation | null>(null);
-  const cueContext = useRef<AudioContext | null>(null);
+  const audio = useRef<AudioInput | null>(null);
   const around = useRef({ before: "", after: "" });
   const ending = useRef(onEnd);
   ending.current = onEnd;
@@ -282,13 +283,19 @@ export function useDictation(
   useEffect(() => {
     if (!speech || !csrf) return;
     let warning: DictationView["warning"];
+    const input = new AudioInput();
+    audio.current = input;
     const d = new Dictation(
-      deps ?? browserDictationDeps((signal) => mintSpeechSession(csrf, signal)),
+      deps ??
+        browserDictationDeps(
+          (signal) => mintSpeechSession(csrf, signal),
+          input,
+        ),
       (next) => {
         if (next.warning && next.warning !== warning)
-          playDictationCue(cueContext.current, next.warning);
+          playDictationCue(input.output, next.warning);
         else if (next.ended === "dropped")
-          playDictationCue(cueContext.current, "limit");
+          playDictationCue(input.output, "limit");
         warning = next.warning;
         setView(next);
         if (next.phase === "idle" && next.ended) {
@@ -301,10 +308,20 @@ export function useDictation(
       },
     );
     engine.current = d;
+    // A press is near when the field is focused or the pointer comes over
+    // its box: the audio graph is readied then, without the microphone.
+    const box = scope.current;
+    const warm = () => {
+      if (!d.active) d.warm();
+    };
+    box?.addEventListener("focusin", warm);
+    box?.addEventListener("pointerover", warm);
     return () => {
+      box?.removeEventListener("focusin", warm);
+      box?.removeEventListener("pointerover", warm);
       d.dispose();
-      void cueContext.current?.close().catch(() => {});
-      cueContext.current = null;
+      input.close();
+      audio.current = null;
       engine.current = null;
       setView(null);
     };
@@ -313,14 +330,10 @@ export function useDictation(
   const start = useCallback((text: string, caret?: Caret) => {
     const d = engine.current;
     if (!d || d.active) return;
-    // Unlock output on the user's gesture, not an hour later. Output goes
-    // through the page's audio destination, so browser tab muting applies.
-    try {
-      cueContext.current ??= new AudioContext();
-      void cueContext.current.resume().catch(() => {});
-    } catch {
-      /* Visual and spoken warnings still work without audio. */
-    }
+    // Unlock audio on the user's gesture, not after the microphone's
+    // prompt or an hour later. Cues go through the page's audio
+    // destination, so browser tab muting applies.
+    audio.current?.resume();
     // Dictation writes at the caret, or in place of the selection.
     around.current = aroundCaret(text, caret);
     setNotice(null);
@@ -519,7 +532,7 @@ function useFocusOnStart(
 function stateLabel(
   view: DictationView,
   holding: boolean,
-  connecting = txt.listeningConnecting,
+  connecting = txt.opening,
 ) {
   const paused = view.phase === "live" && view.quietMs >= 2000;
   return view.phase === "reconnecting"
@@ -565,11 +578,11 @@ export function DictationControl({
         shortcut={shortcut}
       />
     );
-  // The microphone opens at the press and keeps what is said while the
-  // stream to Soniox opens, so the dictation listens from the start.
-  const listening = view.phase === "live" || view.phase === "connecting";
+  // Listening from the moment the microphone captures: what is said while
+  // the stream to Soniox opens is kept, but nothing before the microphone.
+  const listening = view.phase === "live";
   const paused = view.phase === "live" && view.quietMs >= 2000;
-  const label = stateLabel(view, holding, t.listening);
+  const label = stateLabel(view, holding, t.openingShort);
   const bars = [0.55, 0.85, 1, 0.75, 0.6];
   return (
     <button
@@ -578,6 +591,7 @@ export function DictationControl({
       type="button"
       data-testid="dictation-stop"
       data-phase={view.phase}
+      data-listening={listening}
       className={`ah-dictation-pill${listening ? "" : " busy"}${paused ? " paused" : ""}${holding ? " hold" : ""}`}
       aria-label={t.stopAt(mmss(view.elapsedMs))}
       aria-keyshortcuts={`Enter ${shortcut.aria}`}
@@ -624,7 +638,7 @@ export function DictationBar({
 }) {
   const t = useText(dictationText);
   const { view, holding } = dictation;
-  const listening = view?.phase === "live" || view?.phase === "connecting";
+  const listening = view?.phase === "live";
   const level = useRef(0);
   level.current = listening ? (view?.level ?? 0) : 0;
   const [wave, setWave] = useState<number[]>(() => Array(waveBars).fill(0));
@@ -643,6 +657,7 @@ export function DictationBar({
     <div
       data-testid="dictation-bar"
       data-phase={view.phase}
+      data-listening={listening}
       className={`ah-dictation-bar${listening ? "" : " busy"}${paused ? " paused" : ""}`}
       role="group"
       aria-label={t.dictationAt(mmss(view.elapsedMs))}

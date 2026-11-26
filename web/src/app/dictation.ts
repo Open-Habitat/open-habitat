@@ -74,6 +74,9 @@ export type DictationDeps = {
     onFrame: (pcm: Int16Array, level: number) => void,
   ) => Promise<AudioCapture>;
   socket: (url: string, protocols: string[]) => WebSocket;
+  /** Readies the audio graph without the microphone, so a press waits only
+   * for the microphone itself. */
+  warm?: () => void;
   now: () => number;
   setInterval: (run: () => void, ms: number) => number;
   clearInterval: (id: number) => void;
@@ -122,6 +125,8 @@ export class Dictation {
   /** Soniox has answered the current stream with something other than an
    * error, so it accepted the key. */
   private accepted = false;
+  /** Soniox has answered this dictation at all, for its start timing. */
+  private replied = false;
   private tick: number | null = null;
   private finished: (() => void) | null = null;
   private finishing: Promise<void> | null = null;
@@ -146,16 +151,23 @@ export class Dictation {
     this.onChange(this.view);
   }
 
+  /** Readies the audio graph ahead of a press that looks near. */
+  warm() {
+    this.deps.warm?.();
+  }
+
   /** Starts a dictation; the result shows in the view. The key is minted
-   * while the microphone opens, and the microphone listens from the moment
-   * it is open: what is said before the stream to Soniox is ready is kept
-   * and sent once it is. */
+   * and the audio graph readied while the microphone opens, and the
+   * microphone listens from the moment it is open: what is said before the
+   * stream to Soniox is ready is kept and sent once it is. */
   async start() {
     if (this.active) return;
     const run = ++this.run;
+    mark("dictation:press");
     const abort = new AbortController();
     this.abort = abort;
     this.reconnected = false;
+    this.replied = false;
     this.draining = false;
     this.chaining = null;
     this.streamAt = null;
@@ -167,10 +179,11 @@ export class Dictation {
     this.pendingBytes = 0;
     this.connecting = true;
     this.set({ ...idle, phase: "connecting" });
-    const minted = this.deps.mint(abort.signal).then((session) => ({
-      session,
-      at: this.deps.now(),
-    }));
+    this.deps.warm?.();
+    const minted = this.deps.mint(abort.signal).then((session) => {
+      measure("dictation: key", "dictation:press");
+      return { session, at: this.deps.now() };
+    });
     // A missing or refused key need not wait for the microphone's prompt.
     minted.catch((error) => {
       if (this.view.phase === "connecting") this.fail(run, error);
@@ -188,6 +201,7 @@ export class Dictation {
         for (const track of stream.getTracks()) track.stop();
         return;
       }
+      measure("dictation: microphone", "dictation:press");
       this.stream = stream;
       const capture = await this.deps
         .capture(stream, (pcm, level) => this.frame(run, pcm, level))
@@ -199,6 +213,7 @@ export class Dictation {
         return;
       }
       this.capture = capture;
+      measure("dictation: listening", "dictation:press");
       this.sampleRate = capture.sampleRate;
       this.startedAt = this.lastVoice = this.deps.now();
       this.set({ phase: "live" });
@@ -246,6 +261,8 @@ export class Dictation {
     this.streamFinished = false;
     ws.onopen = () => {
       if (run !== this.run || this.ws !== ws) return;
+      if (this.openedAt === null)
+        measure("dictation: stream", "dictation:press");
       ws.send(
         JSON.stringify({
           model: "stt-rt-v5",
@@ -313,6 +330,8 @@ export class Dictation {
       // Anything else closes the stream next, and the close reconnects.
       return;
     }
+    if (!this.replied) measure("dictation: first reply", "dictation:press");
+    this.replied = true;
     this.accepted = true;
     let final = this.view.final;
     const interim: string[] = [];
@@ -683,28 +702,80 @@ function toPcm(samples: Float32Array): [Int16Array, number] {
   return [pcm, Math.min(1, rms * 4)];
 }
 
-/** The browser's microphone as 16-bit mono PCM in 100 ms frames. */
-export async function captureAudio(
-  stream: MediaStream,
-  onFrame: (pcm: Int16Array, level: number) => void,
-): Promise<AudioCapture> {
-  const context = new AudioContext();
-  try {
-    await context.resume();
+/** The page's audio for dictation: one AudioContext, made and given the
+ * PCM worklet before a press when it can be, so a press waits only for the
+ * microphone. The same context plays the dictation's cues. It never holds
+ * the microphone: each capture's stream is the engine's to stop. */
+export class AudioInput {
+  private context: AudioContext | null = null;
+  private module: Promise<void> | null = null;
+
+  /** The context, made if needed; null where the browser has no Web Audio.
+   * One made ahead of a press stays quiet until the press resumes it. */
+  private ensure(ahead = false): AudioContext | null {
+    if (this.context && this.context.state !== "closed") return this.context;
+    this.module = null;
+    try {
+      const context = new AudioContext();
+      if (ahead && context.state === "running")
+        void context.suspend().catch(() => {});
+      this.context = context;
+    } catch {
+      this.context = null;
+    }
+    return this.context;
+  }
+
+  private worklet(context: AudioContext): Promise<void> {
+    if (!context.audioWorklet) return Promise.resolve();
+    if (!this.module) {
+      const url = URL.createObjectURL(
+        new Blob([workletSource], { type: "text/javascript" }),
+      );
+      const loading = context.audioWorklet
+        .addModule(url)
+        .finally(() => URL.revokeObjectURL(url));
+      // A failed load is tried again by the next capture.
+      loading.catch(() => {
+        if (this.module === loading) this.module = null;
+      });
+      this.module = loading;
+    }
+    return this.module;
+  }
+
+  /** Makes the context and loads the worklet; no microphone, no sound. */
+  warm = () => {
+    const context = this.ensure(true);
+    if (context) void this.worklet(context).catch(() => {});
+  };
+
+  /** Lets audio run, on the person's press. */
+  resume() {
+    void this.ensure()
+      ?.resume()
+      .catch(() => {});
+  }
+
+  /** The running context, for cues. */
+  get output(): AudioContext | null {
+    return this.context?.state === "running" ? this.context : null;
+  }
+
+  /** The microphone as 16-bit mono PCM in 100 ms frames. */
+  capture = async (
+    stream: MediaStream,
+    onFrame: (pcm: Int16Array, level: number) => void,
+  ): Promise<AudioCapture> => {
+    const context = this.ensure();
+    if (!context) throw new Error("unsupported");
+    await Promise.all([context.resume(), this.worklet(context)]);
     const source = context.createMediaStreamSource(stream);
     const mute = context.createGain();
     mute.gain.value = 0;
     mute.connect(context.destination);
     let node: AudioNode;
     if (context.audioWorklet) {
-      const url = URL.createObjectURL(
-        new Blob([workletSource], { type: "text/javascript" }),
-      );
-      try {
-        await context.audioWorklet.addModule(url);
-      } finally {
-        URL.revokeObjectURL(url);
-      }
       const worklet = new AudioWorkletNode(context, "oh-pcm", {
         numberOfInputs: 1,
         numberOfOutputs: 1,
@@ -725,22 +796,48 @@ export async function captureAudio(
     return {
       sampleRate: context.sampleRate,
       close: () => {
+        if (node instanceof AudioWorkletNode) node.port.onmessage = null;
         source.disconnect();
         node.disconnect();
-        void context.close();
+        mute.disconnect();
       },
     };
-  } catch (error) {
-    void context.close();
-    throw error;
+  };
+
+  /** Closes the context, as the composer leaves. */
+  close() {
+    const context = this.context;
+    this.context = null;
+    this.module = null;
+    void context?.close().catch(() => {});
+  }
+}
+
+/** A step of a dictation's start in the browser's performance timeline, so
+ * the time from the press to listening can be read on a real device. */
+function mark(name: string) {
+  try {
+    globalThis.performance?.mark?.(name);
+  } catch {
+    /* Timing is optional. */
+  }
+}
+
+function measure(name: string, from: string) {
+  try {
+    globalThis.performance?.measure?.(name, from);
+  } catch {
+    /* A mark cleared by the page is no reason to stop. */
   }
 }
 
 export function browserDictationDeps(
   mint: (signal: AbortSignal) => Promise<SpeechSession>,
+  audio: AudioInput,
 ): DictationDeps {
   return {
     mint,
+    warm: audio.warm,
     microphone: () => {
       if (!navigator.mediaDevices?.getUserMedia)
         return Promise.reject(new Error("unsupported"));
@@ -752,7 +849,7 @@ export function browserDictationDeps(
         },
       });
     },
-    capture: captureAudio,
+    capture: audio.capture,
     socket: (url, protocols) => new WebSocket(url, protocols),
     now: () => Date.now(),
     setInterval: (run, ms) => window.setInterval(run, ms),

@@ -45,7 +45,7 @@ describe("DictationBar", () => {
     expect(bars().at(-1)).toBe("scaleY(0.10)");
   });
 
-  it("says it listens while the stream opens, and cancels until it finishes", () => {
+  it("shows listening only once the microphone captures, and cancels until it finishes", () => {
     const cancel = vi.fn();
     const bar = render(
       <DictationBar
@@ -53,7 +53,18 @@ describe("DictationBar", () => {
         onCancel={cancel}
       />,
     );
-    expect(bar.container.textContent).toContain("kuuntelee · yhdistää…");
+    // While the microphone opens, nothing said is heard yet.
+    const listening = () =>
+      bar.getByTestId("dictation-bar").getAttribute("data-listening");
+    expect(listening()).toBe("false");
+    // Captured audio waits for the stream, so live is listening already.
+    bar.rerender(
+      <DictationBar
+        dictation={state(view({ phase: "live" }))}
+        onCancel={cancel}
+      />,
+    );
+    expect(listening()).toBe("true");
     fireEvent.click(bar.getByTestId("dictation-cancel"));
     expect(cancel).toHaveBeenCalledOnce();
     bar.rerender(
