@@ -201,9 +201,19 @@ test("@agent-messages switch off still names the sender, without links, quotes o
     "aria-label",
     "Viesti keskustelusta Synthetic charts",
   );
-  await expect(feed(page).getByTestId("agent-letter").locator("a")).toHaveCount(
-    0,
+  // The switch takes away the link to the other conversation; the body is
+  // ordinary Markdown, whose file paths link once the workspace is known.
+  const peers = feed(page).getByTestId("agent-letter-peer");
+  await expect(peers).toHaveCount(3);
+  await expect(message(page, 2).getByTestId("agent-letter-peer")).toHaveText(
+    "Synthetic charts",
   );
+  expect(await peers.evaluateAll((els) => els.map((el) => el.tagName))).toEqual(
+    ["SPAN", "SPAN", "SPAN"],
+  );
+  await expect(
+    feed(page).getByTestId("agent-letter").locator('a[href^="/workspaces/"]'),
+  ).toHaveCount(0);
   await expect(feed(page).getByTestId("agent-letter-quote")).toHaveCount(0);
   // The sent messages stay the tool rows they were.
   await expect(feed(page).getByTestId("agent-letter-out")).toHaveCount(0);
