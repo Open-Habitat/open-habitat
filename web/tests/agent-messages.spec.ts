@@ -185,7 +185,7 @@ for (const width of [1440, 390]) {
   });
 }
 
-test("@agent-messages switch off draws the old rows without the daemon's block", async ({
+test("@agent-messages switch off still names the sender, without links, quotes or the sent block", async ({
   page,
 }) => {
   test.setTimeout(60000);
@@ -195,11 +195,21 @@ test("@agent-messages switch off draws the old rows without the daemon's block",
   await expect(feed(page)).toContainText("Synthetic report done.", {
     timeout: 15000,
   });
-  await expect(feed(page).getByTestId("agent-letter")).toHaveCount(0);
-  await expect(feed(page).getByTestId("agent-letter-out")).toHaveCount(0);
-  await expect(feed(page)).toContainText(
-    "Synthetic chart 2 is updated with the Q3 figures",
+  // Another agent's words are never the person's: the letter stays.
+  await expect(feed(page).getByTestId("agent-letter")).toHaveCount(3);
+  await expect(message(page, 2)).toHaveAttribute(
+    "aria-label",
+    "Viesti keskustelusta Synthetic charts",
   );
+  await expect(feed(page).getByTestId("agent-letter").locator("a")).toHaveCount(
+    0,
+  );
+  await expect(feed(page).getByTestId("agent-letter-quote")).toHaveCount(0);
+  // The sent messages stay the tool rows they were.
+  await expect(feed(page).getByTestId("agent-letter-out")).toHaveCount(0);
+  await expect(
+    feed(page).locator('li[data-kind="user"] [data-testid="message"]'),
+  ).toHaveCount(2);
   await expect(feed(page)).not.toContainText("<agent-message");
 });
 

@@ -90,7 +90,7 @@
         "desc": "Kun pyydät agenttia kertomaan jotain toiselle keskustelullesi, viesti näkyy molemmissa keskusteluissa omana lohkonaan eikä koskaan sinun viestinäsi.",
         "where": "Lähettävässä keskustelussa viesti on lähetysnuolen ja vastaanottajan nimen kanssa siinä, mistä se lähti. Vastaanottavassa se on agentin kuvakkeen ja lähettäjän nimen kanssa siinä, mihin se tuli.",
         "shows": "Keskustelun nimen linkkinä samaan viestiin toisessa keskustelussa, ajan ja viestin. Kun agentti lainasi aiempaa viestiä, lainaus on yhtenä rivinä viestin yllä. Jonossa odottava viesti nimeää lähettäjänsä.",
-        "needs": "Viestit kulkevat vain omien keskustelujesi välillä. Vastaanottava agentti tietää aina, että viesti tuli toiselta agentilta eikä sinulta, myös ominaisuuden ollessa pois päältä.",
+        "needs": "Viestit kulkevat vain omien keskustelujesi välillä. Toisen agentin viesti näkyy aina lähettäjänsä nimellä eikä koskaan sinun viestinäsi, ja vastaanottava agentti tietää, ettei se tullut sinulta, myös ominaisuuden ollessa pois päältä; silloin nimi ei ole linkki, lainausta ei näy ja lähetetty viesti on komentorivi.",
         "caption": "Viesti keskustelusta Kvartaaliraportti"
       }
     },
@@ -197,7 +197,7 @@
         "desc": "When you ask an agent to tell another of your conversations something, the message shows in both conversations as its own block, never as your message.",
         "where": "In the sending conversation the message has the send arrow and the recipient's name where it was sent. In the receiving one it has the agent icon and the sender's name where it arrived.",
         "shows": "The conversation's name as a link to the same message in the other conversation, the time and the message. When the agent quoted an earlier message, the quote is one line above it. A message waiting in the queue names its sender.",
-        "needs": "Messages travel only between your own conversations. The receiving agent always knows the message came from another agent and not from you, even with this feature off.",
+        "needs": "Messages travel only between your own conversations. Another agent's message always shows its sender's name and never as your message, and the receiving agent knows it did not come from you, even with this feature off; then the name is not a link, no quote shows and a sent message is a command row.",
         "caption": "Message from Quarterly report"
       }
     },

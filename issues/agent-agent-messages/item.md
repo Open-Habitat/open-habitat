@@ -3,7 +3,7 @@ created: 2026-11-26
 updated: 2026-11-26
 type: feature
 reporter: jari
-status: open
+status: testing
 priority: normal
 lane: conversation-history
 lane_seq: 2

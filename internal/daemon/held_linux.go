@@ -61,10 +61,17 @@ func stoppedRPC() *piRPC {
 	return p
 }
 
+// heldView is the person's held messages as their page shows them and as
+// cancel gives them back. An agent's held message is not the person's: it
+// is not drawn as their waiting message, and a cancel never puts it in their
+// field (its receipt tells the sending agent it was cancelled).
 func heldView(held []heldMessage) []map[string]string {
 	view := make([]map[string]string, 0, len(held))
 	for _, h := range held {
-		view = append(view, map[string]string{"command_id": h.id, "text": agentblock.Strip(replyblock.Strip(h.text))})
+		if _, _, ok := agentblock.Parse(h.text); ok {
+			continue
+		}
+		view = append(view, map[string]string{"command_id": h.id, "text": replyblock.Strip(h.text)})
 	}
 	return view
 }

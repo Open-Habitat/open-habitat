@@ -82,7 +82,10 @@ export function AgentLetter({
   quote,
   quoted,
   hideQuote = false,
+  plain = false,
 }: {
+  /** The name without its link (agent-agent-messages off). */
+  plain?: boolean;
   /** in: another conversation sent it here; out: this agent sent it. */
   direction: "in" | "out";
   messageId: string;
@@ -112,7 +115,7 @@ export function AgentLetter({
       : (row?.title ?? peerTitle ?? t.ownersOther);
   const workspace = row?.workspaceId ?? peerWorkspace;
   const href =
-    !shared && peerId && workspace
+    !plain && !shared && peerId && workspace
       ? `/workspaces/${workspace}?conversation=${peerId}&message=${messageId}`
       : undefined;
   const open = (event: MouseEvent<HTMLAnchorElement>) => {

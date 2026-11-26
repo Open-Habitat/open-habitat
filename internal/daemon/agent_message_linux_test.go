@@ -225,6 +225,15 @@ Päivitä kuvaaja 2.`
 	c.sessions[aamTarget].state = "idle"
 	c.mu.Unlock()
 
+	// The same command again after the sender's launch ended: a repeat is
+	// answered as the message it was, never refused as unwritten.
+	sender.processGeneration = "ffffffff-ffff-4fff-8fff-ffffffffffff"
+	command--
+	if code, out = post(true, from(aamGeneration)+`,"quote":"`+aamReceived+`"`); code != 200 || !strings.Contains(out, `"command_id"`) {
+		t.Fatalf("repeat after the launch ended: %d %s", code, out)
+	}
+	sender.processGeneration = aamGeneration
+
 	// Quoting a message the sender sent itself, found from its tool result.
 	if code, out = post(true, from(aamGeneration)+`,"quote":"`+aamSent+`"`); code != 200 {
 		t.Fatalf("quote sent: %d %s", code, out)
@@ -344,5 +353,59 @@ func TestQueueNamesTheSendingConversation(t *testing.T) {
 	}
 	if got := writtenText(t.TempDir(), "oma viesti"); got != "oma viesti" {
 		t.Fatalf("person's queue text = %q", got)
+	}
+}
+
+func TestHeldAgentMessageIsNotThePersonsWaitingMessage(t *testing.T) {
+	agent := agentblock.Build(agentblock.Sender{Agent: "pi:" + aamSender, Title: "Kvartaaliraportti", Workspace: aamWorkspace}, aamReceived, nil, "toisen agentin sanat")
+	view := heldView([]heldMessage{{id: "a", text: agent}, {id: "b", text: "oma viesti"}})
+	if len(view) != 1 || view[0]["command_id"] != "b" || view[0]["text"] != "oma viesti" {
+		t.Fatalf("held view = %v", view)
+	}
+}
+
+func TestGuestToolFramesLeaveOutAnAgentMessagesResult(t *testing.T) {
+	frame, _ := json.Marshal(map[string]any{"kind": "tool.finished", "resource": map[string]string{"agent_id": "pi:" + aamTarget}, "payload": map[string]any{"tool_call_id": "c1", "tool_name": "bash", "state": "succeeded", "text": sentResult(aamSent, "viesti")}})
+	out := guestFrame("pi:"+aamTarget, frame)
+	if out == nil || strings.Contains(string(out), "Kaaviot") || strings.Contains(string(out), aamWorkspace) || !strings.Contains(string(out), `"tool_name":"bash"`) {
+		t.Fatalf("guest frame = %s", out)
+	}
+	plain, _ := json.Marshal(map[string]any{"kind": "tool.finished", "resource": map[string]string{"agent_id": "pi:" + aamTarget}, "payload": map[string]any{"tool_call_id": "c2", "tool_name": "bash", "state": "succeeded", "text": "ok"}})
+	if string(guestFrame("pi:"+aamTarget, plain)) != string(plain) {
+		t.Fatal("an ordinary tool frame changed")
+	}
+}
+
+func TestClearedQueueGivesBackOnlyThePersonsMessages(t *testing.T) {
+	home := t.TempDir()
+	agent := agentblock.Build(agentblock.Sender{Agent: "pi:" + aamSender, Title: "Kvartaaliraportti", Workspace: aamWorkspace}, aamReceived, nil, "toisen agentin sanat")
+	queue, _ := json.Marshal(map[string]any{"steering": []string{}, "followUp": []string{agent, "oma viesti"}})
+	script := filepath.Join(home, "pi")
+	code := `#!/usr/bin/env python3
+import sys,json
+for line in sys.stdin:
+ r=json.loads(line)
+ if r["type"]=="clear_queue":
+  print(json.dumps(dict(type="response",id=r["id"],command="clear_queue",success=True,data=json.loads(` + fmt.Sprintf("%q", string(queue)) + `))),flush=True)
+ else:
+  print(json.dumps(dict(type="response",id=r["id"],command=r["type"],success=True)),flush=True)
+`
+	if err := os.WriteFile(script, []byte(code), 0700); err != nil {
+		t.Fatal(err)
+	}
+	p, err := launchPiRPC(script, home, home, "", []string{"PATH=/usr/bin:/bin"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = p.close() }()
+	s := &conversation{id: aamTarget, rpc: p, state: "accepted", commands: map[string]bool{}}
+	c := &ConversationController{home: home, sessions: map[string]*conversation{aamTarget: s}}
+	go c.drain(s)
+	req := httptest.NewRequest("POST", "http://unix/clear_queue", strings.NewReader(`{"command_id":"12345678-1234-4123-8123-999999999999"}`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	c.clearQueue(w, req, aamTarget)
+	if w.Code != 200 || !strings.Contains(w.Body.String(), `"follow_up":["oma viesti"]`) || strings.Contains(w.Body.String(), "toisen agentin") {
+		t.Fatalf("clear result: %d %s", w.Code, w.Body.String())
 	}
 }

@@ -949,6 +949,8 @@ func (c *ConversationController) admitMessage(w http.ResponseWriter, r *http.Req
 		snapshotError(w, 400, "invalid_request")
 		return
 	}
+	var agentStatus int
+	var agentCode string
 	if agent == nil && (body.From != nil || body.Quote != "") || agent != nil && (body.ReplyTo != nil || body.FirstChoice != nil) {
 		snapshotError(w, 400, "invalid_request")
 		return
@@ -959,18 +961,16 @@ func (c *ConversationController) admitMessage(w http.ResponseWriter, r *http.Req
 			return
 		}
 		// Read the sender and the quote from native files before taking the
-		// lock.
+		// lock. Like a reply's, their refusals come only below, after a
+		// repeat has been answered as the message it is.
 		from, status, code := c.agentSender(body.From)
-		if status != 0 {
-			snapshotError(w, status, code)
-			return
-		}
 		agent.from = from
-		if body.Quote != "" {
+		if status != 0 {
+			agentStatus, agentCode = status, code
+		} else if body.Quote != "" {
 			quote, ok := c.agentQuote(from.Agent, body.Quote)
 			if from.Agent == agentblock.Outside || !ok {
-				snapshotError(w, 400, "quote_not_found")
-				return
+				agentStatus, agentCode = 400, "quote_not_found"
 			}
 			agent.quote = quote
 		}
@@ -1062,6 +1062,11 @@ func (c *ConversationController) admitMessage(w http.ResponseWriter, r *http.Req
 			return
 		}
 		body.Message = replyblock.Build(body.ReplyTo.EntryKey, excerpt, body.Message)
+	}
+	if agent != nil && agentStatus != 0 {
+		c.mu.Unlock()
+		snapshotError(w, agentStatus, agentCode)
+		return
 	}
 	if agent != nil {
 		agent.text, agent.marked = body.Message, true
@@ -1730,7 +1735,18 @@ func (c *ConversationController) clearQueue(w http.ResponseWriter, r *http.Reque
 		snapshotError(w, 409, "control_uncertain")
 		return
 	}
-	written := func(texts []string) []string { return writtenTexts(c.home, texts) }
+	// What goes back to the person's field is theirs: an agent's message
+	// removed from the queue is not put there, as a held one is not
+	// (heldView). The sending agent keeps its own copy in its tool result.
+	written := func(texts []string) []string {
+		own := make([]string, 0, len(texts))
+		for _, text := range texts {
+			if _, _, ok := agentblock.Parse(text); !ok {
+				own = append(own, text)
+			}
+		}
+		return writtenTexts(c.home, own)
+	}
 	result := map[string]any{"schema_version": 1, "command_id": body.CommandID, "state": "accepted", "removed_queue": map[string]any{"steering": written(reply.Steering), "follow_up": written(reply.FollowUp)}}
 	if body.Unanswered {
 		result["unanswered"] = written(unanswered)

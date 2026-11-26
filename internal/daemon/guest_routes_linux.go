@@ -605,6 +605,26 @@ func guestFrame(agent string, b []byte) []byte {
 		}
 		return out
 	}
+	if (kind == "tool.updated" || kind == "tool.finished") && bytes.Contains(frame["payload"], []byte("agent_message_sent")) {
+		// The result of an agent message names the owner's other
+		// conversation (guestAgentMessage): the participant sees the row,
+		// not the output.
+		var payload map[string]any
+		if json.Unmarshal(frame["payload"], &payload) != nil {
+			return nil
+		}
+		delete(payload, "text")
+		raw, err := json.Marshal(payload)
+		if err != nil {
+			return nil
+		}
+		frame["payload"] = raw
+		out, err := json.Marshal(frame)
+		if err != nil {
+			return nil
+		}
+		return out
+	}
 	if guestPassKinds[kind] {
 		return b
 	}

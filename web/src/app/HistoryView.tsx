@@ -1576,10 +1576,12 @@ export function timelineItems(
       if (times) lastDay = dayOf(entry) ?? lastDay;
       continue;
     }
-    // agent-agent-messages: a message from another conversation starts a
-    // turn as the person's message does, in the person's message geometry
-    // with its sender named.
-    if (agentMessages && entry.kind === "user" && entry.agent_message) {
+    // A message from another conversation starts a turn as the person's
+    // message does, in the person's message geometry with its sender named.
+    // It is never drawn as the person's own words, so it is a letter even
+    // with agent-agent-messages off; the switch adds the link to the other
+    // conversation, the quote and the sent message's block.
+    if (entry.kind === "user" && entry.agent_message) {
       flush();
       daySeparator(entry);
       turnId = `turn:${entry.entry_key}`;
@@ -1599,7 +1601,9 @@ export function timelineItems(
             peerWorkspace={fact.workspace_id}
             at={times ? savedAt(entry) : undefined}
             text={entry.content.text}
-            quote={fact.quote}
+            truncated={!entry.content.complete}
+            plain={!agentMessages}
+            quote={agentMessages ? fact.quote : undefined}
             quoted={
               fact.quote ? messages.get(fact.quote.message_id) : undefined
             }
