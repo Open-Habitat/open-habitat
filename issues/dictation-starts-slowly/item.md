@@ -3,11 +3,10 @@ created: 2026-11-26
 updated: 2026-11-26
 type: bug
 reporter: jari
-status: fixed
+status: open
 priority: normal
 lane: unlaned
 preparation: ready
-closed: 2026-11-26
 ---
 
 # Dictation starts slowly and loses the first word
@@ -36,3 +35,13 @@ in the text.
 ### 2026-11-26T05:42:07Z · @issuectl
 
 Implemented; see result.md.
+
+## Reopen Notes — 2026-11-26
+
+_Add rationale for reopening here._
+
+## Decisions
+
+### 2026-11-26T05:49:08Z · @jari
+
+Jari 26.11.2026: activation must be as fast as possible; this is very important for usability. Next action (approved): measure press-to-capturing on real browsers and remove every avoidable step; report the remaining floor and what only a product decision could remove (e.g. keeping the microphone open).
