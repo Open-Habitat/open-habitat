@@ -2,7 +2,7 @@
 created: 2026-11-26
 updated: 2026-11-26
 type: bug
-status: open
+status: fixed
 priority: high
 provenance: other
 provenance_detail: release driver gate
@@ -11,6 +11,7 @@ originating_run: 01m8b78ckjycq9km1mxd7zcdkp
 originating_run_kind: spinoff
 lane: unlaned
 preparation: ready
+closed: 2026-11-26
 ---
 
 # Gate red at f698d5366: dictation's warm AudioContext fails attention-sound spec; views_linux_test.go unformatted
@@ -43,3 +44,9 @@ Load flakes in the same gate that passed when rerun alone: `internal/daemon` (10
 ### 2026-11-26T06:51:43Z · @agent
 
 Conductor 26.11.2026: accepted; it blocks v0.1.9, which Jari wants today.
+
+## Resolution
+
+### 2026-11-26T07:05:56Z · @issuectl
+
+Fixed; see result.md.

@@ -253,17 +253,41 @@ for (const target of [
   test(`@attention-sound a non-open reply after preview: ${target}`, async ({
     page,
   }) => {
+    // The page has two contexts by design: the sound's, unlocked by a
+    // press and kept running, and dictation's, warmed ahead of a press and
+    // left suspended so it does not hold the audio device. The sound's is
+    // the one that plays buffers; dictation's only captures and beeps.
     await page.addInitScript(() => {
       const NativeAudioContext = window.AudioContext;
-      const contexts: AudioContext[] = [];
+      const contexts: { context: AudioContext; plays: boolean }[] = [];
       Object.assign(window, { soundContexts: contexts });
       window.AudioContext = class extends NativeAudioContext {
         constructor(options?: AudioContextOptions) {
           super(options);
-          contexts.push(this);
+          contexts.push({ context: this, plays: false });
+        }
+        override createBufferSource() {
+          const entry = contexts.find((c) => c.context === this);
+          if (entry) entry.plays = true;
+          return super.createBufferSource();
         }
       };
     });
+    const contextStates = () =>
+      page.evaluate(() => {
+        const all = (
+          window as unknown as {
+            soundContexts: { context: AudioContext; plays: boolean }[];
+          }
+        ).soundContexts;
+        return {
+          sound: all.filter((c) => c.plays).map((c) => c.context.state),
+          // Nothing else may keep the device busy while nobody dictates.
+          othersRunning: all.filter(
+            (c) => !c.plays && c.context.state === "running",
+          ).length,
+        };
+      });
     await signIn(page);
     await page.goto("/workspaces");
     const id = await openWorkspace(page, "ordinary-dir");
@@ -286,14 +310,8 @@ for (const target of [
     await page.getByTestId("sound-test").click();
     await expect.poll(() => plays(page)).toEqual(["kalimba"]);
     await expect
-      .poll(() =>
-        page.evaluate(() =>
-          (
-            window as unknown as { soundContexts: AudioContext[] }
-          ).soundContexts.map((c) => c.state),
-        ),
-      )
-      .toEqual(["running"]);
+      .poll(contextStates)
+      .toEqual({ sound: ["running"], othersRunning: 0 });
     await page.getByTestId("settings-close").click();
     await openWorkspace(page, "ordinary-dir");
     await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
@@ -334,14 +352,8 @@ for (const target of [
       .poll(() => plays(page), { timeout: 10000 })
       .toEqual(target === "night-quiet" ? ["kalimba"] : ["kalimba", "kulho"]);
     await expect
-      .poll(() =>
-        page.evaluate(() =>
-          (
-            window as unknown as { soundContexts: AudioContext[] }
-          ).soundContexts.map((c) => c.state),
-        ),
-      )
-      .toEqual(["running"]);
+      .poll(contextStates)
+      .toEqual({ sound: ["running"], othersRunning: 0 });
   });
 }
 

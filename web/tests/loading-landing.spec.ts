@@ -14,6 +14,16 @@ async function login(page: Page) {
   await expect(page.getByRole("navigation")).toBeVisible();
 }
 
+/** Installs the page clock and stops it. The installed clock follows real
+ * time in the page, so a moment read in the test process can already be
+ * past when the page handles the pause ("Cannot fast-forward to the past");
+ * the page's own clock, a second ahead, cannot be. Every caller navigates
+ * next, so that second's timers on the old page change nothing. */
+async function pauseClock(page: Page) {
+  await page.clock.install();
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
+}
+
 test("@landing fresh load serves a favicon and keeps the console clean", async ({
   page,
 }) => {
@@ -39,8 +49,7 @@ test("@landing fresh load serves a favicon and keeps the console clean", async (
 test("@landing never flashes: hidden for 300 ms from navigation, then shown at least 500 ms", async ({
   page,
 }) => {
-  await page.clock.install();
-  await page.clock.pauseAt(new Date());
+  await pauseClock(page);
   await page.request.get("/fixture/scenario?value=ready");
   // A fast load finishes while the page clock is still before the reveal.
   await login(page);
@@ -164,8 +173,7 @@ test("@landing a stalled session read reaches the client deadline despite a heal
   page,
 }) => {
   await login(page);
-  await page.clock.install();
-  await page.clock.pauseAt(new Date());
+  await pauseClock(page);
   let release!: () => void;
   const held = new Promise<void>((resolve) => {
     release = resolve;
@@ -208,8 +216,7 @@ test("@landing first snapshot lost offline recovers on online without a click", 
   context,
 }) => {
   await login(page);
-  await page.clock.install();
-  await page.clock.pauseAt(new Date());
+  await pauseClock(page);
   let reads = 0;
   await page.route("**/api/v1/snapshot", async (route) => {
     reads++;
@@ -250,8 +257,7 @@ for (const mode of ["network", "answer"] as const) {
     page,
   }) => {
     await login(page);
-    await page.clock.install();
-    await page.clock.pauseAt(new Date());
+    await pauseClock(page);
     let reads = 0;
     let release!: () => void;
     const held = new Promise<void>((resolve) => {

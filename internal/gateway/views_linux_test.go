@@ -36,19 +36,19 @@ func newViewDesk(t *testing.T) *viewDesk {
 	t.Helper()
 	seen := make(chan *http.Request, 64)
 	files := map[string]string{
-		"/view-export/" + viewTestA + "/":                  `{"schema_version":1,"view":{"title":"Kassavirta","entry":"site/index.html"}}`,
-		"/view-export/" + viewTestB + "/":                  `{"schema_version":1,"view":{"title":"Toinen","entry":"secret/index.html"}}`,
-		"/view-export/" + viewTestA + "/site/index.html":   "<script src=app.js></script>",
-		"/view-export/" + viewTestA + "/site/app.js":       "1",
-		"/view-export/" + viewTestA + "/site/cut.html":     "<p>alku</p><script>render(" + strings.Repeat("x", 64<<10),
-		"/view-export/" + viewTestA + "/site/cut.js":       "render(" + strings.Repeat("x", 64<<10),
-		"/view-export/" + viewTestA + "/site/data.bin":     "\x00",
-		"/view-export/" + viewTestA + "/site/index.svg":    "<svg/>",
-		"/view-export/" + viewTestA + "/site/kuva (1).png": "png",
-		"/view-export/" + viewTestB + "/secret/index.html": "other view",
+		"/view-export/" + viewTestA + "/":                                  `{"schema_version":1,"view":{"title":"Kassavirta","entry":"site/index.html"}}`,
+		"/view-export/" + viewTestB + "/":                                  `{"schema_version":1,"view":{"title":"Toinen","entry":"secret/index.html"}}`,
+		"/view-export/" + viewTestA + "/site/index.html":                   "<script src=app.js></script>",
+		"/view-export/" + viewTestA + "/site/app.js":                       "1",
+		"/view-export/" + viewTestA + "/site/cut.html":                     "<p>alku</p><script>render(" + strings.Repeat("x", 64<<10),
+		"/view-export/" + viewTestA + "/site/cut.js":                       "render(" + strings.Repeat("x", 64<<10),
+		"/view-export/" + viewTestA + "/site/data.bin":                     "\x00",
+		"/view-export/" + viewTestA + "/site/index.svg":                    "<svg/>",
+		"/view-export/" + viewTestA + "/site/kuva (1).png":                 "png",
+		"/view-export/" + viewTestB + "/secret/index.html":                 "other view",
 		"/api/v1/file-offers/" + offerPageA + "/files/proto/Sivu (1).html": "<!doctype html><script src=app.js></script>",
-		"/api/v1/file-offers/" + offerPageA + "/files/proto/app.js":         "2",
-		"/api/v1/file-offers/" + offerPageB + "/files/secret.html":          "other offer",
+		"/api/v1/file-offers/" + offerPageA + "/files/proto/app.js":        "2",
+		"/api/v1/file-offers/" + offerPageB + "/files/secret.html":         "other offer",
 	}
 	var mu sync.Mutex
 	daemon := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

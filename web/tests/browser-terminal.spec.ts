@@ -180,10 +180,16 @@ test("@browser-shell selection actions stay outside every selected row at panel 
   await openShell(page);
   for (const shift of [true, false]) {
     await page.locator(".ah-terminal-surface textarea").focus();
+    // The previous pass's "80" is still on screen, so each pass waits for
+    // its own marker: dragging before tmux has changed its mouse mode lets
+    // tmux, not xterm.js, take the drag.
+    const mode = shift ? "on" : "off";
     await page.keyboard.type(
-      `tmux set mouse ${shift ? "on" : "off"}; seq 1 80\n`,
+      `tmux set mouse ${mode}; seq 1 80; echo ready-${mode}-$((1+1))\n`,
     );
-    await expect(rows(page).filter({ hasText: /^80\s*$/ })).toHaveCount(1);
+    await expect(
+      rows(page).filter({ hasText: new RegExp(`^ready-${mode}-2\\s*$`) }),
+    ).toHaveCount(1);
     const count = await rows(page).count();
     for (const [start, end] of [
       [0, 0],
@@ -302,8 +308,9 @@ test("@browser-shell a selection survives tmux's redraws; the wheel reads histor
 
   // The wheel scrolls tmux's history as far as it moved: one line per
   // line-height of pixels, not five lines an event.
-  await page.keyboard.type("clear; seq 1 300\n");
-  await expect(rows(page).filter({ hasText: /^300\s*$/ })).toHaveCount(1);
+  // The earlier "300" may still be on screen: wait for this run's own end.
+  await page.keyboard.type("clear; seq 1 300; echo wheel-$((1+2))\n");
+  await expect(rows(page).filter({ hasText: /^wheel-3\s*$/ })).toHaveCount(1);
   const box = await page
     .locator(".ah-terminal-surface .xterm-screen")
     .boundingBox();
