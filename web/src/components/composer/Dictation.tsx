@@ -9,11 +9,12 @@ import {
   useState,
 } from "react";
 import {
-  AudioInput,
+  type AudioInput,
   browserDictationDeps,
   Dictation,
   type DictationDeps,
   type DictationView,
+  holdPageAudio,
   stopAtMs,
   warnAtMs,
 } from "../../app/dictation";
@@ -278,7 +279,7 @@ export function useDictation(
   useEffect(() => {
     if (!speech || !csrf) return;
     let warning: DictationView["warning"];
-    const input = new AudioInput();
+    const [input, release] = holdPageAudio();
     audio.current = input;
     const d = new Dictation(
       deps ??
@@ -303,19 +304,13 @@ export function useDictation(
       },
     );
     engine.current = d;
-    // A press is near when the field is focused or the pointer comes over
-    // its box: the audio graph is readied then, without the microphone.
-    const box = scope.current;
-    const warm = () => {
-      if (!d.active) d.warm();
-    };
-    box?.addEventListener("focusin", warm);
-    box?.addEventListener("pointerover", warm);
+    // Ready before the first press, without the microphone, so the press
+    // waits only for the microphone to open.
+    const unwarm = input.warmSoon();
     return () => {
-      box?.removeEventListener("focusin", warm);
-      box?.removeEventListener("pointerover", warm);
+      unwarm();
       d.dispose();
-      input.close();
+      release();
       audio.current = null;
       engine.current = null;
       setView(null);
@@ -325,14 +320,17 @@ export function useDictation(
   const start = useCallback((text: string, caret?: Caret) => {
     const d = engine.current;
     if (!d || d.active) return;
+    // The engine asks for the microphone before anything else the press
+    // does; the rest follows.
+    void d.start();
     // Unlock audio on the user's gesture, not after the microphone's
-    // prompt or an hour later. Cues go through the page's audio
-    // destination, so browser tab muting applies.
-    audio.current?.resume();
+    // prompt or an hour later; the engine's own deps have done it already.
+    // Cues go through the page's audio destination, so browser tab muting
+    // applies.
+    audio.current?.ready();
     // Dictation writes at the caret, or in place of the selection.
     around.current = aroundCaret(text, caret);
     setNotice(null);
-    void d.start();
   }, []);
   /** Ends the dictation and resolves with the field's whole text. */
   const stop = useCallback(async () => {

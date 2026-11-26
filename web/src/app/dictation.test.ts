@@ -6,6 +6,8 @@ import {
   Dictation,
   type DictationDeps,
   type DictationView,
+  holdPageAudio,
+  StartTiming,
 } from "./dictation";
 import { SpeechError, type SpeechSession } from "./speech";
 
@@ -533,24 +535,28 @@ describe("Dictation", () => {
       let grant: () => void = () => {};
       const keys: ((ok: boolean) => void)[] = [];
       let tracksStopped = 0;
-      let warmed = 0;
+      // What the press did, in order.
+      const order: string[] = [];
       const d = new Dictation(
         {
           ...base,
-          warm: () => warmed++,
+          ready: () => order.push("audio"),
           microphone: () =>
             new Promise<MediaStream>((r) => {
+              order.push("microphone");
               grant = () =>
                 r({
                   getTracks: () => [{ stop: () => tracksStopped++ }],
                 } as unknown as MediaStream);
             }),
-          mint: (signal) =>
-            new Promise<void>((r) => keys.push(() => r())).then(() =>
+          mint: (signal) => {
+            order.push("key");
+            return new Promise<void>((r) => keys.push(() => r())).then(() =>
               base.mint(signal),
-            ),
+            );
+          },
         },
-        () => {},
+        (view) => order.push(view.phase),
       );
       return {
         ...h,
@@ -565,18 +571,20 @@ describe("Dictation", () => {
         },
         keysAsked: () => keys.length,
         tracksStopped: () => tracksStopped,
-        warmed: () => warmed,
+        order,
       };
     }
 
-    it("asks for the key and readies the audio while the microphone opens, and listens before the stream is ready", async () => {
+    it("asks for the microphone before anything else, readies the audio and the key while it opens, and listens before the stream is ready", async () => {
       const h = gated([session(1)]);
       void h.d.start();
+      // The microphone is the one step the press cannot avoid, so nothing
+      // the press does runs ahead of asking for it; the key and the audio
+      // graph are on their way before it answers, so the press waits only
+      // for it.
+      expect(h.order).toEqual(["microphone", "audio", "key", "connecting"]);
       await flush();
-      // The key and the audio graph are on their way before the
-      // microphone has answered, so the press waits only for it.
       expect(h.keysAsked()).toBe(1);
-      expect(h.warmed()).toBe(1);
       expect(h.d.view.phase).toBe("connecting");
       await h.grant();
       expect(h.d.view.phase).toBe("live");
@@ -739,5 +747,97 @@ describe("AudioInput", () => {
     await flush();
     await input.capture(stream, () => {});
     expect(audio.loads()).toBe(2);
+  });
+
+  it("a press readies a running context at once, without the rest a warm-up gives it", async () => {
+    const audio = fakeAudio();
+    const input = new AudioInput();
+    input.ready();
+    await flush();
+    expect(audio.made).toHaveLength(1);
+    expect(audio.made[0]?.state).toBe("running");
+    expect(audio.loads()).toBe(1);
+    await input.capture(stream, () => {});
+    expect(audio.made).toHaveLength(1);
+    expect(audio.loads()).toBe(1);
+  });
+
+  it("warms only once the page has been used: at once, or after the first press anywhere is let go", async () => {
+    try {
+      const audio = fakeAudio();
+      const input = new AudioInput();
+      const stop = input.warmSoon();
+      expect(audio.made).toHaveLength(0);
+      document.dispatchEvent(new Event("pointerup"));
+      await flush();
+      expect(audio.made).toHaveLength(1);
+      expect(audio.made[0]?.state).toBe("suspended");
+      expect(audio.loads()).toBe(1);
+      stop();
+      input.close();
+      Object.defineProperty(navigator, "userActivation", {
+        value: { hasBeenActive: true },
+        configurable: true,
+      });
+      const used = new AudioInput();
+      used.warmSoon()();
+      expect(audio.made).toHaveLength(2);
+      used.close();
+    } finally {
+      Reflect.deleteProperty(navigator, "userActivation");
+    }
+  });
+
+  it("is one per page: the next composer finds it warm, and it rests while none holds it", async () => {
+    const audio = fakeAudio();
+    const [first, releaseFirst] = holdPageAudio();
+    const [second, releaseSecond] = holdPageAudio();
+    expect(second).toBe(first);
+    first.ready();
+    await flush();
+    const made = audio.made.length;
+    const context = audio.made.at(-1);
+    releaseFirst();
+    releaseFirst();
+    expect(context?.state).toBe("running");
+    releaseSecond();
+    expect(context?.state).toBe("suspended");
+    // A conversation opened next: same context and worklet, no new device.
+    const [next, releaseNext] = holdPageAudio();
+    expect(next).toBe(first);
+    await next.capture(stream, () => {});
+    expect(audio.made).toHaveLength(made);
+    expect(audio.loads()).toBe(1);
+    releaseNext();
+    next.close();
+  });
+});
+
+describe("StartTiming", () => {
+  afterEach(() => {
+    sessionStorage.clear();
+    vi.restoreAllMocks();
+  });
+
+  it("times each step once from the press and logs them once, only when the tab asks", () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    let now = 1_000;
+    const quiet = new StartTiming(() => now);
+    now += 40;
+    quiet.step("microphone");
+    now += 5;
+    quiet.step("microphone");
+    quiet.step("listening");
+    quiet.report();
+    expect(quiet.summary).toEqual({ microphone: 40, listening: 45 });
+    expect(info).not.toHaveBeenCalled();
+    sessionStorage.setItem("oh:debug-dictation", "true");
+    const asked = new StartTiming(() => now);
+    now += 12;
+    asked.step("microphone");
+    asked.report();
+    asked.report();
+    expect(info).toHaveBeenCalledOnce();
+    expect(info.mock.calls[0]?.join(" ")).toContain('"microphone":12');
   });
 });

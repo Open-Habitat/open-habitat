@@ -38,7 +38,7 @@ Implemented; see result.md.
 
 ## Reopen Notes — 2026-11-26
 
-_Add rationale for reopening here._
+Jari asked for activation as fast as possible; round 2 measures the start and removes the remaining steps before capture.
 
 ## Decisions
 

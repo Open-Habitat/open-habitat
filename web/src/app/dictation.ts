@@ -74,9 +74,9 @@ export type DictationDeps = {
     onFrame: (pcm: Int16Array, level: number) => void,
   ) => Promise<AudioCapture>;
   socket: (url: string, protocols: string[]) => WebSocket;
-  /** Readies the audio graph without the microphone, so a press waits only
-   * for the microphone itself. */
-  warm?: () => void;
+  /** Readies the audio graph at the press, alongside the microphone, so
+   * the press waits only for the microphone itself. */
+  ready?: () => void;
   now: () => number;
   setInterval: (run: () => void, ms: number) => number;
   clearInterval: (id: number) => void;
@@ -127,6 +127,9 @@ export class Dictation {
   private accepted = false;
   /** Soniox has answered this dictation at all, for its start timing. */
   private replied = false;
+  /** Audio of this dictation has gone to Soniox, for its start timing. */
+  private sentAudio = false;
+  private timing: StartTiming | null = null;
   private tick: number | null = null;
   private finished: (() => void) | null = null;
   private finishing: Promise<void> | null = null;
@@ -151,23 +154,29 @@ export class Dictation {
     this.onChange(this.view);
   }
 
-  /** Readies the audio graph ahead of a press that looks near. */
-  warm() {
-    this.deps.warm?.();
-  }
-
-  /** Starts a dictation; the result shows in the view. The key is minted
-   * and the audio graph readied while the microphone opens, and the
-   * microphone listens from the moment it is open: what is said before the
-   * stream to Soniox is ready is kept and sent once it is. */
+  /** Starts a dictation; the result shows in the view. The microphone is
+   * asked for first, before anything else the press does, because opening
+   * it is the one step a press cannot avoid; the audio graph is readied and
+   * the key minted while it opens. The microphone listens from the moment
+   * it is open: what is said before the stream to Soniox is ready is kept
+   * and sent once it is. */
   async start() {
     if (this.active) return;
     const run = ++this.run;
-    mark("dictation:press");
+    this.timing = new StartTiming();
+    let asked: Promise<MediaStream>;
+    try {
+      asked = this.deps.microphone();
+    } catch (error) {
+      asked = Promise.reject(error);
+    }
+    // Handled below, after the rest of the press has been started.
+    asked.catch(() => {});
     const abort = new AbortController();
     this.abort = abort;
     this.reconnected = false;
     this.replied = false;
+    this.sentAudio = false;
     this.draining = false;
     this.chaining = null;
     this.streamAt = null;
@@ -178,20 +187,20 @@ export class Dictation {
     this.pending = [];
     this.pendingBytes = 0;
     this.connecting = true;
-    this.set({ ...idle, phase: "connecting" });
-    this.deps.warm?.();
+    this.deps.ready?.();
     const minted = this.deps.mint(abort.signal).then((session) => {
-      measure("dictation: key", "dictation:press");
+      if (run === this.run) this.timing?.step("key");
       return { session, at: this.deps.now() };
     });
     // A missing or refused key need not wait for the microphone's prompt.
     minted.catch((error) => {
       if (this.view.phase === "connecting") this.fail(run, error);
     });
+    this.set({ ...idle, phase: "connecting" });
     try {
       let stream: MediaStream;
       try {
-        stream = await this.deps.microphone();
+        stream = await asked;
       } catch {
         throw new SpeechError("microphone_denied");
       }
@@ -201,7 +210,7 @@ export class Dictation {
         for (const track of stream.getTracks()) track.stop();
         return;
       }
-      measure("dictation: microphone", "dictation:press");
+      this.timing.step("microphone");
       this.stream = stream;
       const capture = await this.deps
         .capture(stream, (pcm, level) => this.frame(run, pcm, level))
@@ -213,7 +222,7 @@ export class Dictation {
         return;
       }
       this.capture = capture;
-      measure("dictation: listening", "dictation:press");
+      this.timing.step("listening");
       this.sampleRate = capture.sampleRate;
       this.startedAt = this.lastVoice = this.deps.now();
       this.set({ phase: "live" });
@@ -261,8 +270,7 @@ export class Dictation {
     this.streamFinished = false;
     ws.onopen = () => {
       if (run !== this.run || this.ws !== ws) return;
-      if (this.openedAt === null)
-        measure("dictation: stream", "dictation:press");
+      if (this.openedAt === null) this.timing?.step("stream");
       ws.send(
         JSON.stringify({
           model: "stt-rt-v5",
@@ -278,6 +286,7 @@ export class Dictation {
       this.streamAt = this.deps.now();
       this.streamAudioMs = (this.pendingBytes / 2 / this.sampleRate) * 1000;
       for (const chunk of this.pending) ws.send(chunk);
+      if (this.pending.length) this.sentFirst();
       this.pending = [];
       this.pendingBytes = 0;
       if (this.view.phase !== "finishing") this.set({ phase: "live" });
@@ -330,7 +339,10 @@ export class Dictation {
       // Anything else closes the stream next, and the close reconnects.
       return;
     }
-    if (!this.replied) measure("dictation: first reply", "dictation:press");
+    if (!this.replied) {
+      this.timing?.step("first reply");
+      this.timing?.report();
+    }
     this.replied = true;
     this.accepted = true;
     let final = this.view.final;
@@ -392,6 +404,7 @@ export class Dictation {
     ) as ArrayBuffer;
     if (this.ws && this.wsReady && !this.draining) {
       this.ws.send(buffer);
+      this.sentFirst();
       this.streamAudioMs += (pcm.length / this.sampleRate) * 1000;
       this.lastSent = now;
     } else if (this.capture) {
@@ -406,6 +419,12 @@ export class Dictation {
     }
     this.set({ level, quietMs: now - this.lastVoice });
     this.checkCeiling(run, now);
+  }
+
+  private sentFirst() {
+    if (this.sentAudio) return;
+    this.sentAudio = true;
+    this.timing?.step("first audio sent");
   }
 
   private onTick(run: number) {
@@ -665,6 +684,8 @@ export class Dictation {
     if (ws && ws.readyState <= 1) ws.close();
     this.pending = [];
     this.pendingBytes = 0;
+    // A start that never reached a reply still tells how far it got.
+    this.timing?.report();
   }
 }
 
@@ -703,9 +724,9 @@ function toPcm(samples: Float32Array): [Int16Array, number] {
 }
 
 /** The page's audio for dictation: one AudioContext, made and given the
- * PCM worklet before a press when it can be, so a press waits only for the
- * microphone. The same context plays the dictation's cues. It never holds
- * the microphone: each capture's stream is the engine's to stop. */
+ * PCM worklet before a press, so a press waits only for the microphone.
+ * The same context plays the dictation's cues. It never holds the
+ * microphone: each capture's stream is the engine's to stop. */
 export class AudioInput {
   private context: AudioContext | null = null;
   private module: Promise<void> | null = null;
@@ -750,11 +771,44 @@ export class AudioInput {
     if (context) void this.worklet(context).catch(() => {});
   };
 
-  /** Lets audio run, on the person's press. */
-  resume() {
-    void this.ensure()
-      ?.resume()
-      .catch(() => {});
+  /** Lets audio run and readies the worklet, on the person's press, while
+   * the microphone opens. */
+  ready = () => {
+    const context = this.ensure();
+    if (!context) return;
+    void context.resume().catch(() => {});
+    void this.worklet(context).catch(() => {});
+  };
+
+  /** Readies the graph as soon as the page may make one without a warning:
+   * at once if the person has already used the page, otherwise once their
+   * first press or key anywhere on it has been let go, which leaves the
+   * page activated. A first press on Sanele readies it itself, earlier.
+   * Returns the cleanup. */
+  warmSoon(): () => void {
+    if (globalThis.navigator?.userActivation?.hasBeenActive) {
+      this.warm();
+      return () => {};
+    }
+    if (typeof document === "undefined") return () => {};
+    const first = () => {
+      stop();
+      this.warm();
+    };
+    const stop = () => {
+      document.removeEventListener("pointerup", first, true);
+      document.removeEventListener("keyup", first, true);
+    };
+    document.addEventListener("pointerup", first, true);
+    document.addEventListener("keyup", first, true);
+    return stop;
+  }
+
+  /** Lets the context rest, keeping it and its worklet for the next
+   * composer: a running context keeps the audio device busy. */
+  rest() {
+    if (this.context?.state === "running")
+      void this.context.suspend().catch(() => {});
   }
 
   /** The running context, for cues. */
@@ -804,7 +858,7 @@ export class AudioInput {
     };
   };
 
-  /** Closes the context, as the composer leaves. */
+  /** Closes the context. */
   close() {
     const context = this.context;
     this.context = null;
@@ -813,21 +867,74 @@ export class AudioInput {
   }
 }
 
-/** A step of a dictation's start in the browser's performance timeline, so
- * the time from the press to listening can be read on a real device. */
-function mark(name: string) {
-  try {
-    globalThis.performance?.mark?.(name);
-  } catch {
-    /* Timing is optional. */
-  }
+let pageAudio: AudioInput | null = null;
+let pageAudioHolders = 0;
+
+/** The page's one AudioInput, shared by its composers, so a conversation
+ * opened next finds the audio graph warm. It rests while no composer holds
+ * it; call the returned release when the composer leaves. */
+export function holdPageAudio(): [AudioInput, () => void] {
+  pageAudio ??= new AudioInput();
+  const input = pageAudio;
+  pageAudioHolders++;
+  let held = true;
+  return [
+    input,
+    () => {
+      if (!held) return;
+      held = false;
+      if (--pageAudioHolders === 0) input.rest();
+    },
+  ];
 }
 
-function measure(name: string, from: string) {
-  try {
-    globalThis.performance?.measure?.(name, from);
-  } catch {
-    /* A mark cleared by the page is no reason to stop. */
+/** The steps of one dictation's start, from the press: written to the
+ * browser's performance timeline (DevTools' Performance panel) and, with
+ * `sessionStorage.setItem("oh:debug-dictation", "true")` in the tab, logged
+ * once to the console, so the time to listening can be read on a real
+ * device. */
+export class StartTiming {
+  private readonly at: number;
+  private readonly steps: Record<string, number> = {};
+  private reported = false;
+
+  constructor(private readonly clock = () => globalThis.performance.now()) {
+    this.at = clock();
+    try {
+      globalThis.performance?.mark?.("dictation:press");
+    } catch {
+      /* Timing is optional. */
+    }
+  }
+
+  step(name: string) {
+    if (name in this.steps) return;
+    this.steps[name] = Math.round((this.clock() - this.at) * 10) / 10;
+    try {
+      globalThis.performance?.measure?.(`dictation: ${name}`, {
+        start: this.at,
+        end: this.clock(),
+      });
+    } catch {
+      /* Timing is optional. */
+    }
+  }
+
+  /** Milliseconds from the press to each step reached so far. */
+  get summary(): Readonly<Record<string, number>> {
+    return this.steps;
+  }
+
+  /** Logs the steps once, when the tab has asked for it. */
+  report() {
+    if (this.reported) return;
+    this.reported = true;
+    try {
+      if (sessionStorage.getItem("oh:debug-dictation") !== "true") return;
+    } catch {
+      return;
+    }
+    console.info("[dictation] ms from press", JSON.stringify(this.steps));
   }
 }
 
@@ -837,7 +944,7 @@ export function browserDictationDeps(
 ): DictationDeps {
   return {
     mint,
-    warm: audio.warm,
+    ready: audio.ready,
     microphone: () => {
       if (!navigator.mediaDevices?.getUserMedia)
         return Promise.reject(new Error("unsupported"));
