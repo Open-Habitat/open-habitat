@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"strings"
 
+	"github.com/open-habitat/open-habitat/internal/agentblock"
 	"github.com/open-habitat/open-habitat/internal/replyblock"
 )
 
@@ -93,6 +94,11 @@ func nativeBlocksBase(e nativeEntry) (out historyEntry) {
 		} else if reply, ok := projectUserReply(e.Message); ok {
 			out.ReplyTo = reply
 			out.full = replyblock.Strip(out.full)
+		} else if block, _, ok := receivedAgentMessage(e.Message); ok {
+			out.AgentMessage = agentMessageFactOf(block)
+			out.full = agentblock.Strip(out.full)
+		} else if sent, ok := sentAgentMessageResult(e.Message); ok {
+			out.SentAgentMessage = sentAgentMessageFact(sent)
 		}
 	}
 
@@ -297,6 +303,9 @@ func nativeBlocksBase(e nativeEntry) (out historyEntry) {
 			}
 			if out.ReplyTo != nil && index == 0 && b.Type == "text" {
 				text = replyblock.Strip(text)
+			}
+			if out.AgentMessage != nil && index == 0 && b.Type == "text" {
+				text = agentblock.Strip(text)
 			}
 			if b.Type == "thinking" {
 				text = b.Thinking

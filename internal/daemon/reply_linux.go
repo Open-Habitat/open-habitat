@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/open-habitat/open-habitat/internal/agentblock"
 	"github.com/open-habitat/open-habitat/internal/replyblock"
 )
 
@@ -158,6 +159,9 @@ func projectUserReply(message json.RawMessage) (*replyRef, bool) {
 // read the same text.
 func userText(text string) string {
 	if _, _, rest, ok := replyblock.Parse(text); ok {
+		return rest
+	}
+	if _, rest, ok := agentblock.Parse(text); ok {
 		return rest
 	}
 	return skillInstruction(text)

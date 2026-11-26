@@ -193,6 +193,18 @@ and pending question. Sessions started in a terminal can be read through
   acknowledgement, which says the message was taken, not that the turn is
   done. To attach a file, register it with `attachment create` and put the
   returned `/api/v1/attachments/UUID` in the message text.
+  The daemon puts an `<agent-message>` block in front of every such message
+  naming the sender: this conversation when the CLI runs in a Habitat Pi
+  (its launch context; `current_context_stale` after that launch ended),
+  otherwise "an agent outside the person's conversations", never the
+  person. `--quote MESSAGE_ID` quotes a message this conversation sent or
+  received (`quote_not_found` otherwise), and the receiver reads its first
+  sentence. The result is typed (`kind: agent_message_sent`, with
+  `message_id`, `to`, `title`, `conversation_url`, `message_url`,
+  `delivery`, `state`, `text` and `quote`); the browser draws the message
+  from it, so print it unfiltered, and the block makes your own "I sent …"
+  sentence unnecessary. A conversation whose Pi is starting for a held
+  message refuses another one (`control_uncertain`) until it runs.
 - `queue show|delete` (`delete --held` for messages the daemon still holds),
   `turn interrupt`, `conversation stop` (ends Pi and its managed background tools),
   `continuation show` and `conversation resume`.

@@ -120,7 +120,7 @@ func parseConversationRequest(args []string) (conversationRequest, error) {
 		allowed = "--conversation"
 	case "message create":
 		action = "send"
-		allowed = "--conversation --text-file --idempotency-key --delivery --dry-run"
+		allowed = "--conversation --text-file --idempotency-key --delivery --quote --dry-run"
 	case "queue show":
 		req.method = "GET"
 		action = "status"
@@ -249,6 +249,18 @@ func parseConversationRequest(args []string) (conversationRequest, error) {
 			return req, usage("message must be nonempty UTF-8, at most 65536 bytes")
 		}
 		body["message"] = string(text)
+		if quote, ok := values["--quote"]; ok {
+			if !launchPattern.MatchString(quote) {
+				return req, usage(fmt.Sprintf("invalid --quote %q; expected the message_id of a message this conversation sent or received", quote))
+			}
+			body["quote"] = quote
+		}
+		// The daemon names the sender only from a live launch context; a
+		// process outside one (a terminal, a script) is marked as an agent
+		// outside the person's conversations.
+		if from := launchContext(); from != nil {
+			body["from"] = from
+		}
 	}
 	if key == "queue delete" && values["--held"] != "" {
 		req.path = strings.TrimSuffix(req.path, "clear_queue") + "cancel_held"
@@ -298,4 +310,14 @@ func parseConversationRequest(args []string) (conversationRequest, error) {
 		}
 	}
 	return req, nil
+}
+
+// launchContext is the daemon-launched Pi's own context from the
+// environment, or nil when any part is missing or malformed.
+func launchContext() map[string]string {
+	id, workspace, generation := os.Getenv("OPEN_HABITAT_CONVERSATION_ID"), os.Getenv("OPEN_HABITAT_WORKSPACE_ID"), os.Getenv("OPEN_HABITAT_LAUNCH_GENERATION")
+	if !agentIDPattern.MatchString(id) || !workspacePattern.MatchString(workspace) || !launchPattern.MatchString(generation) {
+		return nil
+	}
+	return map[string]string{"agent_id": id, "workspace_id": workspace, "generation": generation}
 }

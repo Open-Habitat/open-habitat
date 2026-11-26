@@ -28,6 +28,9 @@ export interface SearchJump {
   /** A reply's quote leads to its original (reply-to-message): no band
    * unless the original cannot be found, and the outline is brief. */
   kind?: "reply";
+  /** An agent message between the person's conversations, by its id
+   * (agent-agent-messages): the view finds its entry once it is loaded. */
+  messageId?: string;
 }
 
 let current: SearchJump | undefined;
@@ -52,6 +55,39 @@ export function jumpToReply(agentId: string, entryKey: string) {
     at: "",
     kind: "reply",
   });
+}
+/** Shows an agent message by its id: a quote's original, or the message a
+ * link from the other conversation opened (agent-agent-messages). */
+export function jumpToMessage(agentId: string, messageId: string) {
+  setSearchJump({
+    agentId,
+    entryKey: "",
+    query: "",
+    terms: [],
+    role: "assistant",
+    at: "",
+    kind: "reply",
+    messageId,
+  });
+}
+/** The entry that holds the agent message id: the received message, or the
+ * agent's entry whose tool call sent it (its row is the turn's). */
+export function messageEntryKey(
+  entries: HistoryEntry[],
+  messageId: string,
+): string | undefined {
+  const entry = entries.find(
+    (e) =>
+      e.agent_message?.message_id === messageId ||
+      e.sent_agent_message?.message_id === messageId,
+  );
+  if (!entry?.sent_agent_message) return entry?.entry_key;
+  const call = entry.tool_call_id;
+  return entries.find(
+    (e) =>
+      e.kind === "assistant" &&
+      e.blocks?.some((b) => b.type === "toolCall" && b.tool_call_id === call),
+  )?.entry_key;
 }
 export function clearSearchJump(agentId?: string) {
   if (!current || (agentId && current.agentId !== agentId)) return;
@@ -119,7 +155,10 @@ export function useJumpToHit({
   useEffect(() => {
     void retry;
     if (!jump || shown.current === jump.serial) return;
-    const found = entries.some((e) => e.entry_key === jump.entryKey);
+    const key = jump.messageId
+      ? (messageEntryKey(entries, jump.messageId) ?? "")
+      : jump.entryKey;
+    const found = !!key && entries.some((e) => e.entry_key === key);
     if (!found) {
       if (!next) {
         if (entries.length) setState("missing");
@@ -150,20 +189,22 @@ export function useJumpToHit({
     }
     const viewport = feed.current;
     if (!viewport) return;
-    const index = rowIndexOf(entries, jump.entryKey);
+    const index = rowIndexOf(entries, key);
     const row = viewport.querySelectorAll<HTMLElement>(".ah-feed > li")[index];
     if (!row) return;
     shown.current = jump.serial;
     const target =
       row.querySelector<HTMLElement>(
-        `[data-reply-entry="${CSS.escape(jump.entryKey)}"]`,
+        jump.messageId
+          ? `[data-agent-message="${CSS.escape(jump.messageId)}"]`
+          : `[data-reply-entry="${CSS.escape(key)}"]`,
       ) ?? row;
     // The anchor holds the row; the message may sit lower inside it (a
     // reply after its turn's tool steps), so centre the message itself.
     const box = target.getBoundingClientRect();
     const within = box.top - row.getBoundingClientRect().top;
     const offset = Math.max(16, (viewport.clientHeight - box.height) / 2);
-    hold({ key: jump.entryKey, offset: offset - within });
+    hold({ key, offset: offset - within });
     for (const old of viewport.querySelectorAll(".ah-search-target"))
       old.classList.remove("ah-search-target");
     target.classList.add("ah-search-target");

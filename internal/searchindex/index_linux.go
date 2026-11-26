@@ -26,6 +26,7 @@ import (
 
 	_ "modernc.org/sqlite"
 
+	"github.com/open-habitat/open-habitat/internal/agentblock"
 	"github.com/open-habitat/open-habitat/internal/replyblock"
 )
 
@@ -331,8 +332,9 @@ func readMessage(e entryLine) (message, bool) {
 		text = strings.Join(parts, "\n\n")
 	}
 	if m.Role == "user" {
-		// A reply's quote is the agent's words, already indexed as theirs.
-		text = replyblock.Strip(text)
+		// A reply's quote is the agent's words, already indexed as theirs;
+		// an agent message's block is Habitat's, not anyone's words.
+		text = agentblock.Strip(replyblock.Strip(text))
 	}
 	if strings.TrimSpace(text) == "" {
 		return message{}, false

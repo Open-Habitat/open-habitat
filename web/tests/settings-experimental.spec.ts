@@ -17,6 +17,7 @@ const features = [
   "workspace-header-c2a",
   "reply-to-message",
   "conversation-times",
+  "agent-agent-messages",
 ];
 const retired = [
   "agent-instructions",

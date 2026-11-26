@@ -588,6 +588,9 @@ func guestFrame(agent string, b []byte) []byte {
 				}
 			}
 		}
+		if guestAgentMessagePayload(payload) {
+			changed = true
+		}
 		if !changed {
 			return b
 		}

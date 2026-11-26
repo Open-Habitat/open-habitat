@@ -18,6 +18,11 @@ import {
   UnknownEvent,
   UserMessage,
 } from "../components";
+import {
+  AgentLetter,
+  AgentMessageContext,
+  type QuotedMessage,
+} from "../components/AgentMessage";
 import { AgentTurn, ThinkingRow, type TurnStep } from "../components/AgentTurn";
 import { archiveAction } from "../components/ArchiveControls";
 import { attachmentsIn, messageText } from "../components/AttachmentChips";
@@ -58,6 +63,7 @@ import { formatDate, liveText } from "../i18n";
 import { historyViewText } from "../text/historyView";
 import { largeContentText } from "../text/largeContent";
 import { useExperimentalFeature } from "./accountPreferences";
+import { useAgentMessageControls, useMessageLink } from "./agentMessages";
 import { agentTitle } from "./agentTitle";
 import { refusedTurnLine } from "./aiSignIn";
 import { useBrowserShell } from "./BrowserShell";
@@ -1289,6 +1295,11 @@ export function timelineItems(
   /** Times in a conversation (conversation-times, experimental): day
    * separators, each saved message's time and long turns' durations. */
   times = false,
+  /** Agent messages between the person's conversations
+   * (agent-agent-messages, experimental): a received message and a sent
+   * one are drawn as their own blocks instead of the person's message and
+   * the tool row. */
+  agentMessages = false,
 ) {
   const cutByRestart = restartCutReplies(entries, restartCut);
   const results = new Map<string, HistoryEntry>();
@@ -1305,6 +1316,29 @@ export function timelineItems(
       calls.has(entry.tool_call_id)
     )
       results.set(entry.tool_call_id, entry);
+  // agent-agent-messages: every message this conversation holds, by id,
+  // for a quote's accessible name; and the message drawn last, so a quote
+  // of the message directly above it is not repeated.
+  const messages = new Map<string, QuotedMessage>();
+  if (agentMessages)
+    for (const entry of entries) {
+      if (entry.agent_message)
+        messages.set(entry.agent_message.message_id, {
+          peerId: entry.agent_message.from_agent_id,
+          title: entry.agent_message.title,
+          at: savedAt(entry),
+        });
+      if (entry.sent_agent_message)
+        messages.set(entry.sent_agent_message.message_id, {
+          self: true,
+          at: savedAt(entry),
+        });
+    }
+  // The message last drawn and the timeline item it is in: a quote hides
+  // when its original is that message and nothing was drawn after it.
+  let lastMessage: { id: string; item: number } | undefined;
+  const justAbove = (id?: string) =>
+    !!id && lastMessage?.id === id && lastMessage.item >= items.length - 1;
   const markers = sessionMarkers(entries);
   const visible = entries.filter(
     (entry) =>
@@ -1351,6 +1385,38 @@ export function timelineItems(
     );
     return blocks.map((block, index): TurnStep => {
       const key = `${entry.entry_key}:${index}`;
+      const sent =
+        agentMessages && block.type === "toolCall" && block.tool_call_id
+          ? results.get(block.tool_call_id)?.sent_agent_message
+          : undefined;
+      if (sent) {
+        const result = results.get(block.tool_call_id ?? "");
+        const hideQuote = justAbove(sent.quote?.message_id);
+        lastMessage = { id: sent.message_id, item: items.length };
+        return {
+          kind: "message",
+          key,
+          at,
+          node: (
+            <AgentLetter
+              direction="out"
+              messageId={sent.message_id}
+              peerId={sent.to}
+              peerTitle={sent.title}
+              peerWorkspace={sent.workspace_id}
+              at={times && result ? savedAt(result) : undefined}
+              text={sent.text}
+              truncated={sent.text_truncated}
+              quote={sent.quote}
+              quoted={
+                sent.quote ? messages.get(sent.quote.message_id) : undefined
+              }
+              hideQuote={hideQuote}
+            />
+          ),
+        };
+      }
+      lastMessage = undefined;
       if (block.type === "text")
         return {
           kind: "text",
@@ -1504,6 +1570,40 @@ export function timelineItems(
           <ParticipantMessage
             fact={entry.participant_message}
             at={at === undefined ? undefined : messageClock(at)}
+          />
+        ),
+      });
+      if (times) lastDay = dayOf(entry) ?? lastDay;
+      continue;
+    }
+    // agent-agent-messages: a message from another conversation starts a
+    // turn as the person's message does, in the person's message geometry
+    // with its sender named.
+    if (agentMessages && entry.kind === "user" && entry.agent_message) {
+      flush();
+      daySeparator(entry);
+      turnId = `turn:${entry.entry_key}`;
+      turnStart = savedAt(entry);
+      const fact = entry.agent_message;
+      const hideQuote = justAbove(fact.quote?.message_id);
+      lastMessage = { id: fact.message_id, item: items.length };
+      items.push({
+        id: entry.entry_key,
+        kind: "user",
+        content: (
+          <AgentLetter
+            direction="in"
+            messageId={fact.message_id}
+            peerId={fact.from_agent_id}
+            peerTitle={fact.title}
+            peerWorkspace={fact.workspace_id}
+            at={times ? savedAt(entry) : undefined}
+            text={entry.content.text}
+            quote={fact.quote}
+            quoted={
+              fact.quote ? messages.get(fact.quote.message_id) : undefined
+            }
+            hideQuote={hideQuote}
           />
         ),
       });
@@ -1701,6 +1801,9 @@ function HistoryViewContent({
 }) {
   const openMachines = useOpenMachines();
   const timesOn = useExperimentalFeature("conversation-times");
+  const agentMessagesOn = useExperimentalFeature("agent-agent-messages");
+  const agentMessageControls = useAgentMessageControls(store, agent.agent_id);
+  useMessageLink(agent.agent_id);
   const window = useWindow(store, agent.agent_id);
   const storagePressure = useStoragePressure();
   useEffect(() => {
@@ -2155,35 +2258,38 @@ function HistoryViewContent({
           />
         )}
         <TurnChangesRoot.Provider value={workspacePath}>
-          <ConversationTimeline
-            state={
-              storagePressure.full &&
-              ["stale", "error", "unavailable"].includes(state)
-                ? entries.length
-                  ? "ready"
-                  : "loading"
-                : state
-            }
-            items={timelineItems(
-              entries,
-              onLogin,
-              agent.agent_id,
-              window?.revision,
-              undefined,
-              undefined,
-              undefined,
-              undefined,
-              agent.rest?.cause === "restart" && !!agent.interrupted_turn,
-              undefined,
-              timesOn,
-            )}
-            emptyLabel={txt.empty}
-            onJumpToLatest={() => {}}
-            problem={{
-              title: txt.unavailable,
-              description: txt.unavailableDetail,
-            }}
-          />
+          <AgentMessageContext.Provider value={agentMessageControls}>
+            <ConversationTimeline
+              state={
+                storagePressure.full &&
+                ["stale", "error", "unavailable"].includes(state)
+                  ? entries.length
+                    ? "ready"
+                    : "loading"
+                  : state
+              }
+              items={timelineItems(
+                entries,
+                onLogin,
+                agent.agent_id,
+                window?.revision,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                agent.rest?.cause === "restart" && !!agent.interrupted_turn,
+                undefined,
+                timesOn,
+                agentMessagesOn,
+              )}
+              emptyLabel={txt.empty}
+              onJumpToLatest={() => {}}
+              problem={{
+                title: txt.unavailable,
+                description: txt.unavailableDetail,
+              }}
+            />
+          </AgentMessageContext.Provider>
         </TurnChangesRoot.Provider>
         {agent.archive !== "archived" ? (
           <HelperRestoreNote agent={agent.agent_id} />

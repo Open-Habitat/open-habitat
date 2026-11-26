@@ -1015,7 +1015,7 @@ for line in sys.stdin:
 		req := httptest.NewRequest("POST", "http://unix/steer", strings.NewReader(fmt.Sprintf(`{"message":"myöhässä","command_id":%q}`, cid)))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
-		c.admitMessage(w, req, id, "steer", browser)
+		c.admitMessage(w, req, id, "steer", browser, nil)
 		return w
 	}
 	if w := post("12345678-1234-4123-8123-000000000001", false); w.Code != 409 {

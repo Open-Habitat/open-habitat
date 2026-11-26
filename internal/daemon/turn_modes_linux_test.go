@@ -441,7 +441,7 @@ func TestGuestDeliveryReservesOrdersAndDoesNotWaitForAnAlreadyDeliveredItem(t *t
 	req := httptest.NewRequest("POST", "http://unix/api/v1/conversations/"+memberConv+"/send", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
-	f.c.admitMessage(w, req, memberConv, "send", true)
+	f.c.admitMessage(w, req, memberConv, "send", true, nil)
 	if w.Code != 200 || !strings.Contains(w.Body.String(), `"state":"held"`) {
 		t.Fatalf("owner send while waking: %d %s", w.Code, w.Body.String())
 	}
@@ -462,7 +462,7 @@ func TestGuestDeliveryReservesOrdersAndDoesNotWaitForAnAlreadyDeliveredItem(t *t
 	f.mu.Lock()
 	f.busy = true // keep the guest item waiting in this step
 	f.mu.Unlock()
-	f.c.admitMessage(w, req, memberConv, "send", true)
+	f.c.admitMessage(w, req, memberConv, "send", true, nil)
 	if w.Code != 200 || !strings.Contains(w.Body.String(), `"state":"held"`) {
 		t.Fatalf("owner send behind a waiting participant message: %d %s", w.Code, w.Body.String())
 	}

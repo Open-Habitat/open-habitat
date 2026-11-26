@@ -116,6 +116,45 @@
         "runs": [],
         "still_running": []
       }
+    },
+    {
+      "entry_key": "entry-redacted-agent-message",
+      "kind": "user",
+      "content": {
+        "media_type": "text/plain",
+        "text": "Synthetic message from another conversation.",
+        "complete": true
+      },
+      "agent_message": {
+        "message_id": "00000000-0000-4000-8000-000000000004",
+        "from_agent_id": "pi:00000000-0000-4000-8000-000000000001",
+        "title": "Synthetic report",
+        "workspace_id": "ws_example123",
+        "quote": {
+          "message_id": "00000000-0000-4000-8000-000000000003",
+          "from_agent_id": "pi:00000000-0000-4000-8000-000000000002",
+          "excerpt": "A synthetic first sentence. …"
+        }
+      }
+    },
+    {
+      "entry_key": "entry-redacted-sent-message",
+      "kind": "tool",
+      "tool_call_id": "call-redacted-send",
+      "content": {
+        "media_type": "text/plain",
+        "text": "{\"schema_version\": 1}",
+        "complete": true
+      },
+      "sent_agent_message": {
+        "message_id": "00000000-0000-4000-8000-000000000005",
+        "to": "pi:00000000-0000-4000-8000-000000000001",
+        "title": "Synthetic report",
+        "workspace_id": "ws_example123",
+        "delivery": "send",
+        "state": "pending",
+        "text": "Synthetic message to another conversation."
+      }
     }
   ],
   "complete": false,

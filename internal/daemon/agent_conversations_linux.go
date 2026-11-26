@@ -88,7 +88,7 @@ func (c *ConversationController) agentConversations(w http.ResponseWriter, r *ht
 	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(60 * time.Second))
 	switch action {
 	case "send", "steer", "follow_up":
-		c.sendKind(w, r, id, action)
+		c.sendAgentMessage(w, r, id, action)
 	case "question":
 		c.answerQuestion(w, r, id)
 	case "clear_queue":

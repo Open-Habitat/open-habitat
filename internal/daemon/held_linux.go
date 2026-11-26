@@ -16,6 +16,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
+	"github.com/open-habitat/open-habitat/internal/agentblock"
 	"github.com/open-habitat/open-habitat/internal/diagnostic"
 	"github.com/open-habitat/open-habitat/internal/replyblock"
 )
@@ -63,7 +64,7 @@ func stoppedRPC() *piRPC {
 func heldView(held []heldMessage) []map[string]string {
 	view := make([]map[string]string, 0, len(held))
 	for _, h := range held {
-		view = append(view, map[string]string{"command_id": h.id, "text": replyblock.Strip(h.text)})
+		view = append(view, map[string]string{"command_id": h.id, "text": agentblock.Strip(replyblock.Strip(h.text))})
 	}
 	return view
 }

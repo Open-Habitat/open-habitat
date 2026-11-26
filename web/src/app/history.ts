@@ -52,6 +52,10 @@ export interface HistoryEntry {
   /** The agent message this message of the person's answers, and the
    * excerpt the agent received with it (reply-to-message, experimental). */
   reply_to?: { entry_key: string; excerpt: string };
+  /** A message another agent of the person sent here, and one this
+   * conversation's agent sent (agent-agent-messages). */
+  agent_message?: import("../components/AgentMessage").AgentMessageFact;
+  sent_agent_message?: import("../components/AgentMessage").SentAgentMessageFact;
   notice?: AgentNotice;
   restart?: RestartNotice;
   wait_reminder?: WaitReminder;

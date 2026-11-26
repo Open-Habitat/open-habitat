@@ -11,6 +11,47 @@
     }
   ],
   "$defs": {
+    "agentQuote": {
+      "description": "An earlier message an agent message quotes (agent message create --quote): its id, the conversation that sent it (null for an agent outside the person's conversations, and absent from the participant's read of a shared conversation), and the excerpt the receiving agent read: the message's first sentence, at most 160 characters, ending with \" …\" when the message goes on.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["message_id", "excerpt"],
+      "properties": {
+        "message_id": { "$ref": "common.schema.json#/$defs/uuid" },
+        "from_agent_id": { "oneOf": [{ "type": "null" }, { "$ref": "common.schema.json#/$defs/agentId" }] },
+        "excerpt": { "type": "string", "minLength": 1, "maxLength": 2048 }
+      }
+    },
+    "agentMessage": {
+      "description": "On a user entry: a message another agent of the person sent here (agent-agent-messages, experimental view; the daemon marks every message of the agent route whatever the switch says). The daemon reads a leading <agent-message> block from the native user text. message_id is the sending command's id, the same in both conversations. from_agent_id is the sending conversation (null for an agent outside the person's conversations), title its title when the message was sent and workspace_id its workspace; the view prefers the conversation's current rail row. content and the first text block omit the block; block reads use the same projection. A participant's read of a shared conversation has only message_id and quote's message_id and excerpt: the sender is the owner's other conversation.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["message_id"],
+      "properties": {
+        "message_id": { "$ref": "common.schema.json#/$defs/uuid" },
+        "from_agent_id": { "oneOf": [{ "type": "null" }, { "$ref": "common.schema.json#/$defs/agentId" }] },
+        "title": { "type": "string", "minLength": 1, "maxLength": 800 },
+        "workspace_id": { "$ref": "common.schema.json#/$defs/workspaceId" },
+        "quote": { "$ref": "#/$defs/agentQuote" }
+      }
+    },
+    "sentAgentMessage": {
+      "description": "On a bash tool entry: the message this conversation's agent sent to another conversation of the person, recognised from the tool result's typed agent_message_sent output (agent-message-sent.schema.json), never from the command line. to, title and workspace_id name the receiving conversation; delivery and state are what the result reported when it was sent. text is the agent's message, cut at 16000 bytes with text_truncated. A participant's read of a shared conversation leaves out to, title and workspace_id, and the entry's blocks.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["message_id", "delivery", "state", "text"],
+      "properties": {
+        "message_id": { "$ref": "common.schema.json#/$defs/uuid" },
+        "to": { "$ref": "common.schema.json#/$defs/agentId" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 800 },
+        "workspace_id": { "$ref": "common.schema.json#/$defs/workspaceId" },
+        "delivery": { "enum": ["send", "steer", "follow-up"] },
+        "state": { "enum": ["pending", "held"] },
+        "text": { "type": "string", "minLength": 1, "maxLength": 16000 },
+        "text_truncated": { "type": "boolean" },
+        "quote": { "$ref": "#/$defs/agentQuote" }
+      }
+    },
     "participantMessage": {
       "description": "On an oh-participant-message entry of a shared conversation (ADR 0038 section 3): its author as the owner's daemon recorded them when it delivered the message, and text, the participant's own words without Habitat's opening lines. role is the role at delivery.",
       "type": "object",
@@ -137,6 +178,12 @@
         },
         "reply_to": {
           "$ref": "#/$defs/replyTo"
+        },
+        "agent_message": {
+          "$ref": "#/$defs/agentMessage"
+        },
+        "sent_agent_message": {
+          "$ref": "#/$defs/sentAgentMessage"
         },
         "participant_message": {
           "$ref": "#/$defs/participantMessage"

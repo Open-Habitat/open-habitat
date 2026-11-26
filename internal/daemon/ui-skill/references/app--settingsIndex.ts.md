@@ -784,6 +784,23 @@ export const settingsSections = [
         ],
         desc: "Viestin aika nimen perässä, päiväerottimet ja pitkän monivaiheisen vuoron kesto.",
       },
+      {
+        id: "agent-agent-messages",
+        label: "Agenttien viestit keskustelujen välillä",
+        kw: [
+          "agentti",
+          "agent",
+          "viesti",
+          "message",
+          "keskustelu",
+          "conversation",
+          "lähetä",
+          "send",
+          "lainaus",
+          "quote",
+        ],
+        desc: "Toiselle keskustelulle lähetetty viesti näkyy molemmissa keskusteluissa omana lohkonaan.",
+      },
     ],
   },
   {

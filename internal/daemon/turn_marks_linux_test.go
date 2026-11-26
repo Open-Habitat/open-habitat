@@ -237,7 +237,7 @@ for line in sys.stdin:
 	req := httptest.NewRequest("POST", "http://unix/send", strings.NewReader(`{"message":"vastaus","command_id":"0b6f2a4e-7d1c-4c3a-9f6e-2a1b3c4d5e60"}`))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
-	c.admitMessage(w, req, turnTestID, "send", true)
+	c.admitMessage(w, req, turnTestID, "send", true, nil)
 	if w.Code != 200 {
 		t.Fatalf("send: %d %s", w.Code, w.Body.String())
 	}

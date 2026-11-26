@@ -216,6 +216,12 @@
               "reply_to": {
                 "$ref": "history.schema.json#/$defs/replyTo"
               },
+              "agent_message": {
+                "$ref": "history.schema.json#/$defs/agentMessage"
+              },
+              "sent_agent_message": {
+                "$ref": "history.schema.json#/$defs/sentAgentMessage"
+              },
               "participant_message": {
                 "$ref": "history.schema.json#/$defs/participantMessage"
               },

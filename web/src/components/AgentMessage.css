@@ -1,0 +1,84 @@
+/* Agent messages between the person's conversations (round
+   2026-11-25-agent-agent-message-4, B Hiljainen). The incoming letter is the
+   person's message geometry with another sender and an accent edge; the
+   outgoing mirror is the same surface and edge on the agent's side. */
+.ah-message.ah-agent-letter > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ah-s1) var(--ah-s2);
+}
+.ah-message.ah-agent-letter > header strong.ah-agent-letter-from {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px var(--ah-s1);
+  min-width: 0;
+  font-size: var(--ah-size-meta);
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.ah-agent-letter-from svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--ah-accent-ink);
+}
+.ah-agent-letter-from a {
+  color: var(--ah-accent-ink);
+  overflow-wrap: anywhere;
+}
+.ah-agent-letter-from a:focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-focus);
+  outline-offset: 2px;
+  border-radius: var(--ah-r-sm);
+}
+.ah-feed > li .ah-message.ah-agent-letter:not(.ah-message-alert) {
+  max-width: min(560px, 100%);
+  border: 1px solid var(--ah-accent-line);
+  border-radius: 10px;
+  background: var(--ah-surface-2);
+}
+
+/* The quote as one line, the excerpt only: it ends in an ellipsis where the
+   line ends, and the daemon's excerpt itself ends in " …" when the message
+   goes on. */
+.ah-agent-quote {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s1);
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  margin: 0 0 var(--ah-s1);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ah-muted);
+  font: inherit;
+  font-size: var(--ah-size-meta);
+  text-align: start;
+}
+button.ah-agent-quote {
+  cursor: pointer;
+}
+.ah-agent-quote svg {
+  flex: none;
+  width: 13px;
+  height: 13px;
+}
+.ah-agent-quote-text {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+button.ah-agent-quote:hover .ah-agent-quote-text {
+  color: var(--ah-ink-2);
+}
+button.ah-agent-quote:focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-focus);
+  outline-offset: 2px;
+  border-radius: var(--ah-r-sm);
+}

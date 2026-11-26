@@ -17,6 +17,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/open-habitat/open-habitat/internal/agentblock"
 	"github.com/open-habitat/open-habitat/internal/core"
 	"github.com/open-habitat/open-habitat/internal/diagnostic"
 	"github.com/open-habitat/open-habitat/internal/replyblock"
@@ -541,7 +542,7 @@ func (c *ConversationController) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		if parts[1] == "clear_queue" {
 			c.clearQueue(w, r, parts[0])
 		} else {
-			c.admitMessage(w, r, parts[0], parts[1], true)
+			c.admitMessage(w, r, parts[0], parts[1], true, nil)
 		}
 	case r.Method == http.MethodPost && parts[1] == "regenerate_title":
 		c.regenerateTitle(w, r, parts[0])
@@ -916,8 +917,11 @@ func (c *ConversationController) receipt(s *conversation, id, outcome string) {
 func (c *ConversationController) send(w http.ResponseWriter, r *http.Request, id string) {
 	c.sendKind(w, r, id, "send")
 }
+
+// sendKind admits a message without the browser's idle start and without an
+// agent's sender block; the agent route's own send is sendAgentMessage.
 func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request, id, kind string) {
-	c.admitMessage(w, r, id, kind, false)
+	c.admitMessage(w, r, id, kind, false, nil)
 }
 
 // admitMessage takes one send, steer or follow-up. idleStarts is the
@@ -925,7 +929,12 @@ func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request
 // a guess at Pi's state made for the person, not their choice. An agent
 // asking for steering explicitly (agent message create) is told the turn
 // has ended instead.
-func (c *ConversationController) admitMessage(w http.ResponseWriter, r *http.Request, id, kind string, idleStarts bool) {
+//
+// agent is set on the agent route only: the message is an agent's, and the
+// daemon writes its sender block (internal/agentblock) in front of the text
+// whatever the person's experimental switches say. The browser route never
+// accepts the agent's fields.
+func (c *ConversationController) admitMessage(w http.ResponseWriter, r *http.Request, id, kind string, idleStarts bool, agent *agentMessage) {
 	var body struct {
 		Message     string           `json:"message"`
 		CommandID   string           `json:"command_id"`
@@ -933,10 +942,38 @@ func (c *ConversationController) admitMessage(w http.ResponseWriter, r *http.Req
 		ReplyTo     *struct {
 			EntryKey string `json:"entry_key"`
 		} `json:"reply_to,omitempty"`
+		From  *agentFrom `json:"from,omitempty"`
+		Quote string     `json:"quote,omitempty"`
 	}
 	if decodeControl(r, &body, 66000) != nil || body.Message == "" || len(body.Message) > 65536 || !sessionIDPattern.MatchString(body.CommandID) {
 		snapshotError(w, 400, "invalid_request")
 		return
+	}
+	if agent == nil && (body.From != nil || body.Quote != "") || agent != nil && (body.ReplyTo != nil || body.FirstChoice != nil) {
+		snapshotError(w, 400, "invalid_request")
+		return
+	}
+	if agent != nil {
+		if body.From != nil && (!strings.HasPrefix(body.From.AgentID, "pi:") || !sessionIDPattern.MatchString(strings.TrimPrefix(body.From.AgentID, "pi:")) || !idPattern.MatchString(body.From.WorkspaceID) || !sessionIDPattern.MatchString(body.From.Generation)) || body.Quote != "" && !agentblock.ValidMessage(body.Quote) {
+			snapshotError(w, 400, "invalid_request")
+			return
+		}
+		// Read the sender and the quote from native files before taking the
+		// lock.
+		from, status, code := c.agentSender(body.From)
+		if status != 0 {
+			snapshotError(w, status, code)
+			return
+		}
+		agent.from = from
+		if body.Quote != "" {
+			quote, ok := c.agentQuote(from.Agent, body.Quote)
+			if from.Agent == agentblock.Outside || !ok {
+				snapshotError(w, 400, "quote_not_found")
+				return
+			}
+			agent.quote = quote
+		}
 	}
 	// A reply to one agent message (reply-to-message, experimental): only
 	// while the switch is on, and never in front of a slash command, which
@@ -1026,6 +1063,10 @@ func (c *ConversationController) admitMessage(w http.ResponseWriter, r *http.Req
 		}
 		body.Message = replyblock.Build(body.ReplyTo.EntryKey, excerpt, body.Message)
 	}
+	if agent != nil {
+		agent.text, agent.marked = body.Message, true
+		body.Message = agentblock.Build(agent.from, body.CommandID, agent.quote, body.Message)
+	}
 	archiveState := "active"
 	if c.home != "" {
 		annotations, annotationErr := loadVisibility(c.home)
@@ -1061,6 +1102,13 @@ func (c *ConversationController) admitMessage(w http.ResponseWriter, r *http.Req
 	// at the start of a message: a reply never joins behind others. Checked
 	// after a browser steer may have become a send.
 	if reply && kind == "send" && len(s.held) > 0 {
+		c.mu.Unlock()
+		snapshotError(w, 409, "control_uncertain")
+		return
+	}
+	// An agent's message is never joined with another held message, in
+	// either order (heldHasAgentMessage).
+	if kind == "send" && len(s.held) > 0 && (agent != nil || heldHasAgentMessage(s.held)) {
 		c.mu.Unlock()
 		snapshotError(w, 409, "control_uncertain")
 		return
@@ -1287,7 +1335,7 @@ func (c *ConversationController) finishPrompt(s *conversation, kind string, ids 
 		if s.ack == "accepted" {
 			s.acceptedMessages++
 			// The title reads what the person wrote, not a reply's quote.
-			written := replyblock.Strip(message)
+			written := agentblock.Strip(replyblock.Strip(message))
 			if s.acceptedMessages == 1 {
 				s.firstText = prefixBytes(written, 2048)
 			}

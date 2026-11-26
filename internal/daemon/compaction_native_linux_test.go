@@ -290,7 +290,7 @@ func TestCompactRefusals(t *testing.T) {
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodPost, "http://unix/api/v1/conversations/"+id+"/send", strings.NewReader(`{"message":"hei","command_id":"11111111-1111-4111-8111-111111111111"}`))
 	r.Header.Set("Content-Type", "application/json")
-	controller.admitMessage(w, r, id, "send", true)
+	controller.admitMessage(w, r, id, "send", true, nil)
 	if w.Code != 200 || !strings.Contains(w.Body.String(), `"held"`) || len(s.held) != 1 || s.state != "idle" {
 		t.Fatalf("send while compacting: %d %s %+v %s", w.Code, w.Body.String(), s.held, s.state)
 	}

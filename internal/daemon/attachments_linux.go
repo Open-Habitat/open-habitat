@@ -224,8 +224,13 @@ func writtenText(home, text string) string {
 		}
 	}
 	// A reply's block is the daemon's addition too: the person gets back
-	// what they wrote (the quote itself is not given back with it).
-	return replyblock.Strip(strings.TrimSuffix(text, suffix))
+	// what they wrote (the quote itself is not given back with it). An
+	// agent's message waiting in the queue names its sender instead.
+	text = strings.TrimSuffix(text, suffix)
+	if named, ok := agentQueueText(text); ok {
+		return named
+	}
+	return replyblock.Strip(text)
 }
 
 // writtenTexts is writtenText over Pi's queue. Pi queues the expanded text; the

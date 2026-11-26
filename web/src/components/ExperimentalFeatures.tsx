@@ -48,7 +48,8 @@ function Picture({ id, on }: { id: string; on: boolean }) {
     id === "rail-state-motion" ||
     id === "workspace-header-c2a" ||
     id === "reply-to-message" ||
-    id === "conversation-times"
+    id === "conversation-times" ||
+    id === "agent-agent-messages"
   )
     body = (
       <>

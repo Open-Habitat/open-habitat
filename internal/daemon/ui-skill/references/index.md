@@ -71,6 +71,7 @@ A label alone does not establish that a control is available to this person.
 - [text/accountProfileOnboarding.ts](text--accountProfileOnboarding.ts.md)
 - [text/agentInstructions.ts](text--agentInstructions.ts.md)
 - [text/agentInteractionControls.ts](text--agentInteractionControls.ts.md)
+- [text/agentMessage.ts](text--agentMessage.ts.md)
 - [text/agentNote.ts](text--agentNote.ts.md)
 - [text/agentNotice.ts](text--agentNotice.ts.md)
 - [text/agentResources.tsx](text--agentResources.tsx.md)

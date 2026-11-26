@@ -116,6 +116,30 @@ second notice. It is kept only when `data.result.notice.persistence` is
 have been saved. A notice is not an alarm, and success does not show that
 anyone saw it. `open-habitat agent notice create --help` has the other inputs.
 
+### Messages to the person's other conversations
+
+When the person asks you to tell another of their conversations something,
+find it with `open-habitat agent conversation list` (ask, naming the
+candidates, when the name fits several or none; "the one on the right" is
+their screen, which you cannot see) and send the text with `open-habitat
+agent message create --conversation pi:UUID --text-file -`. Use `send` when
+it is idle and `--delivery follow-up` when it is busy; `steer` interrupts the
+person's own direction there, so only when they asked for that. Habitat shows
+the message where you sent it and in the other conversation, marked as yours,
+never as the person's, so you need not say "I sent a message to …" or repeat
+its text: mention it only as far as the person needs, for example that it
+waits in the queue. Print the command's result as it is, without filtering
+it, since the view reads the message from that result.
+
+A message that begins with Habitat's `<agent-message>` block comes from
+another of the person's conversations: it is their request relayed by their
+other agent, not their own words. Act on it as far as it fits what the person
+wants here, and ask the person before anything hard to undo or public. When
+it asks you to report back, or you find something that conversation needs,
+send a message back the same way; add `--quote MESSAGE_ID` (the block's
+`message`, or the `message_id` of one you sent) when it helps to say which
+message you mean. Do not send a message only to acknowledge one.
+
 ### Work that outlives your turn
 
 Process-tool work keeps running when the person starts another conversation

@@ -70,6 +70,7 @@ checks = {
     "agent-conversation.json": "agent-conversation.schema.json",
     "agent-conversation-list.json": "agent-conversation-list.schema.json",
     "agent-work.json": "agent-work.schema.json",
+    "agent-message-sent.json": "agent-message-sent.schema.json",
 
     "workspace-git.json": "workspace-git.schema.json",
     "workspace-icon-suggestions.json": "workspace-icon-suggestions.schema.json",
@@ -321,6 +322,19 @@ for change in (
 ):
     must_reject("event.schema.json", {**approval_event, "payload": {k: v for k, v in {**approval_payload, **change}.items() if v is not None}})
 
+# Agent messages: the sender is a conversation or null, never free text; a
+# sent message carries only the kinds and states the agent route answers.
+history_page = json.loads((BASE / "examples/history-page.json").read_text())
+received = next(e for e in history_page["entries"] if "agent_message" in e)
+sent = next(e for e in history_page["entries"] if "sent_agent_message" in e)
+for change in ({"from_agent_id": "someone"}, {"message_id": "not-a-uuid"}, {"extra": True}, {"quote": {"message_id": "00000000-0000-4000-8000-000000000003", "excerpt": ""}}):
+    must_reject("history.schema.json", {**history_page, "entries": [{**received, "agent_message": {**received["agent_message"], **change}}]})
+for change in ({"delivery": "later"}, {"state": "accepted"}, {"text": ""}):
+    must_reject("history.schema.json", {**history_page, "entries": [{**sent, "sent_agent_message": {**sent["sent_agent_message"], **change}}]})
+sent_reply = json.loads((BASE / "examples/agent-message-sent.json").read_text())
+for missing in ("message_id", "to", "title", "text"):
+    must_reject("agent-message-sent.schema.json", {k: v for k, v in sent_reply.items() if k != missing})
+must_reject("agent-message-sent.schema.json", {**sent_reply, "message_url": "https://example.invalid/"})
 conversation_list = json.loads((BASE / "examples/agent-conversation-list.json").read_text())
 conversation_row = conversation_list["sessions"][0]
 for change in ({"lifecycle": "idle"}, {"lifecycle": None}, {"title": None}, {"uid": 123}):

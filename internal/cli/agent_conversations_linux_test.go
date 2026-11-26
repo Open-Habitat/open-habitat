@@ -164,10 +164,45 @@ func TestAgentMessageEncodedLimit(t *testing.T) {
 			t.Fatalf("raw=%d encoded=%d valid=%v err=%v", len(tc.text), len(req.body), tc.valid, err)
 		}
 		if tc.valid {
-			var input map[string]string
+			var input map[string]any
 			if json.Unmarshal(req.body, &input) != nil || input["message"] != tc.text {
 				t.Fatal("input changed during encoding")
 			}
+		}
+	}
+}
+
+func TestAgentMessageCarriesLaunchContextAndQuote(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "message")
+	if err := os.WriteFile(file, []byte("Päivitä kuvaaja 2."), 0600); err != nil {
+		t.Fatal(err)
+	}
+	args := []string{"message", "create", "--conversation", "pi:00000000-0000-4000-8000-000000000001", "--idempotency-key", "00000000-0000-4000-8000-000000000002", "--text-file", file, "--delivery", "follow-up", "--quote", "00000000-0000-4000-8000-000000000003"}
+	t.Setenv("OPEN_HABITAT_CONVERSATION_ID", "pi:00000000-0000-4000-8000-000000000009")
+	t.Setenv("OPEN_HABITAT_WORKSPACE_ID", "ws_example123")
+	t.Setenv("OPEN_HABITAT_LAUNCH_GENERATION", "00000000-0000-4000-8000-00000000000a")
+	req, err := parseConversationRequest(args)
+	if err != nil || !strings.HasSuffix(req.path, "/follow_up") {
+		t.Fatalf("req=%+v err=%v", req, err)
+	}
+	var body struct {
+		Quote string            `json:"quote"`
+		From  map[string]string `json:"from"`
+	}
+	if json.Unmarshal(req.body, &body) != nil || body.Quote != "00000000-0000-4000-8000-000000000003" || body.From["agent_id"] != "pi:00000000-0000-4000-8000-000000000009" || body.From["workspace_id"] != "ws_example123" || body.From["generation"] != "00000000-0000-4000-8000-00000000000a" {
+		t.Fatalf("body = %s", req.body)
+	}
+	// Outside a launch the CLI sends no sender; the daemon marks it as an
+	// agent outside the person's conversations.
+	t.Setenv("OPEN_HABITAT_LAUNCH_GENERATION", "")
+	req, err = parseConversationRequest(args)
+	if err != nil || strings.Contains(string(req.body), `"from"`) {
+		t.Fatalf("outside body = %s err=%v", req.body, err)
+	}
+	for _, bad := range []string{"m1", "00000000-0000-4000-8000-00000000000A"} {
+		bad := append(append([]string{}, args[:len(args)-1]...), bad)
+		if _, err := parseConversationRequest(bad); err == nil {
+			t.Fatalf("quote %q accepted", bad[len(bad)-1])
 		}
 	}
 }

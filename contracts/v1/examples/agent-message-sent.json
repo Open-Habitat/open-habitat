@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "command_id": "00000000-0000-4000-8000-000000000003",
+  "state": "pending",
+  "kind": "agent_message_sent",
+  "message_id": "00000000-0000-4000-8000-000000000003",
+  "to": "pi:00000000-0000-4000-8000-000000000001",
+  "title": "Charts",
+  "workspace_id": "ws_example123",
+  "conversation_url": "/workspaces/ws_example123?conversation=pi:00000000-0000-4000-8000-000000000001",
+  "message_url": "/workspaces/ws_example123?conversation=pi:00000000-0000-4000-8000-000000000001&message=00000000-0000-4000-8000-000000000003",
+  "delivery": "follow-up",
+  "text": "I added the September row to data/q3.csv. Update chart 2 once more.",
+  "quote": {
+    "message_id": "00000000-0000-4000-8000-000000000002",
+    "from_agent_id": "pi:00000000-0000-4000-8000-000000000001",
+    "excerpt": "I also noticed that September is missing from data/q3.csv. \u2026"
+  }
+}

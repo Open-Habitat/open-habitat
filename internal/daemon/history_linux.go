@@ -21,6 +21,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/open-habitat/open-habitat/internal/agentblock"
 	"github.com/open-habitat/open-habitat/internal/diagnostic"
 	"github.com/open-habitat/open-habitat/internal/replyblock"
 	"github.com/open-habitat/open-habitat/internal/transport"
@@ -80,16 +81,20 @@ type recapData struct {
 }
 
 type historyEntry struct {
-	Skill         *recordedSkill     `json:"skill,omitempty"`
-	ReplyTo       *replyRef          `json:"reply_to,omitempty"`
-	Notice        *agentNotice       `json:"notice,omitempty"`
-	FailureCause  *bashFailure       `json:"failure_cause,omitempty"`
-	Recap         *recapData         `json:"recap,omitempty"`
-	Rewind        *rewindMarker      `json:"rewind,omitempty"`
-	Restart       *restartNotice     `json:"restart,omitempty"`
-	WaitReminder  *waitReminder      `json:"wait_reminder,omitempty"`
-	ScheduledWake *wakeLine          `json:"scheduled_wake,omitempty"`
-	UpgradeNotice *upgradeNoticeLine `json:"upgrade_notice,omitempty"`
+	Skill   *recordedSkill `json:"skill,omitempty"`
+	ReplyTo *replyRef      `json:"reply_to,omitempty"`
+	// An agent's message from another of the person's conversations, and
+	// one this conversation's agent sent (agent_message_linux.go).
+	AgentMessage     *agentMessageFact  `json:"agent_message,omitempty"`
+	SentAgentMessage *sentAgentMessage  `json:"sent_agent_message,omitempty"`
+	Notice           *agentNotice       `json:"notice,omitempty"`
+	FailureCause     *bashFailure       `json:"failure_cause,omitempty"`
+	Recap            *recapData         `json:"recap,omitempty"`
+	Rewind           *rewindMarker      `json:"rewind,omitempty"`
+	Restart          *restartNotice     `json:"restart,omitempty"`
+	WaitReminder     *waitReminder      `json:"wait_reminder,omitempty"`
+	ScheduledWake    *wakeLine          `json:"scheduled_wake,omitempty"`
+	UpgradeNotice    *upgradeNoticeLine `json:"upgrade_notice,omitempty"`
 	// A shared conversation's own entries (ADR 0038): who wrote a
 	// participant message, and what a Habitat line says happened.
 	ParticipantMessage *participantMessageFact `json:"participant_message,omitempty"`
@@ -670,6 +675,8 @@ func historyHandlerFor(cfg transport.Config, trusted func(*http.Request) bool, s
 	enrich := func(ctx context.Context, home string, s nativeSession, e *historyEntry) {
 		if !guest {
 			enrichProcessEntry(ctx, home, s, e)
+		} else {
+			guestAgentMessage(e)
 		}
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -910,7 +917,7 @@ func historyHandlerFor(cfg transport.Config, trusted func(*http.Request) bool, s
 					if entry.Key != key {
 						continue
 					}
-					if guest && guestHidden(entry) {
+					if guest && (guestHidden(entry) || entry.SentAgentMessage != nil) {
 						snapshotError(w, 404, "resource_not_found")
 						return
 					}
@@ -979,7 +986,7 @@ func firstPrompt(s nativeSession, uid int) string {
 		}
 		kind, text := nativeText(entry)
 		if kind == "user" && strings.TrimSpace(text) != "" {
-			text = replyblock.Strip(text)
+			text = agentblock.Strip(replyblock.Strip(text))
 			if skill, ok := projectUserSkill(entry.Message); ok {
 				text = skill.name
 				if skill.arguments != "" {

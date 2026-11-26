@@ -1254,6 +1254,15 @@ esac
 				}
 				w.WriteHeader(204)
 				return
+			case "/fixture/agent-message":
+				// As open-habitat agent message create run by the Pi of from
+				// (empty: outside any conversation).
+				q := r.URL.Query()
+				status, body := conversationHandlers[0].Load().(*daemon.ConversationController).FixtureAgentMessage(q.Get("target"), q.Get("from"), q.Get("kind"), q.Get("text"), q.Get("quote"))
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(status)
+				_, _ = w.Write(body)
+				return
 			case "/fixture/agent-section":
 				// As the conversation's Pi running open-habitat agent section
 				// update --current during its turn.
@@ -1330,6 +1339,11 @@ esac
 					// Three short settled conversations beside the default
 					// one, for archiving several in quick succession.
 					if e := seedSeveralHistories(filepath.Dir(path), filepath.Join(tmp, "alice", "src", "ordinary-dir")); e != nil {
+						http.Error(w, "fixture failed", 500)
+						return
+					}
+				} else if mode == "agent-messages" {
+					if e := seedAgentMessagesHistory(path, filepath.Join(tmp, "alice", "src", "ordinary-dir")); e != nil {
 						http.Error(w, "fixture failed", 500)
 						return
 					}

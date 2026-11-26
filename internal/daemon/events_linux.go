@@ -693,6 +693,12 @@ func nativeEntryPayload(entry historyEntry) map[string]any {
 	if entry.ReplyTo != nil {
 		payload["reply_to"] = entry.ReplyTo
 	}
+	if entry.AgentMessage != nil {
+		payload["agent_message"] = entry.AgentMessage
+	}
+	if entry.SentAgentMessage != nil {
+		payload["sent_agent_message"] = entry.SentAgentMessage
+	}
 	if entry.ParticipantMessage != nil {
 		payload["participant_message"] = entry.ParticipantMessage
 	}

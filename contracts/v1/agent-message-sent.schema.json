@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/agent-message-sent.schema.json",
+  "title": "agent-message-sent",
+  "description": "The agent route's reply to send, steer and follow_up (agent message create), and the CLI's typed result: the message the agent sent to another of the person's conversations. message_id is the command id, carried in the receiver's <agent-message> block; to, title and workspace_id name the receiver; conversation_url opens it and message_url opens it at this message. delivery is the kind asked for and state the admission (pending: given to Pi or queued behind its turn; held: Pi starts for it). text is the agent's message without the daemon's block; quote the quoted message as the receiver reads it. A repeated command id answers with the plain receipt fields only.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "command_id",
+    "state",
+    "kind",
+    "message_id",
+    "to",
+    "title",
+    "workspace_id",
+    "delivery",
+    "text"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "common.schema.json#/$defs/schemaVersion"
+    },
+    "command_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "state": {
+      "enum": [
+        "pending",
+        "held"
+      ]
+    },
+    "kind": {
+      "const": "agent_message_sent"
+    },
+    "message_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "to": {
+      "$ref": "common.schema.json#/$defs/agentId"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 800
+    },
+    "workspace_id": {
+      "$ref": "common.schema.json#/$defs/workspaceId"
+    },
+    "conversation_url": {
+      "type": "string",
+      "pattern": "^/workspaces/ws_[A-Za-z0-9_-]{8,64}\\?conversation=pi:[0-9a-fA-F-]{36}$"
+    },
+    "message_url": {
+      "type": "string",
+      "pattern": "^/workspaces/ws_[A-Za-z0-9_-]{8,64}\\?conversation=pi:[0-9a-fA-F-]{36}&message=[0-9a-fA-F-]{36}$"
+    },
+    "delivery": {
+      "enum": [
+        "send",
+        "steer",
+        "follow-up"
+      ]
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 65536
+    },
+    "quote": {
+      "$ref": "history.schema.json#/$defs/agentQuote"
+    }
+  }
+}

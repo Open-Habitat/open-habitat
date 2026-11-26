@@ -349,6 +349,10 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
         label: "Times in a conversation",
         desc: "A message's time after its name, day separators and a long multi-stage turn's duration.",
       },
+      "agent-agent-messages": {
+        label: "Agent messages between conversations",
+        desc: "A message sent to another conversation shows in both conversations as its own block.",
+      },
     },
   },
   palvelin: {

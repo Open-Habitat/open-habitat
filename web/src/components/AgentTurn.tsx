@@ -138,6 +138,10 @@ export type TurnStep = (
   | { kind: "thinking"; key: string; node: ReactNode }
   | { kind: "tool"; key: string; node: ReactNode; failed?: boolean }
   | { kind: "other"; key: string; node: ReactNode }
+  /** A message the agent sent to another conversation of the person
+   * (agent-agent-messages): drawn where it was sent, in place of its tool
+   * row, and closing the stage as a reply does. */
+  | { kind: "message"; key: string; node: ReactNode }
   | {
       kind: "text";
       key: string;
@@ -156,8 +160,8 @@ export type TurnStep = (
 };
 
 type Stage = {
-  work: Exclude<TurnStep, { kind: "text" }>[];
-  end?: Extract<TurnStep, { kind: "text" }>;
+  work: Exclude<TurnStep, { kind: "text" | "message" }>[];
+  end?: Extract<TurnStep, { kind: "text" | "message" }>;
 };
 
 export function turnStages(steps: TurnStep[]): Stage[] {
@@ -169,6 +173,9 @@ export function turnStages(steps: TurnStep[]): Stage[] {
       // An empty reply still mounts a card and a grid gap, lifting the
       // bottom-filled activity line until that placeholder disappears.
       if (!step.text.trim() && !step.readable) continue;
+      stages.push({ work, end: step });
+      work = [];
+    } else if (step.kind === "message") {
       stages.push({ work, end: step });
       work = [];
     } else work.push(step);
@@ -428,6 +435,9 @@ export function AgentTurn({
 }) {
   const voice = useContext(ConversationVoice);
   const stages = turnStages(steps);
+  // A running turn that has just sent a message works on below it.
+  if (working && stages.at(-1)?.end?.kind === "message")
+    stages.push({ work: [] });
   const current = working ? stages.length - 1 : -1;
   const [live, setLive] = useState(
     () => working && getWorkPreference() === "visible",
@@ -464,7 +474,8 @@ export function AgentTurn({
     setLive(!live);
   };
   const lastStage = stages.at(-1);
-  const finalStep = !working ? lastStage?.end : undefined;
+  const lastEnd = !working ? lastStage?.end : undefined;
+  const finalStep = lastEnd?.kind === "text" ? lastEnd : undefined;
   const minutes =
     times && !working && (stopped || !failed)
       ? turnMinutes({
@@ -566,7 +577,11 @@ export function AgentTurn({
                 </span>
               </div>
             ) : null}
-            {stage.end && role ? (
+            {stage.end?.kind === "message" ? (
+              <div className="ah-turn-reply" data-testid="stage-message">
+                {stage.end.node}
+              </div>
+            ) : stage.end && role ? (
               <StageReply
                 step={stage.end}
                 role={role}

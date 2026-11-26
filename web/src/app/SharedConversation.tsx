@@ -276,6 +276,7 @@ function SharedConversationView({
 }) {
   const t = useText(multiplayerText);
   const timesOn = useExperimentalFeature("conversation-times");
+  const agentMessagesOn = useExperimentalFeature("agent-agent-messages");
   const [state, setState] = useState<GuestState>();
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
   const [revision, setRevision] = useState("");
@@ -532,6 +533,7 @@ function SharedConversationView({
     undefined,
     undefined,
     timesOn,
+    agentMessagesOn,
   );
   const mine = state.waiting_requests.filter(
     (w) => w.subject === state.you.subject,
