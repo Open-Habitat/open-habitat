@@ -25,3 +25,9 @@ agent's `/tmp` and `/var/tmp` are its own and not shared with the person's termi
 or SSH, and that files the person or another process should use belong in the home directory
 or a workspace. The agent skill and the upgrade announcement text (which already mention
 `/var/tmp`) stay consistent with it.
+
+## Comments
+
+### 2026-11-27T10:12:35Z · @agent
+
+Second report of the same thing (27.11.2026, same pilot): adds that files the person should open in the editor also belong under the home directory; the guide sentence should name terminal and editor.
