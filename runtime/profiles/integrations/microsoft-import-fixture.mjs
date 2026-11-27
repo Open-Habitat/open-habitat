@@ -4,5 +4,5 @@ import { network } from './synthetic-entra.mjs';
 let input = '';
 for await (const chunk of process.stdin) input += chunk;
 const request = JSON.parse(input);
-await importGrant(request, {networkClient: network(request.tenant_id)});
-process.stdout.write('{"success":true}\n');
+const account = await importGrant(request, {networkClient: network(request.tenant_id)});
+process.stdout.write(JSON.stringify({success: true, account}) + '\n');

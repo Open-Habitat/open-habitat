@@ -2,6 +2,12 @@ import assert from 'node:assert/strict';
 const scopes = ['User.Read', 'Mail.ReadWrite', 'Mail.Send', 'Calendars.ReadWrite', 'Contacts.ReadWrite'];
 const client = '00000000-0000-0000-0000-000000000001';
 const b64 = value => Buffer.from(JSON.stringify(value)).toString('base64url');
+// The synthetic person's object id in the tenant that issues the grant.
+export const oid = '00000000-0000-4000-8000-0000000000f1';
+// tenant is the organisation that issues the grant. state.home makes the
+// person a guest whose home organisation it is (MSAL's homeAccountId then
+// names it), with state.oid their object id in the resource tenant and
+// state.username their home user name.
 export function network(tenant, state = {polls: 0}) {
   return {
     async sendGetRequestAsync(url) {
@@ -38,8 +44,8 @@ export function network(tenant, state = {polls: 0}) {
       return {headers: {}, status: 200, body: {
         token_type: 'Bearer', scope: ['openid', 'profile', 'offline_access', ...scopes.filter(scope => scope !== state.omitScope).map(scope => 'https://graph.microsoft.com/' + scope)].join(' '), expires_in: state.expiresIn ?? 1,
         access_token: 'synthetic-access-' + state.polls, refresh_token: 'synthetic-refresh-' + state.polls,
-        client_info: b64({uid: 'synthetic-user', utid: tenant}),
-        id_token: b64({alg: 'none'}) + '.' + b64({aud: client, iss: `https://login.microsoftonline.com/${tenant}/v2.0`, iat: now, nbf: now, exp: now+3600, tid: tenant, oid: 'synthetic-user', sub: 'synthetic-user', preferred_username: 'person@example.test', name: 'Synthetic Person'}) + '.synthetic',
+        client_info: b64({uid: state.home ? '00000000-0000-4000-8000-0000000000e1' : (state.oid ?? oid), utid: state.home ?? tenant}),
+        id_token: b64({alg: 'none'}) + '.' + b64({aud: client, iss: `https://login.microsoftonline.com/${tenant}/v2.0`, iat: now, nbf: now, exp: now+3600, tid: state.tid ?? tenant, oid: state.oid ?? oid, sub: 'synthetic-subject', preferred_username: state.username ?? 'person@example.test', name: 'Synthetic Person'}) + '.synthetic',
       }};
     },
   };

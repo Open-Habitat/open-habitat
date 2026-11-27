@@ -1,4 +1,4 @@
-import { network } from './synthetic-entra.mjs';
+import { network, oid } from './synthetic-entra.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -25,8 +25,10 @@ const { DefaultTokenCacheStorage, resetCacheKeyForTests } = await import('@softe
   const state = {polls: 0, refuse: false};
   const networkClient = network(tenant, state);
   const request = {client_id: client, tenant_id: tenant, address: 'person@example.test', refresh_token: 'synthetic-refresh-original', tool_options: {orgMode: true, enabledTools: '^(create-draft-email|send-mail|get-current-user)$', allowedScopes: scopes.join(' ')}};
-  await importGrant(request, {networkClient});
+  const imported = await importGrant(request, {networkClient});
   assert.ok(state.lastScope.split(' ').includes('https://graph.microsoft.com/.default'), 'import named permissions');
+  // The immutable identifiers MSAL recorded, which the daemon pins.
+  assert.deepEqual(imported, {tenant_id: tenant, local_account_id: oid, home_account_id: `${oid}.${tenant}`});
   const before = new Map();
   for (const name of ['.token-cache.json', '.cache-key', '.selected-account.json']) {
     const file = path.join(directory, name);
@@ -34,7 +36,17 @@ const { DefaultTokenCacheStorage, resetCacheKeyForTests } = await import('@softe
     before.set(name, await fs.readFile(file, 'utf8'));
   }
   assert.ok(!before.get('.token-cache.json').includes('synthetic-refresh'));
-  await assert.rejects(importGrant({...request, address: 'other@example.test'}, {networkClient}), /account_mismatch/);
+  // Names are not compared at import: a different MSAL username imports.
+  state.username = 'renamed@example.test';
+  assert.equal((await importGrant(request, {networkClient})).home_account_id, imported.home_account_id);
+  delete state.username;
+  await importGrant(request, {networkClient});
+  const storedRefresh = 'synthetic-refresh-' + state.polls;
+  for (const name of before.keys()) before.set(name, await fs.readFile(path.join(directory, name), 'utf8'));
+  // An account of another tenant than the authority asked is refused.
+  state.tid = '00000000-0000-0000-0000-0000000000cc';
+  await assert.rejects(importGrant(request, {networkClient}), /account_mismatch/);
+  delete state.tid;
   state.refuse = true;
   await assert.rejects(importGrant(request, {networkClient}));
   state.refuse = false;
@@ -48,7 +60,7 @@ const { DefaultTokenCacheStorage, resetCacheKeyForTests } = await import('@softe
   for (const [name, bytes] of before) assert.equal(await fs.readFile(path.join(directory, name), 'utf8'), bytes, 'failed replacement altered native credentials');
   const manager = new AuthManager({auth: {clientId: client, authority: `https://login.microsoftonline.com/${request.tenant_id}`}, system: {networkClient, loggerOptions: {loggerCallback() {}}}}, scopes, {expectedUsername: request.address}, new DefaultTokenCacheStorage());
   await manager.loadTokenCache();
-  state.expectedRefresh = 'synthetic-refresh-1';
+  state.expectedRefresh = storedRefresh;
   const beforeRefresh = state.polls;
   assert.ok((await manager.getToken()).startsWith('synthetic-access-'));
   assert.equal(state.polls, beforeRefresh + 1, 'native tool did not silently refresh reloaded state');
@@ -106,6 +118,13 @@ const { DefaultTokenCacheStorage, resetCacheKeyForTests } = await import('@softe
   // The grant still works once the tenant answers again.
   assert.equal((await verifyGrant(request, {networkClient}, graph(200))).state, 'ok');
   assert.equal((await verifyGrant({...request, address: 'other@example.test'}, {networkClient}, graph(200))).state, 'refused');
+  // The immutable pin selects the account by homeAccountId and tenant.
+  const {address: _, ...unpinned} = request;
+  const homePinned = {...unpinned, home_account_id: imported.home_account_id};
+  assert.equal((await verifyGrant(homePinned, {networkClient}, graph(200))).state, 'ok');
+  assert.equal((await verifyGrant({...unpinned, home_account_id: `${oid}.00000000-0000-0000-0000-0000000000cc`}, {networkClient}, graph(200))).state, 'refused');
+  await assert.rejects(verifyGrant({...homePinned, address: request.address}, {networkClient}, graph(200)), /invalid_input/);
+  await assert.rejects(verifyGrant(unpinned, {networkClient}, graph(200)), /invalid_input/);
   await assert.rejects(verifyGrant({...request, tenant_id: 'common'}, {networkClient}, graph(200)), /invalid_input/);
   // An idle native child has already read the key. Reconnect imports into a
   // fresh directory/process, then publishes that entire directory, as Go does.
@@ -149,6 +168,51 @@ const { DefaultTokenCacheStorage, resetCacheKeyForTests } = await import('@softe
     assert.equal(bad.status, 1);
     assert.deepEqual(JSON.parse(bad.stdout), {success: false, reason: 'native_failed'});
   }
+  const homeProbe = {client_id: client, tenant_id: tenant, home_account_id: 'synthetic.home'};
+  const homeCli = cli(homeProbe);
+  assert.equal(homeCli.status, 0, homeCli.stderr);
+  assert.deepEqual(JSON.parse(homeCli.stdout), {state: 'refused'});
+  for (const bad of [{...homeProbe, address: 'person@example.test'}, {client_id: client, tenant_id: tenant}]) {
+    const answer = cli(bad);
+    assert.equal(answer.status, 1);
+  }
   console.log('PASS work native verify states and private CLI wire shape');
+}
+
+{
+  // A guest: the client's tenant issues the grant, the person's home
+  // organisation is in their homeAccountId, their UPN there is not their
+  // username. Identity is the immutable ids; a cache with a second account
+  // fails closed.
+  const directory = path.join(root, 'guest');
+  await fs.mkdir(directory, {mode: 0o700});
+  process.env.MS365_MCP_TOKEN_CACHE_PATH = path.join(directory, '.token-cache.json');
+  process.env.MS365_MCP_SELECTED_ACCOUNT_PATH = path.join(directory, '.selected-account.json');
+  resetCacheKeyForTests();
+  const home = '00000000-0000-4000-8000-0000000000bb';
+  const guestOid = '00000000-0000-4000-8000-0000000000f2';
+  const state = {polls: 0, home, oid: guestOid, username: 'person@home.example', expiresIn: 3600};
+  const networkClient = network(tenant, state);
+  const grant = {client_id: client, tenant_id: tenant, refresh_token: 'synthetic-refresh-original'};
+  const imported = await importGrant(grant, {networkClient});
+  assert.deepEqual(imported, {tenant_id: tenant, local_account_id: guestOid, home_account_id: `00000000-0000-4000-8000-0000000000e1.${home}`});
+  const ok = async () => new Response('{}', {status: 200});
+  const pinned = {client_id: client, tenant_id: tenant, home_account_id: imported.home_account_id};
+  assert.equal((await verifyGrant(pinned, {networkClient}, ok)).state, 'ok');
+  // The tool itself starts and refreshes with the home-account pin.
+  const manager = new AuthManager({auth: {clientId: client, authority: `https://login.microsoftonline.com/${tenant}`}, system: {networkClient, loggerOptions: {loggerCallback() {}}}}, scopes, {expectedHomeAccountId: imported.home_account_id}, new DefaultTokenCacheStorage());
+  await manager.loadTokenCache();
+  assert.ok((await manager.getToken(true)).startsWith('synthetic-access-'));
+  // A second account in the same store: refused at verify.
+  const { application } = await import('./microsoft-native.mjs');
+  const { wrapCache, unwrapCache } = await import('@softeria/ms-365-mcp-server/dist/token-cache-storage.js');
+  const storage = new DefaultTokenCacheStorage();
+  const two = application(client, tenant, {networkClient: network(tenant, {polls: 500, oid: '00000000-0000-4000-8000-0000000000f3', expiresIn: 3600})});
+  two.getTokenCache().deserialize(unwrapCache(await storage.load('token-cache')).data);
+  await two.acquireTokenByRefreshToken({refreshToken: 'synthetic-refresh-original', scopes: ['https://graph.microsoft.com/.default'], forceCache: true});
+  assert.equal((await two.getTokenCache().getAllAccounts()).length, 2);
+  await storage.save('token-cache', wrapCache(two.getTokenCache().serialize()));
+  assert.equal((await verifyGrant(pinned, {networkClient}, ok)).state, 'refused');
+  console.log('PASS guest import, home-account pin and a second account failing closed');
 }
 await fs.rm(root, {recursive: true});
