@@ -2,11 +2,13 @@
 created: 2026-11-27
 updated: 2026-11-27
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: 'GitHub issue #1'
 source_ref: https://github.com/Open-Habitat/open-habitat/issues/1
+lane: unlaned
+preparation: ready
 ---
 
 # Dictation: out-of-credit Soniox account shows as "Soniox is not responding"
@@ -25,3 +27,9 @@ Suggestion:
 - At minimum, add to the "not responding" text: "Check that your Soniox account has credit" with a link to the Soniox console.
 
 Observed 24.11.2026 on Open Habitat 0.1.3 with a personal Soniox key (US region). Dictation worked again once credit was added.
+
+## Decisions
+
+### 2026-11-27T07:52:39Z · @jari
+
+Jari 27.11.2026: fix it.

@@ -2,11 +2,13 @@
 created: 2026-11-27
 updated: 2026-11-27
 type: feature
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: 'GitHub issue #2'
 source_ref: https://github.com/Open-Habitat/open-habitat/issues/2
+lane: unlaned
+preparation: ready
 ---
 
 # Microsoft 365: allow integrations with several Entra tenants on one server
@@ -29,3 +31,9 @@ Wish: Microsoft 365 integrations for several tenants on one server, as with Goog
 Either way, a B2B guest account should be able to connect against the tenant where it is a guest, not only its home tenant.
 
 Workaround used meanwhile: an agent-driven headless browser signed in as the person, which is more fragile than the integration.
+
+## Decisions
+
+### 2026-11-27T07:52:39Z · @jari
+
+Jari 27.11.2026: research first (the two directions, their security, consent and operating consequences); the architecture decision follows from the research.
