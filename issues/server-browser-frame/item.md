@@ -9,7 +9,7 @@ provenance: chat
 source_ref: chat:conductor-2711/server-browser-frame
 lane: server-browser-frame
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Server browser frame: fewer control steps, no clipboard dialog, close tab, larger picture
