@@ -22,10 +22,19 @@ type controlIntegrationApp struct {
 	Actor    string `json:"actor,omitempty"`
 	At       string `json:"at,omitempty"`
 }
+type controlIntegrationTenant struct {
+	TenantID string `json:"tenant_id"`
+	Label    string `json:"label"`
+	Source   string `json:"source"`
+	Actor    string `json:"actor,omitempty"`
+	At       string `json:"at,omitempty"`
+}
 type controlIntegrations struct {
-	SchemaVersion int                     `json:"schema_version"`
-	BrowserSetup  bool                    `json:"browser_setup"`
-	Apps          []controlIntegrationApp `json:"apps"`
+	SchemaVersion  int                        `json:"schema_version"`
+	BrowserSetup   bool                       `json:"browser_setup"`
+	Apps           []controlIntegrationApp    `json:"apps"`
+	Tenants        []controlIntegrationTenant `json:"tenants"`
+	TenantsInvalid bool                       `json:"tenants_invalid,omitempty"`
 }
 
 // integrationRejections are the broker's definite refusals: nothing was
@@ -35,6 +44,7 @@ var integrationRejections = map[string]string{
 	"host_busy":                 "a host operation (apply, prepare or upgrade) holds the maintenance lock; nothing was changed, run this again after it ends",
 	"integrations_file_invalid": "/opt/open-habitat/integrations.json is absent, not root's, or not one JSON object, or /var/lib/open-habitat/host is not root's private directory; run host apply or repair it as root",
 	"integration_refused":       "the broker refused the change; nothing was written",
+	"integration_tenants_full":  "the allowed organisations list already has 32 organisations; remove one with admin integrations tenants remove first",
 }
 
 func integrationRejection(err error) error {
@@ -56,7 +66,7 @@ func readIntegrations() (controlIntegrations, error) {
 	if e := adminOperation("integration_list", nil, &v); e != nil {
 		return v, integrationRejection(e)
 	}
-	if v.SchemaVersion != 1 || v.Apps == nil {
+	if v.SchemaVersion != 1 || v.Apps == nil || v.Tenants == nil {
 		return v, system("invalid_control_response", "gateway returned an invalid integrations list")
 	}
 	return v, nil
@@ -98,7 +108,7 @@ func readSecret(path string) (string, error) {
 }
 
 func adminIntegrationsCommand(args []string) (any, error) {
-	const shape = "expected admin integrations list, admin integrations set --provider google|dropbox|dropbox_app_folder --client-id <id> --client-secret-file <path|-> [--dry-run], admin integrations set --provider microsoft|microsoft_nosend|microsoft_drafts|microsoft_read --client-id <id> --tenant-id <id> [--dry-run] or admin integrations clear --provider <provider> [--dry-run]"
+	const shape = "expected admin integrations list, admin integrations set --provider google|dropbox|dropbox_app_folder --client-id <id> --client-secret-file <path|-> [--dry-run], admin integrations set --provider microsoft|microsoft_nosend|microsoft_drafts|microsoft_read|microsoft_shared|microsoft_shared_nosend|microsoft_shared_drafts|microsoft_shared_read --client-id <id> --tenant-id <id> [--dry-run], admin integrations clear --provider <provider> [--dry-run], admin integrations tenants list|add|remove or admin integrations consent-link --tenant-id <id>"
 	if len(args) == 0 {
 		return nil, usage(shape)
 	}
@@ -111,7 +121,15 @@ func adminIntegrationsCommand(args []string) (any, error) {
 		if e != nil {
 			return nil, e
 		}
-		return envelope(map[string]any{"browser_setup": v.BrowserSetup, "apps": v.Apps, "count": len(v.Apps)}), nil
+		out := map[string]any{"browser_setup": v.BrowserSetup, "apps": v.Apps, "count": len(v.Apps), "tenants": v.Tenants}
+		if v.TenantsInvalid {
+			out["tenants_invalid"] = true
+		}
+		return envelope(out), nil
+	case "tenants":
+		return adminIntegrationTenantsCommand(args[1:])
+	case "consent-link":
+		return adminIntegrationConsentCommand(args[1:])
 	case "set", "clear":
 	default:
 		return nil, usage(shape)
@@ -190,7 +208,7 @@ func adminIntegrationsCommand(args []string) (any, error) {
 // the rejected values: one of them may be a secret.
 var integrationFormat = map[string]string{
 	"google":    "invalid Google OAuth client: --client-id is the Desktop app client's id ending in .apps.googleusercontent.com, the secret is its Client secret, and the two differ",
-	"microsoft": "invalid Microsoft app: --client-id is the Application (client) ID and --tenant-id the organisation's Directory (tenant) ID, both GUIDs from the single-tenant app's Overview page, and the two differ",
+	"microsoft": "invalid Microsoft app: --client-id is the Application (client) ID and --tenant-id the Directory (tenant) ID, both GUIDs from the app's Overview page (for a shared multi-tenant app, the tenant that owns the registration), and the two differ",
 	"dropbox":   "invalid Dropbox app: --client-id is the App key and the secret the App secret, each 1–256 letters, digits, _ or -, and the two differ",
 }
 
@@ -224,4 +242,175 @@ func integrationDryRun(verb, provider string, fields map[string]string) (any, er
 		}
 	}
 	return envelope(map[string]any{"dry_run": true, "would": []any{map[string]any{"action": verb, "resource": "integration-app", "input": input, "known_effects": effects, "unknown_until_apply": []string{"host_lock_at_commit", "integrations_file_at_commit"}}}}), nil
+}
+
+// adminIntegrationTenantsCommand lists, adds or relabels, and removes the
+// organisations the shared Microsoft applications may serve. Each write is
+// one entry of the list, through the broker like a section.
+func adminIntegrationTenantsCommand(args []string) (any, error) {
+	const shape = "expected admin integrations tenants list, admin integrations tenants add --tenant-id <GUID> --label <text> [--dry-run] or admin integrations tenants remove --tenant-id <GUID> [--dry-run]"
+	if len(args) == 0 {
+		return nil, usage(shape)
+	}
+	verb := args[0]
+	switch verb {
+	case "list":
+		if len(args) != 1 {
+			return nil, usage("expected admin integrations tenants list")
+		}
+		v, e := readIntegrations()
+		if e != nil {
+			return nil, e
+		}
+		out := map[string]any{"tenants": v.Tenants, "count": len(v.Tenants)}
+		if v.TenantsInvalid {
+			out["tenants_invalid"] = true
+		}
+		return envelope(out), nil
+	case "add", "remove":
+	default:
+		return nil, usage(shape)
+	}
+	allowed := []string{"--tenant-id"}
+	if verb == "add" {
+		allowed = append(allowed, "--label")
+	}
+	flags := map[string]string{}
+	dry := false
+	for i := 1; i < len(args); i++ {
+		switch {
+		case args[i] == "--dry-run":
+			if dry {
+				return nil, usage("--dry-run given twice")
+			}
+			dry = true
+		case slices.Contains(allowed, args[i]):
+			if _, seen := flags[args[i]]; seen || i+1 >= len(args) {
+				return nil, usage(shape)
+			}
+			flags[args[i]] = args[i+1]
+			i++
+		default:
+			return nil, usage(fmt.Sprintf("unknown option %q; %s", args[i], shape))
+		}
+	}
+	tenant, ok := integrationapps.CanonicalTenant(flags["--tenant-id"])
+	if !ok {
+		return nil, usage("--tenant-id is the organisation's Directory (tenant) ID, a GUID from its Entra admin center Overview page; a domain name, common, organizations or consumers is not one")
+	}
+	label, hasLabel := flags["--label"]
+	if verb == "add" && (!hasLabel || !integrationapps.ValidLabel(label)) {
+		return nil, usage(fmt.Sprintf("--label is the organisation's name as every person on this server will see it: 1–%d printable characters without a space at either end", integrationapps.MaxLabel))
+	}
+	if dry {
+		v, e := readIntegrations()
+		if e != nil {
+			return nil, e
+		}
+		if !v.BrowserSetup {
+			return nil, integrationRejection(&cliError{code: "browser_setup_disabled"})
+		}
+		if v.TenantsInvalid {
+			return nil, integrationRejection(&cliError{code: "integrations_file_invalid"})
+		}
+		var current *controlIntegrationTenant
+		for i := range v.Tenants {
+			if v.Tenants[i].TenantID == tenant {
+				current = &v.Tenants[i]
+			}
+		}
+		effects := map[string]any{"current": current}
+		switch {
+		case verb == "remove" && current == nil:
+			effects["effect"] = "nothing to remove"
+		case verb == "remove":
+			effects["effect"] = "remove; this organisation's Microsoft connections stop on this server at their next use; people's sign-ins are neither deleted nor revoked, and adding it back resumes them"
+		case current != nil:
+			effects["effect"] = "relabel in place"
+		case len(v.Tenants) >= integrationapps.MaxTenants:
+			return nil, integrationRejection(&cliError{code: "integration_tenants_full"})
+		default:
+			effects["effect"] = "add; people can connect this organisation at every level a shared application is configured for, once its administrator approves it"
+		}
+		input := map[string]any{"tenant_id": tenant}
+		if verb == "add" {
+			input["label"] = label
+		}
+		return envelope(map[string]any{"dry_run": true, "would": []any{map[string]any{"action": verb, "resource": "integration-tenant", "input": input, "known_effects": effects, "unknown_until_apply": []string{"host_lock_at_commit", "integrations_file_at_commit"}}}}), nil
+	}
+	request := map[string]any{"tenant_id": tenant}
+	operation := "integration_tenant_remove"
+	if verb == "add" {
+		request["label"] = label
+		operation = "integration_tenant_set"
+	}
+	var v controlIntegrations
+	if e := adminOperation(operation, request, &v); e != nil {
+		return nil, integrationRejection(e)
+	}
+	if v.SchemaVersion != 1 || v.Tenants == nil {
+		return nil, system("invalid_control_response", "gateway returned an invalid integrations list")
+	}
+	return envelope(map[string]any{"tenant_id": tenant, "tenants": v.Tenants, "count": len(v.Tenants), "updated": true}), nil
+}
+
+// adminIntegrationConsentCommand computes, for one organisation, each
+// configured shared level's admin-consent link to send to its
+// administrator. It changes nothing and cannot tell whether an
+// organisation has approved: the server holds no token for it.
+func adminIntegrationConsentCommand(args []string) (any, error) {
+	const shape = "expected admin integrations consent-link --tenant-id <GUID>"
+	flags, dry, e := integrationFlags(args, []string{"--tenant-id"}, shape)
+	if e != nil {
+		return nil, e
+	}
+	if dry {
+		return nil, usage("consent-link changes nothing; run it without --dry-run")
+	}
+	tenant, ok := integrationapps.CanonicalTenant(flags["--tenant-id"])
+	if !ok {
+		return nil, usage("--tenant-id is the organisation's Directory (tenant) ID, a GUID")
+	}
+	v, e := readIntegrations()
+	if e != nil {
+		return nil, e
+	}
+	links := []map[string]any{}
+	for _, section := range []string{"microsoft_shared", "microsoft_shared_nosend", "microsoft_shared_drafts", "microsoft_shared_read"} {
+		app := integrationAppFor(v, section)
+		if app == nil || !app.Usable || app.ClientID == "" {
+			continue
+		}
+		level := integrationapps.MicrosoftSectionLevel(section)
+		links = append(links, map[string]any{"level": level, "provider": section, "client_id": app.ClientID, "consent_url": integrationapps.MicrosoftConsentURL(tenant, app.ClientID, level)})
+	}
+	listed := false
+	for _, t := range v.Tenants {
+		listed = listed || t.TenantID == tenant
+	}
+	return envelope(map[string]any{"tenant_id": tenant, "listed": listed, "links": links, "count": len(links)}), nil
+}
+
+// integrationFlags reads each allowed option once and --dry-run.
+func integrationFlags(args, allowed []string, shape string) (map[string]string, bool, error) {
+	flags := map[string]string{}
+	dry := false
+	for i := 0; i < len(args); i++ {
+		switch {
+		case args[i] == "--dry-run":
+			if dry {
+				return nil, false, usage("--dry-run given twice")
+			}
+			dry = true
+		case slices.Contains(allowed, args[i]):
+			if _, seen := flags[args[i]]; seen || i+1 >= len(args) {
+				return nil, false, usage(shape)
+			}
+			flags[args[i]] = args[i+1]
+			i++
+		default:
+			return nil, false, usage(fmt.Sprintf("unknown option %q; %s", args[i], shape))
+		}
+	}
+	return flags, dry, nil
 }

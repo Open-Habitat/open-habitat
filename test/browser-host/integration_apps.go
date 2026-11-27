@@ -35,6 +35,8 @@ type fixtureApps struct {
 	lose   bool
 	busy   bool
 	rclone bool
+	// tenants is the allowed organisations list as the broker keeps it.
+	tenants []gateway.IntegrationTenant
 }
 
 func newFixtureApps() *fixtureApps {
@@ -87,7 +89,10 @@ func (f *fixtureApps) fixture(q url.Values) error {
 }
 
 func (f *fixtureApps) pageLocked() gateway.IntegrationApps {
-	page := gateway.IntegrationApps{BrowserSetup: !f.off, Apps: []gateway.IntegrationApp{}}
+	page := gateway.IntegrationApps{BrowserSetup: !f.off, Apps: []gateway.IntegrationApp{}, Tenants: slices.Clone(f.tenants)}
+	if page.Tenants == nil {
+		page.Tenants = []gateway.IntegrationTenant{}
+	}
 	for _, p := range integrationapps.Providers {
 		if a, ok := f.apps[p]; ok {
 			page.Apps = append(page.Apps, a)
@@ -161,4 +166,41 @@ func (b *fixtureBroker) SetIntegrationApp(ctx context.Context, provider string, 
 
 func (b *fixtureBroker) ClearIntegrationApp(ctx context.Context, provider, actor string) (gateway.IntegrationApps, error) {
 	return b.writeApp(ctx, provider, nil, actor)
+}
+
+func (b *fixtureBroker) writeTenant(ctx context.Context, tenant, label, actor string, set bool) (gateway.IntegrationApps, error) {
+	appFixture.mu.Lock()
+	delay := appFixture.delay
+	appFixture.mu.Unlock()
+	select {
+	case <-ctx.Done():
+		return gateway.IntegrationApps{}, gateway.ErrIntegrationUncertain
+	case <-time.After(delay):
+	}
+	appFixture.mu.Lock()
+	defer appFixture.mu.Unlock()
+	if appFixture.off {
+		return gateway.IntegrationApps{}, gateway.ErrBrowserSetupOff
+	}
+	i := slices.IndexFunc(appFixture.tenants, func(t gateway.IntegrationTenant) bool { return t.TenantID == tenant })
+	entry := gateway.IntegrationTenant{TenantID: tenant, Label: label, Source: "site_admin", Actor: actor, At: time.Now().UTC().Truncate(time.Second).Format(time.RFC3339)}
+	switch {
+	case !set && i >= 0:
+		appFixture.tenants = slices.Delete(appFixture.tenants, i, i+1)
+	case set && i >= 0:
+		appFixture.tenants[i] = entry
+	case set && len(appFixture.tenants) >= integrationapps.MaxTenants:
+		return gateway.IntegrationApps{}, gateway.ErrTenantsFull
+	case set:
+		appFixture.tenants = append(appFixture.tenants, entry)
+	}
+	return appFixture.pageLocked(), nil
+}
+
+func (b *fixtureBroker) SetIntegrationTenant(ctx context.Context, tenant, label, actor string) (gateway.IntegrationApps, error) {
+	return b.writeTenant(ctx, tenant, label, actor, true)
+}
+
+func (b *fixtureBroker) RemoveIntegrationTenant(ctx context.Context, tenant, actor string) (gateway.IntegrationApps, error) {
+	return b.writeTenant(ctx, tenant, "", actor, false)
 }

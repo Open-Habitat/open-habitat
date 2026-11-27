@@ -62,6 +62,22 @@ func (b *integrationFake) SetIntegrationApp(_ context.Context, provider string, 
 func (b *integrationFake) ClearIntegrationApp(_ context.Context, provider, actor string) (IntegrationApps, error) {
 	return b.write(provider, nil, actor)
 }
+func (b *integrationFake) SetIntegrationTenant(_ context.Context, tenant, label, actor string) (IntegrationApps, error) {
+	b.relayed, b.actors = append(b.relayed, map[string]string{"tenant_id": tenant, "label": label}), append(b.actors, actor)
+	if b.refuse != nil {
+		return IntegrationApps{}, b.refuse
+	}
+	page := b.page()
+	page.Tenants = []IntegrationTenant{{TenantID: tenant, Label: label, Source: "site_admin", Actor: actor, At: "2026-10-24T12:00:00Z"}}
+	return page, nil
+}
+func (b *integrationFake) RemoveIntegrationTenant(_ context.Context, tenant, actor string) (IntegrationApps, error) {
+	b.relayed, b.actors = append(b.relayed, map[string]string{"tenant_id": tenant}), append(b.actors, actor)
+	if b.refuse != nil {
+		return IntegrationApps{}, b.refuse
+	}
+	return b.page(), nil
+}
 
 func newIntegrationHarness(t *testing.T, log *bytes.Buffer) (*accessHarness, *integrationFake) {
 	t.Helper()
@@ -171,5 +187,71 @@ func TestIntegrationAppsOutcomes(t *testing.T) {
 	}
 	if b, err = x.auth.AdminControl(context.Background(), []byte(`{"operation":"integration_list"}`)); err != nil || !strings.Contains(string(b), `"browser_setup":true`) {
 		t.Fatal(string(b), err)
+	}
+}
+
+// The allowed list is changed one organisation at a time by a current
+// administrator or root; the GUID is relayed in its lowercase form, a label
+// only with a set, and nothing else from the request reaches the broker.
+func TestIntegrationTenantsRelay(t *testing.T) {
+	const tenant = "e04c61f9-3b8d-4a27-9f5e-7d1a2c48b903"
+	var logged bytes.Buffer
+	x, broker := newIntegrationHarness(t, &logged)
+	alice := x.login("42", "alice")
+	csrf := extractCSRF(t, request(x.h, "GET", "/auth/session", alice).Body.String())
+	bob := x.login("43", "bob")
+	bobCSRF := extractCSRF(t, request(x.h, "GET", "/auth/session", bob).Body.String())
+	if w := accessPost(x.h, bob, bobCSRF, integrationTenantsPath+"/set", `{"tenant_id":"`+tenant+`","label":"Client One"}`); w.Code != 403 || len(broker.relayed) != 0 {
+		t.Fatal("non-administrator set", w.Code)
+	}
+	for path, body := range map[string]string{
+		"/set:organizations": `{"tenant_id":"organizations","label":"Everyone"}`,
+		"/set:domain":        `{"tenant_id":"contoso.onmicrosoft.com","label":"C"}`,
+		"/set:no label":      `{"tenant_id":"` + tenant + `"}`,
+		"/set:empty label":   `{"tenant_id":"` + tenant + `","label":""}`,
+		"/set:control":       `{"tenant_id":"` + tenant + `","label":"C\u0000"}`,
+		"/set:extra":         `{"tenant_id":"` + tenant + `","label":"C","actor":"1"}`,
+		"/remove:label":      `{"tenant_id":"` + tenant + `","label":"C"}`,
+		"/remove:empty":      `{}`,
+	} {
+		p, _, _ := strings.Cut(path, ":")
+		if w := accessPost(x.h, alice, csrf, integrationTenantsPath+p, body); w.Code != 400 {
+			t.Fatal("invalid change relayed", path, w.Code)
+		}
+	}
+	if len(broker.relayed) != 0 {
+		t.Fatal("invalid request reached the broker", broker.relayed)
+	}
+	w := accessPost(x.h, alice, csrf, integrationTenantsPath+"/set", `{"tenant_id":"`+strings.ToUpper(tenant)+`","label":"Client One"}`)
+	var view struct {
+		Tenants []struct {
+			TenantID string `json:"tenant_id"`
+			Label    string `json:"label"`
+			Actor    string `json:"actor"`
+		} `json:"tenants"`
+	}
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &view) != nil || len(view.Tenants) != 1 || view.Tenants[0].TenantID != tenant || view.Tenants[0].Actor != "42" {
+		t.Fatal(w.Code, w.Body.String())
+	}
+	if broker.relayed[0]["tenant_id"] != tenant || broker.actors[0] != "42" {
+		t.Fatal("relay", broker.relayed)
+	}
+	if w = accessPost(x.h, alice, csrf, integrationTenantsPath+"/remove", `{"tenant_id":"`+tenant+`"}`); w.Code != 200 || !strings.Contains(w.Body.String(), `"tenants":[]`) {
+		t.Fatal("remove", w.Code, w.Body.String())
+	}
+	broker.refuse = ErrTenantsFull
+	if w = accessPost(x.h, alice, csrf, integrationTenantsPath+"/set", `{"tenant_id":"`+tenant+`","label":"C"}`); w.Code != 409 || !strings.Contains(w.Body.String(), "integration_tenants_full") {
+		t.Fatal("full", w.Code, w.Body.String())
+	}
+	broker.refuse = nil
+	b, err := x.auth.AdminControl(context.Background(), []byte(`{"operation":"integration_tenant_set","tenant_id":"`+tenant+`","label":"Client One"}`))
+	if err != nil || !strings.Contains(string(b), `"actor":"root"`) {
+		t.Fatal(string(b), err)
+	}
+	if _, err = x.auth.AdminControl(context.Background(), []byte(`{"operation":"integration_tenant_remove","tenant_id":"`+tenant+`","label":"x"}`)); err == nil {
+		t.Fatal("control removal with a label accepted")
+	}
+	if strings.Contains(logged.String(), tenant) || strings.Contains(logged.String(), "Client One") {
+		t.Fatalf("gateway log carries the organisation: %s", logged.String())
 	}
 }

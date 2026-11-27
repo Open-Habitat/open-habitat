@@ -345,6 +345,15 @@ client id and who set it when, never the secret; source `operator` marks a
 section root edited by hand (root:root 0644). Setting `browser_setup` false
 and applying makes the file root's alone again.
 
+Microsoft's shared (multi-tenant) applications (`microsoft_shared` and its
+levels) serve exactly the organisations on the `microsoft_tenants` allowed
+list, which `admin integrations tenants list|add|remove` changes one entry at
+a time; `admin integrations consent-link --tenant-id GUID` gives the links to
+send a client's administrator. Removing an organisation stops its
+connections and deletes nothing. The list is not a security boundary: say so
+when it is discussed, since a shared application's sign-in can be used by
+the person's own programs against any organisation that approved it.
+
 ## Rotating the TLS certificate
 
 The certificate and key the site file names (`gateway.tls_cert_file`,

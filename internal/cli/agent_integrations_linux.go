@@ -162,7 +162,7 @@ func parseIntegrationRequest(args []string, stdin io.Reader) (conversationReques
 	}
 	if key == "integration-account delete" {
 		action = "remove"
-		allowed = " provider address delete_directories "
+		allowed = " provider address tenant_id delete_directories "
 	}
 	for field := range fields {
 		if !strings.Contains(allowed, " "+field+" ") {

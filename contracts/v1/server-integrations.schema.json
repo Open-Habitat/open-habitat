@@ -2,10 +2,24 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-habitat.invalid/contracts/v1/server-integrations.schema.json",
   "title": "The providers' app credentials, as the root broker keeps them",
-  "description": "GET /api/v1/server/integrations lists the Google, Microsoft and Dropbox application sections of root's integrations file, and the separate applications of the narrower account levels (microsoft_nosend, microsoft_drafts, microsoft_read, dropbox_app_folder), with root's browser_setup switch. POST /api/v1/server/integrations/set {provider, fields} has the broker write one provider's section; POST /api/v1/server/integrations/clear {provider} removes it. A secret is accepted only in a set request and is never returned. A change is in effect only when the reply arrives; 503 outcome_uncertain means it may or may not have been written, and nothing is retried. Refusals are fixed codes shared with root's admin integrations CLI: browser_setup_disabled (root's switch is off), host_busy (host maintenance holds the lock; nothing was written), integrations_file_invalid (root must repair the file), integration_refused, broker_unavailable. Administrator, session and CSRF are required.",
-  "oneOf": [{"$ref": "#/$defs/list"}, {"$ref": "#/$defs/set_request"}, {"$ref": "#/$defs/clear_request"}],
+  "description": "GET /api/v1/server/integrations lists the Google, Microsoft and Dropbox application sections of root's integrations file, the separate applications of the narrower account levels (microsoft_nosend, microsoft_drafts, microsoft_read, dropbox_app_folder), the multi-tenant Microsoft applications (microsoft_shared and its levels) and the organisations they are allowed to serve, with root's browser_setup switch. POST /api/v1/server/integrations/set {provider, fields} has the broker write one provider's section; POST /api/v1/server/integrations/clear {provider} removes it. POST /api/v1/server/integrations/tenants/set {tenant_id, label} adds an organisation to the allowed list or relabels it in place; POST /api/v1/server/integrations/tenants/remove {tenant_id} takes it off, which stops its connections on this server at their next use and deletes and revokes nothing (adding it back resumes them). A secret is accepted only in a set request and is never returned. A change is in effect only when the reply arrives; 503 outcome_uncertain means it may or may not have been written, and nothing is retried. Refusals are fixed codes shared with root's admin integrations CLI: browser_setup_disabled (root's switch is off), host_busy (host maintenance holds the lock; nothing was written), integrations_file_invalid (root must repair the file, including an allowed list the daemons refuse), integration_tenants_full (the list already has 32 organisations), integration_refused, broker_unavailable. Administrator, session and CSRF are required.",
+  "oneOf": [{"$ref": "#/$defs/list"}, {"$ref": "#/$defs/set_request"}, {"$ref": "#/$defs/clear_request"}, {"$ref": "#/$defs/tenant_set_request"}, {"$ref": "#/$defs/tenant_remove_request"}],
   "$defs": {
-    "provider": {"description": "A section: a provider's own application, which is its full account level, or the application of one of its narrower levels.", "enum": ["google", "microsoft", "microsoft_nosend", "microsoft_drafts", "microsoft_read", "dropbox", "dropbox_app_folder"]},
+    "provider": {"description": "A section: a provider's own application, which is its full account level, or the application of one of its narrower levels. The microsoft_shared sections are the operator's multi-tenant applications, one per level, serving the allowed organisations at every level no single-tenant section of that organisation fills.", "enum": ["google", "microsoft", "microsoft_nosend", "microsoft_drafts", "microsoft_read", "microsoft_shared", "microsoft_shared_nosend", "microsoft_shared_drafts", "microsoft_shared_read", "dropbox", "dropbox_app_folder"]},
+    "tenant_id": {"description": "A Microsoft Directory (tenant) ID, a GUID. Lowercase in every reply; a request may use either case.", "type": "string", "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"},
+    "label": {"description": "The organisation's name as people on this server see it, 1 to 64 printable characters without a space at either end. Every person on the server can read it.", "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[^\\s\\u0000-\\u001f\\u007f-\\u009f\u2028\u2029]([^\\u0000-\\u001f\\u007f-\\u009f\u2028\u2029]*[^\\s\\u0000-\\u001f\\u007f-\\u009f\u2028\u2029])?$"},
+    "tenant": {
+      "description": "One organisation the shared Microsoft applications may serve, in the file's order. The list governs what this server's own connect, refresh and tool paths do; it is not a security boundary, because a sign-in with a multi-tenant application can be used by the person's own programs against any organisation that approved the application.",
+      "type": "object", "additionalProperties": false,
+      "required": ["tenant_id", "label", "source"],
+      "properties": {
+        "tenant_id": {"$ref": "#/$defs/tenant_id"},
+        "label": {"$ref": "#/$defs/label"},
+        "source": {"description": "site_admin: the broker set exactly this label for actor at at; operator: root wrote or changed it.", "enum": ["site_admin", "operator"]},
+        "actor": {"description": "The administrator's GitHub id or root, as the gateway reported it.", "type": "string", "pattern": "^(?:root|[1-9][0-9]{0,19})$"},
+        "at": {"type": "string", "format": "date-time"}
+      }
+    },
     "public_id": {"type": "string", "pattern": "^[A-Za-z0-9._-]{1,256}$"},
     "secret": {"type": "string", "pattern": "^[A-Za-z0-9._-]{1,256}$"},
     "app": {
@@ -14,7 +28,7 @@
       "properties": {
         "provider": {"$ref": "#/$defs/provider"},
         "client_id": {"description": "Public: it is in every sign-in URL. Absent when root's hand-written value is not token-shaped.", "$ref": "#/$defs/public_id"},
-        "tenant_id": {"description": "Microsoft sections only: the sign-in audience or the organisation's Directory (tenant) ID.", "$ref": "#/$defs/public_id"},
+        "tenant_id": {"description": "Microsoft sections only: a single-tenant section's organisation, its Directory (tenant) ID and only sign-in authority; a shared section's owning tenant, which is never a sign-in authority on its own account. Shown as root wrote it, so an unusable hand-written audience keyword is visible.", "$ref": "#/$defs/public_id"},
         "usable": {"description": "Whether every person's daemon uses this section; false sections are ignored there.", "type": "boolean"},
         "source": {"description": "site_admin: the broker wrote exactly these bytes for actor at at; operator: root wrote or changed them.", "enum": ["site_admin", "operator"]},
         "actor": {"description": "The administrator's GitHub id or root, as the gateway reported it.", "type": "string", "pattern": "^(?:root|[1-9][0-9]{0,19})$"},
@@ -23,11 +37,13 @@
     },
     "list": {
       "type": "object", "additionalProperties": false,
-      "required": ["schema_version", "browser_setup", "apps"],
+      "required": ["schema_version", "browser_setup", "apps", "tenants"],
       "properties": {
         "schema_version": {"const": 1},
         "browser_setup": {"description": "Root's site.json integrations.browser_setup as host apply published it; while false, set and clear are refused.", "type": "boolean"},
-        "apps": {"type": "array", "maxItems": 7, "items": {"$ref": "#/$defs/app"}}
+        "apps": {"type": "array", "maxItems": 11, "items": {"$ref": "#/$defs/app"}},
+        "tenants": {"description": "The allowed organisations of the shared Microsoft applications. Empty when there is no list.", "type": "array", "maxItems": 32, "items": {"$ref": "#/$defs/tenant"}},
+        "tenants_invalid": {"description": "Present, and true, when root's list is one every daemon refuses whole (a key that is not a GUID, a label out of bounds, the same tenant twice or more than 32 entries); tenants is then empty, no organisation is served through the shared applications, and only root can repair it.", "const": true}
       }
     },
     "set_request": {
@@ -36,12 +52,14 @@
       "properties": {
         "provider": {"$ref": "#/$defs/provider"},
         "fields": {
-          "description": "Exactly the provider's fields: google, dropbox and dropbox_app_folder client_id and client_secret; microsoft, microsoft_nosend, microsoft_drafts and microsoft_read client_id and tenant_id. A Google client id ends in .apps.googleusercontent.com, both Microsoft ids are GUIDs (a single-tenant app: the tenant is the organisation's Directory (tenant) ID, never common, organizations or consumers), and no value may be given twice.",
+          "description": "Exactly the provider's fields: google, dropbox and dropbox_app_folder client_id and client_secret; every Microsoft section client_id and tenant_id. A Google client id ends in .apps.googleusercontent.com, both Microsoft ids are GUIDs (the tenant is a Directory (tenant) ID, never common, organizations or consumers: a single-tenant section's organisation, a shared section's owning tenant), and no value may be given twice.",
           "type": "object", "additionalProperties": false, "minProperties": 2, "maxProperties": 2,
           "properties": {"client_id": {"$ref": "#/$defs/public_id"}, "client_secret": {"$ref": "#/$defs/secret"}, "tenant_id": {"$ref": "#/$defs/public_id"}}
         }
       }
     },
-    "clear_request": {"type": "object", "additionalProperties": false, "required": ["provider"], "properties": {"provider": {"$ref": "#/$defs/provider"}}}
+    "clear_request": {"type": "object", "additionalProperties": false, "required": ["provider"], "properties": {"provider": {"$ref": "#/$defs/provider"}}},
+    "tenant_set_request": {"type": "object", "additionalProperties": false, "required": ["tenant_id", "label"], "properties": {"tenant_id": {"$ref": "#/$defs/tenant_id"}, "label": {"$ref": "#/$defs/label"}}},
+    "tenant_remove_request": {"type": "object", "additionalProperties": false, "required": ["tenant_id"], "properties": {"tenant_id": {"$ref": "#/$defs/tenant_id"}}}
   }
 }

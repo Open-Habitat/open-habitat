@@ -143,7 +143,7 @@ func adminOperation(operation string, fields map[string]any, reply any) error {
 
 func adminServerCommand(args []string) (any, error) {
 	if len(args) < 2 {
-		return nil, usage("expected admin settings show|update, admin onboarding show|update, admin ai-key show|copies|set|delete|seed, admin access list|lookup|add|remove, admin integrations list|set|clear, admin users list, admin role update, or admin storage list|update")
+		return nil, usage("expected admin settings show|update, admin onboarding show|update, admin ai-key show|copies|set|delete|seed, admin access list|lookup|add|remove, admin integrations list|set|clear|tenants|consent-link, admin users list, admin role update, or admin storage list|update")
 	}
 	switch args[0] {
 	case "onboarding":
@@ -355,7 +355,7 @@ func adminServerCommand(args []string) (any, error) {
 			return envelope(map[string]any{"subject": id, "administrator": grant, "updated": true}), nil
 		}
 	}
-	return nil, usage("expected admin settings show|update, admin onboarding show|update, admin ai-key show|copies|set|delete|seed, admin access list|lookup|add|remove, admin integrations list|set|clear, admin users list, admin role update, or admin storage list|update")
+	return nil, usage("expected admin settings show|update, admin onboarding show|update, admin ai-key show|copies|set|delete|seed, admin access list|lookup|add|remove, admin integrations list|set|clear|tenants|consent-link, admin users list, admin role update, or admin storage list|update")
 }
 
 func parseQuotaArg(raw string) (uint64, error) {

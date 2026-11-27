@@ -68,6 +68,8 @@ func (s *Server) routes() http.Handler {
 		mux.HandleFunc(integrationAppsPath, s.auth.integrationAppsHTTP)
 		mux.HandleFunc(integrationAppsPath+"/set", s.auth.integrationAppsHTTP)
 		mux.HandleFunc(integrationAppsPath+"/clear", s.auth.integrationAppsHTTP)
+		mux.HandleFunc(integrationTenantsPath+"/set", s.auth.integrationAppsHTTP)
+		mux.HandleFunc(integrationTenantsPath+"/remove", s.auth.integrationAppsHTTP)
 		mux.HandleFunc("/api/v1/onboarding/site", s.auth.siteOnboardingHTTP)
 		mux.HandleFunc("/api/v1/server/storage", s.auth.quotaHTTP)
 		mux.HandleFunc(liveLimitsPath, s.auth.liveLimitsHTTP)

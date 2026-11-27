@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -28,18 +29,33 @@ type IntegrationApp struct {
 	Source, Actor, At            string
 }
 
-// IntegrationApps is the broker's list and root's browser_setup switch.
-type IntegrationApps struct {
-	BrowserSetup bool
-	Apps         []IntegrationApp
+// IntegrationTenant is one organisation on the shared Microsoft
+// applications' allowed list, in the file's order.
+type IntegrationTenant struct {
+	TenantID, Label   string
+	Source, Actor, At string
 }
 
-// IntegrationAppsBroker is the broker's integration surface. Set and Clear
-// return ErrIntegrationUncertain when no definite reply arrived.
+// IntegrationApps is the broker's list and root's browser_setup switch.
+// TenantsInvalid is an allowed list root wrote that every daemon refuses.
+type IntegrationApps struct {
+	BrowserSetup   bool
+	Apps           []IntegrationApp
+	Tenants        []IntegrationTenant
+	TenantsInvalid bool
+}
+
+// IntegrationAppsBroker is the broker's integration surface. Every write
+// returns ErrIntegrationUncertain when no definite reply arrived.
 type IntegrationAppsBroker interface {
 	IntegrationList(context.Context) (IntegrationApps, error)
 	SetIntegrationApp(ctx context.Context, provider string, fields map[string]string, actor string) (IntegrationApps, error)
 	ClearIntegrationApp(ctx context.Context, provider, actor string) (IntegrationApps, error)
+	// SetIntegrationTenant adds an organisation to the allowed list or
+	// relabels it; RemoveIntegrationTenant takes it off. The tenant is a
+	// lowercase GUID.
+	SetIntegrationTenant(ctx context.Context, tenant, label, actor string) (IntegrationApps, error)
+	RemoveIntegrationTenant(ctx context.Context, tenant, actor string) (IntegrationApps, error)
 }
 
 // Definite broker refusals; nothing was written.
@@ -49,6 +65,7 @@ var (
 	ErrHostBusy             = errors.New("host maintenance in progress")
 	ErrIntegrationsFile     = errors.New("integrations file needs root")
 	ErrIntegrationRefused   = errors.New("broker refused the integration change")
+	ErrTenantsFull          = errors.New("the allowed organisations list is full")
 )
 
 func (a *Auth) integrationBroker() (IntegrationAppsBroker, bool) {
@@ -67,16 +84,28 @@ type integrationAppView struct {
 	Actor    string `json:"actor,omitempty"`
 	At       string `json:"at,omitempty"`
 }
+type integrationTenantView struct {
+	TenantID string `json:"tenant_id"`
+	Label    string `json:"label"`
+	Source   string `json:"source"`
+	Actor    string `json:"actor,omitempty"`
+	At       string `json:"at,omitempty"`
+}
 type integrationAppsView struct {
-	SchemaVersion int                  `json:"schema_version"`
-	BrowserSetup  bool                 `json:"browser_setup"`
-	Apps          []integrationAppView `json:"apps"`
+	SchemaVersion  int                     `json:"schema_version"`
+	BrowserSetup   bool                    `json:"browser_setup"`
+	Apps           []integrationAppView    `json:"apps"`
+	Tenants        []integrationTenantView `json:"tenants"`
+	TenantsInvalid bool                    `json:"tenants_invalid,omitempty"`
 }
 
 func viewOf(apps IntegrationApps) integrationAppsView {
-	v := integrationAppsView{SchemaVersion: 1, BrowserSetup: apps.BrowserSetup, Apps: []integrationAppView{}}
+	v := integrationAppsView{SchemaVersion: 1, BrowserSetup: apps.BrowserSetup, Apps: []integrationAppView{}, Tenants: []integrationTenantView{}, TenantsInvalid: apps.TenantsInvalid}
 	for _, x := range apps.Apps {
 		v.Apps = append(v.Apps, integrationAppView{x.Provider, x.ClientID, x.TenantID, x.Usable, x.Source, x.Actor, x.At})
+	}
+	for _, x := range apps.Tenants {
+		v.Tenants = append(v.Tenants, integrationTenantView{x.TenantID, x.Label, x.Source, x.Actor, x.At})
 	}
 	return v
 }
@@ -127,6 +156,41 @@ func (a *Auth) changeIntegrationApp(ctx context.Context, caller, provider string
 	return viewOf(apps), nil
 }
 
+// changeIntegrationTenant adds or relabels (label non-empty) or removes an
+// organisation of the allowed list, with changeIntegrationApp's checks.
+func (a *Auth) changeIntegrationTenant(ctx context.Context, caller, tenant, label string, set bool) (integrationAppsView, error) {
+	if !integrationapps.ValidTenantID(tenant) || set != integrationapps.ValidLabel(label) || !set && label != "" {
+		return integrationAppsView{}, errInvalidIntegration
+	}
+	broker, ok := a.integrationBroker()
+	if !ok {
+		return integrationAppsView{}, errBrokerRead
+	}
+	if caller != "" && !a.isAdministrator(caller) {
+		return integrationAppsView{}, errAdminDenied
+	}
+	var apps IntegrationApps
+	var err error
+	operation := "tenant_set"
+	if set {
+		apps, err = broker.SetIntegrationTenant(ctx, tenant, label, actorFor(caller))
+	} else {
+		operation = "tenant_remove"
+		apps, err = broker.RemoveIntegrationTenant(ctx, tenant, actorFor(caller))
+	}
+	// The organisation's id and label are the installation's, not log
+	// material; the operation and actor are.
+	if errors.Is(err, ErrIntegrationUncertain) {
+		a.log.Warn("integration_app", "outcome", "uncertain", "reason", "broker_reply_missing", "operation", operation, "provider", integrationapps.TenantsKey, "actor", actorFor(caller))
+		return integrationAppsView{}, err
+	}
+	if err != nil {
+		return integrationAppsView{}, err
+	}
+	a.log.Info("integration_app", "outcome", "accepted", "reason", operation, "provider", integrationapps.TenantsKey, "actor", actorFor(caller))
+	return viewOf(apps), nil
+}
+
 var errInvalidIntegration = errors.New("invalid integration app")
 
 // integrationReason maps a failure to the fixed vocabulary the browser and
@@ -147,6 +211,8 @@ func integrationReason(err error) (int, string) {
 		return 409, "integrations_file_invalid"
 	case errors.Is(err, ErrIntegrationRefused):
 		return 409, "integration_refused"
+	case errors.Is(err, ErrTenantsFull):
+		return 409, "integration_tenants_full"
 	case errors.Is(err, errBrokerRead):
 		return 503, "broker_unavailable"
 	case errors.Is(err, ErrAdministrationState):
@@ -157,12 +223,47 @@ func integrationReason(err error) (int, string) {
 
 const integrationAppsPath = "/api/v1/server/integrations"
 
+// integrationTenantsPath is the allowed organisations list of the shared
+// Microsoft applications: /set adds or relabels one, /remove takes one off.
+const integrationTenantsPath = integrationAppsPath + "/tenants"
+
 // maxIntegrationBody holds the largest valid section: two 256-byte values.
 const maxIntegrationBody = 2048
 
 type integrationChange struct {
 	Provider string            `json:"provider"`
 	Fields   map[string]string `json:"fields"`
+}
+
+type tenantChange struct {
+	TenantID string `json:"tenant_id"`
+	Label    string `json:"label"`
+}
+
+// decodeTenantChange reads one strict allowed-list change: a set has the
+// label, a removal none. The GUID is taken in either case and kept in the
+// list's lowercase form.
+func decodeTenantChange(r io.Reader, set bool) (tenantChange, bool) {
+	var raw map[string]json.RawMessage
+	var c tenantChange
+	b, err := io.ReadAll(io.LimitReader(r, maxIntegrationBody+1))
+	if err != nil || len(b) > maxIntegrationBody || json.Unmarshal(b, &raw) != nil {
+		return tenantChange{}, false
+	}
+	if _, has := raw["label"]; has != set || len(raw) != map[bool]int{true: 2, false: 1}[set] {
+		return tenantChange{}, false
+	}
+	dec := json.NewDecoder(bytes.NewReader(b))
+	dec.DisallowUnknownFields()
+	if dec.Decode(&c) != nil || dec.Decode(new(any)) != io.EOF {
+		return tenantChange{}, false
+	}
+	id, ok := integrationapps.CanonicalTenant(c.TenantID)
+	if !ok || set && !integrationapps.ValidLabel(c.Label) {
+		return tenantChange{}, false
+	}
+	c.TenantID = id
+	return c, true
 }
 
 // decodeIntegrationChange reads one strict change; set has fields, clear none.
@@ -186,7 +287,7 @@ func (a *Auth) integrationAppsHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	path := r.URL.Path
-	if !a.exact(r, path) || path != integrationAppsPath && path != integrationAppsPath+"/set" && path != integrationAppsPath+"/clear" {
+	if !a.exact(r, path) || path != integrationAppsPath && path != integrationAppsPath+"/set" && path != integrationAppsPath+"/clear" && path != integrationTenantsPath+"/set" && path != integrationTenantsPath+"/remove" {
 		safe(w, 400, "invalid_request")
 		return
 	}
@@ -217,6 +318,23 @@ func (a *Auth) integrationAppsHTTP(w http.ResponseWriter, r *http.Request) {
 		safe(w, 403, reason)
 		return
 	}
+	if path == integrationTenantsPath+"/set" || path == integrationTenantsPath+"/remove" {
+		set := path == integrationTenantsPath+"/set"
+		change, ok := decodeTenantChange(r.Body, set)
+		if r.Header.Get("Content-Type") != "application/json" || !ok {
+			safe(w, 400, "invalid_request")
+			return
+		}
+		view, err := a.changeIntegrationTenant(r.Context(), s.identity.Subject, change.TenantID, change.Label, set)
+		if err != nil {
+			status, code := integrationReason(err)
+			safe(w, status, code)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(view)
+		return
+	}
 	set := path == integrationAppsPath+"/set"
 	change, ok := decodeIntegrationChange(r.Body, set)
 	if r.Header.Get("Content-Type") != "application/json" || !ok {
@@ -240,6 +358,8 @@ func (a *Auth) integrationControl(ctx context.Context, payload []byte) ([]byte, 
 		Operation string            `json:"operation"`
 		Provider  string            `json:"provider"`
 		Fields    map[string]string `json:"fields"`
+		TenantID  string            `json:"tenant_id"`
+		Label     *string           `json:"label"`
 	}
 	dec := json.NewDecoder(strings.NewReader(string(payload)))
 	dec.DisallowUnknownFields()
@@ -248,7 +368,7 @@ func (a *Auth) integrationControl(ctx context.Context, payload []byte) ([]byte, 
 	}
 	switch r.Operation {
 	case "integration_list":
-		if r.Provider != "" || r.Fields != nil {
+		if r.Provider != "" || r.Fields != nil || r.TenantID != "" || r.Label != nil {
 			break
 		}
 		view, err := a.integrationList(ctx)
@@ -256,8 +376,23 @@ func (a *Auth) integrationControl(ctx context.Context, payload []byte) ([]byte, 
 			return nil, err
 		}
 		return json.Marshal(view)
+	case "integration_tenant_set", "integration_tenant_remove":
+		set := r.Operation == "integration_tenant_set"
+		tenant, ok := integrationapps.CanonicalTenant(r.TenantID)
+		if !ok || r.Provider != "" || r.Fields != nil || set != (r.Label != nil) {
+			break
+		}
+		label := ""
+		if set {
+			label = *r.Label
+		}
+		view, err := a.changeIntegrationTenant(ctx, "", tenant, label, set)
+		if err != nil {
+			return nil, err
+		}
+		return json.Marshal(view)
 	case "integration_set", "integration_clear":
-		if (r.Operation == "integration_set") != (r.Fields != nil) {
+		if (r.Operation == "integration_set") != (r.Fields != nil) || r.TenantID != "" || r.Label != nil {
 			break
 		}
 		view, err := a.changeIntegrationApp(ctx, "", r.Provider, r.Fields)

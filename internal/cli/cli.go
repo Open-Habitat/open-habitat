@@ -9,6 +9,7 @@ import (
 	"github.com/open-habitat/open-habitat/internal/core"
 	"github.com/open-habitat/open-habitat/internal/daemon"
 	"github.com/open-habitat/open-habitat/internal/gateway"
+	"github.com/open-habitat/open-habitat/internal/integrationapps"
 	"github.com/open-habitat/open-habitat/internal/provision"
 	"github.com/open-habitat/open-habitat/internal/transport"
 	"io"
@@ -594,7 +595,7 @@ func skillInstall(args []string) (any, error) {
 	return envelope(map[string]any{"dry_run": dry, "would": would}), nil
 }
 func helpOutput() any {
-	return envelope(map[string]any{"name": "open-habitat", "subcommands": []string{"version", "config path|show", "doctor", "gateway exec", "daemon exec", "broker exec", "admin readiness show", "admin settings show|update", "admin onboarding show|update", "admin ai-key show|copies|set|delete|seed", "admin access list|lookup|add|remove", "admin integrations list|set|clear", "admin users list", "admin role update", "admin storage list|update", "maintenance enter|leave", "revoke subject", "skill list|print|install"}, "global_flags": []string{"--json", "--verbose", "--version"}})
+	return envelope(map[string]any{"name": "open-habitat", "subcommands": []string{"version", "config path|show", "doctor", "gateway exec", "daemon exec", "broker exec", "admin readiness show", "admin settings show|update", "admin onboarding show|update", "admin ai-key show|copies|set|delete|seed", "admin access list|lookup|add|remove", "admin integrations list|set|clear|tenants list|add|remove|consent-link", "admin users list", "admin role update", "admin storage list|update", "maintenance enter|leave", "revoke subject", "skill list|print|install"}, "global_flags": []string{"--json", "--verbose", "--version"}})
 }
 
 type gatewayBroker struct{}
@@ -928,6 +929,13 @@ func (b gatewayBroker) ClearIntegrationApp(ctx context.Context, provider, actor 
 	return integrationWrite(b.brokerAccess(ctx, provision.Request{Version: 1, Operation: provision.OpIntegrationClear, Provider: provider, ID: "0", Actor: actor}))
 }
 
+func (b gatewayBroker) SetIntegrationTenant(ctx context.Context, tenant, label, actor string) (gateway.IntegrationApps, error) {
+	return integrationWrite(b.brokerAccess(ctx, provision.Request{Version: 1, Operation: provision.OpIntegrationTenantSet, Provider: integrationapps.TenantsKey, ID: "0", Actor: actor, Fields: map[string]string{"tenant_id": tenant, "label": label}}))
+}
+func (b gatewayBroker) RemoveIntegrationTenant(ctx context.Context, tenant, actor string) (gateway.IntegrationApps, error) {
+	return integrationWrite(b.brokerAccess(ctx, provision.Request{Version: 1, Operation: provision.OpIntegrationTenantRemove, Provider: integrationapps.TenantsKey, ID: "0", Actor: actor, Fields: map[string]string{"tenant_id": tenant}}))
+}
+
 func integrationWrite(r provision.Reply, err error) (gateway.IntegrationApps, error) {
 	if err != nil {
 		return gateway.IntegrationApps{}, gateway.ErrIntegrationUncertain
@@ -940,6 +948,8 @@ func integrationWrite(r provision.Reply, err error) (gateway.IntegrationApps, er
 		return gateway.IntegrationApps{}, gateway.ErrHostBusy
 	case provision.IntegrationsFile:
 		return gateway.IntegrationApps{}, gateway.ErrIntegrationsFile
+	case provision.TenantsFull:
+		return gateway.IntegrationApps{}, gateway.ErrTenantsFull
 	case provision.StateUnavailable:
 		return gateway.IntegrationApps{}, gateway.ErrIntegrationUncertain
 	default:
@@ -952,9 +962,12 @@ func integrationWrite(r provision.Reply, err error) (gateway.IntegrationApps, er
 }
 
 func integrationApps(p provision.IntegrationPage) gateway.IntegrationApps {
-	out := gateway.IntegrationApps{BrowserSetup: p.BrowserSetup, Apps: make([]gateway.IntegrationApp, 0, len(p.Apps))}
+	out := gateway.IntegrationApps{BrowserSetup: p.BrowserSetup, Apps: make([]gateway.IntegrationApp, 0, len(p.Apps)), Tenants: make([]gateway.IntegrationTenant, 0, len(p.Tenants)), TenantsInvalid: p.TenantsInvalid}
 	for _, x := range p.Apps {
 		out.Apps = append(out.Apps, gateway.IntegrationApp{Provider: x.Provider, ClientID: x.ClientID, TenantID: x.TenantID, Usable: x.Usable, Source: x.Source, Actor: x.Actor, At: x.At})
+	}
+	for _, x := range p.Tenants {
+		out.Tenants = append(out.Tenants, gateway.IntegrationTenant{TenantID: x.TenantID, Label: x.Label, Source: x.Source, Actor: x.Actor, At: x.At})
 	}
 	return out
 }
