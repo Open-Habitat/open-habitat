@@ -99,8 +99,8 @@ myöhemmin ilman uutta kehystä.
 - **Ehdotan pudotettavaksi** erillisen *Salasana näppäilyinä* -kentän.
   ⌘V kirjoittaa salasanankin jo näppäilyinä ilman leikepöytää, ja puhelimen
   *Kirjoita sivulle* -kenttä on oletuksena piilotettu. Pysyvä totuusrivi
-  siirtyy ⋯-valikkoon. Agentti saa yhä käyttää kirjautumisia, ja Oma selain
-  -kortti kertoo agentin käynnin.
+  siirtyy ⋯-valikkoon. Agentti saa yhä käyttää kirjautumisia, ja keskustelun
+  Selain-kortti kertoo agentin käynnin.
 - Välilehden valinta tai sulkeminen ottaa ohjauksen kuten nyt, koska se
   muuttaa agentin maailmaa. Viimeistä välilehteä ei suljeta. Escape ei sulje
   näkymää silloin, kun ohjaat, vaan menee sivulle.
