@@ -1,5 +1,105 @@
 # Tulokset
 
+## Kierros 2
+
+Prototyyppi: `design-system/prototypes/rounds/2026-11-27-palvelinselain-kehys-2/`
+(`NOTES.md`), tulos
+`design-system/prototypes/dist/2026-11-27-palvelinselain-kehys-2/offline.html`.
+Valitsimessa **1 Paneeli** ja **Nykyinen** (tuotannon arkki saman sivun
+ympärillä). Tarkistettu 1440 × 900, 1440 × 780 ja 390 px, Päivä ja Yö.
+
+### Päätökset (Jari 27.11.)
+
+Paneeli; etänäyttö pysyy kiinteänä 1280 × 800; Chromen välilehtirivi pois
+kuvasta; `<` / `>` pois; ⋯-valikosta pois *Liitä pitkä teksti…*,
+*Kirjoita sivulle…* ja *Kopioi valinta koneellesi*; *Sulje välilehti*;
+Valmis ennallaan.
+
+### Mitä muuttui
+
+- **Kuvassa on vain sivu.** Chromen välilehti- ja osoiterivi eivät näy,
+  joten sivu saa koko 800 px korkeuden (ks. löydös alla). Aktiivinen
+  välilehti näyttää palkissa originin (`tunnistus.example`), koska Chromen
+  osoiteriviä ei enää ole. Kirjautumissivulla näkyy näin yhä, kenelle
+  tunnukset annetaan.
+- **Ei `<` / `>`.** Klikkaus kuvaan ottaa ohjauksen ja levittää paneelin.
+  Tuotannon *Keskustelu*-reuna kaventaa sen keskustelun viereen.
+- **⋯-valikko:** *Ota ohjaus* (tai *Anna agentille ja jatka katsomista*),
+  *Leikkaa*, *Kopioi* ja *Liitä*, joiden pikanäppäimet näkyvät (⌘X/⌘C/⌘V,
+  muilla Ctrl), sekä *Sulje välilehti*, *Sulje selain* ja lause siitä,
+  mitä agentti saa käyttää. Leikkaa, Kopioi ja Liitä toimivat kuten
+  näppäimet kuvassa. Kun agentti odottaa, ne ottavat ensin ohjauksen, ja
+  kun agentti on kesken, ne kysyvät ensin.
+- **Puhelin:** palkissa on näppäimistöpainike silloin, kun ohjaat. Se
+  kohdistaa näkymättömän kentän, joten puhelimen oma näppäimistö aukeaa, ja
+  jokainen merkki menee sivulle näppäilynä kuten työpöydällä. Kuvassa lukee
+  *Kirjoitus menee sivulle*. Näin siksi, että etäkuva ei ole tekstikenttä
+  eikä voi itse avata näppäimistöä. Erillinen tekstidialogi olisi ylimääräinen
+  askel, ja tällä tavalla salasanakin näkyy vain sivun omana peitettynä
+  kenttänä. noVNC:n oma käyttöliittymä tekee saman. Näppäimistön liittäminen
+  menee samaa reittiä kuin ⌘V.
+- **Nykyinen** on valitsimen toinen kohta, ja sen kuvaan on piirretty
+  Chromen välilehti- ja osoiterivi. Sivulle jäävä korkeus näytöllä:
+
+  | Ikkuna | Paneeli | Nykyinen |
+  | --- | --- | --- |
+  | 1440 × 900 | 686 px | 634 px |
+  | 1440 × 780 (läppäri) | 686 px | 538 px |
+  | 1280 × 720 | 586 px | 484 px |
+  | 390 × 844 | 241 px | 207 px |
+
+### Löydös: miksi Chromen välilehdet näkyvät ja mikä ne piilottaa
+
+- Host käynnistää Chromen tavallisena ikkunana
+  (`internal/browserhost/host_linux.go`, `chromeArgs`:
+  `--window-position=0,0`, `--window-size`). Koko 1280 × 800 tulee
+  `internal/cli/browser_linux.go`:sta. Tavallisessa ikkunassa välilehti- ja
+  osoiterivi vievät 88 px, ja sivulle jää 1280 × 712. Mittasin tämän Chromella
+  Xvfb:ssä.
+- **`--kiosk` piilottaa molemmat.** Sivu on silloin 1280 × 799 (+12 %
+  korkeutta samassa kuvassa). Uusi välilehti (`target=_blank`, CDP
+  `Target.createTarget`) avautuu samaan ikkunaan, joten Habitatin palkki on
+  ainoa välilehtinäkymä. Tämäkin on mitattu.
+- **Ponnahdusikkuna on yhä oma ikkunansa**, ja sillä on kioskitilassakin
+  oma vain luku -osoiterivi (36 px). Host sovittaa ponnahdusikkunan jo nyt
+  näyttöön (`activateWindow`: `windowState: "normal"` ja näytön rajat). Kun
+  tilalle laitetaan `windowState: "fullscreen"`, osoiterivi katoaa ja
+  ponnahdusikkuna täyttää kuvan kuten välilehti. Kokeilin tämän. Hostin
+  pitää tehdä sama myös uudelle ponnahdusikkunalle sen auetessa.
+- **Seuraukset:** osoitetta ei näe eikä voi kirjoittaa kuvassa, joten
+  origin näkyy Habitatin palkissa. Chromen takaisin- ja päivityspainikkeet
+  katoavat. Chromen omat kuplat (salasanan tallennus, lupakysymykset,
+  latauskupla) on ankkuroitu työkaluriviin, ja niiden käytös kioskitilassa
+  pitää katsoa labissa ennen toteutusta, samoin Alt+← ja F5 näppäiminä.
+  Muutos on hostin käynnistysvalitsin ja yksi CDP-kutsu. Valtuuksia ei siirry.
+
+### Päätökset myöhempää katselmointia varten
+
+- **Leikepöydän turvaominaisuudet:** etäleikepöytä tyhjennetään yhä
+  palautuksessa, ja sitä käytetään vain painalluksesta (kieltäytymisen
+  painike), ei varareittinä. Poistettu pitkän liitteen dialogi kantoi
+  lauseen, ettei teksti ole agentilta piilossa. Se siirtyi leikepöydän
+  kautta liittämisen kuittaukseen (*Agentti näkee leikepöydän, kunnes annat
+  selaimen takaisin*). *Kopioi valinta koneellesi* korvautui Kopioi- ja
+  Leikkaa-toiminnoilla sekä ⌘C:llä ja ⌘X:llä. Etäkopio tulee koneellesi yhä
+  vain omasta painalluksestasi silloin, kun ohjaat, eikä agentin kopio
+  koskaan. Tätä varten hostin pitää lukea etäleikepöytä kopiointinäppäimen
+  jälkeen. ⋯ *Liitä* lukee oman leikepöytäsi, ja selain kysyy siihen luvan
+  ensimmäisellä kerralla. ⌘V ei tarvitse lupaa.
+- Viimeistä välilehteä ei suljeta, kuten kierroksessa 1. Tuotannon host
+  korvaa sen tyhjällä välilehdellä ja sulkee sitten. Toteutus seuraa
+  hostia, ellei toisin päätetä.
+- Muut kierroksen 1 päätökset pysyvät: näkymän sulkeminen silloin, kun
+  ohjaat, antaa selaimen takaisin, eikä Ota ohjaus -painiketta ole.
+
+### Kysymykset Jarille
+
+1. Saako host ajaa Chromea kioskitilassa ja tehdä ponnahdusikkunoista koko
+   näytön kokoisia? Silloin osoiterivi ja Chromen takaisin-painike katoavat
+   kuvasta, ja palkki näyttää originin.
+2. Riittääkö, että sivut avaa agentti, vai tarvitaanko ⋯-valikkoon
+   *Avaa osoite…*, koska osoiteriviä ei enää voi kirjoittaa?
+
 ### Jarin vastaukset kierrokseen 1 (27.11.2026)
 
 - **Paneeli** on paras.
