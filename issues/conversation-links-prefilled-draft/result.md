@@ -1,5 +1,16 @@
 # Tulokset
 
+### Jarin vastaukset kierrokseen 3 (27.11.2026)
+
+- Tekstin kaltainen *Uusi keskustelu työtilassa kotisivu. Malli on oletusmalli.*
+  on tarpeeton: ei kerrota sitä, minkä näkymä jo näyttää. Toteutuksessa
+  saapumisesta jää vain kierroksen 2 merkki (*Viesti linkistä. Mitään ei ole
+  lähetetty.*).
+- **Linkin tekemiselle ei tule painiketta** työtilasivulle eikä valikkoon.
+  Linkit tehdään ohjelmallisesti (automaatio, agentti). Habitat tarvitsee vain
+  dokumentaation linkin muodosta, jotta agentti osaa tehdä sen (agentin
+  ohje / `open-habitat skill print agent`).
+
 ## Kierros 3
 
 Prototyyppi: `design-system/prototypes/rounds/2026-11-27-keskustelulinkit-3/`
