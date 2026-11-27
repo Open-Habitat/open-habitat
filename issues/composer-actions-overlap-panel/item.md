@@ -2,7 +2,7 @@
 created: 2026-11-12
 updated: 2026-11-27
 type: bug
-status: open
+status: testing
 priority: high
 provenance: other
 provenance_detail: conductor, screenshot review
