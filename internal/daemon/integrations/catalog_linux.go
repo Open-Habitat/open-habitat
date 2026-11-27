@@ -125,6 +125,11 @@ type Account struct {
 	Grant *Grant `json:"grant,omitempty"`
 	// Level is the account level the grant amounts to, when it is one.
 	Level Level `json:"level,omitempty"`
+	// TenantID is a Microsoft connection's organisation, the second half of
+	// what names it beside the address; Organisation is that
+	// organisation's label on the allowed list, when it is listed.
+	TenantID     string `json:"tenant_id,omitempty"`
+	Organisation string `json:"organisation,omitempty"`
 }
 
 // Env is everything an entry may use: the person's home and the operator's
@@ -358,6 +363,9 @@ const (
 	// AuthorizationUnavailable is a sign-in whose native tool did not show
 	// an authorization step Habitat can relay; nothing was connected.
 	AuthorizationUnavailable Failure = "authorization_unavailable"
+	// NotInOrganisation is a sign-in by someone without an account in the
+	// chosen organisation, or a guest who has not accepted the invitation.
+	NotInOrganisation Failure = "not_in_organisation"
 )
 
 // ConsentRequired is a tenant that needs its administrator to approve the
@@ -393,6 +401,13 @@ type Config struct {
 	MicrosoftDrafts  *MicrosoftApp `json:"microsoft_drafts,omitempty"`
 	MicrosoftRead    *MicrosoftApp `json:"microsoft_read,omitempty"`
 	DropboxAppFolder *DropboxApp   `json:"dropbox_app_folder,omitempty"`
+	// The operator's multi-tenant Microsoft applications by level and the
+	// organisations they may serve (microsoft_orgs_linux.go).
+	MicrosoftShared       *MicrosoftApp            `json:"microsoft_shared,omitempty"`
+	MicrosoftSharedNoSend *MicrosoftApp            `json:"microsoft_shared_nosend,omitempty"`
+	MicrosoftSharedDrafts *MicrosoftApp            `json:"microsoft_shared_drafts,omitempty"`
+	MicrosoftSharedRead   *MicrosoftApp            `json:"microsoft_shared_read,omitempty"`
+	MicrosoftTenants      []integrationapps.Tenant `json:"-"`
 }
 
 // DropboxApp identifies the operator's scoped Dropbox application, not a person.
@@ -501,22 +516,26 @@ func parseConfig(data []byte, log *slog.Logger) (Config, error) {
 				cfg.Google = nil
 				ignored("google", "invalid_entry")
 			}
-		case "microsoft", "microsoft_nosend", "microsoft_drafts", "microsoft_read":
+		case "microsoft", "microsoft_nosend", "microsoft_drafts", "microsoft_read", "microsoft_shared", "microsoft_shared_nosend", "microsoft_shared_drafts", "microsoft_shared_read":
 			var app MicrosoftApp
 			if err := decodeStrict(raw, &app); err != nil || !integrationapps.Usable(name, map[string]string{"client_id": app.ClientID, "tenant_id": app.TenantID}) {
 				ignored(name, "invalid_entry")
 				continue
 			}
-			switch name {
-			case "microsoft":
-				cfg.Microsoft = &app
-			case "microsoft_nosend":
-				cfg.MicrosoftNoSend = &app
-			case "microsoft_drafts":
-				cfg.MicrosoftDrafts = &app
-			default:
-				cfg.MicrosoftRead = &app
+			*map[string]**MicrosoftApp{
+				"microsoft": &cfg.Microsoft, "microsoft_nosend": &cfg.MicrosoftNoSend, "microsoft_drafts": &cfg.MicrosoftDrafts, "microsoft_read": &cfg.MicrosoftRead,
+				"microsoft_shared": &cfg.MicrosoftShared, "microsoft_shared_nosend": &cfg.MicrosoftSharedNoSend, "microsoft_shared_drafts": &cfg.MicrosoftSharedDrafts, "microsoft_shared_read": &cfg.MicrosoftSharedRead,
+			}[name] = &app
+		case integrationapps.TenantsKey:
+			// A list the broker would refuse is refused whole: no
+			// organisation is served through the shared applications
+			// rather than a guess at which entries were meant.
+			tenants, ok := integrationapps.ReadTenants(raw)
+			if !ok {
+				ignored(name, "invalid_entry")
+				continue
 			}
+			cfg.MicrosoftTenants = tenants
 		default:
 			// Unknown keys can contain arbitrary operator input; never log them.
 			ignored("unknown", "unknown_entry")
@@ -832,12 +851,24 @@ func (c *Catalog) accounts() (out []listed, unread map[Provider]bool) {
 
 var errInventory = errors.New("inventory unavailable")
 
+// errOrganisationRequired is a Microsoft address connected in several
+// organisations, named without the one meant.
+var errOrganisationRequired = errors.New("organisation required")
+
 // accountKey is the catalog's key for an account the browser names by its
-// address: for Microsoft the one connection of that address (the catalog
-// keeps one per address until the browser can name the organisation), and
-// the address itself when there is none. Other providers key by address.
-func (c *Catalog) accountKey(e Entry, address string) (string, error) {
+// address and, for Microsoft, the organisation's tenant id: that
+// connection's name. Without a tenant id it is the one connection of that
+// address, errOrganisationRequired when there are several, and the address
+// itself when there is none. A bare address from before names is found by
+// its address only. Other providers key by address and take no tenant.
+func (c *Catalog) accountKey(e Entry, address, tenant string) (string, error) {
 	if e.Provider() != Microsoft {
+		return address, nil
+	}
+	if tenant != "" {
+		if name := microsoftName(address, tenant); name != "" {
+			return name, nil
+		}
 		return address, nil
 	}
 	keys, err := e.Accounts(c.env)
@@ -856,7 +887,7 @@ func (c *Catalog) accountKey(e Entry, address string) (string, error) {
 	case 1:
 		return found[0], nil
 	}
-	return "", errInventory
+	return "", errOrganisationRequired
 }
 
 // has reports whether the tool holds the account; an unreadable inventory
@@ -1085,6 +1116,11 @@ func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
 		}
 	}
 	out := Account{Provider: e.Provider(), Address: catalogAddress(e.Provider(), address), Services: services, CheckedAt: c.now().UTC().Format(time.RFC3339), Grant: grant}
+	if e.Provider() == Microsoft {
+		if out.TenantID = microsoftTenantOf(address); out.TenantID != "" {
+			out.Organisation = c.env.microsoftTable().label(out.TenantID)
+		}
+	}
 	if le, ok := e.(LevelEntry); ok && grant != nil {
 		out.Level = le.Level(c.env, address, services)
 	}

@@ -384,5 +384,5 @@ func (c *Catalog) removeApple(w http.ResponseWriter, r *http.Request, appleID st
 	}
 	skill := c.reconcile()
 	c.log.Info("integration_remove", "provider", string(Apple), "outcome", "removed")
-	reply(w, changeView{SchemaVersion: 1, Removed: &removed{Apple, appleID}, Skill: skill})
+	reply(w, changeView{SchemaVersion: 1, Removed: &removed{Provider: Apple, Address: appleID}, Skill: skill})
 }

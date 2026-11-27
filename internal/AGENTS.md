@@ -539,17 +539,37 @@ Identity and authority:
   accepted. A connection is never moved to another tenant: when the operator
   has no application at its tenant it reports `tenant_removed`, its tools stop
   and nothing is redeemed anywhere else, and a sign-in at another tenant makes
-  another connection.
+  another connection. The browser and agents name a connection by its address
+  and `tenant_id`, never by its name; the same address may be connected in
+  several organisations.
+- Which organisation a Microsoft application serves is read from root's file
+  alone at every connect, refresh and tool call: each single-tenant section
+  serves its own tenant at its level, and the shared (multi-tenant) sections
+  serve, at every level still empty, exactly the tenants on the
+  `microsoft_tenants` list. Nothing a request carries adds a tenant. A shared
+  section's `tenant_id` is the tenant that owns the registration and is never
+  an authority on its own account. The list is not a security boundary: a
+  shared application's refresh token is bound to the person and the
+  application, not to one organisation, so the list governs what Habitat's
+  own paths do and promises a client nothing about what a program running as
+  the person can reach. Wording that presents it as isolation between
+  clients is a defect. Removing an organisation stops its connections and
+  deletes nothing in any home.
 - Host apply owns only the `tools` section of
   `/opt/open-habitat/integrations.json`, derived from the pinned integrations
   profile. The application sections beside it (Google, Microsoft, Dropbox)
-  are root's, and the broker writes one of them on the gateway's request
+  are root's, and the broker writes one of them, or adds, relabels or
+  removes one organisation of the `microsoft_tenants` list, on the gateway's
+  request
   (Jari, 2026-10-24, the ADR 0030 pattern): only after the gateway's current
   administrator check, only while root's site.json `integrations.browser_setup`
   (default on) is published as on, and only under the host operation lock that
-  apply, prepare and upgrade hold. It splices exactly that one member, keeps
-  every other byte, never creates the file or touches `tools`, and records who
-  asked against the exact section bytes, so a hand edit reads as root's. Apply
+  apply, prepare and upgrade hold. It splices exactly that one member (for the
+  list, one entry of it, refusing a list root wrote that the daemons would
+  refuse rather than rewriting it), keeps every other byte, never creates the
+  file or touches `tools`, and records who asked against the exact section
+  bytes or label, so a hand edit reads as root's. A broker request stays
+  within one protocol message; only its integrations reply may be larger. Apply
   copies the application sections' bytes unchanged, refuses a file it cannot
   parse rather than replacing it, and never takes app credentials into the
   site file, a plan or a receipt. A secret crosses from the browser through

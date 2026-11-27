@@ -80,6 +80,26 @@ type LevelEntry interface {
 	Level(env Env, address string, services []Service) Level
 }
 
+// OrganisationEntry is a level entry whose every connection is a user in
+// one organisation the person chooses (Microsoft): the organisation is part
+// of the connection's name, and the same address may be connected in
+// several. The catalog addresses such a connection by its address and the
+// organisation's tenant id.
+type OrganisationEntry interface {
+	LevelEntry
+	// Organisations are those a new connection can be made in, in the
+	// order people choose from.
+	Organisations(env Env) []MicrosoftOrganisation
+	// OrganisationAvailable says whether a new connection can be made in
+	// tenant at level (its broadest when level is empty).
+	OrganisationAvailable(env Env, tenant string, level Level) bool
+	// StartOrganisationLogin is StartLevelLogin in tenant; an empty tenant
+	// is the entry's own choice.
+	StartOrganisationLogin(ctx context.Context, env Env, address, tenant string, level Level) (Login, error)
+}
+
+var _ OrganisationEntry = (*microsoft)(nil)
+
 // revokeFirstEntry is a level entry whose provider ends every token of the
 // application at once when one is revoked (Google), so a level change cannot
 // revoke the replaced login after the new sign-in as Dropbox does: the old

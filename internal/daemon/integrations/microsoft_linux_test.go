@@ -523,7 +523,7 @@ func TestMicrosoftNativeRefreshUsesTheTenant(t *testing.T) {
 	if err != nil || !strings.Contains(string(config), "tenant = "+testTenant+"\n") {
 		t.Fatal("wrong rclone refresh authority", err)
 	}
-	app := env.microsoftApps()[LevelFull]
+	app, _ := env.microsoftTable().cell(testTenant, LevelFull)
 	cmd, ok := microsoftMCPCommand(env, app, microsoftMCPDir+"/"+address, microsoftMCPScopes, microsoftPin{username: address})
 	if !ok || !strings.Contains(strings.Join(cmd.Env, "\n"), "MS365_MCP_TENANT_ID="+testTenant) {
 		t.Fatal("restart lost the tenant")
@@ -958,7 +958,7 @@ func TestMicrosoftRenewalKeepsRetainedSync(t *testing.T) {
 				c.quota = func() Room { return Room{OK: true, Full: true} }
 				c.write.Unlock()
 			}
-			if err := c.startLogin(ownerA, e, address, level); err != nil {
+			if err := c.startLogin(ownerA, e, address, level, ""); err != nil {
 				t.Fatal(err)
 			}
 			h := c.Handler(allow)
@@ -1106,7 +1106,7 @@ func TestMicrosoftRemovalFencesAnAttemptBeforeItsIdentityIsPublished(t *testing.
 	ctx, cancel := context.WithCancel(context.Background())
 	c.Start(ctx)
 	defer func() { cancel(); c.Stop() }()
-	if err := c.startLogin(ownerA, e, "", ""); err != nil {
+	if err := c.startLogin(ownerA, e, "", "", ""); err != nil {
 		t.Fatal(err)
 	}
 	h := c.Handler(allow)

@@ -9,7 +9,8 @@
     "account": {"$ref": "integrations.schema.json#/$defs/account"},
     "removed": {"type": "object", "additionalProperties": false, "required": ["provider", "address"], "properties": {
       "provider": {"$ref": "integrations.schema.json#/$defs/provider_id"},
-      "address": {"$ref": "integrations.schema.json#/$defs/address"}
+      "address": {"$ref": "integrations.schema.json#/$defs/address"},
+      "tenant_id": {"description": "Microsoft only: the removed connection's organisation.", "$ref": "integrations.schema.json#/$defs/tenant_id"}
     }},
     "kept_directories": {"type": "array", "maxItems": 16, "items": {"$ref": "integrations.schema.json#/$defs/home_directory"}},
     "trashed_directories": {"type": "array", "maxItems": 16, "items": {"$ref": "integrations.schema.json#/$defs/home_directory"}},

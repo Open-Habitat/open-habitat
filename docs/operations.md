@@ -1531,6 +1531,70 @@ it expires or the person signs out of all sessions in their Microsoft account.
 The level for files in selected folders only (`Files.SelectedOperations.Selected`)
 is not offered.
 
+### Microsoft 365 for several organisations
+
+One server can serve its operator's own organisation and client
+organisations with **shared (multi-tenant) applications** registered once in
+the operator's own Entra. Each level is again its own application, registered
+as above except *Supported account types: Accounts in any organizational
+directory* (multi-tenant), not personal accounts. Its sections have the same
+two fields; `tenant_id` is the tenant that owns the registration:
+
+```json
+"microsoft_shared":      {"client_id": "<Application (client) ID>", "tenant_id": "<owning Directory (tenant) ID>"},
+"microsoft_shared_read": {"client_id": "<another level's client ID>", "tenant_id": "<owning Directory (tenant) ID>"},
+"microsoft_tenants": {
+  "<own Directory (tenant) ID>":    "Own Ltd",
+  "<client Directory (tenant) ID>": "Client One"
+}
+```
+
+`microsoft_tenants` is the **allowed list**: the organisations the shared
+applications serve, by tenant GUID, with the name people see (1–64 printable
+characters, at most 32 organisations). The owning tenant is served only if it
+is listed. An organisation with a single-tenant section of its own keeps it
+for that level; the shared application fills its other levels. An
+installation with only the single-tenant sections behaves as before. A
+domain name, `common`, `organizations` or `consumers` is never accepted
+anywhere; a list the daemons cannot read whole is ignored whole, and
+`admin integrations list` reports it as `tenants_invalid`.
+
+The broker writes these as it writes the other sections:
+`admin integrations set --provider microsoft_shared[_nosend|_drafts|_read]`,
+`admin integrations tenants list|add --tenant-id <GUID> --label <text>|remove
+--tenant-id <GUID>` (each with `--dry-run`), and `admin integrations
+consent-link --tenant-id <GUID>`, which computes each configured level's
+admin-consent link for that organisation's administrator and changes
+nothing. The server cannot see whether a client approved: the first person's
+sign-in is the test. Approving creates an enterprise application in the
+client's Entra, which its administrator can restrict (*Assignment required*)
+or remove at any time.
+
+People choose the organisation when connecting; the same address can be
+connected in several, each its own connection with its own Pi entries, whose
+descriptions and skill name the organisation. Removing an organisation from
+the list stops its connections on this server at their next use
+(`tenant_removed`); nothing is deleted from homes or revoked at Microsoft,
+and adding it back resumes them. Every label is readable by every person on
+the server.
+
+**The list is not a security boundary.** A sign-in with a shared application
+yields a refresh token bound to the person and the application, not to one
+organisation. A program running as that person can use it against any
+organisation that approved the same application and where the person has an
+account, including one this server does not list or has removed. The list
+governs what Habitat's own connect, refresh and tool paths do; it is not a
+promise to a client that its data cannot be reached from this server. All of
+one person's connections and fetched files live in that person's one Unix
+account, where their agent can read and combine them; a client that needs
+its data kept apart needs a separate account or server. The application is
+a public client: once a client's administrator has approved it, anyone can
+start a sign-in for it against that client's users, so the client's own
+*Assignment required* and Conditional Access are what limit this. A client
+that cannot accept a shared application registers its own single-tenant one
+as above. Device code sign-in is often blocked by Conditional Access; a
+client that blocks it cannot connect until it allows it.
+
 ## Agent command search path
 
 Users install optional agent executables in their own `~/.local/bin`. The administrator installs shared tools in `/usr/local/bin` and verifies that `/usr/local` and `/usr/local/bin` are root-owned and not writable by any mapped user or group (for example, `stat -c '%U:%G %a' /usr/local /usr/local/bin` should show `root:root 755` for both). Debian installations may default to group-writable `root:staff 2775`; restrict that access before mapping users. Review provenance and updates because shared programs run with each invoking user's credentials. Browser-started Pi and its children search `$HOME/.local/bin:$HOME/.cargo/bin:/usr/local/bin:/usr/bin:/bin`, then the release's own directories (Claude Code and the core runtime's Taskfleet, workmux and `pi`), with the account's own directories taking precedence. The daemon takes HOME from its verified Unix account binding, not browser input. Configure each user's SSH login shell to use the same ordering if it does not already; systemd does not source shell profiles. Host-managed `gh` and `git` actions still use fixed `/usr/bin` executables and restricted environments, never a user's override. The separately pinned Pi runtime does not come from this PATH.

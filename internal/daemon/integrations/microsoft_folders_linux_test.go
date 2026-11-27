@@ -113,7 +113,8 @@ func (m *microsoft) testChoose(ctx context.Context, env Env, address string, ids
 // under the level's application and the given grant, none synced yet.
 func earlierRoots(t *testing.T, m *microsoft, env Env, address string, level Level, scopes string) {
 	t.Helper()
-	app, ok := env.microsoftApps()[level]
+	t0 := env.microsoftTable()
+	app, ok := t0.cell(t0.defaultTenant(level), level)
 	if !ok {
 		t.Fatal("no application for the level")
 	}

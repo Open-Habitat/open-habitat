@@ -789,6 +789,15 @@ commands through the real control handler and the gateway adapter's
 classification, including stdin secrets, dry runs that send nothing, every
 refusal, both uncertain paths and strict flags.
 
+`admin integrations tenants list|add --tenant-id GUID --label TEXT|remove
+--tenant-id GUID [--dry-run]` change one organisation of the shared Microsoft
+applications' allowed list through the same broker path and refusals, plus
+`integration_tenants_full` (exit 1). A GUID in either case is sent lowercase;
+anything else, and a label out of bounds, is refused locally (§6). `admin
+integrations consent-link --tenant-id GUID` only reads the list and computes
+links, so it refuses `--dry-run` rather than pretending a preview (§11).
+`TestAdminIntegrationTenantsCommands` covers them.
+
 ## Microsoft area relay — MCP stdio exception
 
 `mcp-relay microsoft --account ADDRESS --area AREA` is the command of one

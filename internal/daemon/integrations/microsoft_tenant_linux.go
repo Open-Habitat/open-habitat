@@ -135,7 +135,7 @@ func (n microsoftNative) pin(key string) microsoftPin {
 // tenant its files name; one whose tenant cannot be read is app_changed with
 // the broadest application, so its tools do not run and a sign-in replaces it.
 func microsoftAccountApp(env Env, key string, n microsoftNative) (app MicrosoftApp, level Level, reason string, ok bool) {
-	apps := env.microsoftApps()
+	table := env.microsoftTable()
 	tenant := microsoftTenantOf(key)
 	unresolved := false
 	if tenant == "" {
@@ -145,24 +145,22 @@ func microsoftAccountApp(env Env, key string, n microsoftNative) (app MicrosoftA
 		tenant, _ = microsoftBareTenant(env, key)
 		unresolved = tenant == ""
 	}
-	if len(apps) == 0 {
+	if len(table.cells) == 0 {
 		if tenant != "" && !unresolved {
 			return MicrosoftApp{}, "", TenantRemoved, false
 		}
 		return MicrosoftApp{}, "", "", false
 	}
 	if unresolved {
-		for _, l := range microsoftLevels {
-			if a, has := apps[l]; has {
-				return a, l, AppChanged, true
-			}
-		}
+		l := firstLevel(table.levels())
+		a, _ := table.cell(table.defaultTenant(l), l)
+		return a, l, AppChanged, true
 	}
 	client := n.client()
 	var first Level
 	for _, l := range microsoftLevels {
-		a, has := apps[l]
-		if !has || (tenant != "" && !strings.EqualFold(a.TenantID, tenant)) {
+		a, has := table.cell(tenant, l)
+		if !has {
 			continue
 		}
 		if first == "" {
@@ -177,7 +175,7 @@ func microsoftAccountApp(env Env, key string, n microsoftNative) (app MicrosoftA
 		return MicrosoftApp{}, "", TenantRemoved, false
 	}
 	if level == "" {
-		app, level = apps[first], first
+		app, level = table.cells[strings.ToLower(tenant)][first], first
 		if client != "" {
 			reason = AppChanged
 		}

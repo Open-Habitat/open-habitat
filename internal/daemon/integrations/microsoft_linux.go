@@ -28,61 +28,35 @@ import (
 	"github.com/open-habitat/open-habitat/internal/msmcp"
 )
 
-// MicrosoftApp is a public, single-tenant Entra client. TenantID is the
-// organisation's Directory (tenant) ID and the only login audience: personal
-// Microsoft accounts and other organisations cannot sign in.
+// MicrosoftApp is a public Entra client as one organisation signs in with
+// it. TenantID is that organisation's Directory (tenant) ID and the only
+// login audience: personal Microsoft accounts and other organisations
+// cannot sign in. In a section of the operator's file it is the
+// single-tenant application's organisation, or the shared application's
+// owning tenant, which is never an authority on its own account
+// (microsoftTable).
 type MicrosoftApp struct {
 	ClientID string `json:"client_id"`
 	TenantID string `json:"tenant_id"`
-}
-
-// microsoftApps are the operator's usable Entra applications by level.
-func (env Env) microsoftApps() map[Level]MicrosoftApp {
-	cfg, ok := env.config()
-	out := map[Level]MicrosoftApp{}
-	if !ok {
-		return out
-	}
-	for _, x := range []struct {
-		app     *MicrosoftApp
-		section string
-		level   Level
-	}{{cfg.Microsoft, "microsoft", LevelFull}, {cfg.MicrosoftNoSend, "microsoft_nosend", LevelNoSend}, {cfg.MicrosoftDrafts, "microsoft_drafts", LevelDrafts}, {cfg.MicrosoftRead, "microsoft_read", LevelRead}} {
-		if x.app != nil && integrationapps.Usable(x.section, map[string]string{"client_id": x.app.ClientID, "tenant_id": x.app.TenantID}) {
-			out[x.level] = *x.app
-		}
-	}
-	return out
 }
 
 // microsoftLevels in the page's order.
 var microsoftLevels = []Level{LevelFull, LevelNoSend, LevelDrafts, LevelRead}
 
 // microsoftLevelScopes are the Graph permissions each level's application
-// has, the set its administrator consents to. NoSend is the full level
-// without Mail.Send, the one permission that sends mail. Drafts sends
-// nothing: mail is drafted, calendars and files only read, since an event
-// sends invitations and a file grant can create a public sharing link.
-// Every level lists the person's teams and channels by name, which changes
-// nothing (microsoftTeamsScopes).
+// has, the set its administrator consents to (integrationapps).
 var microsoftLevelScopes = map[Level]string{
-	LevelFull:   microsoftScopes + " " + microsoftMCPScopes + " " + microsoftTeamsScopes,
-	LevelNoSend: "openid profile offline_access User.Read Files.ReadWrite.All Sites.ReadWrite.All Mail.ReadWrite Calendars.ReadWrite Contacts.ReadWrite " + microsoftTeamsScopes,
-	LevelDrafts: "openid profile offline_access User.Read Files.Read.All Sites.Read.All Mail.ReadWrite Calendars.Read Contacts.Read " + microsoftTeamsScopes,
-	LevelRead:   "openid profile offline_access User.Read Files.Read.All Sites.Read.All Mail.Read Calendars.Read Contacts.Read " + microsoftTeamsScopes,
+	LevelFull:   integrationapps.MicrosoftLevelScopes["full"],
+	LevelNoSend: integrationapps.MicrosoftLevelScopes["nosend"],
+	LevelDrafts: integrationapps.MicrosoftLevelScopes["drafts"],
+	LevelRead:   integrationapps.MicrosoftLevelScopes["read"],
 }
 
 const microsoftDir = ".config/rclone/open-habitat-microsoft"
 const microsoftMCPDir = ".config/ms-365-mcp-server/open-habitat"
-const microsoftScopes = "openid profile User.Read offline_access Files.ReadWrite.All Sites.ReadWrite.All"
-const microsoftMCPScopes = "User.Read Mail.ReadWrite Mail.Send Calendars.ReadWrite Contacts.ReadWrite"
-
-// microsoftTeamsScopes let the folder step of earlier releases offer the
-// libraries of the person's teams and channels. Nothing reads those lists
-// now that agents search instead; they stay in each level's consent because
-// dropping them changes the application an operator sets up in Entra, which
-// is a decision of its own.
-const microsoftTeamsScopes = "Team.ReadBasic.All Channel.ReadBasic.All"
+const microsoftScopes = integrationapps.MicrosoftFilesScopes
+const microsoftMCPScopes = integrationapps.MicrosoftOutlookScopes
+const microsoftTeamsScopes = integrationapps.MicrosoftTeamsScopes
 
 // microsoftRequest is what a sign-in asks of the tenant. microsoftScopes and
 // microsoftMCPScopes are the full level the administrator consents to, but a
@@ -226,15 +200,16 @@ func (*microsoft) Services() []string {
 func (m *microsoft) Available(env Env) bool { return m.ToolsInstalled(env) && m.AppConfigured(env) }
 func (*microsoft) mirrorsRead()             {}
 
-// Levels: each is one Entra application of the operator's.
+// Levels: each is one Entra application of the operator's, available where
+// any organisation has it (Organisations says which).
 func (*microsoft) Levels(env Env) []LevelOption {
-	apps := env.microsoftApps()
-	var out []LevelOption
-	for _, l := range microsoftLevels {
-		_, ok := apps[l]
-		out = append(out, appLevel(l, ok))
-	}
-	return out
+	return env.microsoftTable().levels()
+}
+
+// Organisations are the organisations a connection can be made in, the
+// operator's own first.
+func (*microsoft) Organisations(env Env) []MicrosoftOrganisation {
+	return env.microsoftTable().orgs
 }
 
 func (*microsoft) Level(_ Env, _ string, services []Service) Level {
@@ -244,7 +219,7 @@ func (*microsoft) Tools() []string {
 	return []string{"rclone", "ms-365-mcp-server", "pi", "microsoft-native"}
 }
 func (m *microsoft) ToolsInstalled(env Env) bool { return MissingTools(m, env) == nil }
-func (*microsoft) AppConfigured(env Env) bool    { return len(env.microsoftApps()) > 0 }
+func (*microsoft) AppConfigured(env Env) bool    { return len(env.microsoftTable().cells) > 0 }
 
 // Accounts lists the connections by name. A bare address is a store from
 // before names whose migration has not run or could not read its tenant;
@@ -463,20 +438,10 @@ func microsoftAuthority(app MicrosoftApp) string {
 	return "https://login.microsoftonline.com/" + app.TenantID + "/oauth2/v2.0/"
 }
 func microsoftConsent(app MicrosoftApp, level Level) ConsentRequired {
-	// The application's own tenant: its administrator is the only one who
-	// can consent to a single-tenant app. The consent is to the level's set.
-	scopes, ok := microsoftLevelScopes[level]
-	if !ok {
-		scopes = microsoftLevelScopes[LevelFull]
-	}
-	var named []string
-	seen := map[string]bool{}
-	for _, s := range strings.Fields(scopes) {
-		if !microsoftIdentity[s] && !seen[s] {
-			named, seen[s] = append(named, s), true
-		}
-	}
-	return ConsentRequired{URL: "https://login.microsoftonline.com/" + url.PathEscape(app.TenantID) + "/v2.0/adminconsent?" + url.Values{"client_id": {app.ClientID}, "scope": {"openid profile offline_access " + strings.Join(named, " ")}, "redirect_uri": {"https://login.microsoftonline.com/common/oauth2/nativeclient"}}.Encode()}
+	// The sign-in's tenant: its administrator is the one who consents, to a
+	// single-tenant app of their own or to a shared one for their
+	// organisation. The consent is to the level's set.
+	return ConsentRequired{URL: integrationapps.MicrosoftConsentURL(app.TenantID, app.ClientID, string(level))}
 }
 func microsoftAuthFailure(app MicrosoftApp, level Level, code string, numbers []int) error {
 	for _, n := range numbers {
@@ -485,6 +450,8 @@ func microsoftAuthFailure(app MicrosoftApp, level Level, code string, numbers []
 			return microsoftConsent(app, level)
 		case 53003, 530032:
 			return DeviceCodeBlocked
+		case 50020, 50034, 90072:
+			return NotInOrganisation
 		}
 	}
 	switch code {
@@ -541,20 +508,49 @@ func (m *microsoft) StartLogin(ctx context.Context, env Env, address string) (Lo
 
 // microsoftCell is the operator's application of the tenant at the level.
 func microsoftCell(env Env, tenant string, level Level) (MicrosoftApp, bool) {
-	app, ok := env.microsoftApps()[level]
-	return app, ok && strings.EqualFold(app.TenantID, tenant)
+	return env.microsoftTable().cell(tenant, level)
 }
 
-// StartLevelLogin signs in with the level's application. A renewal keeps
-// the connection's organisation: its sign-in goes to the name's tenant, at
-// the level the connection was signed in with when none is given, and is
-// refused when the operator has no application there. A bare address from
-// before names whose tenant could not be read signs in like a new
-// connection and is replaced by it.
+// StartLevelLogin signs in with the level's application. A new connection
+// signs in at the first organisation with an application at the level
+// (StartOrganisationLogin chooses another).
 func (m *microsoft) StartLevelLogin(ctx context.Context, env Env, key string, level Level) (Login, error) {
+	return m.StartOrganisationLogin(ctx, env, key, "", level)
+}
+
+// OrganisationAvailable says whether a new connection can be made in the
+// organisation at the level (the broadest it has when level is empty).
+func (*microsoft) OrganisationAvailable(env Env, tenant string, level Level) bool {
+	t := env.microsoftTable()
+	if level == "" {
+		level = firstLevel(microsoftOrgLevels(t, tenant))
+	}
+	_, ok := t.cell(tenant, level)
+	return ok
+}
+
+func microsoftOrgLevels(t microsoftTable, tenant string) []LevelOption {
+	for _, org := range t.orgs {
+		if org.TenantID == strings.ToLower(tenant) {
+			return org.Levels
+		}
+	}
+	return nil
+}
+
+// StartOrganisationLogin signs in with the application of the organisation
+// and level. A renewal keeps the connection's organisation: its sign-in goes
+// to the name's tenant, at the level the connection was signed in with when
+// none is given, and is refused when the operator has no application there.
+// A new connection signs in at tenant, or with none given at the first
+// organisation with the level; without a level it takes the broadest the
+// organisation has. A bare address from before names whose tenant could not
+// be read signs in like a new connection and is replaced by it.
+func (m *microsoft) StartOrganisationLogin(ctx context.Context, env Env, key, tenant string, level Level) (Login, error) {
 	if !m.Available(env) {
 		return nil, ToolFailed
 	}
+	table := env.microsoftTable()
 	var app MicrosoftApp
 	var pin microsoftPin
 	ok := false
@@ -571,16 +567,25 @@ func (m *microsoft) StartLevelLogin(ctx context.Context, env Env, key string, le
 			level = own
 		}
 		pin = n.pin(key)
-		if tenant := microsoftTenantOf(key); tenant != "" {
-			app, ok = microsoftCell(env, tenant, level)
+		if own := microsoftTenantOf(key); own != "" {
+			app, ok = table.cell(own, level)
 		} else {
-			app, ok = env.microsoftApps()[level]
+			if level == "" {
+				level = firstLevel(table.levels())
+			}
+			app, ok = table.cell(table.defaultTenant(level), level)
 		}
 	} else {
-		if level == "" {
-			level = firstLevel(m.Levels(env))
+		switch {
+		case tenant != "" && level == "":
+			level = firstLevel(microsoftOrgLevels(table, tenant))
+		case level == "":
+			level = firstLevel(table.levels())
 		}
-		app, ok = env.microsoftApps()[level]
+		if tenant == "" {
+			tenant = table.defaultTenant(level)
+		}
+		app, ok = table.cell(tenant, level)
 	}
 	if !ok {
 		return nil, ToolFailed
@@ -757,16 +762,11 @@ func (l *microsoftLogin) WaitWithPrompt(ctx context.Context, show func(Prompt) e
 	}
 	pin := l.pin
 	if !renewal {
-		// The browser addresses a connection by its address until it can
-		// name the organisation, so one address has one connection here.
+		// The same address may be connected in several organisations: each
+		// is its own name with its own stores and entry prefix.
 		accounts, err := l.entry.Accounts(l.env)
 		if err != nil {
 			return "", err
-		}
-		for _, a := range accounts {
-			if a != name && validMicrosoftName(a) && microsoftAddressOf(a) == address {
-				return "", AlreadyConnected
-			}
 		}
 		// A new sign-in to a connection that is already here may only be
 		// the same Microsoft account.
@@ -1456,7 +1456,13 @@ func (m *microsoft) Skill(env Env, key string) SkillAccount {
 	}
 	body := microsoftAreasSkill(uses, index) + files + search + list +
 		accessSummary(services, map[string]string{"mail": "Outlook mail", "calendar": "Outlook calendar", "contacts": "Outlook contacts"})
-	return SkillAccount{Label: "Microsoft", Kinds: []string{"mail", "calendar", "contacts", "files"}, Synced: ready && !mirror, Mirrored: ready && mirror, Body: body}
+	// The same address may be connected in several organisations; the
+	// allowed list's name tells the agent which one this is.
+	label := "Microsoft"
+	if org := microsoftOrganisationLabel(env, key); org != "" {
+		label += " (" + org + ")"
+	}
+	return SkillAccount{Label: label, Kinds: []string{"mail", "calendar", "contacts", "files"}, Synced: ready && !mirror, Mirrored: ready && mirror, Body: body}
 }
 
 // microsoftAreasSkill names the account's five areas and says to pick one

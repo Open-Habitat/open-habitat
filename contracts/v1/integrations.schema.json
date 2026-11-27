@@ -18,6 +18,22 @@
     "address": {"type": "string", "minLength": 3, "maxLength": 254, "pattern": "^(open_habitat_atlassian|open_habitat_trello(_[2-9])?|[a-z0-9._%+-]{1,64}@[a-z0-9-]{1,63}(\\.[a-z0-9-]{1,63})+)$"},
     "home_directory": {"type": "string", "maxLength": 512, "pattern": "^~/cloud/[a-z0-9][a-z0-9-]*(/(?!\\.\\.?(/|$))[^/\\u0000-\\u001f]+)+$"},
     "level": {"description": "An account level: a boundary the provider itself enforces, so it holds against an agent running as the person. full is everything the catalog asks; nosend (Microsoft) is everything but sending mail: mail is read, organised and drafted, and calendars, contacts and files are changed, though a calendar change still sends invitations and a file grant can create a sharing link; drafts (Microsoft) reads and drafts mail but never sends, and reads calendars, contacts and files, so the account sends nothing; read reads only, and its files are a one-way mirror; app_folder (Dropbox) is full access to the application's own folder (Apps/<application>) alone. A Microsoft level is one of the operator's Entra applications, a Dropbox level the App folder application or the Full Dropbox one asked for reading only, and a Google level the scope set the one application asks for (Google has no drafts level: its drafts scope sends too).", "enum": ["full", "nosend", "drafts", "read", "app_folder"]},
+    "tenant_id": {"description": "A Microsoft organisation's Directory (tenant) ID, lowercase. With the address it names a Microsoft connection: the same address may be connected in several organisations.", "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"},
+    "organisation_label": {"description": "The organisation's name on the server's allowed list, as its administrator wrote it.", "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029]+$"},
+    "organisation": {
+      "description": "An organisation a new Microsoft connection can be made in: the server serves it with an application at one level or more, its own single-tenant application or the shared ones for an organisation on the allowed list.",
+      "type": "object", "additionalProperties": false,
+      "required": ["tenant_id", "own", "levels"],
+      "properties": {
+        "tenant_id": {"$ref": "#/$defs/tenant_id"},
+        "label": {"description": "Absent for an organisation the server serves only with a single-tenant application of its own and does not list.", "$ref": "#/$defs/organisation_label"},
+        "own": {"description": "The server operator's own organisation, listed first.", "type": "boolean"},
+        "levels": {"description": "The levels, broadest first, and whether the organisation has the level's application. Whether its administrator approved the application is only known at sign-in.", "type": "array", "minItems": 4, "maxItems": 4, "items": {
+          "type": "object", "additionalProperties": false, "required": ["id", "available"],
+          "properties": {"id": {"enum": ["full", "nosend", "drafts", "read"]}, "available": {"type": "boolean"}, "reason": {"const": "application_missing"}}
+        }}
+      }
+    },
     "skill": {"description": "The generated personal-data skill: current, none (no accounts), blocked (a file the host did not write occupies its path) or failed (could not be written).", "enum": ["current", "none", "blocked", "failed"]},
     "provider": {
       "type": "object", "additionalProperties": false,
@@ -30,6 +46,7 @@
         "accounts_unreadable": {"description": "Present, and true, when the tool's own account files could not be read safely (for example a directory on their path is writable by others or is a link): this provider's accounts are missing from accounts because they could not be listed, not because there are none. The other providers are listed as usual.", "const": true},
         "login": {"description": "personal_token is the Gitea and GitLab form: an address and a personal access token the daemon validates and writes only into tea's or glab's own login file.", "enum": ["app_password", "pasted_redirect", "device_code", "personal_token"]},
         "services": {"type": "array", "minItems": 1, "maxItems": 8, "uniqueItems": true, "items": {"$ref": "#/$defs/service_id"}},
+        "organisations": {"description": "Microsoft only, while available: the organisations a new connection can be made in, the operator's own first, then the allowed list in its order, then any served only by a single-tenant application. With one, there is nothing to choose. A level in levels is available when any organisation has it.", "type": "array", "minItems": 1, "maxItems": 36, "items": {"$ref": "#/$defs/organisation"}},
         "levels": {"description": "Present for a provider whose sign-in chooses an account level, broadest first: each level it shows and whether it can be chosen. A level that is not available is shown but cannot be chosen, and reason says why: application_missing, the server's administrator has not registered the application it needs; not_offered, the provider has no boundary for it (Google's drafts level), shown so the choice is honest.", "type": "array", "minItems": 1, "maxItems": 4, "items": {
           "type": "object", "additionalProperties": false, "required": ["id", "available"],
           "properties": {"id": {"$ref": "#/$defs/level"}, "available": {"type": "boolean"}, "reason": {"enum": ["application_missing", "not_offered"]}}
@@ -137,7 +154,9 @@
         "checked_at": {"type": "string", "format": "date-time"},
         "apple_id": {"description": "Present when the account's stored server is Apple's iCloud: the Apple ID whose card shows it. A mail account's address is its iCloud Mail address, which may differ.", "$ref": "#/$defs/address"},
         "grant": {"$ref": "#/$defs/grant"},
-        "level": {"description": "The account level its grant amounts to, read from the grant and never from what was chosen: Microsoft's and Google's from the services' access, Dropbox's from the application and the grant. Absent when the grant cannot be read now or an organisation narrowed it to none of the levels; the services then say what it allows.", "$ref": "#/$defs/level"}
+        "level": {"description": "The account level its grant amounts to, read from the grant and never from what was chosen: Microsoft's and Google's from the services' access, Dropbox's from the application and the grant. Absent when the grant cannot be read now or an organisation narrowed it to none of the levels; the services then say what it allows.", "$ref": "#/$defs/level"},
+        "tenant_id": {"description": "Microsoft only: the connection's organisation, which with the address names it in every request. Absent only for a connection from before organisations were named whose organisation could not be read; it asks for a new sign-in.", "$ref": "#/$defs/tenant_id"},
+        "organisation": {"description": "Microsoft only: the organisation's name on the allowed list, while it is listed and served.", "$ref": "#/$defs/organisation_label"}
       }
     }
   }

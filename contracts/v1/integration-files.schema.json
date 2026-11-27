@@ -25,6 +25,7 @@
       "properties": {
         "provider": {"enum": ["google", "microsoft", "dropbox"]},
         "address": {"$ref": "integrations.schema.json#/$defs/address"},
+        "tenant_id": {"description": "Microsoft only: the connection's organisation.", "$ref": "integrations.schema.json#/$defs/tenant_id"},
         "service": {"enum": ["drive", "onedrive", "sharepoint", "dropbox"]},
         "directory": {"$ref": "integrations.schema.json#/$defs/home_directory"}
       }

@@ -223,9 +223,10 @@ func TestMicrosoftUsernamePinnedConnectionGainsTheImmutablePin(t *testing.T) {
 	}
 }
 
-// Until the browser can name the organisation, one address has one
-// connection: the same address at another tenant is refused.
-func TestMicrosoftOneConnectionPerAddressUntilOrganisationsAreNamed(t *testing.T) {
+// The same address at another organisation is another connection, never
+// a replacement of the first; a level change of a connection keeps its
+// organisation, so a level whose application is elsewhere is refused.
+func TestMicrosoftAnotherOrganisationIsAnotherConnection(t *testing.T) {
 	env := microsoftLevelEnv(t)
 	other := "00000000-0000-4000-8000-0000000000bb"
 	env.Config.MicrosoftRead = &MicrosoftApp{ClientID: "00000000-0000-0000-0000-000000000002", TenantID: other}
@@ -245,11 +246,16 @@ func TestMicrosoftOneConnectionPerAddressUntilOrganisationsAreNamed(t *testing.T
 	l := login.(*microsoftLogin)
 	l.interval = time.Millisecond
 	t.Cleanup(l.Cancel)
-	if _, err := l.WaitWithPrompt(context.Background(), func(Prompt) error { return nil }); !errors.Is(err, AlreadyConnected) {
+	name, err := l.WaitWithPrompt(context.Background(), func(Prompt) error { return nil })
+	if err != nil || name != "person@example.test~"+other {
+		t.Fatal(name, err)
+	}
+	if err := l.Commit(context.Background(), name); err != nil {
 		t.Fatal(err)
 	}
-	// A level change of the connection keeps its organisation, so the
-	// read level at the other tenant is not offered to it.
+	if a, _ := m.Accounts(env); !slices.Equal(a, []string{testName, name}) {
+		t.Fatal(a)
+	}
 	if _, err := m.StartLevelLogin(context.Background(), env, testName, LevelRead); err == nil {
 		t.Fatal("a level change moved the connection to another tenant")
 	}
@@ -566,8 +572,9 @@ func TestMicrosoftNameMigrationWaitsForARunningPass(t *testing.T) {
 	}
 }
 
-// The browser names a connection by its address: the listing shows it,
-// and removing it by its address removes the named connection with what
+// The browser names a connection by its address and organisation, never by
+// its name: the listing shows both, and with one connection of the address
+// removing it by its address alone removes the named connection with what
 // its address left from before names.
 func TestMicrosoftBrowserAddressesConnectionsByAddress(t *testing.T) {
 	env := microsoftEnv(t)
@@ -585,11 +592,11 @@ func TestMicrosoftBrowserAddressesConnectionsByAddress(t *testing.T) {
 	c := New(env, []Entry{m}, nil)
 	h := c.Handler(allow)
 	code, list, _ := call(t, h, "GET", ListPath, "", nil)
-	if code != 200 || !strings.Contains(fmtAny(list["accounts"]), `"address":"person@example.test"`) || strings.Contains(fmtAny(list), testTenant) {
+	if code != 200 || !strings.Contains(fmtAny(list["accounts"]), `"address":"person@example.test"`) || !strings.Contains(fmtAny(list["accounts"]), `"tenant_id":"`+testTenant+`"`) || strings.Contains(fmtAny(list), "~") {
 		t.Fatal(code, list)
 	}
 	code, out, _ := call(t, h, "DELETE", AccountsPath, "", map[string]any{"action": "remove", "provider": "microsoft", "address": "person@example.test", "delete_directories": false})
-	if code != 200 || !strings.Contains(fmtAny(out["removed"]), `"address":"person@example.test"`) {
+	if code != 200 || !strings.Contains(fmtAny(out["removed"]), `"address":"person@example.test"`) || !strings.Contains(fmtAny(out["removed"]), `"tenant_id":"`+testTenant+`"`) {
 		t.Fatal(code, out)
 	}
 	if keys, _ := m.Accounts(env); len(keys) != 0 || exists(leftover) {

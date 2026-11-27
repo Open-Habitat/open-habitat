@@ -41,6 +41,7 @@ const (
 type fileRoot struct {
 	Provider  Provider `json:"provider"`
 	Address   string   `json:"address"`
+	TenantID  string   `json:"tenant_id,omitempty"`
 	Service   string   `json:"service"`
 	Directory string   `json:"directory"`
 }
@@ -74,7 +75,11 @@ func (c *Catalog) fileRoots() []fileRoot {
 			}
 			unix.Close(fd)
 			seen[d.Path] = true
-			roots = append(roots, fileRoot{Provider: a.entry.Provider(), Address: catalogAddress(a.entry.Provider(), a.address), Service: d.Service, Directory: "~/" + d.Path})
+			root := fileRoot{Provider: a.entry.Provider(), Address: catalogAddress(a.entry.Provider(), a.address), Service: d.Service, Directory: "~/" + d.Path}
+			if root.Provider == Microsoft {
+				root.TenantID = microsoftTenantOf(a.address)
+			}
+			roots = append(roots, root)
 		}
 	}
 	return roots

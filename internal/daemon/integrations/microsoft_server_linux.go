@@ -263,6 +263,27 @@ var microsoftAreaDescriptions = map[string]string{
 	"admin":    "Arranging the Outlook mailbox of %s: create, rename or delete mail folders, calendars and contact folders; calendar sharing; Focused Inbox. Only when the person asks to arrange the mailbox.",
 }
 
+// microsoftDescribed is how an entry's description names the connection:
+// its address, and the organisation's name when the allowed list has one,
+// so an agent choosing between ms-files and ms2-files of the same address
+// reads which organisation each is. A relabel rewrites the entries at the
+// next check (Align); an organisation without a label keeps the address.
+func microsoftDescribed(env Env, key string) string {
+	if org := microsoftOrganisationLabel(env, key); org != "" {
+		return microsoftAddressOf(key) + " (" + org + ")"
+	}
+	return microsoftAddressOf(key)
+}
+
+// microsoftOrganisationLabel is the allowed list's name for the
+// connection's organisation, "" when it has none.
+func microsoftOrganisationLabel(env Env, key string) string {
+	if tenant := microsoftTenantOf(key); tenant != "" {
+		return env.microsoftTable().label(tenant)
+	}
+	return ""
+}
+
 // microsoftAreaEntry is one area's entry as this release writes it.
 func microsoftAreaEntry(env Env, relay string, app MicrosoftApp, key, allowed string, pin microsoftPin, area string) map[string]any {
 	rel := microsoftMCPDir + "/" + key
@@ -283,7 +304,7 @@ func microsoftAreaEntry(env Env, relay string, app MicrosoftApp, key, allowed st
 		"command":      relay,
 		"args":         []string{"mcp-relay", "microsoft", "--account", key, "--area", area},
 		"env":          vars,
-		"description":  fmt.Sprintf(microsoftAreaDescriptions[area], microsoftAddressOf(key)),
+		"description":  fmt.Sprintf(microsoftAreaDescriptions[area], microsoftDescribed(env, key)),
 		"toolExposure": hidden,
 	}
 }

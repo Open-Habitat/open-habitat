@@ -47,6 +47,9 @@ type attempt struct {
 	// level is the account level the person chose, "" for the entry's own
 	// choice (LevelEntry.StartLevelLogin).
 	level Level
+	// tenant is the organisation a new connection was asked for
+	// (OrganisationEntry), "" for the entry's own choice.
+	tenant string
 	// resume is the daemon's own restart of an interrupted first pass. It
 	// has no owner, so no browser session sees, drives or cancels it.
 	resume  bool
@@ -100,6 +103,7 @@ type LoginView struct {
 	AttemptID        string        `json:"attempt_id,omitempty"`
 	Provider         Provider      `json:"provider,omitempty"`
 	Address          string        `json:"address,omitempty"`
+	TenantID         string        `json:"tenant_id,omitempty"`
 	Relogin          *bool         `json:"relogin,omitempty"`
 	ExpiresAt        string        `json:"expires_at,omitempty"`
 	VerificationURI  string        `json:"verification_uri,omitempty"`
@@ -195,6 +199,12 @@ func (r *relay) view(owner string, provider Provider) LoginView {
 	if a.address != "" && validCatalogAddress(a.provider, a.address) && (a.state != "completing" || a.syncing) {
 		v.Address = catalogAddress(a.provider, a.address)
 	}
+	if a.provider == Microsoft {
+		v.TenantID = a.tenant
+		if t := microsoftTenantOf(a.address); t != "" {
+			v.TenantID = t
+		}
+	}
 	if a.state == "device_code" || (a.state == "completing" && !a.syncing) {
 		v.LoginPhase = a.prompt.Flow
 	}
@@ -247,7 +257,7 @@ func loginFailure(err error) string {
 	var f Failure
 	if errors.As(err, &f) {
 		switch f {
-		case Expired, PermissionRefused, RedirectRejected, DeviceCodeBlocked, AccountMismatch, Cancelled, NothingGranted, FinalSyncFailed, RevokeFailed, AlreadyConnected, AuthorizationUnavailable:
+		case Expired, PermissionRefused, RedirectRejected, DeviceCodeBlocked, AccountMismatch, Cancelled, NothingGranted, FinalSyncFailed, RevokeFailed, AlreadyConnected, AuthorizationUnavailable, NotInOrganisation:
 			return string(f)
 		}
 	}
@@ -346,7 +356,7 @@ func (c *Catalog) busy(owner string, p Provider) *attempt {
 // start begins a login for owner. A first pass is never replaced, nor is
 // another session's live attempt: the tool may be waiting on that person's
 // provider tab. Owner's own earlier attempt that conflicts is replaced.
-func (c *Catalog) startLogin(owner string, e LoginEntry, address string, level Level) error {
+func (c *Catalog) startLogin(owner string, e LoginEntry, address string, level Level, tenant string) error {
 	r := &c.relay
 	p := e.Provider()
 	r.mu.Lock()
@@ -389,7 +399,7 @@ func (c *Catalog) startLogin(owner string, e LoginEntry, address string, level L
 		}
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	a := &attempt{owner: owner, id: c.attemptID(), provider: p, address: address, relogin: address != "", level: level, state: "starting", cancel: cancel, until: c.now().Add(loginLifetime), choose: make(chan []string, 1), existing: map[string]bool{}, done: make(chan struct{})}
+	a := &attempt{owner: owner, id: c.attemptID(), provider: p, address: address, relogin: address != "", level: level, tenant: tenant, state: "starting", cancel: cancel, until: c.now().Add(loginLifetime), choose: make(chan []string, 1), existing: map[string]bool{}, done: make(chan struct{})}
 	if list, err := e.Accounts(c.env); err == nil {
 		for _, x := range list {
 			a.existing[x] = true
@@ -573,7 +583,9 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 	defer phaseCancel()
 	var login Login
 	var err error
-	if le, ok := e.(LevelEntry); ok {
+	if oe, ok := e.(OrganisationEntry); ok && a.tenant != "" {
+		login, err = oe.StartOrganisationLogin(phaseCtx, c.env, a.address, a.tenant, a.level)
+	} else if le, ok := e.(LevelEntry); ok {
 		login, err = le.StartLevelLogin(phaseCtx, c.env, a.address, a.level)
 	} else {
 		login, err = e.StartLogin(phaseCtx, c.env, a.address)

@@ -121,6 +121,8 @@ checks = {
     "server-integrations.json": "server-integrations.schema.json",
     "server-integrations-set.json": "server-integrations.schema.json",
     "server-integrations-clear.json": "server-integrations.schema.json",
+    "server-integrations-tenant-set.json": "server-integrations.schema.json",
+    "server-integrations-tenant-remove.json": "server-integrations.schema.json",
     "server-onboarding.json": "server-onboarding.schema.json",
     "server-onboarding-change.json": "server-onboarding.schema.json",
     "server-onboarding-site-key.json": "server-onboarding.schema.json",
@@ -604,6 +606,16 @@ must_reject("integration-files.schema.json", {"schema_version": 1, "roots": [], 
 must_reject("server-integrations.schema.json", {"schema_version": 1, "browser_setup": True, "apps": [{"provider": "google", "client_id": "1-a.apps.googleusercontent.com", "client_secret": "x", "usable": True, "source": "operator"}]})
 must_reject("server-integrations.schema.json", {"provider": "google", "fields": {"client_id": "a", "client_secret": "b", "tenant_id": "c"}})
 must_reject("server-integrations.schema.json", {"provider": "imap"})
+# The allowed list names organisations by GUID only, never an audience keyword or a domain, with a bounded printable label.
+must_reject("server-integrations.schema.json", {"tenant_id": "organizations", "label": "Everyone"})
+must_reject("server-integrations.schema.json", {"tenant_id": "contoso.onmicrosoft.com", "label": "Contoso"})
+must_reject("server-integrations.schema.json", {"tenant_id": "e04c61f9-3b8d-4a27-9f5e-7d1a2c48b903", "label": " Client"})
+must_reject("server-integrations.schema.json", {"tenant_id": "e04c61f9-3b8d-4a27-9f5e-7d1a2c48b903", "label": "Client\nOne"})
+must_reject("server-integrations.schema.json", {"tenant_id": "e04c61f9-3b8d-4a27-9f5e-7d1a2c48b903", "label": "x" * 65})
+must_reject("server-integrations.schema.json", {"schema_version": 1, "browser_setup": True, "apps": []})
+# A Microsoft connection's organisation is a GUID, never an audience keyword or a domain.
+must_reject("integration-login-control.schema.json", {"action": "start", "provider": "microsoft", "tenant_id": "organizations"})
+must_reject("integration-account.schema.json", {"action": "remove", "provider": "microsoft", "address": "person@example.test", "tenant_id": "contoso.onmicrosoft.com", "delete_directories": False})
 must_reject("server-administration-change.schema.json", {"subject": "43", "administrator": True})
 must_reject("server-administration-change.schema.json", {"default_language": "sv"})
 must_reject("server-administration-change.schema.json", {"default_language": "fi", "name": "Example"})

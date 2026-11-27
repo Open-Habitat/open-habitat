@@ -14,6 +14,8 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/open-habitat/open-habitat/internal/integrationapps"
 )
 
 const (
@@ -139,6 +141,9 @@ type providerView struct {
 	// Levels are the account levels a sign-in chooses from, for a
 	// LevelEntry only.
 	Levels []LevelOption `json:"levels,omitempty"`
+	// Organisations are those a new connection can be made in, for an
+	// OrganisationEntry only.
+	Organisations []MicrosoftOrganisation `json:"organisations,omitempty"`
 }
 
 type listView struct {
@@ -173,7 +178,11 @@ func (c *Catalog) list(w http.ResponseWriter, r *http.Request) {
 			if le, ok := e.(LevelEntry); ok {
 				levels = le.Levels(c.env)
 			}
-			view.Providers = append(view.Providers, providerView{ID: p, Available: reason == "", UnavailableReason: reason, MissingTools: missing, AccountsUnreadable: unread[p], Login: e.Login(), Services: e.Services(), Levels: levels})
+			var orgs []MicrosoftOrganisation
+			if oe, ok := e.(OrganisationEntry); ok && reason == "" {
+				orgs = oe.Organisations(c.env)
+			}
+			view.Providers = append(view.Providers, providerView{ID: p, Available: reason == "", UnavailableReason: reason, MissingTools: missing, AccountsUnreadable: unread[p], Login: e.Login(), Services: e.Services(), Levels: levels, Organisations: orgs})
 		}
 		// The Apple tile follows Microsoft's, before the generic forms.
 		if p == Microsoft {
@@ -246,6 +255,9 @@ type accountRequest struct {
 	// Services and MailAddress belong to the Apple connection only.
 	Services    []string `json:"services"`
 	MailAddress string   `json:"mail_address"`
+	// TenantID names a Microsoft connection's organisation beside its
+	// address; the same address may be connected in several.
+	TenantID string `json:"tenant_id"`
 }
 
 type changeView struct {
@@ -264,6 +276,7 @@ type changeView struct {
 type removed struct {
 	Provider Provider `json:"provider"`
 	Address  string   `json:"address"`
+	TenantID string   `json:"tenant_id,omitempty"`
 }
 
 func (c *Catalog) accountsRequest(w http.ResponseWriter, r *http.Request) {
@@ -272,12 +285,13 @@ func (c *Catalog) accountsRequest(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, "invalid_request")
 		return
 	}
-	if in.Provider == Apple {
+	if in.Provider == Apple && in.TenantID == "" {
 		c.appleRequest(w, r, in)
 		return
 	}
 	e := c.entry(in.Provider)
-	if e == nil || in.Services != nil || in.MailAddress != "" {
+	tenant, tenantOK := requestTenant(e, in.TenantID)
+	if e == nil || in.Services != nil || in.MailAddress != "" || !tenantOK || tenant != "" && !(r.Method == http.MethodDelete && in.Action == "remove") {
 		fail(w, 400, "invalid_request")
 		return
 	}
@@ -321,7 +335,11 @@ func (c *Catalog) accountsRequest(w http.ResponseWriter, r *http.Request) {
 		err := pe.ChangePassword(r.Context(), c.env, in.Address, in.Password)
 		c.finishPassword(w, r, e, in.Address, err)
 	case r.Method == http.MethodDelete && in.Action == "remove" && in.DeleteDirectories != nil && in.Server == "" && in.Port == 0 && in.Security == "" && in.Username == "" && in.SMTPServer == "" && in.SMTPPort == 0 && in.SMTPSecurity == "" && in.URL == "" && in.Password == "":
-		key, err := c.accountKey(e, in.Address)
+		key, err := c.accountKey(e, in.Address, tenant)
+		if errors.Is(err, errOrganisationRequired) {
+			fail(w, 409, "organisation_required")
+			return
+		}
 		if err != nil {
 			fail(w, 503, "native_unavailable")
 			return
@@ -410,7 +428,10 @@ func (c *Catalog) remove(w http.ResponseWriter, r *http.Request, e Entry, addres
 	// Sync stops before its directory moves, so the client never sees its
 	// tree vanish and propagates that as a mass deletion.
 	skill := c.reconcile()
-	view := changeView{SchemaVersion: 1, Removed: &removed{e.Provider(), catalogAddress(e.Provider(), address)}, Skill: skill}
+	view := changeView{SchemaVersion: 1, Removed: &removed{e.Provider(), catalogAddress(e.Provider(), address), microsoftTenantOf(address)}, Skill: skill}
+	if e.Provider() != Microsoft {
+		view.Removed.TenantID = ""
+	}
 	for _, d := range dirs {
 		// Only whether the folder is there decides what the reply says; the
 		// move itself never follows a link or crosses a filesystem.
@@ -435,6 +456,20 @@ type loginRequest struct {
 	RedirectURL string   `json:"redirect_url"`
 	Folders     []string `json:"folders"`
 	Level       Level    `json:"level"`
+	TenantID    string   `json:"tenant_id"`
+}
+
+// requestTenant is a request's tenant id in the name's lowercase form: only
+// an OrganisationEntry takes one, and it must be a GUID.
+func requestTenant(e Entry, raw string) (string, bool) {
+	if raw == "" {
+		return "", true
+	}
+	if _, ok := e.(OrganisationEntry); !ok {
+		return "", false
+	}
+	tenant, ok := integrationapps.CanonicalTenant(raw)
+	return tenant, ok
 }
 
 var attemptID = regexp.MustCompile(`^[0-9]{8}T[0-9]{6}\.[0-9]{9}$`)
@@ -489,7 +524,11 @@ func (c *Catalog) loginRequestOwned(w http.ResponseWriter, r *http.Request, owne
 	switch {
 	case r.Method == http.MethodPost && in.Action == "start" && in.AttemptID == "" && in.RedirectURL == "" && in.Folders == nil:
 		e, ok := c.entry(in.Provider).(LoginEntry)
-		if !ok || (in.Address != "" && !validRequestAddress(in.Provider, in.Address)) {
+		tenant, tenantOK := "", true
+		if ok {
+			tenant, tenantOK = requestTenant(e, in.TenantID)
+		}
+		if !ok || !tenantOK || (in.Address != "" && !validRequestAddress(in.Provider, in.Address)) {
 			fail(w, 400, "invalid_request")
 			return
 		}
@@ -508,8 +547,19 @@ func (c *Catalog) loginRequestOwned(w http.ResponseWriter, r *http.Request, owne
 			c.refuseStart(w, owner, in.Provider, "level_unavailable")
 			return
 		}
+		if oe, ok := e.(OrganisationEntry); ok && in.Address == "" && tenant != "" && !oe.OrganisationAvailable(c.env, tenant, in.Level) {
+			// An organisation the operator does not serve at the level, or
+			// at all, starts no sign-in: the server's file decides, never
+			// the request.
+			c.refuseStart(w, owner, in.Provider, "organisation_unavailable")
+			return
+		}
 		if in.Address != "" {
-			key, err := c.accountKey(e, in.Address)
+			key, err := c.accountKey(e, in.Address, tenant)
+			if errors.Is(err, errOrganisationRequired) {
+				c.refuseStart(w, owner, in.Provider, "organisation_required")
+				return
+			}
 			if err != nil {
 				fail(w, 503, "native_unavailable")
 				return
@@ -524,19 +574,19 @@ func (c *Catalog) loginRequestOwned(w http.ResponseWriter, r *http.Request, owne
 				return
 			}
 		}
-		err = c.startLogin(owner, e, in.Address, in.Level)
+		err = c.startLogin(owner, e, in.Address, in.Level, tenant)
 		if errors.Is(err, errAttemptActive) {
 			c.refuseStart(w, owner, in.Provider, "attempt_active")
 			return
 		}
-	case r.Method == http.MethodPut && in.Action == "redirect" && attemptID.MatchString(in.AttemptID) && in.Provider == "" && in.Address == "" && in.Folders == nil && in.Level == "":
+	case r.Method == http.MethodPut && in.Action == "redirect" && attemptID.MatchString(in.AttemptID) && in.Provider == "" && in.TenantID == "" && in.Address == "" && in.Folders == nil && in.Level == "":
 		_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(45 * time.Second))
 		err = c.redirect(owner, in.AttemptID, in.RedirectURL)
-	case r.Method == http.MethodPut && in.Action == "folders" && attemptID.MatchString(in.AttemptID) && in.Provider == "" && in.Address == "" && in.RedirectURL == "" && in.Level == "" && validFolders(in.Folders):
+	case r.Method == http.MethodPut && in.Action == "folders" && attemptID.MatchString(in.AttemptID) && in.Provider == "" && in.TenantID == "" && in.Address == "" && in.RedirectURL == "" && in.Level == "" && validFolders(in.Folders):
 		err = c.chooseFolders(owner, in.AttemptID, in.Folders)
-	case r.Method == http.MethodPut && in.Action == "skip_folders" && attemptID.MatchString(in.AttemptID) && in.Provider == "" && in.Address == "" && in.RedirectURL == "" && in.Folders == nil && in.Level == "":
+	case r.Method == http.MethodPut && in.Action == "skip_folders" && attemptID.MatchString(in.AttemptID) && in.Provider == "" && in.TenantID == "" && in.Address == "" && in.RedirectURL == "" && in.Folders == nil && in.Level == "":
 		err = c.skipFolders(owner, in.AttemptID)
-	case r.Method == http.MethodDelete && in.Action == "cancel" && attemptID.MatchString(in.AttemptID) && in.Provider == "" && in.Address == "" && in.RedirectURL == "" && in.Folders == nil && in.Level == "":
+	case r.Method == http.MethodDelete && in.Action == "cancel" && attemptID.MatchString(in.AttemptID) && in.Provider == "" && in.TenantID == "" && in.Address == "" && in.RedirectURL == "" && in.Folders == nil && in.Level == "":
 		err = c.cancelLogin(owner, in.AttemptID)
 	default:
 		fail(w, 400, "invalid_request")
