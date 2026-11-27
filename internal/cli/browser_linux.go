@@ -116,7 +116,7 @@ func agentBrowserRequest(args []string) (method, path string, body []byte, err e
 		values := map[string]string{}
 		for i := 1; i < len(args); i += 2 {
 			if (args[i] != "--text" && args[i] != "--window") || i+1 == len(args) {
-				return "", "", nil, usage("expected agent browser request --text TEXT [--window ID] or agent browser request --clear")
+				return "", "", nil, usage("request expects no positional arguments; use --text TEXT [--window ID] or --clear")
 			}
 			if _, dup := values[args[i]]; dup {
 				return "", "", nil, usage("duplicate " + args[i])
@@ -137,5 +137,13 @@ func agentBrowserRequest(args []string) (method, path string, body []byte, err e
 		body, _ := json.Marshal(req)
 		return "POST", daemon.AgentBrowserRequestPath, body, nil
 	}
-	return "", "", nil, usage("unknown or malformed browser command; see open-habitat agent browser --help")
+	if len(args) > 0 {
+		switch args[0] {
+		case "status", "start":
+			return "", "", nil, usage(args[0] + " expects no positional arguments or command-specific flags")
+		case "request":
+			return "", "", nil, usage("request expects no positional arguments; use --text TEXT [--window ID] or --clear")
+		}
+	}
+	return "", "", nil, usage("expected a browser subcommand; see open-habitat agent browser --help")
 }

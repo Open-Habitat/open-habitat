@@ -60,6 +60,13 @@ A command that times out or loses its reply may still have acted. Look at the
 page before repeating anything that writes. If a failed `goto` names its tab in
 the error, inspect or close it; otherwise check `tabs` for a tab left open.
 
+`goto` and `download` take one positional URL; `eval` takes one positional
+JavaScript expression. These arguments can come before or after flags, for
+example `eval --tab <id> 'document.title' --json`. `click` and `type` take one
+CSS selector either positionally or with `--selector`, never both:
+`click 'button.save' --tab <id> --json`. `type` still takes its text only
+through `--text-file PATH` (or `--text-file -` for stdin), not positionally.
+
 A selector has to match exactly one element. `click` scrolls it into view and
 presses the mouse at its visible centre, as a person would, so menus and
 listbox options that react to pointer or mouse down work; the result gives the

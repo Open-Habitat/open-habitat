@@ -35,8 +35,13 @@ func isBrowserAction(s string) bool {
 func parseBrowserAction(args []string) (browserAction, error) {
 	a := browserAction{verb: args[0], timeout: browserCommandTimeout}
 	values := map[string]string{}
+	var positional []string
 	for i := 1; i < len(args); i++ {
 		flag := args[i]
+		if !strings.HasPrefix(flag, "--") {
+			positional = append(positional, flag)
+			continue
+		}
 		if flag == "--dry-run" {
 			return a, &cliError{code: "dry_run_unsupported", message: "browser actions cannot be previewed without executing page code", exit: 1}
 		}
@@ -51,7 +56,39 @@ func parseBrowserAction(args []string) (browserAction, error) {
 		values[flag] = args[i]
 	}
 	a.tab, a.selector, a.name = values["--tab"], values["--selector"], values["--name"]
-	// URL and JavaScript enter through named flags too, keeping validation unambiguous.
+	switch a.verb {
+	case "goto", "download", "eval":
+		expected := "a URL"
+		if a.verb == "eval" {
+			expected = "JavaScript"
+		}
+		if len(positional) != 1 || strings.TrimSpace(positional[0]) == "" {
+			return a, usage(a.verb + " requires exactly one positional argument: " + expected)
+		}
+		a.value = positional[0]
+		if a.verb == "eval" {
+			if len(a.value) > 64<<10 {
+				return a, usage("eval JavaScript exceeds 64 KiB")
+			}
+		} else {
+			u, err := url.Parse(a.value)
+			if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.User != nil || strings.ContainsAny(a.value, "\r\n\x00") {
+				return a, usage("expected an absolute http(s) URL without embedded credentials")
+			}
+		}
+	case "click", "type":
+		_, named := values["--selector"]
+		if len(positional) > 1 || (len(positional) > 0 && named) {
+			return a, usage(a.verb + " requires exactly one CSS selector: positional or --selector, not both")
+		}
+		if len(positional) == 1 {
+			a.selector = positional[0]
+		}
+	default:
+		if len(positional) != 0 {
+			return a, usage(a.verb + " expects no positional arguments; see agent browser " + a.verb + " --help")
+		}
+	}
 	if s, ok := values["--timeout-seconds"]; ok {
 		n, err := strconv.Atoi(s)
 		if err != nil || n < 1 || n > 120 {
@@ -66,7 +103,7 @@ func parseBrowserAction(args []string) (browserAction, error) {
 		return a, usage("--tab is required; use the id returned by goto")
 	}
 	if (a.verb == "click" || a.verb == "type") && (strings.TrimSpace(a.selector) == "" || len(a.selector) > 4096) {
-		return a, usage("--selector must be a nonempty CSS selector of at most 4096 bytes")
+		return a, usage("expected a nonempty CSS selector of at most 4096 bytes, positional or --selector")
 	}
 	if a.verb == "download" || a.verb == "screenshot" {
 		if a.name == "" || a.name == "." || a.name == ".." || filepath.Base(a.name) != a.name || strings.ContainsAny(a.name, "\x00\r\n") || len(a.name) > 200 {
@@ -158,30 +195,9 @@ func executeBrowserAction(a browserAction, st browserConnectionInfo) (any, error
 }
 
 func agentBrowserAction(args []string) (any, error) {
-	// Actions with content take one positional URL/script; the remaining options
-	// are deliberately parsed before opening a socket or creating a tab.
-	var value string
-	if args[0] == "goto" || args[0] == "download" || args[0] == "eval" {
-		if len(args) < 2 || strings.TrimSpace(args[1]) == "" || strings.HasPrefix(args[1], "--") {
-			return nil, usage(args[0] + " requires a URL (eval requires JavaScript) before flags")
-		}
-		value = args[1]
-		args = append([]string{args[0]}, args[2:]...)
-		if args[0] != "eval" {
-			u, err := url.Parse(value)
-			if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.User != nil || strings.ContainsAny(value, "\r\n\x00") {
-				return nil, usage("expected an absolute http(s) URL without embedded credentials")
-			}
-		} else if len(value) > 64<<10 {
-			return nil, usage("eval JavaScript exceeds 64 KiB")
-		}
-	}
 	a, err := parseBrowserAction(args)
 	if err != nil {
 		return nil, err
-	}
-	if a.verb != "type" {
-		a.value = value
 	}
 	raw, err := exchangeAgent(daemon.AgentBrowserPath)
 	if err != nil {

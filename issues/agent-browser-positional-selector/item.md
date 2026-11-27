@@ -3,10 +3,11 @@ created: 2026-11-27
 updated: 2026-11-27
 type: bug
 reporter: agent
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 preparation: ready
+closed: 2026-11-27
 ---
 
 # agent browser click/type: positional selector fails with an unhelpful error

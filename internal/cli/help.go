@@ -280,7 +280,7 @@ func commandHelp(args []string) (any, error) {
 				case "--name":
 					flag["description"] = "Unused filename (not a path), up to 200 bytes, in status.default_download_directory; never overwrites"
 				case "--selector":
-					flag["description"] = "CSS selector matching exactly one element; at most 4096 bytes"
+					flag["description"] = "CSS selector matching exactly one element; at most 4096 bytes; use this flag or a positional selector, not both"
 				case "--text-file":
 					flag["description"] = "UTF-8 text file or - for stdin, at most 64 KiB; used verbatim including trailing newlines; never submits"
 				case "--timeout-seconds":
@@ -305,9 +305,11 @@ func commandHelp(args []string) (any, error) {
 	arguments := []any{}
 	switch key {
 	case "agent browser goto", "agent browser download":
-		arguments = append(arguments, map[string]any{"name": "url", "required": true, "description": "Absolute HTTP(S) URL without embedded credentials; before flags"})
+		arguments = append(arguments, map[string]any{"name": "url", "required": true, "description": "Absolute HTTP(S) URL without embedded credentials; before or after flags"})
+	case "agent browser click", "agent browser type":
+		arguments = append(arguments, map[string]any{"name": "selector", "required": false, "description": "Exactly one CSS selector, positional or --selector, not both; before or after flags"})
 	case "agent browser eval":
-		arguments = append(arguments, map[string]any{"name": "javascript", "required": true, "description": "JavaScript expression (up to 64 KiB) before flags; awaited if a Promise; same ask-first rule as clicks"})
+		arguments = append(arguments, map[string]any{"name": "javascript", "required": true, "description": "JavaScript expression (up to 64 KiB), before or after flags; awaited if a Promise; same ask-first rule as clicks"})
 	case "agent experimental update":
 		arguments = append(arguments, map[string]any{"name": "id", "required": true, "description": "Exact experimental feature id from agent experimental list"})
 	case "host operation show":
