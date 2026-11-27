@@ -123,6 +123,9 @@ const { DefaultTokenCacheStorage, resetCacheKeyForTests } = await import('@softe
   const homePinned = {...unpinned, home_account_id: imported.home_account_id};
   assert.equal((await verifyGrant(homePinned, {networkClient}, graph(200))).state, 'ok');
   assert.equal((await verifyGrant({...unpinned, home_account_id: `${oid}.00000000-0000-0000-0000-0000000000cc`}, {networkClient}, graph(200))).state, 'refused');
+  // Neither pin reaches an account of another tenant than the authority.
+  assert.equal((await verifyGrant({...request, tenant_id: '00000000-0000-0000-0000-0000000000cc'}, {networkClient}, graph(200))).state, 'refused');
+  assert.equal((await verifyGrant({...homePinned, tenant_id: '00000000-0000-0000-0000-0000000000cc'}, {networkClient}, graph(200))).state, 'refused');
   await assert.rejects(verifyGrant({...homePinned, address: request.address}, {networkClient}, graph(200)), /invalid_input/);
   await assert.rejects(verifyGrant(unpinned, {networkClient}, graph(200)), /invalid_input/);
   await assert.rejects(verifyGrant({...request, tenant_id: 'common'}, {networkClient}, graph(200)), /invalid_input/);

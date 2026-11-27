@@ -39,10 +39,9 @@ function pinOf({home_account_id, address}) {
 
 // The account the pin names in the connection's tenant.
 function pinned(accounts, pin, tenant_id) {
-  if (pin.expectedHomeAccountId) {
-    return accounts.find(a => a.homeAccountId === pin.expectedHomeAccountId && a.tenantId?.toLowerCase() === tenant_id.toLowerCase());
-  }
-  return accounts.find(a => a.username?.toLowerCase() === pin.expectedUsername.toLowerCase());
+  const inTenant = accounts.filter(a => a.tenantId?.toLowerCase() === tenant_id.toLowerCase());
+  if (pin.expectedHomeAccountId) return inTenant.find(a => a.homeAccountId === pin.expectedHomeAccountId);
+  return inTenant.find(a => a.username?.toLowerCase() === pin.expectedUsername.toLowerCase());
 }
 
 // Imports the grant and answers who MSAL recorded for it: the tenant, the

@@ -685,9 +685,25 @@ const startServeWait = 15 * time.Second
 func (c *Catalog) Start(ctx context.Context) {
 	c.write.Lock()
 	// Connections from before names get theirs before any sync client or
-	// the Microsoft child starts with the old paths.
+	// the Microsoft child starts with the old paths. While a previous
+	// daemon still serves the endpoint its child may hold a cache, so the
+	// rename waits for the next check, which Align does with the slot paused.
 	if m, ok := c.entry(Microsoft).(*microsoft); ok {
-		m.migrateNames(ctx, c.env, c.log)
+		bare, err := microsoftBareAddresses(c.env)
+		reason := ""
+		if err != nil {
+			reason = "native_unavailable"
+		} else if len(bare) > 0 {
+			free, err := msmcp.WhileNotServed(c.env.Home, func() { m.migrateNames(ctx, c.env, c.log) })
+			if err != nil {
+				reason = "native_unavailable"
+			} else if !free {
+				reason = "endpoint_busy"
+			}
+		}
+		if reason != "" {
+			c.log.Info("integration_config_migration", "provider", string(Microsoft), "outcome", "deferred", "change", "connection_name", "reason", reason)
+		}
 	}
 	c.reconcile()
 	queue := c.interruptedQueue()

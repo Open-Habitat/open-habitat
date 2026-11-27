@@ -1352,8 +1352,10 @@ func microsoftVerify(ctx context.Context, env Env, address string, checkTools bo
 	if err != nil {
 		return "unreachable", nil
 	}
-	app, _, _, ok := microsoftAccountApp(env, address, n)
-	if !ok {
+	app, _, reason, ok := microsoftAccountApp(env, address, n)
+	if !ok || reason != "" {
+		// A connection that cannot run is not redeemed with another
+		// application; alignedView says why.
 		return "", nil
 	}
 	pin := n.pin(address)

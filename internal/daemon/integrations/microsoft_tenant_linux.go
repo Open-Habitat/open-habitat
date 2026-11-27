@@ -131,15 +131,33 @@ func (n microsoftNative) pin(key string) microsoftPin {
 // cells but none with that client id (or the configs disagree with the
 // name), it is the tenant's broadest cell with app_changed, which a new
 // sign-in at that cell repairs. When the tenant has none, ok is false and
-// the reason is tenant_removed. A bare address from before names is matched
-// by client id across every section. ok is false with no reason when no
-// application is configured at all.
+// the reason is tenant_removed. A bare address from before names is in the
+// tenant its files name; one whose tenant cannot be read is app_changed with
+// the broadest application, so its tools do not run and a sign-in replaces it.
 func microsoftAccountApp(env Env, key string, n microsoftNative) (app MicrosoftApp, level Level, reason string, ok bool) {
 	apps := env.microsoftApps()
+	tenant := microsoftTenantOf(key)
+	unresolved := false
+	if tenant == "" {
+		// A bare address awaiting its name is in the tenant its files name.
+		// One whose files name none, or two, is not guessed: its tools do
+		// not run and it asks for the sign-in that replaces it.
+		tenant, _ = microsoftBareTenant(env, key)
+		unresolved = tenant == ""
+	}
 	if len(apps) == 0 {
+		if tenant != "" && !unresolved {
+			return MicrosoftApp{}, "", TenantRemoved, false
+		}
 		return MicrosoftApp{}, "", "", false
 	}
-	tenant := microsoftTenantOf(key)
+	if unresolved {
+		for _, l := range microsoftLevels {
+			if a, has := apps[l]; has {
+				return a, l, AppChanged, true
+			}
+		}
+	}
 	client := n.client()
 	var first Level
 	for _, l := range microsoftLevels {

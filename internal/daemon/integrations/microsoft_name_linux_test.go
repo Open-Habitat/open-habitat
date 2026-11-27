@@ -515,6 +515,20 @@ func TestMicrosoftNameMigrationLeavesAnUnreadableTenant(t *testing.T) {
 		if keys, _ := m.Accounts(env); !slices.Equal(keys, []string{address}) || m.Misaligned(env, address) {
 			t.Fatal(keys)
 		}
+		// It runs nothing and asks for a sign-in: no tool binding, and its
+		// grant is not redeemed with any application.
+		if _, err := microsoftBinding(env, address); err == nil {
+			t.Fatal("an unresolved connection's tools bind")
+		}
+		c := New(env, []Entry{m}, nil)
+		for _, s := range c.check(context.Background(), m, address).Services {
+			if s.State != StateLoginExpired {
+				t.Fatal("an unresolved connection does not ask for a sign-in", s)
+			}
+		}
+		if exists(filepath.Join(env.Home, "mcp-checked")) {
+			t.Fatal("an unresolved connection's grant was verified")
+		}
 		// The person signs in again from its card: the new connection
 		// replaces the leftover.
 		if name, err := signIn(t, env, "", address); err != nil || name != testName {
@@ -589,4 +603,88 @@ func TestMicrosoftBrowserAddressesConnectionsByAddress(t *testing.T) {
 func fmtAny(v any) string {
 	data, _ := json.Marshal(v)
 	return string(data)
+}
+
+// hookedEntry lets a test act inside a sign-in's Commit, which the catalog
+// runs with its write lock held.
+type hookedEntry struct {
+	*microsoft
+	commit func(inner func(context.Context, string) error, ctx context.Context, name string) error
+}
+
+func (e *hookedEntry) StartLogin(ctx context.Context, env Env, address string) (Login, error) {
+	return e.StartLevelLogin(ctx, env, address, "")
+}
+
+func (e *hookedEntry) StartLevelLogin(ctx context.Context, env Env, address string, level Level) (Login, error) {
+	login, err := e.microsoft.StartLevelLogin(ctx, env, address, level)
+	if err != nil {
+		return nil, err
+	}
+	l := login.(*microsoftLogin)
+	l.interval = time.Millisecond
+	return &hookedLogin{microsoftLogin: l, commit: e.commit}, nil
+}
+
+type hookedLogin struct {
+	*microsoftLogin
+	commit func(inner func(context.Context, string) error, ctx context.Context, name string) error
+}
+
+func (h *hookedLogin) Commit(ctx context.Context, name string) error {
+	return h.commit(h.microsoftLogin.Commit, ctx, name)
+}
+
+// Renewing a connection from before names through the catalog replaces it
+// under its name: the old key's sync client is stopped before Commit removes
+// its files, and a cancellation once Commit has replaced it keeps the new
+// connection, which is then the only copy.
+func TestMicrosoftCatalogRenewalReplacesAnUnresolvedConnection(t *testing.T) {
+	for _, cancelAfterCommit := range []bool{false, true} {
+		env := microsoftEnv(t)
+		installedBeforeNames(t, env)
+		address := "person@example.test"
+		conf := filepath.Join(env.Home, microsoftDir, address+".conf")
+		data, _ := os.ReadFile(conf)
+		os.WriteFile(conf, []byte(strings.ReplaceAll(string(data), "tenant = "+testTenant, "tenant = 00000000-0000-4000-8000-0000000000bb")), 0600)
+		old := key{Microsoft, address}
+		var c *Catalog
+		stoppedFirst := false
+		e := &hookedEntry{microsoft: syntheticMicrosoft(t, "person@example.test", "")}
+		e.commit = func(inner func(context.Context, string) error, ctx context.Context, name string) error {
+			stoppedFirst = !c.sync.supervised(old)
+			err := inner(ctx, name)
+			if cancelAfterCommit {
+				c.relay.mu.Lock()
+				id := c.relay.current().id
+				c.relay.mu.Unlock()
+				c.cancelLogin(ownerA, id)
+			}
+			return err
+		}
+		c = New(env, []Entry{e}, nil, WithQuota(func() Room { return Room{Free: 1 << 30, OK: true} }))
+		ctx, cancel := context.WithCancel(context.Background())
+		c.Start(ctx)
+		if !c.sync.supervised(old) {
+			t.Fatal("fixture: the unresolved connection's files do not sync")
+		}
+		h := c.Handler(allow)
+		if code, out, _ := call(t, h, "POST", LoginPath, ownerA, map[string]any{"action": "start", "provider": "microsoft", "address": address}); code != 200 {
+			t.Fatal(code, out)
+		}
+		want := "completed"
+		if cancelAfterCommit {
+			want = "failed"
+		}
+		waitState(t, h, ownerA, want)
+		waitLoginWorker(t, c)
+		if !stoppedFirst {
+			t.Error("Commit ran beside the replaced connection's sync client")
+		}
+		if keys, _ := e.Accounts(env); !slices.Equal(keys, []string{testName}) || exists(conf) {
+			t.Errorf("cancel %v: not replaced, or the replacement was discarded: %v", cancelAfterCommit, keys)
+		}
+		cancel()
+		c.Stop()
+	}
 }

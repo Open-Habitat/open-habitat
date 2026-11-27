@@ -141,6 +141,31 @@ func listen(home string) (*endpoint, error) {
 	return &endpoint{ln: ln, lock: lock, dir: dir}, nil
 }
 
+// WhileNotServed runs f holding the endpoint's lock, so that no daemon of
+// the person serves the endpoint, and so none runs a Microsoft child, until
+// f returns. A daemon releases the lock only after its child is reaped. It
+// reports false without running f while another daemon serves it.
+func WhileNotServed(home string, f func()) (bool, error) {
+	dir, err := openStateDir(home, true)
+	if err != nil {
+		return false, err
+	}
+	defer unix.Close(dir)
+	lockFd, err := unix.Openat(dir, lockName, unix.O_RDWR|unix.O_CREAT|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0600)
+	if err != nil {
+		return false, err
+	}
+	defer unix.Close(lockFd)
+	if err := unix.Flock(lockFd, unix.LOCK_EX|unix.LOCK_NB); err != nil {
+		if errors.Is(err, unix.EWOULDBLOCK) {
+			return false, nil
+		}
+		return false, err
+	}
+	f()
+	return true, nil
+}
+
 func (e *endpoint) close() {
 	e.ln.Close()
 	_ = unix.Unlinkat(e.dir, socketName, 0)

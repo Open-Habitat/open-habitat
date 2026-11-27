@@ -659,6 +659,33 @@ func TestEndpointIsPrivateAndSingle(t *testing.T) {
 	os.Chmod(filepath.Dir(SocketPath(h.home)), 0700)
 }
 
+// WhileNotServed holds off a daemon from serving, and runs nothing while
+// another serves: a startup step that renames a native cache needs both.
+func TestWhileNotServedExcludesServing(t *testing.T) {
+	h := newHarness(t, Options{})
+	ran := false
+	if free, err := WhileNotServed(h.home, func() { ran = true }); err != nil || free || ran {
+		t.Fatalf("ran beside a serving daemon: %v %v %v", free, err, ran)
+	}
+	home := t.TempDir()
+	os.Chmod(home, 0700)
+	served := make(chan bool, 1)
+	if free, err := WhileNotServed(home, func() {
+		second := NewServer(func(string) (Binding, error) { return Binding{}, errors.New("no") }, Options{})
+		ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+		defer cancel()
+		go func() { <-second.Serving(); served <- true }()
+		_ = second.Serve(ctx, home)
+	}); err != nil || !free {
+		t.Fatal(free, err)
+	}
+	select {
+	case <-served:
+		t.Fatal("a daemon served while the lock was held")
+	default:
+	}
+}
+
 // A connection from another kernel UID is dropped before its hello is read.
 // The peer UID is the kernel's; an unprivileged test cannot make another
 // UID's connection, so the UID read is replaced for this one test.

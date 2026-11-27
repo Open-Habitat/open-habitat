@@ -651,6 +651,15 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 		// renewed; the person did not ask to connect that one.
 		err = AccountMismatch
 	}
+	// A Microsoft connection from before names is renewed under its name and
+	// replaced: the new key is as existing as the old, so no failure or
+	// cancellation discards it as new (only this driver reads existing), and
+	// the old key's sync client stops before its files go.
+	replaced := ""
+	if a.relogin && address != a.address && validCatalogAddress(e.Provider(), address) && sameCatalogAccount(e.Provider(), a.address, address) {
+		replaced = a.address
+		a.existing[address] = a.existing[replaced]
+	}
 	if err != nil {
 		if address != "" && validCatalogAddress(e.Provider(), address) && !a.existing[address] {
 			c.discardNew(e, address)
@@ -671,6 +680,9 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 			return
 		}
 		c.sync.stop(key{e.Provider(), address})
+		if replaced != "" {
+			c.sync.stop(key{e.Provider(), replaced})
+		}
 		if a.existing[address] {
 			// Every exit after a native replacement (cancel, expiry, folder
 			// failure included) must rederive retained sync from native state.

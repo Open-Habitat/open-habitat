@@ -137,6 +137,17 @@ func TestMicrosoftTenantChangeMovesNothingAndReportsTenantRemoved(t *testing.T) 
 		t.Fatal("a renewal signed in at another tenant")
 	}
 
+	// No application at all is the same for the connection.
+	none := env.Config
+	none.Microsoft = nil
+	env.Config = none
+	c.env = env
+	for _, s := range c.check(context.Background(), m, name).Services {
+		if s.State != StateLoginExpired || s.Failure != TenantRemoved {
+			t.Fatal("no application: tenant_removed not shown", s)
+		}
+	}
+
 	env.Config = microsoftEnv(t).Config
 	env.Config.Tools = moved.Tools
 	c.env = env
