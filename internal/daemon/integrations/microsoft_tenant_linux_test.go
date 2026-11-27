@@ -3,10 +3,7 @@
 package integrations
 
 import (
-	"github.com/open-habitat/open-habitat/internal/msmcp"
-
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,45 +12,24 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
-	"time"
 )
 
-// connectedWithCommon signs an account in through the current tenant and then
-// puts its native configs back to the state an earlier release wrote: every
-// remote and the Pi registration on `common`, the stored grant refresh-secret.
-func connectedWithCommon(t *testing.T, env Env, client string) string {
+// connectedSyncing signs the synthetic person in at the tenant and gives
+// the connection the OneDrive and library roots of an earlier release.
+func connectedSyncing(t *testing.T, env Env) string {
 	t.Helper()
 	m := syntheticMicrosoft(t, "person@example.test", "")
 	l := msLogin(t, m, env, "")
-	address, err := l.WaitWithPrompt(context.Background(), func(Prompt) error { return nil })
+	name, err := l.WaitWithPrompt(context.Background(), func(Prompt) error { return nil })
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := l.Commit(context.Background(), address); err != nil {
+	if err := l.Commit(context.Background(), name); err != nil {
 		t.Fatal(err)
 	}
-	earlierRoots(t, m, env, address, LevelFull, earlierFullGrant)
-	conf := filepath.Join(env.Home, microsoftDir, address+".conf")
-	data, err := os.ReadFile(conf)
-	if err != nil {
-		t.Fatal(err)
-	}
-	// A blank line inside a section is valid rclone syntax.
-	old := strings.ReplaceAll(string(data), "tenant = "+testTenant, "\ntenant = common")
-	old = strings.ReplaceAll(old, "client_id = 00000000-0000-0000-0000-000000000001", "client_id = "+client)
-	// The roots are aliases of the one account remote that signs in.
-	if strings.Count(old, "tenant = common") != 1 || strings.Count(old, "type = alias") != 2 {
-		t.Fatal("fixture: expected the account remote with OneDrive and one library")
-	}
-	if err := os.WriteFile(conf, []byte(old), 0600); err != nil {
-		t.Fatal(err)
-	}
-	registration := fmt.Sprintf(`{"mcpServers":{%q:{"command":"/x","env":{"MS365_MCP_CLIENT_ID":%q,"MS365_MCP_TENANT_ID":"common","MS365_MCP_TOKEN_CACHE_PATH":%q}}}}`, microsoftPlainServer(address), client, microsoftTestCache(env, address))
-	if err := os.WriteFile(filepath.Join(env.Home, ".pi/agent/mcp.json"), []byte(registration), 0600); err != nil {
-		t.Fatal(err)
-	}
+	earlierRoots(t, m, env, name, LevelFull, earlierFullGrant)
 	_ = os.Remove(filepath.Join(env.Home, "pi-commands"))
-	return address
+	return name
 }
 
 // syncingOneDrive makes the account's OneDrive pair ready and supervised.
@@ -79,6 +55,16 @@ func syncingOneDrive(t *testing.T, c *Catalog, env Env, address string) key {
 	return k
 }
 
+// offline is a Microsoft entry that fails the test on any request: nothing
+// here may ask a tenant.
+func offline(t *testing.T) *microsoft {
+	t.Helper()
+	return &microsoft{client: &http.Client{Transport: dropboxTransport(func(r *http.Request) (*http.Response, error) {
+		t.Errorf("unexpected request to %s", r.URL.Host)
+		return nil, fmt.Errorf("offline")
+	})}}
+}
+
 // tokenEndpoint answers refresh grants at /<tenant>/oauth2/v2.0/token with
 // reply and counts them; every other OAuth or Graph request fails the test.
 func tokenEndpoint(t *testing.T, status int, reply string) (*microsoft, *atomic.Int32) {
@@ -97,234 +83,120 @@ func tokenEndpoint(t *testing.T, status int, reply string) (*microsoft, *atomic.
 	})}}, &calls
 }
 
-func TestMicrosoftAccountFollowsTheTenantWithoutSigningIn(t *testing.T) {
+// Changing the operator's tenant does not move a connection: nothing is
+// redeemed anywhere, the files stay as they are, the card says the
+// organisation is no longer available here and its tools stop at the next
+// call. Putting the tenant back resumes it without a sign-in.
+func TestMicrosoftTenantChangeMovesNothingAndReportsTenantRemoved(t *testing.T) {
 	env := microsoftEnv(t)
-	address := connectedWithCommon(t, env, "00000000-0000-0000-0000-000000000001")
-	m, calls := tokenEndpoint(t, 200, `{"access_token":"tenant-access","refresh_token":"tenant-refresh","expires_in":3600}`)
+	name := connectedSyncing(t, env)
+	m := offline(t)
 	c := New(env, []Entry{m}, nil)
-	// OneDrive syncs: its client reads the file being rewritten.
-	k := syncingOneDrive(t, c, env, address)
-	before := c.sync.children[k]
-	// The remotes' accepted grant decides the Outlook registration; the
-	// Outlook grant is not asked through the tenant.
-	if err := os.WriteFile(filepath.Join(env.Home, "mcp-status-result"), []byte(`{"state":"unreachable"}`), 0600); err != nil {
-		t.Fatal(err)
+	snapshot := func() map[string]string {
+		out := map[string]string{}
+		for _, rel := range []string{microsoftDir + "/" + name + ".conf", ".pi/agent/mcp.json"} {
+			data, err := os.ReadFile(filepath.Join(env.Home, rel))
+			if err != nil {
+				t.Fatal(err)
+			}
+			out[rel] = string(data)
+		}
+		return out
+	}
+	before := snapshot()
+	if _, err := microsoftBinding(env, name); err != nil {
+		t.Fatal("fixture: binding", err)
 	}
 
-	account := c.check(context.Background(), m, address)
-	if after := c.sync.children[k]; after == nil || after == before {
-		t.Fatal("the sync client was not restarted on the rewritten config")
+	moved := env.Config
+	moved.Microsoft = &MicrosoftApp{ClientID: env.Config.Microsoft.ClientID, TenantID: "00000000-0000-4000-8000-0000000000bb"}
+	env.Config = moved
+	c.env = env
+	if m.Misaligned(env, name) {
+		t.Fatal("a removed tenant asked Align to act")
+	}
+	account := c.check(context.Background(), m, name)
+	if len(account.Services) == 0 {
+		t.Fatal("no services")
 	}
 	for _, s := range account.Services {
+		if s.State != StateLoginExpired || s.Failure != TenantRemoved {
+			t.Fatal("tenant_removed not shown", account.Services)
+		}
+	}
+	if account.Address != "person@example.test" {
+		t.Fatal("contract address", account.Address)
+	}
+	if fmt.Sprint(snapshot()) != fmt.Sprint(before) {
+		t.Fatal("a removed tenant changed the connection's files")
+	}
+	if _, err := microsoftBinding(env, name); err == nil {
+		t.Fatal("a removed tenant's tools still bind")
+	}
+	if _, err := m.StartLevelLogin(context.Background(), env, name, ""); err == nil {
+		t.Fatal("a renewal signed in at another tenant")
+	}
+
+	env.Config = microsoftEnv(t).Config
+	env.Config.Tools = moved.Tools
+	c.env = env
+	for _, s := range c.check(context.Background(), m, name).Services {
+		if s.Failure == TenantRemoved {
+			t.Fatal("tenant added back still refused", s)
+		}
+	}
+	if _, err := microsoftBinding(env, name); err != nil {
+		t.Fatal("tenant added back does not bind", err)
+	}
+}
+
+// Another application at the same tenant asks for a sign-in, which goes to
+// the connection's own tenant and repairs it.
+func TestMicrosoftAppChangedAtTheTenantSignsInAgain(t *testing.T) {
+	env := microsoftEnv(t)
+	name := connectedSyncing(t, env)
+	m := offline(t)
+	c := New(env, []Entry{m}, nil)
+	conf := filepath.Join(env.Home, microsoftDir, name+".conf")
+	data, _ := os.ReadFile(conf)
+	if err := os.WriteFile(conf, []byte(strings.ReplaceAll(string(data), "client_id = 00000000-0000-0000-0000-000000000001", "client_id = 00000000-0000-0000-0000-000000000009")), 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range c.check(context.Background(), m, name).Services {
+		if s.State != StateLoginExpired || s.Failure != AppChanged {
+			t.Fatal("app_changed not shown", s)
+		}
+	}
+	l := msLogin(t, syntheticMicrosoft(t, "person@example.test", ""), env, name)
+	got, err := l.WaitWithPrompt(context.Background(), func(Prompt) error { return nil })
+	if err != nil || got != name {
+		t.Fatal(got, err)
+	}
+	if err := l.Commit(context.Background(), got); err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range c.check(context.Background(), m, name).Services {
 		if s.State == StateLoginExpired {
-			t.Fatal("followed account asks to sign in", account.Services)
+			t.Fatal("app_changed outlived the new sign-in", s)
 		}
 	}
-	data, _ := os.ReadFile(filepath.Join(env.Home, microsoftDir, address+".conf"))
-	config := string(data)
-	if strings.Contains(config, "common") || strings.Count(config, "tenant = "+testTenant+"\n") != 1 || strings.Count(config, `"refresh_token":"tenant-refresh"`) != 1 || strings.Contains(config, "refresh-secret") {
-		t.Fatal("remotes not on the tenant's grant:\n", config)
-	}
-	if remotes, err := microsoftRemotes(env, address); err != nil || len(remotes) != 2 {
-		t.Fatal("rewrite broke the remotes", remotes, err)
-	}
-	if raw, registered := registeredEntry(t, env, address); registered["MS365_MCP_TENANT_ID"] != testTenant {
-		t.Fatal("Pi registration not replaced with the tenant", raw)
-	}
-	if calls.Load() != 1 {
-		t.Fatal("refreshes", calls.Load())
-	}
-	// Once aligned, checks and restarts leave it alone.
-	c.check(context.Background(), m, address)
-	if m.Misaligned(env, address) || calls.Load() != 1 {
-		t.Fatal("aligned account aligned again")
-	}
 }
 
-func TestMicrosoftTenantRefusalSaysWhyAndKeepsTheConfigs(t *testing.T) {
-	for _, tc := range []struct {
-		name, reply, client, want string
-	}{
-		{"expired grant", `{"error":"invalid_grant","error_codes":[700082]}`, "00000000-0000-0000-0000-000000000001", TenantChanged},
-		{"other directory", `{"error":"invalid_grant","error_codes":[50020]}`, "00000000-0000-0000-0000-000000000001", OutsideTenant},
-		{"another app", "", "00000000-0000-0000-0000-000000000009", AppChanged},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			env := microsoftEnv(t)
-			address := connectedWithCommon(t, env, tc.client)
-			conf := filepath.Join(env.Home, microsoftDir, address+".conf")
-			before, _ := os.ReadFile(conf)
-			m, calls := tokenEndpoint(t, 400, tc.reply)
-			c := New(env, []Entry{m}, nil)
-
-			account := c.check(context.Background(), m, address)
-			if len(account.Services) == 0 {
-				t.Fatal("no services")
-			}
-			for _, s := range account.Services {
-				if s.State != StateLoginExpired || s.Failure != tc.want {
-					t.Fatal("refusal not shown", account.Services)
-				}
-			}
-			if after, _ := os.ReadFile(conf); string(after) != string(before) {
-				t.Fatal("a refused grant changed the remotes")
-			}
-			if _, servers, _ := microsoftPiServers(env); servers[microsoftPlainServer(address)] == nil || len(servers) != 1 {
-				t.Fatal("a refused grant changed the Pi registration", servers)
-			}
-			// The refusal stands for this application without asking again.
-			c.check(context.Background(), m, address)
-			wantCalls := int32(1)
-			if tc.want == AppChanged {
-				wantCalls = 0
-			}
-			if calls.Load() != wantCalls {
-				t.Fatal("refreshes", calls.Load())
-			}
-
-			// A new sign-in writes the current application and clears it.
-			l := msLogin(t, syntheticMicrosoft(t, "person@example.test", ""), env, address)
-			if _, err := l.WaitWithPrompt(context.Background(), func(Prompt) error { return nil }); err != nil {
-				t.Fatal(err)
-			}
-			if err := l.Commit(context.Background(), address); err != nil {
-				t.Fatal(err)
-			}
-			for _, s := range c.check(context.Background(), m, address).Services {
-				if s.State == StateLoginExpired {
-					t.Fatal("refusal outlived the new sign-in", s)
-				}
-			}
-		})
-	}
-}
-
-// A daemon start follows the tenant without anyone opening the page, so
-// agents and sync do not wait for a browser.
-func TestMicrosoftDaemonStartFollowsTheTenant(t *testing.T) {
+// The verification's outside_tenant answer says signing in cannot help.
+func TestMicrosoftOutsideTenantIsShown(t *testing.T) {
 	env := microsoftEnv(t)
-	address := connectedWithCommon(t, env, "00000000-0000-0000-0000-000000000001")
-	m, _ := tokenEndpoint(t, 200, `{"access_token":"tenant-access","refresh_token":"tenant-refresh","expires_in":3600}`)
+	name := connectedSyncing(t, env)
+	if err := os.Remove(filepath.Join(env.Home, microsoftDir, name+".conf")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(env.Home, "mcp-status-result"), []byte(`{"state":"outside_tenant"}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	m := offline(t)
 	c := New(env, []Entry{m}, nil)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	c.Start(ctx)
-	// Stop waits for the catalog's background work, which otherwise may
-	// still write into the home while TempDir removes it.
-	defer c.Stop()
-	deadline := time.Now().Add(5 * time.Second)
-	for m.Misaligned(env, address) {
-		if time.Now().After(deadline) {
-			t.Fatal("start did not follow the tenant")
+	for _, s := range c.check(context.Background(), m, name).Services {
+		if s.State != StateLoginExpired || s.Failure != OutsideTenant {
+			t.Fatal("outside_tenant not shown", s)
 		}
-		time.Sleep(10 * time.Millisecond)
-	}
-}
-
-// Start's alignment pauses the Microsoft slot, which refuses until the slot
-// holds its endpoint. During a restart the previous daemon may still hold
-// it; start waits for the slot instead of deferring the tenant to a later
-// check. The same wait covers a slot that has simply not begun serving yet.
-func TestMicrosoftDaemonStartFollowsTheTenantAfterTheEndpointFrees(t *testing.T) {
-	env := microsoftEnv(t)
-	address := connectedWithCommon(t, env, "00000000-0000-0000-0000-000000000001")
-	previous := msmcp.NewServer(func(a string) (msmcp.Binding, error) { return microsoftBinding(env, a) }, msmcp.Options{})
-	prevCtx, stopPrevious := context.WithCancel(context.Background())
-	prevDone := make(chan struct{})
-	go func() { defer close(prevDone); _ = previous.Serve(prevCtx, env.Home) }()
-	defer func() { stopPrevious(); <-prevDone }()
-	select {
-	case <-previous.Serving():
-	case <-time.After(5 * time.Second):
-		t.Fatal("previous slot did not serve")
-	}
-	m, _ := tokenEndpoint(t, 200, `{"access_token":"tenant-access","refresh_token":"tenant-refresh","expires_in":3600}`)
-	c := New(env, []Entry{m}, nil)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer func() { cancel(); c.Stop() }()
-	c.Start(ctx)
-	time.Sleep(200 * time.Millisecond)
-	stopPrevious()
-	<-prevDone
-	deadline := time.Now().Add(startServeWait + 5*time.Second)
-	for m.Misaligned(env, address) {
-		if time.Now().After(deadline) {
-			t.Fatal("start did not follow the tenant once the endpoint freed")
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-}
-
-// An unreachable or overloaded tenant decides nothing: the configs stay and the next check
-// asks again.
-func TestMicrosoftUnreachableTenantIsAskedAgain(t *testing.T) {
-	env := microsoftEnv(t)
-	address := connectedWithCommon(t, env, "00000000-0000-0000-0000-000000000001")
-	var calls atomic.Int32
-	m := &microsoft{client: &http.Client{Transport: dropboxTransport(func(*http.Request) (*http.Response, error) {
-		if calls.Add(1) == 1 {
-			return nil, fmt.Errorf("offline")
-		}
-		return &http.Response{StatusCode: 503, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"error":"temporarily_unavailable","error_codes":[50196]}`))}, nil
-	})}}
-	c := New(env, []Entry{m}, nil)
-	for i := 0; i < 2; i++ {
-		for _, s := range c.check(context.Background(), m, address).Services {
-			if s.State == StateLoginExpired {
-				t.Fatal("an outage became a refusal", s)
-			}
-		}
-	}
-	if calls.Load() != 2 || !m.Misaligned(env, address) {
-		t.Fatal("outage was remembered", calls.Load())
-	}
-	var registration map[string]any
-	data, _ := os.ReadFile(filepath.Join(env.Home, ".pi/agent/mcp.json"))
-	if json.Unmarshal(data, &registration) != nil || !strings.Contains(string(data), `"common"`) {
-		t.Fatal("registration changed", string(data))
-	}
-}
-
-// A mail-only account has no remotes' grant to redeem: the Outlook tool's
-// MSAL grant, asked through the tenant, decides, and an outage decides nothing.
-func TestMicrosoftMailOnlyAccountFollowsTheTenantByItsOutlookGrant(t *testing.T) {
-	for _, tc := range []struct {
-		reply, want string
-		follows     bool
-	}{
-		{`{"state":"refused"}`, TenantChanged, false},
-		{`{"state":"outside_tenant"}`, OutsideTenant, false},
-		{`{"state":"unreachable"}`, "", false},
-		{`{"state":"ok"}`, "", true},
-	} {
-		t.Run(tc.reply, func(t *testing.T) {
-			env := microsoftEnv(t)
-			address := connectedWithCommon(t, env, "00000000-0000-0000-0000-000000000001")
-			if err := os.Remove(filepath.Join(env.Home, microsoftDir, address+".conf")); err != nil {
-				t.Fatal(err)
-			}
-			if err := os.WriteFile(filepath.Join(env.Home, "mcp-status-result"), []byte(tc.reply), 0600); err != nil {
-				t.Fatal(err)
-			}
-			m, calls := tokenEndpoint(t, 500, "")
-			c := New(env, []Entry{m}, nil)
-			account := c.check(context.Background(), m, address)
-			if len(account.Services) == 0 {
-				t.Fatal("no services")
-			}
-			for _, s := range account.Services {
-				if s.Failure != tc.want || (tc.want != "" && s.State != StateLoginExpired) {
-					t.Fatal("wrong reason", account.Services)
-				}
-			}
-			s, _, _ := microsoftServerOf(env, address)
-			if registered := len(s.areas) == len(msmcp.Areas); registered != tc.follows {
-				t.Fatal("registration followed", registered, s)
-			}
-			// Only an outage leaves it to be asked again.
-			if m.Misaligned(env, address) != (tc.want == "" && !tc.follows) || calls.Load() != 0 {
-				t.Fatal("misaligned after check", m.Misaligned(env, address), calls.Load())
-			}
-		})
 	}
 }

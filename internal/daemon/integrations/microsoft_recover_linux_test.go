@@ -86,13 +86,13 @@ func TestMicrosoftStartupRecoversSkippedLibrariesWithoutWideningNarrowChoice(t *
 			deadline := time.Now().Add(5 * time.Second)
 			// The rewritten inventory clears the need before the first passes
 			// end; the attempt itself is over once the relay is free again.
-			for microsoftRecoveryNeeded(env, "person@example.test") || recoveryAttempt(c) {
+			for microsoftRecoveryNeeded(env, testName) || recoveryAttempt(c) {
 				if time.Now().After(deadline) {
 					t.Fatal("startup did not recover")
 				}
 				time.Sleep(10 * time.Millisecond)
 			}
-			roots, err := microsoftRemotes(env, "person@example.test")
+			roots, err := microsoftRemotes(env, testName)
 			want := 2
 			if narrow {
 				want = 3
@@ -102,14 +102,14 @@ func TestMicrosoftStartupRecoversSkippedLibrariesWithoutWideningNarrowChoice(t *
 			}
 			ready := 0
 			for _, r := range roots {
-				if microsoftReady(env, "person@example.test", r) {
+				if microsoftReady(env, testName, r) {
 					ready++
 				}
 			}
 			if narrow && ready != 1 || !narrow && ready != 2 {
 				t.Fatal("selection changed incorrectly", ready)
 			}
-			folders, err := m.testFolders(ctx, env, "person@example.test")
+			folders, err := m.testFolders(ctx, env, testName)
 			if err != nil || len(folders) != want {
 				t.Fatal("not offered in existing folder UI", folders, err)
 			}
@@ -126,39 +126,39 @@ func TestMicrosoftRecoveryPublicationSurvivesFailureAndExplicitDeselection(t *te
 	if err := os.WriteFile(fail, nil, 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := m.recoverLibraries(context.Background(), env, "person@example.test"); err == nil {
+	if err := m.recoverLibraries(context.Background(), env, testName); err == nil {
 		t.Fatal("expected initial failure")
 	}
-	if !microsoftRecoveryNeeded(env, "person@example.test") {
+	if !microsoftRecoveryNeeded(env, testName) {
 		t.Fatal("lost pending choice")
 	}
 	if err := os.Remove(fail); err != nil {
 		t.Fatal(err)
 	}
-	if err := m.testChoose(context.Background(), env, "person@example.test", []string{"onedrive"}); err != nil {
+	if err := m.testChoose(context.Background(), env, testName, []string{"onedrive"}); err != nil {
 		t.Fatal(err)
 	}
-	if microsoftRecoveryNeeded(env, "person@example.test") {
+	if microsoftRecoveryNeeded(env, testName) {
 		t.Fatal("explicit deselection did not cancel recovery")
 	}
-	if err := m.recoverLibraries(context.Background(), env, "person@example.test"); err != nil {
+	if err := m.recoverLibraries(context.Background(), env, testName); err != nil {
 		t.Fatal(err)
 	}
-	roots, _ := microsoftRemotes(env, "person@example.test")
-	if microsoftReady(env, "person@example.test", roots[1]) {
+	roots, _ := microsoftRemotes(env, testName)
+	if microsoftReady(env, testName, roots[1]) {
 		t.Fatal("deselected library synced")
 	}
 }
 
 func TestMicrosoftRecoveryOutagePreservesConfigAndRetries(t *testing.T) {
 	env, m := recoveryAccount(t, false)
-	path := filepath.Join(env.Home, microsoftDir, "person@example.test.conf")
+	path := filepath.Join(env.Home, microsoftDir, testName+".conf")
 	before, _ := os.ReadFile(path)
 	original := m.client.Transport
 	m.client.Transport = dropboxTransport(func(r *http.Request) (*http.Response, error) {
 		return &http.Response{StatusCode: 503, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{}`))}, nil
 	})
-	if err := m.recoverLibraries(context.Background(), env, "person@example.test"); err == nil {
+	if err := m.recoverLibraries(context.Background(), env, testName); err == nil {
 		t.Fatal("outage accepted")
 	}
 	after, _ := os.ReadFile(path)
@@ -166,15 +166,15 @@ func TestMicrosoftRecoveryOutagePreservesConfigAndRetries(t *testing.T) {
 		t.Fatal("outage rewrote inventory")
 	}
 	m.client.Transport = original
-	if err := m.recoverLibraries(context.Background(), env, "person@example.test"); err != nil {
+	if err := m.recoverLibraries(context.Background(), env, testName); err != nil {
 		t.Fatal(err)
 	}
-	if microsoftRecoveryNeeded(env, "person@example.test") {
+	if microsoftRecoveryNeeded(env, testName) {
 		t.Fatal("retry not completed")
 	}
 	// A restart must not run the first pass again.
 	before, _ = os.ReadFile(filepath.Join(env.Home, "resyncs"))
-	if err := m.recoverLibraries(context.Background(), env, "person@example.test"); err != nil {
+	if err := m.recoverLibraries(context.Background(), env, testName); err != nil {
 		t.Fatal(err)
 	}
 	after, _ = os.ReadFile(filepath.Join(env.Home, "resyncs"))
@@ -188,7 +188,7 @@ func TestMicrosoftRecoveryOutagePreservesConfigAndRetries(t *testing.T) {
 // (syntheticMicrosoft fails the test on any Teams request).
 func TestMicrosoftRecoveryNeverSelectsTeams(t *testing.T) {
 	env, m := recoveryAccount(t, false)
-	config := filepath.Join(env.Home, microsoftDir, "person@example.test.conf")
+	config := filepath.Join(env.Home, microsoftDir, testName+".conf")
 	data, err := os.ReadFile(config)
 	if err != nil {
 		t.Fatal(err)
@@ -202,13 +202,13 @@ func TestMicrosoftRecoveryNeverSelectsTeams(t *testing.T) {
 	c.Start(ctx)
 	defer stopRecovery(c, cancel)
 	deadline := time.Now().Add(5 * time.Second)
-	for microsoftRecoveryNeeded(env, "person@example.test") || recoveryAttempt(c) {
+	for microsoftRecoveryNeeded(env, testName) || recoveryAttempt(c) {
 		if time.Now().After(deadline) {
 			t.Fatal("startup did not recover")
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	if roots, err := microsoftRemotes(env, "person@example.test"); err != nil || len(roots) != 2 {
+	if roots, err := microsoftRemotes(env, testName); err != nil || len(roots) != 2 {
 		t.Fatal(roots, err)
 	}
 }

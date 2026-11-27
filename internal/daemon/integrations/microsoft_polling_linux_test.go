@@ -68,7 +68,7 @@ func TestMicrosoftFirstApprovalAfterPendingAndSlowDown(t *testing.T) {
 		}
 		return nil
 	})
-	if err != nil || address != "person@example.test" || polls != 3 || codes != 1 || prompts != 0 {
+	if err != nil || address != testName || polls != 3 || codes != 1 || prompts != 0 {
 		t.Fatalf("approval result: address=%q err=%v polls=%d code requests=%d Outlook prompts=%d", address, err, polls, codes, prompts)
 	}
 	for _, secret := range []string{"access-secret", "refresh-secret", "device-secret", "FIRST1234", "ABCD12345", "person@example.test"} {
@@ -98,7 +98,7 @@ func TestMicrosoftFirstApprovalAfterPendingAndSlowDown(t *testing.T) {
 	if remotes, err := microsoftRemotes(env, address); err != nil || len(remotes) != 0 {
 		t.Fatal("a new account got cloud roots", remotes, err)
 	}
-	if state, _ := microsoftMCPState(ctx, env, address); state != StateOK {
+	if state, _, _ := microsoftMCPState(ctx, env, address); state != StateOK {
 		t.Fatal("Outlook store not ready", state)
 	}
 }

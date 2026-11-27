@@ -118,7 +118,7 @@ func earlierRoots(t *testing.T, m *microsoft, env Env, address string, level Lev
 		t.Fatal("no application for the level")
 	}
 	granted := strings.Fields(scopes)
-	l := &microsoftLogin{entry: m, env: env, app: app, address: address, token: []byte(`{"access_token":"access-secret","refresh_token":"refresh-secret","token_type":"Bearer","expiry":"2099-01-01T00:00:00Z"}`), granted: granted}
+	l := &microsoftLogin{entry: m, env: env, app: app, address: microsoftAddressOf(address), name: address, token: []byte(`{"access_token":"access-secret","refresh_token":"refresh-secret","token_type":"Bearer","expiry":"2099-01-01T00:00:00Z"}`), granted: granted}
 	if err := l.discover(context.Background(), "access-secret", microsoftGranted(granted)); err != nil {
 		t.Fatal(err)
 	}

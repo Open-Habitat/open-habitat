@@ -435,7 +435,7 @@ func microsoftRemotes(env Env, address string) ([]microsoftRemote, error) {
 // in the earlier form, each its own rclone remote with its own token, which
 // the next start migrates (microsoftMigrate).
 func microsoftReadRoots(env Env, address string) ([]microsoftRemote, []string, error) {
-	if !ValidAddress(address) {
+	if !validMicrosoftAccount(address) {
 		return nil, nil, ToolFailed
 	}
 	fd, err := openHomeDir(env.Home, false, splitPath(microsoftDir)...)
@@ -456,7 +456,10 @@ func microsoftReadRoots(env Env, address string) ([]microsoftRemote, []string, e
 	return microsoftParseRoots(data, address)
 }
 
-func microsoftParseRoots(data []byte, address string) ([]microsoftRemote, []string, error) {
+// microsoftParseRoots reads a connection's roots. Their directories are
+// named by the connection's address, which a name carries unchanged.
+func microsoftParseRoots(data []byte, key string) ([]microsoftRemote, []string, error) {
+	address := microsoftAddressOf(key)
 	var out []microsoftRemote
 	var kinds, remotes []string
 	var granted map[string]bool
@@ -556,7 +559,7 @@ func microsoftParseRoots(data []byte, address string) ([]microsoftRemote, []stri
 }
 func microsoftCommand(env Env, address string, args ...string) (Command, bool) {
 	tool, ok := env.Tool("rclone")
-	if !ok || !ValidAddress(address) {
+	if !ok || !validMicrosoftAccount(address) {
 		return Command{}, false
 	}
 	remotes, err := microsoftRemotes(env, address)

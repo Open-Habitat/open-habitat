@@ -74,7 +74,7 @@ func (c *Catalog) fileRoots() []fileRoot {
 			}
 			unix.Close(fd)
 			seen[d.Path] = true
-			roots = append(roots, fileRoot{Provider: a.entry.Provider(), Address: a.address, Service: d.Service, Directory: "~/" + d.Path})
+			roots = append(roots, fileRoot{Provider: a.entry.Provider(), Address: catalogAddress(a.entry.Provider(), a.address), Service: d.Service, Directory: "~/" + d.Path})
 		}
 	}
 	return roots

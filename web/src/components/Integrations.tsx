@@ -423,7 +423,7 @@ const failureText = new Proxy({} as Record<SyncFailure, string>, {
 // service carries the same reason; the card says it once.
 const alignmentHelp: Partial<Record<SyncFailure, (name: string) => string>> = {
   app_changed: (name) => txt.appChanged(name),
-  tenant_changed: (name) => txt.tenantChanged(name),
+  tenant_removed: (name) => txt.tenantRemoved(name),
   outside_tenant: (name) => txt.outsideTenant(name),
 };
 

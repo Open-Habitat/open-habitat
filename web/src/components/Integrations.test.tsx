@@ -215,7 +215,7 @@ describe("Integraatiot overview", () => {
   });
 
   it.each([
-    ["tenant_changed", true],
+    ["tenant_removed", false],
     ["app_changed", true],
     ["outside_tenant", false],
   ] as const)(

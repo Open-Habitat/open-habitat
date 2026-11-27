@@ -256,13 +256,13 @@ const fi = {
     remote_unreachable: "Palveluun ei saada yhteyttä, yritetään uudelleen",
     pass_failed: "Viimeisin synkronointi epäonnistui, yritetään uudelleen",
     app_changed: "Kirjaudu uudelleen",
-    tenant_changed: "Kirjaudu uudelleen",
+    tenant_removed: "Organisaatio ei ole enää käytössä",
     outside_tenant: "Ei palvelimen organisaatiossa",
   } as Record<string, string>,
   appChanged: (name: string) =>
     `Palvelimen ${name}-sovellus on vaihtunut, eikä aiempi kirjautumisesi kelpaa uudelle sovellukselle. Kirjaudu uudelleen; synkronoitavat kansiot säilyvät.`,
-  tenantChanged: (name: string) =>
-    `Palvelimen ${name}-asetuksissa on nyt organisaatio, joka ei hyväksynyt aiempaa kirjautumistasi (se on voinut vanhentua tai vaatia uuden hyväksynnän). Kirjaudu uudelleen; synkronoitavat kansiot säilyvät.`,
+  tenantRemoved: (name: string) =>
+    `Palvelimella ei ole enää ${name}-sovellusta tämän yhteyden organisaatiolle, joten uusi kirjautuminen tällä kortilla ei auta. Kysy palvelimen ylläpitäjältä. Jos organisaatio palaa, yhteys jatkuu ilman kirjautumista.`,
   outsideTenant: (name: string) =>
     `Tämä tili ei kuulu organisaatioon, jonka ${name}-sovellusta palvelin käyttää, joten uusi kirjautuminenkaan ei auta. Käytä organisaation tiliä tai kysy palvelimen ylläpitäjältä.`,
   notChosenHelp:
@@ -865,13 +865,13 @@ export const integrationsText = catalog(
       remote_unreachable: "The service cannot be reached, trying again",
       pass_failed: "The latest synchronization failed, trying again",
       app_changed: "Sign in again",
-      tenant_changed: "Sign in again",
+      tenant_removed: "Organization no longer available",
       outside_tenant: "Not in the server's organization",
     },
     appChanged: (name) =>
       `The server's ${name} app has changed, and your earlier sign-in is not valid for the new app. Sign in again; the synchronized folders stay.`,
-    tenantChanged: (name) =>
-      `The server's ${name} settings now have an organization that did not accept your earlier sign-in (it may have expired or need a new approval). Sign in again; the synchronized folders stay.`,
+    tenantRemoved: (name) =>
+      `The server no longer has a ${name} app for this connection's organization, so signing in again from this card does not help. Ask the server's administrator. If the organization comes back, the connection continues without signing in.`,
     outsideTenant: (name) =>
       `This account does not belong to the organization whose ${name} app the server uses, so signing in again does not help either. Use the organization's account or ask the server's administrator.`,
     notChosenHelp:
@@ -1231,13 +1231,16 @@ export const integrationsText = catalog(
         administration, not here.
       </>
     ),
-    failure: { outside_tenant: "Not in the server's organisation" },
+    failure: {
+      outside_tenant: "Not in the server's organisation",
+      tenant_removed: "Organisation no longer available",
+    },
     drafts: "Reads, organises and writes drafts. Cannot send.",
     mailFull: "Reads, organises, writes drafts and sends.",
     draftsWarning:
       "Agents can organise mail and write drafts, but cannot send anything. They can still pass on everything they read.",
-    tenantChanged: (name) =>
-      `The server's ${name} settings now have an organisation that did not accept your earlier sign-in (it may have expired or need a new approval). Sign in again; the synchronized folders stay.`,
+    tenantRemoved: (name) =>
+      `The server no longer has a ${name} app for this connection's organisation, so signing in again from this card does not help. Ask the server's administrator. If the organisation comes back, the connection continues without signing in.`,
     outsideTenant: (name) =>
       `This account does not belong to the organisation whose ${name} app the server uses, so signing in again does not help either. Use the organisation's account or ask the server's administrator.`,
     consentLead: "Your organisation requires an administrator's consent.",

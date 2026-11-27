@@ -42,10 +42,9 @@ func TestMicrosoftSingleGrantNativeRuntime(t *testing.T) {
 		if strings.HasSuffix(r.URL.Path, "/devicecode") {
 			codes++
 			_ = r.ParseForm()
-			for _, scope := range []string{"Files.ReadWrite.All", "Mail.ReadWrite", "Mail.Send", "Calendars.ReadWrite", "Contacts.ReadWrite"} {
-				if !strings.Contains(r.Form.Get("scope"), scope) {
-					t.Error("union scope missing", scope)
-				}
+			// One request for whatever the tenant consented to.
+			if r.Form.Get("scope") != microsoftRequest {
+				t.Error("device code scope", r.Form.Get("scope"))
 			}
 		}
 		return base.RoundTrip(r)
@@ -59,15 +58,15 @@ func TestMicrosoftSingleGrantNativeRuntime(t *testing.T) {
 		t.Fatal(err)
 	}
 	// The actual MCP library must reload the adapter's encrypted account.
-	cmd, _ := microsoftMCPCommand(env, l.app, microsoftMCPDir+"/"+address, address, l.allowed, "--list-accounts")
+	cmd, _ := microsoftMCPCommand(env, l.app, microsoftMCPDir+"/"+address, l.allowed, microsoftPin{home: l.home}, "--list-accounts")
 	data, err := env.run(context.Background(), cmd, nil)
 	var accounts struct {
 		Accounts []struct {
-			Username string `json:"username"`
+			ID string `json:"id"`
 		} `json:"accounts"`
 	}
-	if err != nil || json.Unmarshal(data, &accounts) != nil || len(accounts.Accounts) != 1 || accounts.Accounts[0].Username != address {
-		t.Fatal("native MCP reload", err)
+	if err != nil || address != testName || l.home != testHome || json.Unmarshal(data, &accounts) != nil || len(accounts.Accounts) != 1 || accounts.Accounts[0].ID != testHome {
+		t.Fatal("native MCP reload under the home-account pin", address, l.home, string(data), err)
 	}
 	// The real adapter takes the daemon's verify request: an address without
 	// a store is refused before any network, a request it rejects would not be.
@@ -76,6 +75,9 @@ func TestMicrosoftSingleGrantNativeRuntime(t *testing.T) {
 		t.Fatal("native verify protocol", state)
 	}
 	env.Config.Tools["microsoft-native"] = adapter
+	// A sign-in syncs nothing; the roots an earlier release synced carry
+	// the rclone grant refreshed below.
+	earlierRoots(t, m, env, address, LevelFull, earlierFullGrant)
 
 	// rclone refreshes from the catalog's config. Both OAuth and Graph are
 	// loopback-only fixtures; a CONNECT proxy never forwards to the Internet.
@@ -145,6 +147,8 @@ func TestMicrosoftSingleGrantNativeRuntime(t *testing.T) {
 	tok["expiry"] = "2000-01-01T00:00:00Z"
 	expired, _ := json.Marshal(tok)
 	config = strings.ReplaceAll(config, string(oldToken), string(expired))
+	// The earlier roots' token has the expiry discovery wrote.
+	config = strings.ReplaceAll(config, `"expiry":"2099-01-01T00:00:00Z"`, `"expiry":"2000-01-01T00:00:00Z"`)
 	if err := writeFileAt(fd, address+".conf", []byte(config), 0600); err != nil {
 		t.Fatal(err)
 	}

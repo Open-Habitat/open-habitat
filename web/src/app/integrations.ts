@@ -127,10 +127,10 @@ export type SyncFailure =
   | "needs_resync"
   | "remote_unreachable"
   | "pass_failed"
-  // login_expired on every service: the account's native configuration could
-  // not follow the server's current application.
+  // login_expired on every service: the connection cannot run with the
+  // server's current applications.
   | "app_changed"
-  | "tenant_changed"
+  | "tenant_removed"
   | "outside_tenant";
 export type Account = {
   provider: ProviderId;
@@ -574,8 +574,11 @@ export function needsSignIn(account: Account): boolean {
   return account.services.some(
     (s) =>
       s.state === "credentials_rejected" ||
-      // An account outside the application's tenant cannot sign in to it.
-      (s.state === "login_expired" && s.failure !== "outside_tenant") ||
+      // An account outside its organisation's directory, or of an
+      // organisation the server no longer has, cannot sign in again to it.
+      (s.state === "login_expired" &&
+        s.failure !== "outside_tenant" &&
+        s.failure !== "tenant_removed") ||
       // A critical abort is not a sign-in problem: signing in again would
       // resync, which can bring back files deleted meanwhile.
       (s.state === "sync_failed" && s.failure !== "needs_resync"),

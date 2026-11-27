@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"net/url"
 	"os"
 	"slices"
 	"strings"
@@ -17,50 +16,49 @@ import (
 	"github.com/open-habitat/open-habitat/internal/msmcp"
 )
 
-// An account's native configs name the application and tenant they were
+// A connection's native configs name the application and tenant they were
 // signed in with: rclone's remotes refresh through their own `tenant`, and
-// Pi's MCP registration starts the Outlook server with its own environment.
-// When the operator later sets another tenant for the same application (the
-// single-tenant change replaced `common`), the account follows it here, in
-// the person's own files, without a new sign-in: the refresh token is
-// redeemed at the new tenant first, and only a grant that tenant accepts is
-// written. A grant it refuses, or a sign-in made with another application,
-// leaves the configs as they are and tells the person to sign in again.
-// With an application for each account level, the current application is
-// the configured one of the account's own level: the one whose client id its
-// configs name (microsoftAccountApp).
+// Pi's entries start the Outlook server with their own environment. The
+// tenant is also part of the connection's name, and a connection is never
+// moved to another tenant: when the operator's sections no longer have an
+// application at the name's tenant, the connection reports tenant_removed
+// and nothing is redeemed anywhere else. Signing in at another tenant makes
+// another connection. Within its tenant a connection uses the application
+// its configs name (the cell of that client id); another client id there is
+// app_changed, which signing in again repairs.
 
-// The reasons an account cannot follow the operator's current application.
-// They are login_expired failures on every service of the account.
+// The reasons a connection cannot run with the operator's current
+// applications. They are login_expired failures on every service.
 const (
-	// AppChanged: the sign-in was made with another application, whose
-	// refresh token the current one cannot redeem. Signing in again does.
+	// AppChanged: the sign-in was made with another application of the
+	// tenant, whose refresh token the current one cannot redeem. Signing in
+	// again does.
 	AppChanged = "app_changed"
-	// TenantChanged: the current tenant refused the sign-in's grant (expired,
-	// revoked, consent or policy). Signing in again does.
-	TenantChanged = "tenant_changed"
+	// TenantRemoved: the operator has no application at the connection's
+	// tenant now. Signing in again from the card cannot help; adding the
+	// tenant back resumes the connection without a sign-in.
+	TenantRemoved = "tenant_removed"
 	// OutsideTenant: the account is not in the tenant's directory, so
 	// signing in again cannot help.
 	OutsideTenant = "outside_tenant"
 )
 
-// AlignEntry keeps an account's native configuration on the operator's
-// current application. The catalog calls Align with its write lock held;
-// Align calls stop before it changes a file the sync client reads.
+// AlignEntry keeps an account's native configuration in the form this
+// release writes. The catalog calls Align with its write lock held; Align
+// calls stop before it changes a file the sync client reads.
 type AlignEntry interface {
 	Entry
 	// Misaligned reports, from files only, whether the account's native
-	// configuration names another application than the operator's current
-	// one and has not already been refused for it.
+	// configuration needs Align.
 	Misaligned(env Env, address string) bool
-	// Align brings the configuration to the current application or records
-	// why it cannot. An error means it could not be decided now.
+	// Align brings the configuration to the current form. An error means
+	// it could not be done now.
 	Align(ctx context.Context, env Env, address string, stop func()) error
 }
 
 var _ AlignEntry = (*microsoft)(nil)
 
-// microsoftNative is what an account's native configs say about the app.
+// microsoftNative is what a connection's native configs say about the app.
 type microsoftNative struct {
 	clients, tenants []string // the rclone remotes'
 	token            string   // the remotes' most recently refreshed token
@@ -68,6 +66,8 @@ type microsoftNative struct {
 	mcpTenant        string
 	mcpAllowed       string   // the registration's --allowed-scopes, from its grant
 	mcpArgs          []string // a single entry's server arguments
+	// mcpPin is the identity the registration's server accepts.
+	mcpPin microsoftPin
 	// mcpReshape: the registration is current in what it allows but not
 	// in form (a single entry of an earlier release, or area entries this
 	// release would write differently), so it is rewritten as area
@@ -75,17 +75,15 @@ type microsoftNative struct {
 	mcpReshape bool
 }
 
-func (n microsoftNative) remotesStale(app MicrosoftApp) bool {
-	for _, t := range n.tenants {
-		if !strings.EqualFold(t, app.TenantID) {
-			return true
-		}
+// client is the application the configs were signed in with.
+func (n microsoftNative) client() string {
+	if n.mcpClient != "" {
+		return n.mcpClient
 	}
-	return len(n.tenants) != len(n.clients)
-}
-
-func (n microsoftNative) mcpStale(app MicrosoftApp) bool {
-	return n.mcpTenant != "" && !strings.EqualFold(n.mcpTenant, app.TenantID)
+	if len(n.clients) > 0 {
+		return n.clients[0]
+	}
+	return ""
 }
 
 // mcpOutdated is a single entry an earlier release wrote without the
@@ -104,46 +102,103 @@ func (n microsoftNative) otherApp(app MicrosoftApp) bool {
 	return n.mcpClient != "" && !strings.EqualFold(n.mcpClient, app.ClientID)
 }
 
-// microsoftReadNative reads the account's rclone config and Pi registration.
+// otherTenant: a config names another tenant than the connection's name.
+func (n microsoftNative) otherTenant(tenant string) bool {
+	if tenant == "" {
+		return false
+	}
+	for _, t := range n.tenants {
+		if !strings.EqualFold(t, tenant) {
+			return true
+		}
+	}
+	return n.mcpTenant != "" && !strings.EqualFold(n.mcpTenant, tenant)
+}
+
+// pin is the identity the connection's server and verification accept: the
+// registration's own pin, or for configs without one the address, as
+// before immutable pins.
+func (n microsoftNative) pin(key string) microsoftPin {
+	if n.mcpPin.home != "" || n.mcpPin.username != "" {
+		return n.mcpPin
+	}
+	return microsoftPin{username: microsoftAddressOf(key)}
+}
+
+// microsoftAccountApp is the configured application a connection runs with
+// and its level, from the operator's file at this moment: the cell of the
+// name's tenant whose client id its configs name. When the tenant has
+// cells but none with that client id (or the configs disagree with the
+// name), it is the tenant's broadest cell with app_changed, which a new
+// sign-in at that cell repairs. When the tenant has none, ok is false and
+// the reason is tenant_removed. A bare address from before names is matched
+// by client id across every section. ok is false with no reason when no
+// application is configured at all.
+func microsoftAccountApp(env Env, key string, n microsoftNative) (app MicrosoftApp, level Level, reason string, ok bool) {
+	apps := env.microsoftApps()
+	if len(apps) == 0 {
+		return MicrosoftApp{}, "", "", false
+	}
+	tenant := microsoftTenantOf(key)
+	client := n.client()
+	var first Level
+	for _, l := range microsoftLevels {
+		a, has := apps[l]
+		if !has || (tenant != "" && !strings.EqualFold(a.TenantID, tenant)) {
+			continue
+		}
+		if first == "" {
+			first = l
+		}
+		if client != "" && strings.EqualFold(a.ClientID, client) {
+			app, level = a, l
+			break
+		}
+	}
+	if first == "" {
+		return MicrosoftApp{}, "", TenantRemoved, false
+	}
+	if level == "" {
+		app, level = apps[first], first
+		if client != "" {
+			reason = AppChanged
+		}
+	}
+	if reason == "" && (n.otherApp(app) || n.otherTenant(tenant)) {
+		reason = AppChanged
+	}
+	return app, level, reason, true
+}
+
+// microsoftAppOf reads the connection's native configs for microsoftAccountApp.
+func microsoftAppOf(env Env, key string) (MicrosoftApp, Level, string, bool) {
+	n, err := microsoftReadNative(env, key)
+	if err != nil {
+		return MicrosoftApp{}, "", "", false
+	}
+	return microsoftAccountApp(env, key, n)
+}
+
+// microsoftReadNative reads the connection's rclone config and Pi registration.
 // Neither is a secret to the person's own daemon; nothing read here is logged.
-func microsoftReadNative(env Env, address string) (microsoftNative, error) {
+func microsoftReadNative(env Env, key string) (microsoftNative, error) {
 	var n microsoftNative
-	if !ValidAddress(address) {
+	if !validMicrosoftAccount(key) {
 		return n, ToolFailed
 	}
 	fd, err := openHomeDir(env.Home, false, splitPath(microsoftDir)...)
 	if err == nil {
-		data, err := readFileAt(fd, address+".conf", maxMicrosoftConfigRead)
+		data, err := readFileAt(fd, key+".conf", maxMicrosoftConfigRead)
 		unix.Close(fd)
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
 			return n, err
 		}
-		var newest time.Time
-		for _, line := range strings.Split(string(data), "\n") {
-			key, value, ok := strings.Cut(line, "=")
-			if !ok {
-				continue
-			}
-			value = strings.TrimSpace(value)
-			switch strings.TrimSpace(key) {
-			case "client_id":
-				n.clients = append(n.clients, value)
-			case "tenant":
-				n.tenants = append(n.tenants, value)
-			case "token":
-				var t struct {
-					Expiry time.Time `json:"expiry"`
-				}
-				if json.Unmarshal([]byte(value), &t) == nil && (n.token == "" || t.Expiry.After(newest)) {
-					n.token, newest = value, t.Expiry
-				}
-			}
-		}
+		n.clients, n.tenants, n.token = microsoftConfigApps(data)
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return n, err
 	}
 
-	registration, servers, err := microsoftServerOf(env, address)
+	registration, servers, err := microsoftServerOf(env, key)
 	if err != nil {
 		return n, err
 	}
@@ -166,6 +221,7 @@ func microsoftReadNative(env Env, address string) (microsoftNative, error) {
 		return n, ToolFailed
 	}
 	n.mcpClient, n.mcpTenant = server.Env["MS365_MCP_CLIENT_ID"], server.Env["MS365_MCP_TENANT_ID"]
+	n.mcpPin = microsoftPin{home: server.Env[microsoftHomeEnv], username: server.Env[microsoftUsernameEnv]}
 	if single {
 		n.mcpArgs = server.Args
 		if n.mcpArgs == nil {
@@ -181,60 +237,54 @@ func microsoftReadNative(env Env, address string) (microsoftNative, error) {
 	}
 	if n.mcpClient != "" && !n.mcpOutdated() {
 		app := MicrosoftApp{ClientID: n.mcpClient, TenantID: n.mcpTenant}
-		n.mcpReshape = !microsoftAreasCurrent(env, servers, registration, app, address, n.mcpAllowed)
+		n.mcpReshape = !microsoftAreasCurrent(env, servers, registration, app, key, n.mcpAllowed, n.pin(key))
 	}
 	return n, nil
 }
 
-type microsoftRefusal struct {
-	app    MicrosoftApp
-	reason string
+// microsoftConfigApps reads the remotes' client ids and tenants from an
+// rclone config, and the token rclone refreshed last.
+func microsoftConfigApps(data []byte) (clients, tenants []string, token string) {
+	var newest time.Time
+	for _, line := range strings.Split(string(data), "\n") {
+		key, value, ok := strings.Cut(line, "=")
+		if !ok {
+			continue
+		}
+		value = strings.TrimSpace(value)
+		switch strings.TrimSpace(key) {
+		case "client_id":
+			clients = append(clients, value)
+		case "tenant":
+			tenants = append(tenants, value)
+		case "token":
+			var t struct {
+				Expiry time.Time `json:"expiry"`
+			}
+			if json.Unmarshal([]byte(value), &t) == nil && (token == "" || t.Expiry.After(newest)) {
+				token, newest = value, t.Expiry
+			}
+		}
+	}
+	return clients, tenants, token
 }
 
-// refusal is the reason the account cannot follow app, if one was found.
-// It lives as long as the daemon: a restart tries again once.
-func (m *microsoft) refusal(address string, app MicrosoftApp) string {
-	m.alignMu.Lock()
-	defer m.alignMu.Unlock()
-	r, ok := m.refused[address]
-	if !ok || r.app != app {
-		return ""
+func (m *microsoft) Misaligned(env Env, key string) bool {
+	if microsoftNamePending(env, microsoftAddressOf(key)) {
+		return true
 	}
-	return r.reason
-}
-
-func (m *microsoft) refuse(address string, app MicrosoftApp, reason string) {
-	m.alignMu.Lock()
-	defer m.alignMu.Unlock()
-	if m.refused == nil {
-		m.refused = map[string]microsoftRefusal{}
-	}
-	if reason == "" {
-		delete(m.refused, address)
-	} else {
-		m.refused[address] = microsoftRefusal{app, reason}
-	}
-}
-
-func (m *microsoft) Misaligned(env Env, address string) bool {
-	n, err := microsoftReadNative(env, address)
+	n, err := microsoftReadNative(env, key)
 	if err != nil {
 		return false
 	}
 	if n.mcpReshape && env.Relay != "" {
 		return true
 	}
-	app, _, ok := microsoftAccountApp(env, n)
-	if !ok {
-		return false
-	}
-	if !(n.remotesStale(app) || n.mcpStale(app) || n.otherApp(app) || n.mcpOutdated()) {
-		return false
-	}
-	return m.refusal(address, app) == ""
+	_, _, reason, ok := microsoftAccountApp(env, key, n)
+	return ok && reason == "" && n.mcpOutdated()
 }
 
-func (m *microsoft) Align(ctx context.Context, env Env, address string, stop func()) error {
+func (m *microsoft) Align(ctx context.Context, env Env, key string, stop func()) error {
 	// A native first pass can hold the account's tools for hours; the next
 	// check tries again rather than waiting behind it.
 	if !m.native.TryLock() {
@@ -246,13 +296,21 @@ func (m *microsoft) Align(ctx context.Context, env Env, address string, stop fun
 		return ServerUnreachable
 	}
 	defer resume()
+	// A connection of the form before names gets its name first, a step of
+	// its own: the catalog lists it under the new name afterwards.
+	if address := microsoftAddressOf(key); microsoftNamePending(env, address) {
+		// rclone reads the config and the listings that move.
+		stop()
+		_, err := microsoftMigrateName(ctx, env, address)
+		return err
+	}
 	// A registration of an earlier form (one entry, under whichever name)
 	// becomes the five area entries first, keeping its own native
 	// environment: no sign-in, nothing else changes. It is a step of its
 	// own: the catalog rewrites the skill after a successful Align, so a
 	// later failure here must not leave the skill naming entries that do
 	// not exist. Anything else misaligned follows at the next check.
-	n, err := microsoftReadNative(env, address)
+	n, err := microsoftReadNative(env, key)
 	if err != nil {
 		return err
 	}
@@ -261,181 +319,44 @@ func (m *microsoft) Align(ctx context.Context, env Env, address string, stop fun
 		if allowed == "" {
 			allowed = microsoftMCPScopes
 		}
-		return microsoftRegister(ctx, env, MicrosoftApp{ClientID: n.mcpClient, TenantID: n.mcpTenant}, address, allowed)
+		return microsoftRegister(ctx, env, MicrosoftApp{ClientID: n.mcpClient, TenantID: n.mcpTenant}, key, allowed, n.pin(key))
 	}
-	app, _, ok := microsoftAccountApp(env, n)
-	if !ok {
+	app, _, reason, ok := microsoftAccountApp(env, key, n)
+	if !ok || reason != "" || !n.mcpOutdated() {
+		// A connection that cannot run is shown so (alignedView); nothing
+		// here may move it to another application or tenant.
 		return nil
 	}
-	if n.otherApp(app) {
-		m.refuse(address, app, AppChanged)
-		return nil
+	// An earlier release's registration also leaves out files, so the
+	// tenant's current grant decides which tools it now offers; a refused
+	// grant keeps the Outlook scopes until the next sign-in.
+	allowed := microsoftAllowed(microsoftGranted(strings.Fields(n.mcpAllowed)))
+	if n.mcpAllowed == "" {
+		allowed = microsoftMCPScopes
 	}
-	if n.remotesStale(app) {
-		reason, err := m.redeemAtTenant(ctx, env, app, address, n.token, stop)
-		if err != nil {
-			return err
+	switch state, scopes := microsoftVerify(ctx, env, key, false); state {
+	case "ok":
+		if len(scopes) > 0 {
+			allowed = microsoftAllowed(microsoftGranted(scopes))
 		}
-		if reason != "" {
-			m.refuse(address, app, reason)
-			return nil
-		}
+	case "refused", "outside_tenant":
+	default:
+		return ServerUnreachable
 	}
-	if stale, outdated := n.mcpStale(app), n.mcpOutdated(); stale || outdated {
-		// The registration keeps the scopes its sign-in's grant gave it.
-		allowed := microsoftAllowed(microsoftGranted(strings.Fields(n.mcpAllowed)))
-		if n.mcpAllowed == "" {
-			allowed = microsoftMCPScopes
-		}
-		// The remotes' grant, from the same sign-in as MSAL's, now works at
-		// the tenant: the tenant accepts this person. Without remotes, MSAL's
-		// own grant is asked through the tenant; an outage is asked again.
-		// An earlier release's registration also leaves out files, so the
-		// tenant's current grant decides which tools it now offers; a refused
-		// grant then keeps the Outlook scopes until the next sign-in.
-		if (stale && len(n.clients) == 0) || outdated {
-			// Discover first: these obsolete tool scopes are what we are repairing.
-			switch state, scopes := microsoftVerify(ctx, env, address, false); state {
-			case "ok":
-				if outdated && len(scopes) > 0 {
-					allowed = microsoftAllowed(microsoftGranted(scopes))
-				}
-			case "refused", "outside_tenant":
-				if stale && len(n.clients) == 0 {
-					m.refuse(address, app, map[string]string{"refused": TenantChanged, "outside_tenant": OutsideTenant}[state])
-					return nil
-				}
-			default:
-				// A tenant move the remotes' grant already proved does not
-				// wait for the file scopes; it keeps the Outlook ones.
-				if !stale || len(n.clients) == 0 {
-					return ServerUnreachable
-				}
-			}
-		}
-		if err := microsoftRegister(ctx, env, app, address, allowed); err != nil {
-			return err
-		}
-	}
-	m.refuse(address, app, "")
-	return nil
+	return microsoftRegister(ctx, env, app, key, allowed, n.pin(key))
 }
 
-// redeemAtTenant refreshes the remotes' newest grant at the current tenant
-// and, when the tenant accepts it, stops the sync client and writes the
-// tenant and the refreshed token into every remote. It returns the refusal
-// reason, or an error when the tenant gave no answer about the grant.
-func (m *microsoft) redeemAtTenant(ctx context.Context, env Env, app MicrosoftApp, address, stored string, stop func()) (string, error) {
-	var old struct {
-		Refresh string `json:"refresh_token"`
-	}
-	if json.Unmarshal([]byte(stored), &old) != nil || old.Refresh == "" {
-		return TenantChanged, nil
-	}
-	var token struct {
-		Access  string `json:"access_token"`
-		Refresh string `json:"refresh_token"`
-		Expires int    `json:"expires_in"`
-		Error   string `json:"error"`
-		Codes   []int  `json:"error_codes"`
-	}
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	if err := m.request(ctx, microsoftAuthority(app)+"token", url.Values{"client_id": {app.ClientID}, "grant_type": {"refresh_token"}, "refresh_token": {old.Refresh}, "scope": {microsoftRequest}}, "", &token); err != nil {
-		return "", err
-	}
-	if token.Error != "" {
-		for _, c := range token.Codes {
-			// The user is not in the tenant's directory (50020, 50034) or
-			// must first be invited into it as a guest (90072).
-			if c == 50020 || c == 50034 || c == 90072 {
-				return OutsideTenant, nil
-			}
-		}
-		switch token.Error {
-		case "invalid_grant", "interaction_required", "consent_required", "invalid_client", "unauthorized_client", "access_denied":
-			return TenantChanged, nil
-		}
-		// temporarily_unavailable and the like decide nothing.
-		return "", ServerUnreachable
-	}
-	if token.Access == "" || token.Expires <= 0 || token.Expires > 86400 {
-		return "", ToolFailed
-	}
-	if token.Refresh == "" {
-		token.Refresh = old.Refresh
-	}
-	fresh, _ := json.Marshal(map[string]any{"access_token": token.Access, "refresh_token": token.Refresh, "token_type": "Bearer", "expiry": time.Now().Add(time.Duration(token.Expires) * time.Second).UTC().Format(time.RFC3339)})
-
-	// rclone writes its refreshed token back into this file; a running
-	// client must not save its old tenant's view over the new one.
-	stop()
-
-	fd, err := openHomeDir(env.Home, false, splitPath(microsoftDir)...)
+// alignedView shows a connection that cannot run with the operator's
+// current applications as needing a new sign-in, with the reason, on every
+// service. It is read from the files and the operator's file each time, so
+// a section added back resumes the connection at the next check.
+func (m *microsoft) alignedView(env Env, key string, services []Service) {
+	n, err := microsoftReadNative(env, key)
 	if err != nil {
-		return "", err
-	}
-	defer unix.Close(fd)
-	data, err := readFileAt(fd, address+".conf", maxMicrosoftConfigRead)
-	if err != nil {
-		return "", err
-	}
-	// A section runs to the next header; blank lines inside it are rclone's
-	// to allow. A missing tenant goes after the section's last key, in the
-	// remotes that sign in (type onedrive), never in a root's alias.
-	lines := strings.Split(string(data), "\n")
-	out := make([]string, 0, len(lines)+4)
-	inRemote, signsIn, hasTenant, last := false, false, false, 0
-	endRemote := func() {
-		if inRemote && signsIn && !hasTenant {
-			out = append(out[:last], append([]string{"tenant = " + app.TenantID}, out[last:]...)...)
-		}
-	}
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, "[") && strings.HasSuffix(trimmed, "]") {
-			endRemote()
-			inRemote, signsIn, hasTenant = true, false, false
-			out = append(out, line)
-			last = len(out)
-			continue
-		}
-		key, value, ok := strings.Cut(line, "=")
-		switch k := strings.TrimSpace(key); {
-		case ok && inRemote && k == "type":
-			signsIn = strings.TrimSpace(value) == "onedrive"
-		case ok && inRemote && k == "tenant":
-			line, hasTenant = "tenant = "+app.TenantID, true
-		case ok && inRemote && k == "token":
-			line = "token = " + string(fresh)
-		}
-		out = append(out, line)
-		if inRemote && trimmed != "" {
-			last = len(out)
-		}
-	}
-	endRemote()
-	if err := writeFileAt(fd, address+".conf", []byte(strings.Join(out, "\n")), 0600); err != nil {
-		return "", err
-	}
-	return "", nil
-}
-
-// alignedView shows a refused account as needing a new sign-in, with the
-// reason, on every service.
-func (m *microsoft) alignedView(env Env, address string, services []Service) {
-	app, _, ok := microsoftAppOf(env, address)
-	if !ok {
 		return
 	}
-	reason := m.refusal(address, app)
+	_, _, reason, _ := microsoftAccountApp(env, key, n)
 	if reason == "" {
-		return
-	}
-	n, err := microsoftReadNative(env, address)
-	if err != nil || !(n.remotesStale(app) || n.mcpStale(app) || n.otherApp(app)) {
-		// A new sign-in wrote the current application.
-		m.refuse(address, app, "")
 		return
 	}
 	for i := range services {

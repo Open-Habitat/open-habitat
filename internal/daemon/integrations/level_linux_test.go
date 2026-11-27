@@ -329,7 +329,7 @@ func TestMicrosoftReadLevelIsItsApplicationAndMirrors(t *testing.T) {
 	if err := m.testChoose(context.Background(), env, address, []string{"onedrive"}); err != nil {
 		t.Fatal(err)
 	}
-	if mirrors, _ := os.ReadFile(filepath.Join(env.Home, "mirrors")); !strings.HasPrefix(string(mirrors), "onedrive: "+filepath.Join(env.Home, "cloud/onedrive", address)) {
+	if mirrors, _ := os.ReadFile(filepath.Join(env.Home, "mirrors")); !strings.HasPrefix(string(mirrors), "onedrive: "+filepath.Join(env.Home, "cloud/onedrive", microsoftAddressOf(address))) {
 		t.Fatalf("%q", mirrors)
 	}
 	if cmd, ok := m.SyncCommand(env, address); !ok || strings.Contains(strings.Join(cmd.Args, " "), "'bisync'") {

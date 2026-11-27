@@ -15,7 +15,7 @@ func TestMicrosoftRecoveryPendingSelectionSurvivesRestart(t *testing.T) {
 	if err := os.WriteFile(fail, nil, 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := m.recoverLibraries(context.Background(), env, "person@example.test"); err == nil {
+	if err := m.recoverLibraries(context.Background(), env, testName); err == nil {
 		t.Fatal("expected failed first pass")
 	}
 	if err := os.Remove(fail); err != nil {
@@ -24,15 +24,15 @@ func TestMicrosoftRecoveryPendingSelectionSurvivesRestart(t *testing.T) {
 	// A fresh entry has no memory of the inferred choice. Only its native
 	// config can carry the pending root across publication/first-pass failure.
 	fresh := syntheticMicrosoft(t, "person@example.test", "")
-	if err := fresh.recoverLibraries(context.Background(), env, "person@example.test"); err != nil {
+	if err := fresh.recoverLibraries(context.Background(), env, testName); err != nil {
 		t.Fatal(err)
 	}
-	roots, err := microsoftRemotes(env, "person@example.test")
+	roots, err := microsoftRemotes(env, testName)
 	if err != nil || len(roots) != 2 {
 		t.Fatal(roots, err)
 	}
 	for _, r := range roots {
-		if !microsoftReady(env, "person@example.test", r) {
+		if !microsoftReady(env, testName, r) {
 			t.Fatal("lost pending library", r.Name)
 		}
 	}

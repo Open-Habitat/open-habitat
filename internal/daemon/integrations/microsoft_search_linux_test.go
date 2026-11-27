@@ -150,7 +150,7 @@ func TestMicrosoftSearchSkill(t *testing.T) {
 // the tenant's current grant; an outage leaves it to the next check, and a
 // refused grant keeps its Outlook scopes until the next sign-in.
 func TestMicrosoftOutdatedRegistrationAligns(t *testing.T) {
-	const address = "person@example.test"
+	const address = testName
 	outlook := "User.Read Mail.ReadWrite Mail.Send Calendars.ReadWrite Contacts.ReadWrite"
 	for _, tc := range []struct {
 		name, reply, allowed, tenant string
@@ -160,9 +160,6 @@ func TestMicrosoftOutdatedRegistrationAligns(t *testing.T) {
 		{"read files", `{"state":"ok","scopes":["User.Read","Mail.Read","Files.Read.All","Sites.Read.All"]}`, "User.Read Mail.Read Files.Read.All Sites.Read.All", testTenant, nil},
 		{"refused", `{"state":"refused"}`, outlook, testTenant, nil},
 		{"unreachable", `{"state":"unreachable"}`, "", testTenant, ServerUnreachable},
-		// On an earlier tenant too, the move and the file scopes land together.
-		{"earlier tenant", `{"state":"ok","scopes":["User.Read","Mail.Read","Files.Read.All","Sites.Read.All"]}`, "User.Read Mail.Read Files.Read.All Sites.Read.All", "common", nil},
-		{"earlier tenant unreachable", `{"state":"unreachable"}`, "", "common", ServerUnreachable}, // no remotes prove the tenant
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			env := microsoftEnv(t)
@@ -205,7 +202,7 @@ func TestMicrosoftOutdatedRegistrationAligns(t *testing.T) {
 	if n, err := microsoftReadNative(env, address); err != nil || n.mcpOutdated() || !n.mcpReshape {
 		t.Fatalf("current single entry: %+v %v", n, err)
 	}
-	if err := microsoftRegister(context.Background(), env, *env.Config.Microsoft, address, outlook+" Files.Read.All"); err != nil {
+	if err := microsoftRegister(context.Background(), env, *env.Config.Microsoft, address, outlook+" Files.Read.All", microsoftPin{username: microsoftAddressOf(address)}); err != nil {
 		t.Fatal(err)
 	}
 	if (&microsoft{}).Misaligned(env, address) {

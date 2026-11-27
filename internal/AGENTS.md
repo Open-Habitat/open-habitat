@@ -525,6 +525,21 @@ Identity and authority:
   `~/.local/state/open-habitat/sync-at-boot` exists exactly
   while the person has a syncing account; it is the one thing the root broker
   may look at in a home, and only for whether it exists.
+- A Microsoft connection is a user in one organisation. Its name is
+  `<address>~<tenant GUID>`, lowercase and one path segment, and every store,
+  Pi entry's `--account`, the daemon's Microsoft endpoint and the catalog key
+  it by that name; `~` is outside the address alphabet, so a name and an
+  address cannot imitate each other. The address is only a label: who signed
+  in is decided by Microsoft's immutable identifiers (MSAL's account in the
+  chosen tenant, its tenant-local id equal to Graph `/me`'s `id`, and the
+  `homeAccountId` pinned in the connection's entries), never by comparing a
+  user name, UPN or mail, and one cache holds one account. Every authority a
+  sign-in, refresh or verification uses is `login.microsoftonline.com/<tenant
+  GUID>`; `common`, `organizations`, `consumers` and domain names are never
+  accepted. A connection is never moved to another tenant: when the operator
+  has no application at its tenant it reports `tenant_removed`, its tools stop
+  and nothing is redeemed anywhere else, and a sign-in at another tenant makes
+  another connection.
 - Host apply owns only the `tools` section of
   `/opt/open-habitat/integrations.json`, derived from the pinned integrations
   profile. The application sections beside it (Google, Microsoft, Dropbox)

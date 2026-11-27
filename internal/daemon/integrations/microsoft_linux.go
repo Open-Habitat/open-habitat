@@ -5,6 +5,7 @@ package integrations
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,6 +15,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -68,37 +70,6 @@ var microsoftLevelScopes = map[Level]string{
 	LevelNoSend: "openid profile offline_access User.Read Files.ReadWrite.All Sites.ReadWrite.All Mail.ReadWrite Calendars.ReadWrite Contacts.ReadWrite " + microsoftTeamsScopes,
 	LevelDrafts: "openid profile offline_access User.Read Files.Read.All Sites.Read.All Mail.ReadWrite Calendars.Read Contacts.Read " + microsoftTeamsScopes,
 	LevelRead:   "openid profile offline_access User.Read Files.Read.All Sites.Read.All Mail.Read Calendars.Read Contacts.Read " + microsoftTeamsScopes,
-}
-
-// microsoftAccountApp is the configured application an account's native
-// configs were signed in with, and its level. When none of them is, it is
-// the broadest configured one, which Align then reports as app_changed.
-func microsoftAccountApp(env Env, n microsoftNative) (MicrosoftApp, Level, bool) {
-	apps := env.microsoftApps()
-	client := n.mcpClient
-	if client == "" && len(n.clients) > 0 {
-		client = n.clients[0]
-	}
-	for _, l := range microsoftLevels {
-		if a, ok := apps[l]; ok && client != "" && strings.EqualFold(a.ClientID, client) {
-			return a, l, true
-		}
-	}
-	for _, l := range microsoftLevels {
-		if a, ok := apps[l]; ok {
-			return a, l, true
-		}
-	}
-	return MicrosoftApp{}, "", false
-}
-
-// microsoftAppOf reads the account's native configs for microsoftAccountApp.
-func microsoftAppOf(env Env, address string) (MicrosoftApp, Level, bool) {
-	n, err := microsoftReadNative(env, address)
-	if err != nil {
-		return MicrosoftApp{}, "", false
-	}
-	return microsoftAccountApp(env, n)
 }
 
 const microsoftDir = ".config/rclone/open-habitat-microsoft"
@@ -221,12 +192,9 @@ type microsoft struct {
 	// catalog starts serving it.
 	muxMu sync.Mutex
 	mux   *msmcp.Server
-
-	alignMu sync.Mutex
-	refused map[string]microsoftRefusal // by address; see Align
 }
 
-// release makes the shared Microsoft process let go of a removed account.
+// release makes the shared Microsoft process let go of a removed connection.
 func (m *microsoft) release(address string) {
 	m.muxMu.Lock()
 	mux := m.mux
@@ -277,6 +245,11 @@ func (*microsoft) Tools() []string {
 }
 func (m *microsoft) ToolsInstalled(env Env) bool { return MissingTools(m, env) == nil }
 func (*microsoft) AppConfigured(env Env) bool    { return len(env.microsoftApps()) > 0 }
+
+// Accounts lists the connections by name. A bare address is a store from
+// before names whose migration has not run or could not read its tenant;
+// beside a named connection of the same address it is that connection's
+// leftover, removed with it, and not listed.
 func (*microsoft) Accounts(env Env) ([]string, error) {
 	// The native stores are a union: an interrupted commit or manual cleanup
 	// of one tool must leave the account visible for repair/removal.
@@ -288,7 +261,7 @@ func (*microsoft) Accounts(env Env) ([]string, error) {
 	if fd >= 0 {
 		defer unix.Close(fd)
 		for _, n := range names {
-			if a, ok := strings.CutSuffix(n, ".conf"); ok && ValidAddress(a) {
+			if a, ok := strings.CutSuffix(n, ".conf"); ok && validMicrosoftAccount(a) {
 				if _, err := readFileAt(fd, n, maxMicrosoftConfigRead); err != nil {
 					return nil, err
 				}
@@ -297,9 +270,9 @@ func (*microsoft) Accounts(env Env) ([]string, error) {
 		}
 	}
 
-	// Pending and rollback stores keep the account as their directory name.
-	// A daemon interruption never hides an authorized native cache behind a
-	// random name that explicit account removal cannot find.
+	// Pending and rollback stores keep the connection's name as their
+	// directory name. A daemon interruption never hides an authorized native
+	// cache behind a random name that explicit removal cannot find.
 	for _, store := range []string{microsoftMCPDir, microsoftMCPDir + "/.pending", microsoftMCPDir + "/.previous"} {
 		names, mcp, err := listHomeDir(env.Home, store)
 		if err != nil {
@@ -309,7 +282,7 @@ func (*microsoft) Accounts(env Env) ([]string, error) {
 			continue
 		}
 		for _, a := range names {
-			if !ValidAddress(a) {
+			if !validMicrosoftAccount(a) {
 				continue
 			}
 			dir, err := openHomeDir(env.Home, false, splitPath(store+"/"+a)...)
@@ -334,25 +307,36 @@ func (*microsoft) Accounts(env Env) ([]string, error) {
 		unix.Close(mcp)
 	}
 
+	named := map[string]bool{}
+	for a := range accounts {
+		if validMicrosoftName(a) {
+			named[microsoftAddressOf(a)] = true
+		}
+	}
 	var out []string
 	for a := range accounts {
+		if ValidAddress(a) && named[a] {
+			continue
+		}
 		out = append(out, a)
 	}
 	sort.Strings(out)
 	return out, nil
 }
 
-func microsoftMCPCommand(env Env, app MicrosoftApp, rel, address, allowed string, args ...string) (Command, bool) {
+func microsoftMCPCommand(env Env, app MicrosoftApp, rel, allowed string, pin microsoftPin, args ...string) (Command, bool) {
 	tool, ok := env.Tool("ms-365-mcp-server")
-	if !ok {
+	if !ok || !pin.valid() {
 		return Command{}, false
 	}
 	c := Command{Path: tool, Args: append(microsoftMCPArgs(allowed), args...), Env: []string{
 		"MS365_MCP_CLIENT_ID=" + app.ClientID, "MS365_MCP_TENANT_ID=" + app.TenantID,
 		"MS365_MCP_USE_KEYTAR=false", "MS365_MCP_TOKEN_CACHE_PATH=" + filepath.Join(env.Home, rel, ".token-cache.json"),
 		"MS365_MCP_SELECTED_ACCOUNT_PATH=" + filepath.Join(env.Home, rel, ".selected-account.json"),
-		"MS365_MCP_EXPECTED_USERNAME=" + address,
 	}}
+	for k, v := range pin.env() {
+		c.Env = append(c.Env, k+"="+v)
+	}
 	return c, true
 }
 
@@ -527,18 +511,24 @@ type microsoftLogin struct {
 	siteLookups []string
 	// restart are the roots whose sync this sign-in turned to the other
 	// direction (Commit); their first pass in the new direction follows.
-	restart          []string
-	entry            *microsoft
-	env              Env
-	app              MicrosoftApp
-	level            Level
-	expected         string
-	device           string
-	prompt           Prompt
-	interval         time.Duration
-	token            []byte
-	config           []byte
-	address, staging string
+	restart []string
+	entry   *microsoft
+	env     Env
+	app     MicrosoftApp
+	level   Level
+	// expected is the connection a renewal signs in again (a name, or a
+	// bare address from before names), and pin the identity it must be.
+	expected string
+	pin      microsoftPin
+	device   string
+	prompt   Prompt
+	interval time.Duration
+	token    []byte
+	config   []byte
+	// address is the connection's label, name its name, and home the
+	// homeAccountId MSAL recorded for the sign-in, its new pin.
+	address, name, home string
+	staging             string
 	// allowed is the Outlook server's --allowed-scopes for this grant.
 	allowed string
 	// granted is the token's Graph permissions, kept with each cloud root.
@@ -549,18 +539,49 @@ func (m *microsoft) StartLogin(ctx context.Context, env Env, address string) (Lo
 	return m.StartLevelLogin(ctx, env, address, "")
 }
 
-// StartLevelLogin signs in with the level's application. A renewal without
-// a level keeps the application the account was signed in with.
-func (m *microsoft) StartLevelLogin(ctx context.Context, env Env, address string, level Level) (Login, error) {
+// microsoftCell is the operator's application of the tenant at the level.
+func microsoftCell(env Env, tenant string, level Level) (MicrosoftApp, bool) {
+	app, ok := env.microsoftApps()[level]
+	return app, ok && strings.EqualFold(app.TenantID, tenant)
+}
+
+// StartLevelLogin signs in with the level's application. A renewal keeps
+// the connection's organisation: its sign-in goes to the name's tenant, at
+// the level the connection was signed in with when none is given, and is
+// refused when the operator has no application there. A bare address from
+// before names whose tenant could not be read signs in like a new
+// connection and is replaced by it.
+func (m *microsoft) StartLevelLogin(ctx context.Context, env Env, key string, level Level) (Login, error) {
 	if !m.Available(env) {
 		return nil, ToolFailed
 	}
-	if level == "" && address != "" {
-		_, level, _ = microsoftAppOf(env, address)
-	} else if level == "" {
-		level = firstLevel(m.Levels(env))
+	var app MicrosoftApp
+	var pin microsoftPin
+	ok := false
+	if key != "" {
+		if !validMicrosoftAccount(key) {
+			return nil, ToolFailed
+		}
+		n, err := microsoftReadNative(env, key)
+		if err != nil {
+			return nil, err
+		}
+		_, own, _, found := microsoftAccountApp(env, key, n)
+		if level == "" && found {
+			level = own
+		}
+		pin = n.pin(key)
+		if tenant := microsoftTenantOf(key); tenant != "" {
+			app, ok = microsoftCell(env, tenant, level)
+		} else {
+			app, ok = env.microsoftApps()[level]
+		}
+	} else {
+		if level == "" {
+			level = firstLevel(m.Levels(env))
+		}
+		app, ok = env.microsoftApps()[level]
 	}
-	app, ok := env.microsoftApps()[level]
 	if !ok {
 		return nil, ToolFailed
 	}
@@ -592,7 +613,7 @@ func (m *microsoft) StartLevelLogin(ctx context.Context, env Env, address string
 	if !validPrompt(DeviceCode, p) || (d.URI != "https://microsoft.com/devicelogin" && d.URI != "https://login.microsoftonline.com/common/oauth2/deviceauth" && d.URI != "https://login.microsoft.com/device") {
 		return nil, ToolFailed
 	}
-	return &microsoftLogin{started: time.Now(), entry: m, env: env, app: app, level: level, expected: address, device: d.DeviceCode, prompt: p, interval: time.Duration(d.Interval) * time.Second}, nil
+	return &microsoftLogin{started: time.Now(), entry: m, env: env, app: app, level: level, expected: key, pin: pin, device: d.DeviceCode, prompt: p, interval: time.Duration(d.Interval) * time.Second}, nil
 }
 
 // transition emits only fixed vocabulary and counters, never provider output.
@@ -630,6 +651,7 @@ func (l *microsoftLogin) WaitWithPrompt(ctx context.Context, show func(Prompt) e
 	var token struct {
 		Access  string `json:"access_token"`
 		Refresh string `json:"refresh_token"`
+		IDToken string `json:"id_token"`
 		Expires int    `json:"expires_in"`
 		Scope   string `json:"scope"`
 		Error   string `json:"error"`
@@ -694,23 +716,69 @@ func (l *microsoftLogin) WaitWithPrompt(ctx context.Context, show func(Prompt) e
 	l.transition("prompt_replaced", pending, slow)
 	phase = "graph_identity"
 	var me struct {
+		ID   string `json:"id"`
 		Mail string `json:"mail"`
 		UPN  string `json:"userPrincipalName"`
 	}
-	if err := l.entry.request(ctx, "https://graph.microsoft.com/v1.0/me?$select=mail,userPrincipalName", nil, token.Access, &me); err != nil {
+	if err := l.entry.request(ctx, "https://graph.microsoft.com/v1.0/me?$select=id,mail,userPrincipalName", nil, token.Access, &me); err != nil {
 		return "", err
 	}
+	if !microsoftObjectID.MatchString(me.ID) {
+		return "", ToolFailed
+	}
+	// The address is the connection's label, never who signed in: the UPN
+	// when it is address-shaped (a guest's #EXT# UPN is not), then the mail
+	// address, then the id token's preferred_username, which is MSAL's
+	// username.
 	address := strings.ToLower(me.UPN)
 	if !ValidAddress(address) {
 		address = strings.ToLower(me.Mail)
 	}
 	if !ValidAddress(address) {
+		address = microsoftPreferredUsername(token.IDToken)
+	}
+	if !ValidAddress(address) {
 		return "", ToolFailed
 	}
-	if l.expected != "" && l.expected != address {
-		return "", AccountMismatch
+	tenant := strings.ToLower(l.app.TenantID)
+	name := microsoftName(address, tenant)
+	renewal := l.expected != ""
+	if validMicrosoftName(l.expected) {
+		// A renewal keeps the connection's first label; the pin decides.
+		name = l.expected
 	}
-	l.address = address
+	if name == "" || microsoftTenantOf(name) != tenant {
+		return "", ToolFailed
+	}
+	if microsoftNamePending(l.env, address) {
+		// The connection of this address from before names is renamed by
+		// the next check; a sign-in beside it would leave two.
+		return "", ToolFailed
+	}
+	pin := l.pin
+	if !renewal {
+		// The browser addresses a connection by its address until it can
+		// name the organisation, so one address has one connection here.
+		accounts, err := l.entry.Accounts(l.env)
+		if err != nil {
+			return "", err
+		}
+		for _, a := range accounts {
+			if a != name && validMicrosoftName(a) && microsoftAddressOf(a) == address {
+				return "", AlreadyConnected
+			}
+		}
+		// A new sign-in to a connection that is already here may only be
+		// the same Microsoft account.
+		if slices.Contains(accounts, name) {
+			n, err := microsoftReadNative(l.env, name)
+			if err != nil {
+				return "", err
+			}
+			pin = n.pin(name)
+		}
+	}
+	l.address, l.name = address, name
 	l.token, _ = json.Marshal(map[string]any{"access_token": token.Access, "refresh_token": token.Refresh, "token_type": "Bearer", "expiry": time.Now().Add(time.Duration(token.Expires) * time.Second).UTC().Format(time.RFC3339)})
 	// Agents search and fetch files through the Outlook server's file tools,
 	// so a sign-in neither lists libraries nor offers a choice of folders
@@ -721,22 +789,23 @@ func (l *microsoftLogin) WaitWithPrompt(ctx context.Context, show func(Prompt) e
 	// Only stdin carries the refresh token. Existing published stores are untouched
 	// until Commit's replacement/rollback protocol succeeds.
 	phase = "outlook_login"
-	l.staging = microsoftMCPDir + "/.pending/" + address
+	l.staging = microsoftMCPDir + "/.pending/" + name
 	fd, err := openHomeDir(l.env.Home, true, splitPath(l.staging)...)
 	if err != nil {
 		return "", err
 	}
 	unix.Close(fd)
-	cmd, ok := microsoftMCPCommand(l.env, l.app, l.staging, address, l.allowed)
-	if !ok {
-		return "", ToolFailed
-	}
 	adapter, ok := l.env.Tool("microsoft-native")
 	if !ok {
 		return "", ToolFailed
 	}
+	// The adapter runs with the staging cache's environment; it reads no pin.
+	cmd, ok := microsoftMCPCommand(l.env, l.app, l.staging, l.allowed, microsoftPin{username: address})
+	if !ok {
+		return "", ToolFailed
+	}
 	cmd.Path, cmd.Args = adapter, nil
-	payload, _ := json.Marshal(map[string]string{"client_id": l.app.ClientID, "tenant_id": l.app.TenantID, "address": address, "refresh_token": token.Refresh})
+	payload, _ := json.Marshal(map[string]string{"client_id": l.app.ClientID, "tenant_id": l.app.TenantID, "refresh_token": token.Refresh})
 	data, err := l.env.run(ctx, cmd, bytes.NewReader(payload))
 	if ctx.Err() != nil {
 		return "", ctx.Err()
@@ -744,6 +813,11 @@ func (l *microsoftLogin) WaitWithPrompt(ctx context.Context, show func(Prompt) e
 	var result struct {
 		Success bool   `json:"success"`
 		Reason  string `json:"reason"`
+		Account struct {
+			TenantID       string `json:"tenant_id"`
+			LocalAccountID string `json:"local_account_id"`
+			HomeAccountID  string `json:"home_account_id"`
+		} `json:"account"`
 	}
 	if json.Unmarshal(data, &result) != nil {
 		return "", ToolFailed
@@ -754,19 +828,59 @@ func (l *microsoftLogin) WaitWithPrompt(ctx context.Context, show func(Prompt) e
 	if err != nil || !result.Success {
 		return "", ToolFailed
 	}
+	// Who signed in is decided by immutable identifiers from the tenant's own
+	// answers: MSAL's account is in the chosen tenant and is the object
+	// Graph /me named for the same token.
+	got := result.Account
+	home := microsoftPin{home: got.HomeAccountID}
+	if !strings.EqualFold(got.TenantID, tenant) || !strings.EqualFold(got.LocalAccountID, me.ID) || !home.valid() {
+		return "", AccountMismatch
+	}
+	if (pin.home != "" && pin.home != got.HomeAccountID) || (pin.home == "" && pin.username != "" && pin.username != address) {
+		if renewal {
+			return "", AccountMismatch
+		}
+		return "", AlreadyConnected
+	}
+	l.home = got.HomeAccountID
 	phase = "outlook_identity"
-	cmd, _ = microsoftMCPCommand(l.env, l.app, l.staging, address, l.allowed, "--list-accounts")
+	cmd, _ = microsoftMCPCommand(l.env, l.app, l.staging, l.allowed, home, "--list-accounts")
 	data, err = l.env.run(ctx, cmd, nil)
 	var accounts struct {
 		Accounts []struct {
-			Username string `json:"username"`
+			ID string `json:"id"`
 		} `json:"accounts"`
 	}
-	if err != nil || json.Unmarshal(data, &accounts) != nil || len(accounts.Accounts) != 1 || !strings.EqualFold(accounts.Accounts[0].Username, address) {
+	if err != nil || json.Unmarshal(data, &accounts) != nil || len(accounts.Accounts) != 1 || accounts.Accounts[0].ID != l.home {
 		return "", AccountMismatch
 	}
 	l.transition("native_cache_ready", pending, slow)
-	return address, nil
+	return name, nil
+}
+
+// microsoftObjectID is a directory object id as Graph returns it.
+var microsoftObjectID = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+
+// microsoftPreferredUsername is the id token's preferred_username, the name
+// MSAL records as the account's username, lowercased, or "". The token came
+// from the tenant's token endpoint over TLS in the same answer as the grant;
+// it labels the connection and decides nothing.
+func microsoftPreferredUsername(idToken string) string {
+	parts := strings.Split(idToken, ".")
+	if len(parts) != 3 || len(parts[1]) > 16<<10 {
+		return ""
+	}
+	payload, err := base64.RawURLEncoding.DecodeString(strings.TrimRight(parts[1], "="))
+	if err != nil {
+		return ""
+	}
+	var claims struct {
+		PreferredUsername string `json:"preferred_username"`
+	}
+	if json.Unmarshal(payload, &claims) != nil {
+		return ""
+	}
+	return strings.ToLower(claims.PreferredUsername)
 }
 
 func (l *microsoftLogin) Cancel() {
@@ -803,7 +917,7 @@ func (l *microsoftLogin) Commit(ctx context.Context, address string) (result err
 	l.entry.native.Lock()
 	defer l.entry.native.Unlock()
 	defer l.Cancel()
-	if address != l.address || !ValidAddress(address) || len(l.config) == 0 || l.staging == "" || ctx.Err() != nil {
+	if address != l.name || !validMicrosoftName(address) || l.home == "" || len(l.config) == 0 || l.staging == "" || ctx.Err() != nil {
 		return ToolFailed
 	}
 	fd, err := openHomeDir(l.env.Home, true, splitPath(microsoftDir)...)
@@ -974,13 +1088,18 @@ func (l *microsoftLogin) Commit(ctx context.Context, address string) (result err
 			_ = microsoftRemoveFiles(l.env, microsoftMCPDir+"/.previous/"+address)
 			_ = unix.Unlinkat(backups, address, unix.AT_REMOVEDIR)
 		}
+		// A store of the address from before names that could not be
+		// renamed is what this sign-in replaces.
+		if result == nil {
+			_ = microsoftRemoveLeftover(context.WithoutCancel(ctx), l.env, address)
+		}
 	}()
 	if err := unix.Renameat(pending, stageName, parent, address); err != nil {
 		return err
 	}
 	published = true
 
-	if err := microsoftRegister(ctx, l.env, l.app, address, l.allowed); err != nil {
+	if err := microsoftRegister(ctx, l.env, l.app, address, l.allowed, microsoftPin{home: l.home}); err != nil {
 		return err
 	}
 	if err := writeFileAt(fd, address+".conf", l.config, 0600); err != nil {
@@ -1012,7 +1131,7 @@ func microsoftMCPConfigured(env Env, address string) (bool, error) {
 func (m *microsoft) Remove(ctx context.Context, env Env, address string) error {
 	m.native.Lock()
 	defer m.native.Unlock()
-	if !ValidAddress(address) {
+	if !validMicrosoftAccount(address) {
 		return ToolFailed
 	}
 	resume, err := m.pause(ctx)
@@ -1027,6 +1146,15 @@ func (m *microsoft) Remove(ctx context.Context, env Env, address string) error {
 		return ToolFailed
 	}
 	m.release(address)
+	if err := microsoftRemoveStores(env, address); err != nil {
+		return err
+	}
+	return microsoftRemoveLeftover(ctx, env, address)
+}
+
+// microsoftRemoveStores deletes a connection's native stores: its caches,
+// its roots' listings and its rclone config. Its entries are already gone.
+func microsoftRemoveStores(env Env, address string) error {
 	for _, store := range []string{microsoftMCPDir, microsoftMCPDir + "/.pending", microsoftMCPDir + "/.previous"} {
 		if err := microsoftRemoveFiles(env, store+"/"+address); err != nil {
 			return err
@@ -1064,6 +1192,25 @@ func (m *microsoft) Remove(ctx context.Context, env Env, address string) error {
 	}
 	return err
 }
+
+// microsoftRemoveLeftover deletes what the connection's address left from
+// before names: the stores of a bare address whose tenant cannot be read
+// or is the connection's own (a migration interrupted half way). A bare
+// address that names another tenant is another connection's and stays.
+func microsoftRemoveLeftover(ctx context.Context, env Env, name string) error {
+	address, tenant, ok := microsoftSplitName(name)
+	if !ok {
+		return nil
+	}
+	if bare, _ := microsoftBareTenant(env, address); bare != "" && bare != tenant {
+		return nil
+	}
+	if err := microsoftUnregister(ctx, env, address); err != nil {
+		return err
+	}
+	return microsoftRemoveStores(env, address)
+}
+
 func (m *microsoft) Check(ctx context.Context, env Env, address string) []Service {
 	out, _ := m.CheckGrant(ctx, env, address)
 	return out
@@ -1083,16 +1230,17 @@ func (m *microsoft) CheckGrant(ctx context.Context, env Env, address string) ([]
 	go func() {
 		defer probes.Done()
 		var state ServiceState
+		var failure string
 		resume, err := m.pause(ctx)
 		if err != nil {
 			// Busy or not serving is not a response from the tenant.
 			state = StateUnknown
 		} else {
-			state, granted = microsoftMCPState(ctx, env, address)
+			state, failure, granted = microsoftMCPState(ctx, env, address)
 			resume()
 		}
 		for i := 2; i < len(out); i++ {
-			out[i].State = state
+			out[i].State, out[i].Failure = state, failure
 		}
 	}()
 	all, inventoryErr := microsoftRemotes(env, address)
@@ -1143,14 +1291,14 @@ func (m *microsoft) CheckGrant(ctx context.Context, env Env, address string) ([]
 	// file tools, so their state is that server's sign-in.
 	for i := 0; i < 2; i++ {
 		if inventoryErr == nil && !synced[i] {
-			out[i].State = out[2].State
+			out[i].State, out[i].Failure = out[2].State, out[2].Failure
 		}
 	}
 	m.alignedView(env, address, out)
 	var grant *Grant
 	if granted != nil {
 		applyAccess(microsoftRules, granted, out)
-		_, level, _ := microsoftAppOf(env, address)
+		_, level, _, _ := microsoftAppOf(env, address)
 		grant = microsoftGrantOf(granted, level)
 	}
 	// OneDrive's row ("OneDrive and SharePoint") stands for the files agents
@@ -1170,7 +1318,7 @@ func (m *microsoft) CheckGrant(ctx context.Context, env Env, address string) ([]
 	}
 	return kept, grant
 }
-func microsoftMCPState(ctx context.Context, env Env, address string) (ServiceState, map[string]bool) {
+func microsoftMCPState(ctx context.Context, env Env, address string) (ServiceState, string, map[string]bool) {
 	state, scopes := microsoftVerify(ctx, env, address, true)
 	switch state {
 	case "ok":
@@ -1179,41 +1327,52 @@ func microsoftMCPState(ctx context.Context, env Env, address string) (ServiceSta
 		if len(scopes) > 0 {
 			granted = microsoftGranted(scopes)
 		}
-		return StateOK, granted
-	case "refused", "outside_tenant":
-		return StateLoginExpired, nil
+		return StateOK, "", granted
+	case "refused":
+		return StateLoginExpired, "", nil
+	case "outside_tenant":
+		return StateLoginExpired, OutsideTenant, nil
 	case "":
-		return StateUnknown, nil
+		return StateUnknown, "", nil
 	}
-	return StateUnreachable, nil
+	return StateUnreachable, "", nil
 }
 
 // microsoftVerify asks the native adapter whether the Outlook tool's MSAL
-// grant still works at the current tenant. The pinned tool's own
+// grant still works at the connection's tenant. The pinned tool's own
 // --verify-login reports a refused grant and an outage with the same text;
 // the adapter decides from MSAL's error codes and answers ok, refused,
 // outside_tenant or unreachable, and with ok the scopes the tenant's token
-// response named. It returns "" when the app or tools are not configured.
+// response named. The adapter is given the tenant as its authority and the
+// connection's pin, by which it finds the account in the cache. It returns
+// "" when the app or tools are not configured, or the operator has no
+// application at the connection's tenant now.
 func microsoftVerify(ctx context.Context, env Env, address string, checkTools bool) (string, []string) {
-	app, _, ok := microsoftAppOf(env, address)
+	n, err := microsoftReadNative(env, address)
+	if err != nil {
+		return "unreachable", nil
+	}
+	app, _, _, ok := microsoftAccountApp(env, address, n)
 	if !ok {
 		return "", nil
 	}
-	cmd, ok := microsoftMCPCommand(env, app, microsoftMCPDir+"/"+address, address, microsoftMCPScopes)
+	pin := n.pin(address)
+	cmd, ok := microsoftMCPCommand(env, app, microsoftMCPDir+"/"+address, microsoftMCPScopes, pin)
 	adapter, found := env.Tool("microsoft-native")
 	if !ok || !found {
 		return "", nil
 	}
 	cmd.Path, cmd.Args = adapter, []string{"verify"}
-	n, err := microsoftReadNative(env, address)
-	if err != nil {
-		return "unreachable", nil
-	}
 	allowed := n.mcpAllowed
 	if allowed == "" {
 		allowed = microsoftMCPScopes
 	}
-	request := map[string]any{"client_id": app.ClientID, "tenant_id": app.TenantID, "address": address}
+	request := map[string]any{"client_id": app.ClientID, "tenant_id": app.TenantID}
+	if pin.home != "" {
+		request["home_account_id"] = pin.home
+	} else {
+		request["address"] = pin.username
+	}
 	if checkTools {
 		request["tool_options"] = map[string]any{"orgMode": true, "enabledTools": microsoftMCPTools, "allowedScopes": allowed}
 	}
@@ -1241,17 +1400,20 @@ func microsoftVerify(ctx context.Context, env Env, address string, checkTools bo
 	return "unreachable", nil
 }
 
-func (m *microsoft) Skill(env Env, address string) SkillAccount {
-	_, ready := m.SyncCommand(env, address)
+func (m *microsoft) Skill(env Env, key string) SkillAccount {
+	// Synced directories and fetched files are named by the address; the
+	// connection's own stores by its name.
+	address := microsoftAddressOf(key)
+	_, ready := m.SyncCommand(env, key)
 	var directories strings.Builder
 	mirror, syncs := false, false
-	if remotes, err := microsoftRemotes(env, address); err == nil {
+	if remotes, err := microsoftRemotes(env, key); err == nil {
 		for _, r := range remotes {
-			if !microsoftKept(env, address, r) {
+			if !microsoftKept(env, key, r) {
 				continue
 			}
 			syncs = true
-			if microsoftReady(env, address, r) {
+			if microsoftReady(env, key, r) {
 				fmt.Fprintf(&directories, "\n- `~/%s/`", r.Directory)
 			}
 			// The grant reads files only; its roots are one-way mirrors.
@@ -1266,7 +1428,7 @@ func (m *microsoft) Skill(env Env, address string) SkillAccount {
 		if mirror {
 			files = "The OneDrive folders and SharePoint libraries the person chose are one-way mirrors, because this account's access to files is read-only"
 		}
-		files += fmt.Sprintf(": OneDrive under `~/cloud/onedrive/%s/`, each library under `~/cloud/sharepoint/<organisation>/<site>/<library>/`. Only the directories listed at the end of this section are complete; anything else under those paths is not there yet. Local files that the first sync replaced or removed are kept under `~/.local/share/rclone/microsoft-backups/%s/`.", address, address)
+		files += fmt.Sprintf(": OneDrive under `~/cloud/onedrive/%s/`, each library under `~/cloud/sharepoint/<organisation>/<site>/<library>/`. Only the directories listed at the end of this section are complete; anything else under those paths is not there yet. Local files that the first sync replaced or removed are kept under `~/.local/share/rclone/microsoft-backups/%s/`.", address, key)
 		list = "\n\nSynced directories:" + directories.String()
 		if !ready {
 			list = "\n\nThe first sync has not finished, so nothing under those paths can be relied on yet."
@@ -1275,7 +1437,7 @@ func (m *microsoft) Skill(env Env, address string) SkillAccount {
 	}
 	var services []Service
 	uses, search := "Outlook mail, calendars and contacts", ""
-	if n, err := microsoftReadNative(env, address); err == nil && n.mcpAllowed != "" {
+	if n, err := microsoftReadNative(env, key); err == nil && n.mcpAllowed != "" {
 		// The Outlook server's scopes were derived from the grant at sign-in.
 		allowed := microsoftGranted(strings.Fields(n.mcpAllowed))
 		for _, id := range []string{"mail", "calendar", "contacts"} {
@@ -1287,7 +1449,7 @@ func (m *microsoft) Skill(env Env, address string) SkillAccount {
 		}
 	}
 	index := 1
-	if server, _, err := microsoftServerOf(env, address); err == nil && server.index > 0 {
+	if server, _, err := microsoftServerOf(env, key); err == nil && server.index > 0 {
 		index = server.index
 	}
 	body := microsoftAreasSkill(uses, index) + files + search + list +

@@ -1391,7 +1391,13 @@ writes only the MCP tool's native encrypted cache in an unpublished staging
 directory. rclone receives its own native token configuration. No host cache or
 credential copy is retained. Every native refresh uses the tenant as its
 authority. The MCP cache is private to that account, uses the native
-headless file-encryption backend, and is pinned by username. Pi's own
+headless file-encryption backend, and is pinned by Microsoft's immutable
+`homeAccountId`, never by a user name. Each connection's stores are named
+`<address>~<tenant ID>` (for example
+`~/.config/ms-365-mcp-server/open-habitat/<address>~<tenant ID>/`); the
+upgrade that introduced this renames earlier connections' stores in place
+at the daemon's next start, without a new sign-in, and leaves synced
+directories and fetched files where they are. Pi's own
 `~/.pi/agent/mcp.json` holds the server entry; no host connection registry exists.
 New agent conversations discover it and the generated personal-data skill;
 existing conversations may need a reload.
@@ -1510,8 +1516,12 @@ The level an account shows is read from its grant (the tenant's answer to
 each status check), never from what was chosen: an organisation that
 consented to less shows what it granted, and a grant matching no level shows
 its services one by one. An account keeps using the application its native
-configs name; if the operator replaces or removes that application the
-account asks to sign in again (`app_changed`). Read-only files (drafts and
+configs name; if the operator replaces that application with another one
+of the same tenant the account asks to sign in again (`app_changed`). A
+connection stays in the tenant it was signed in at: if no section names
+that tenant any more, its card says so (`tenant_removed`), its tools stop,
+and nothing is redeemed at the new tenant; people connect again there, and
+setting the old tenant back resumes the old connections without a sign-in. Read-only files (drafts and
 read) are a one-way mirror (`rclone sync`) of the chosen roots: local changes
 never reach Microsoft and the next pass overwrites them. A level change that
 stops a two-way sync first runs one more two-way pass with the old login; if

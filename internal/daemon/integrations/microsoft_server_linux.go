@@ -42,6 +42,33 @@ const microsoftAreaPrefix = "ms"
 // tools its grant can run, to the daemon.
 const microsoftAllowedEnv = "OH_MICROSOFT_ALLOWED_SCOPES"
 
+// The pinned server's identity pins. A registration this release writes
+// pins MSAL's immutable homeAccountId; one an earlier release wrote, or the
+// name migration carried over, keeps the username it had until its next
+// sign-in.
+const (
+	microsoftHomeEnv     = "MS365_MCP_EXPECTED_HOME_ACCOUNT_ID"
+	microsoftUsernameEnv = "MS365_MCP_EXPECTED_USERNAME"
+)
+
+// microsoftPin is the one account a connection's native cache may serve:
+// home, MSAL's homeAccountId, or for a connection signed in before
+// immutable pins, username, the address it was signed in as. Exactly one
+// is set.
+type microsoftPin struct{ home, username string }
+
+func (p microsoftPin) valid() bool {
+	return (p.home != "") != (p.username != "") && len(p.home) <= 160 && !strings.ContainsAny(p.home, "\x00\r\n")
+}
+
+// env is the pin as the pinned server reads it.
+func (p microsoftPin) env() map[string]string {
+	if p.home != "" {
+		return map[string]string{microsoftHomeEnv: p.home}
+	}
+	return map[string]string{microsoftUsernameEnv: p.username}
+}
+
 var microsoftAreaName = regexp.MustCompile(`^ms([0-9]*)-(mail|calendar|contacts|files|admin)$`)
 
 // microsoftAreaEntryName is an account's entry for one area; index 1 is
@@ -237,35 +264,38 @@ var microsoftAreaDescriptions = map[string]string{
 }
 
 // microsoftAreaEntry is one area's entry as this release writes it.
-func microsoftAreaEntry(env Env, relay string, app MicrosoftApp, address, allowed, area string) map[string]any {
-	rel := microsoftMCPDir + "/" + address
+func microsoftAreaEntry(env Env, relay string, app MicrosoftApp, key, allowed string, pin microsoftPin, area string) map[string]any {
+	rel := microsoftMCPDir + "/" + key
 	hidden := map[string]string{}
 	for _, t := range msmcp.SignIn {
 		hidden[t] = "hidden"
 	}
+	vars := map[string]string{
+		"MS365_MCP_CLIENT_ID": app.ClientID, "MS365_MCP_TENANT_ID": app.TenantID,
+		"MS365_MCP_USE_KEYTAR": "false", "MS365_MCP_TOKEN_CACHE_PATH": filepath.Join(env.Home, rel, ".token-cache.json"),
+		"MS365_MCP_SELECTED_ACCOUNT_PATH": filepath.Join(env.Home, rel, ".selected-account.json"),
+		microsoftAllowedEnv:               allowed,
+	}
+	for k, v := range pin.env() {
+		vars[k] = v
+	}
 	return map[string]any{
-		"command": relay,
-		"args":    []string{"mcp-relay", "microsoft", "--account", address, "--area", area},
-		"env": map[string]string{
-			"MS365_MCP_CLIENT_ID": app.ClientID, "MS365_MCP_TENANT_ID": app.TenantID,
-			"MS365_MCP_USE_KEYTAR": "false", "MS365_MCP_TOKEN_CACHE_PATH": filepath.Join(env.Home, rel, ".token-cache.json"),
-			"MS365_MCP_SELECTED_ACCOUNT_PATH": filepath.Join(env.Home, rel, ".selected-account.json"),
-			"MS365_MCP_EXPECTED_USERNAME":     address,
-			microsoftAllowedEnv:               allowed,
-		},
-		"description":  fmt.Sprintf(microsoftAreaDescriptions[area], address),
+		"command":      relay,
+		"args":         []string{"mcp-relay", "microsoft", "--account", key, "--area", area},
+		"env":          vars,
+		"description":  fmt.Sprintf(microsoftAreaDescriptions[area], microsoftAddressOf(key)),
 		"toolExposure": hidden,
 	}
 }
 
 // microsoftAreasCurrent says whether the account has all five area entries
 // exactly as this release writes them, and nothing of an earlier form.
-func microsoftAreasCurrent(env Env, servers map[string]json.RawMessage, s microsoftServer, app MicrosoftApp, address, allowed string) bool {
+func microsoftAreasCurrent(env Env, servers map[string]json.RawMessage, s microsoftServer, app MicrosoftApp, key, allowed string, pin microsoftPin) bool {
 	if len(s.old) > 0 || len(s.areas) != len(msmcp.Areas) || env.Relay == "" {
 		return false
 	}
 	for area, name := range s.areas {
-		want, _ := json.Marshal(microsoftAreaEntry(env, env.Relay, app, address, allowed, area))
+		want, _ := json.Marshal(microsoftAreaEntry(env, env.Relay, app, key, allowed, pin, area))
 		if !sameEntry(servers[name], want) {
 			return false
 		}
@@ -316,10 +346,10 @@ func writePiServers(ctx context.Context, env Env, kind string, root, servers map
 }
 
 // microsoftRegister writes, or replaces, the account's five area entries
-// with the current application's environment, and removes any entry of an
-// earlier form, in one atomic rewrite of mcp.json.
-func microsoftRegister(ctx context.Context, env Env, app MicrosoftApp, address, allowed string) error {
-	if env.Relay == "" || !filepath.IsAbs(env.Relay) || !ValidAddress(address) {
+// with the current application's environment and pin, and removes any entry
+// of an earlier form, in one atomic rewrite of mcp.json.
+func microsoftRegister(ctx context.Context, env Env, app MicrosoftApp, address, allowed string, pin microsoftPin) error {
+	if env.Relay == "" || !filepath.IsAbs(env.Relay) || !validMicrosoftAccount(address) || !pin.valid() {
 		return ToolFailed
 	}
 	if _, ok := env.Tool("ms-365-mcp-server"); !ok {
@@ -353,7 +383,7 @@ func microsoftRegister(ctx context.Context, env Env, app MicrosoftApp, address, 
 		delete(servers, name)
 	}
 	for _, area := range msmcp.AreaNames() {
-		servers[microsoftAreaEntryName(s.index, area)], _ = json.Marshal(microsoftAreaEntry(env, env.Relay, app, address, allowed, area))
+		servers[microsoftAreaEntryName(s.index, area)], _ = json.Marshal(microsoftAreaEntry(env, env.Relay, app, address, allowed, pin, area))
 	}
 	return writePiServers(ctx, env, "register", root, servers)
 }
@@ -380,16 +410,27 @@ func microsoftUnregister(ctx context.Context, env Env, address string) error {
 // microsoftBinding is the daemon's binding for an account: the native
 // server's command built from the account's own entries, never from what
 // a relay sends. All five entries must agree, so a hand-edited entry
-// cannot make one area run under another configuration.
-func microsoftBinding(env Env, address string) (msmcp.Binding, error) {
-	if !ValidAddress(address) {
+// cannot make one area run under another configuration, and they must name
+// the connection's own tenant, pin and an application the operator has at
+// that tenant now: a removed tenant's tools stop at the next call.
+func microsoftBinding(env Env, account string) (msmcp.Binding, error) {
+	if !validMicrosoftAccount(account) {
 		return msmcp.Binding{}, AccountMismatch
 	}
 	_, servers, err := microsoftPiServers(env)
 	if err != nil {
 		return msmcp.Binding{}, err
 	}
-	s := microsoftServerIn(env, servers, address)
+	s := microsoftServerIn(env, servers, account)
+	if len(s.areas) == 0 && ValidAddress(account) {
+		// A conversation started before its connection got its name runs
+		// a relay naming the bare address. It reaches the one connection
+		// of that address, and nothing when there are several.
+		if named := microsoftNamedOf(env, servers, account); len(named) == 1 {
+			account = named[0]
+			s = microsoftServerIn(env, servers, account)
+		}
+	}
 	if len(s.areas) == 0 {
 		return msmcp.Binding{}, AccountMismatch
 	}
@@ -407,8 +448,9 @@ func microsoftBinding(env Env, address string) (msmcp.Binding, error) {
 			return msmcp.Binding{}, ToolFailed
 		}
 	}
-	rel := microsoftMCPDir + "/" + address
-	if first["MS365_MCP_EXPECTED_USERNAME"] != address || first["MS365_MCP_TOKEN_CACHE_PATH"] != filepath.Join(env.Home, rel, ".token-cache.json") || first["MS365_MCP_SELECTED_ACCOUNT_PATH"] != filepath.Join(env.Home, rel, ".selected-account.json") {
+	rel := microsoftMCPDir + "/" + account
+	pin := microsoftPin{home: first[microsoftHomeEnv], username: first[microsoftUsernameEnv]}
+	if !pin.valid() || (pin.username != "" && pin.username != microsoftAddressOf(account)) || first["MS365_MCP_TOKEN_CACHE_PATH"] != filepath.Join(env.Home, rel, ".token-cache.json") || first["MS365_MCP_SELECTED_ACCOUNT_PATH"] != filepath.Join(env.Home, rel, ".selected-account.json") {
 		return msmcp.Binding{}, AccountMismatch
 	}
 	app := MicrosoftApp{ClientID: first["MS365_MCP_CLIENT_ID"], TenantID: first["MS365_MCP_TENANT_ID"]}
@@ -416,13 +458,89 @@ func microsoftBinding(env Env, address string) (msmcp.Binding, error) {
 	if !microsoftAllowedValid(allowed) || app.ClientID == "" || app.TenantID == "" {
 		return msmcp.Binding{}, ToolFailed
 	}
-	cmd, ok := microsoftMCPCommand(env, app, rel, address, allowed)
+	if tenant := microsoftTenantOf(account); tenant != "" && !strings.EqualFold(tenant, app.TenantID) {
+		return msmcp.Binding{}, AccountMismatch
+	}
+	if _, _, reason, ok := microsoftAccountApp(env, account, microsoftNative{mcpClient: app.ClientID, mcpTenant: app.TenantID}); !ok || reason != "" {
+		return msmcp.Binding{}, AccountMismatch
+	}
+	cmd, ok := microsoftMCPCommand(env, app, rel, allowed, pin)
 	if !ok {
 		return msmcp.Binding{}, ToolFailed
 	}
 	full := append(append([]string{"HOME=" + env.Home, "PATH=/usr/bin:/bin", "LANG=C.UTF-8"}, cmd.Env...), extraToolEnv...)
-	key, _ := json.Marshal([]any{address, cmd.Path, cmd.Args, cmd.Env})
-	return msmcp.Binding{Account: address, Key: string(key), Path: cmd.Path, Args: cmd.Args, Env: full, Dir: env.Home}, nil
+	key, _ := json.Marshal([]any{account, cmd.Path, cmd.Args, cmd.Env})
+	return msmcp.Binding{Account: account, Key: string(key), Path: cmd.Path, Args: cmd.Args, Env: full, Dir: env.Home}, nil
+}
+
+// microsoftNamedOf are the named connections with entries whose address is
+// address.
+func microsoftNamedOf(env Env, servers map[string]json.RawMessage, address string) []string {
+	prefix := filepath.Join(env.Home, microsoftMCPDir) + "/"
+	seen := map[string]bool{}
+	var out []string
+	for _, raw := range servers {
+		var e struct {
+			Env map[string]string `json:"env"`
+		}
+		if json.Unmarshal(raw, &e) != nil {
+			continue
+		}
+		rest, ok := strings.CutPrefix(e.Env["MS365_MCP_TOKEN_CACHE_PATH"], prefix)
+		key, file, _ := strings.Cut(rest, "/")
+		if !ok || file != ".token-cache.json" || !validMicrosoftName(key) || microsoftAddressOf(key) != address || seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, key)
+	}
+	slices.Sort(out)
+	return out
+}
+
+// microsoftRenameEntries points every entry of the bare address's
+// registration at the connection's name in one rewrite of mcp.json: the
+// cache paths and an area entry's --account change, nothing else does, so
+// the entries keep their names, application, grant and pin.
+func microsoftRenameEntries(ctx context.Context, env Env, address, name string) error {
+	piMCPNative.Lock()
+	defer piMCPNative.Unlock()
+	root, servers, err := microsoftPiServers(env)
+	if err != nil {
+		return err
+	}
+	s := microsoftServerIn(env, servers, address)
+	if !s.configured() {
+		return nil
+	}
+	from, to := filepath.Join(env.Home, microsoftMCPDir, address), filepath.Join(env.Home, microsoftMCPDir, name)
+	for _, entry := range s.names() {
+		var e map[string]json.RawMessage
+		if json.Unmarshal(servers[entry], &e) != nil {
+			return ToolFailed
+		}
+		var vars map[string]string
+		if json.Unmarshal(e["env"], &vars) != nil {
+			return ToolFailed
+		}
+		for _, k := range []string{"MS365_MCP_TOKEN_CACHE_PATH", "MS365_MCP_SELECTED_ACCOUNT_PATH"} {
+			if rest, ok := strings.CutPrefix(vars[k], from+"/"); ok {
+				vars[k] = to + "/" + rest
+			}
+		}
+		e["env"], _ = json.Marshal(vars)
+		var args []string
+		if raw, ok := e["args"]; ok && json.Unmarshal(raw, &args) == nil {
+			for i := range args {
+				if i > 0 && args[i-1] == "--account" && args[i] == address {
+					args[i] = name
+				}
+			}
+			e["args"], _ = json.Marshal(args)
+		}
+		servers[entry], _ = json.Marshal(e)
+	}
+	return writePiServers(ctx, env, "register", root, servers)
 }
 
 func sameEnv(a, b map[string]string) bool {

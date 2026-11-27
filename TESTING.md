@@ -867,9 +867,13 @@ files beside the adapter in that disposable profile's `payload/runtime/` (never
 into an installed runtime). Run its `bin/node microsoft-native.test.mjs` there.
 The test sets a synthetic HOME/log directory before importing the native modules.
 It exercises the pinned MCP AuthManager's encrypted-cache reload/silent refresh
-for an organisation account through its tenant, including account mismatch,
-provider refusal, transport cancellation preserving existing bytes, and refusal
-of the `common`, `organizations` and `consumers` audiences. It also runs the
+for an organisation account through its tenant, including the immutable
+identifiers import answers, an account of another tenant refused, provider
+refusal, transport cancellation preserving existing bytes, and refusal
+of the `common`, `organizations` and `consumers` audiences. A guest (home
+tenant in the `homeAccountId`, another username) imports, verifies and
+refreshes under the home-account pin, and a store holding a second account
+fails closed. It also runs the
 adapter's `verify` over the same store: a working grant, asked of the tenant
 even with a cached access token, reads `ok` and persists its rotation, tenant refusals by error code read `refused` or `outside_tenant`,
 and an outage, a 503 or a failing Graph read `unreachable`. No fixture endpoint

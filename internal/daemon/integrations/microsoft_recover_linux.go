@@ -85,8 +85,8 @@ func (m *microsoft) recoverLibraries(ctx context.Context, env Env, address strin
 		if err != nil {
 			return err
 		}
-		app, _, ok := microsoftAccountApp(env, n)
-		if !ok || n.otherApp(app) || n.remotesStale(app) {
+		app, _, reason, ok := microsoftAccountApp(env, address, n)
+		if !ok || reason != "" {
 			return ToolFailed
 		}
 		cmd, ok := microsoftCommand(env, address, "about", roots[0].Name+":", "--json")
@@ -131,7 +131,7 @@ func (m *microsoft) recoverLibraries(ctx context.Context, env Env, address strin
 		}
 		scopes := microsoftGranted(granted)
 		// This repair restores followed sites' libraries only.
-		l := &microsoftLogin{entry: m, env: env, app: app, address: address, token: []byte(n.token), granted: granted}
+		l := &microsoftLogin{entry: m, env: env, app: app, address: microsoftAddressOf(address), name: address, token: []byte(n.token), granted: granted}
 		if err := l.discover(ctx, token.Access, scopes); err != nil {
 			return err
 		}

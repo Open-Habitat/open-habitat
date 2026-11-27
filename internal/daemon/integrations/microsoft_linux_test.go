@@ -51,10 +51,12 @@ case " $* " in
  printf 'native encrypted cache' >"$MS365_MCP_TOKEN_CACHE_PATH"
  printf 'native key' >"$(dirname "$MS365_MCP_TOKEN_CACHE_PATH")/.cache-key"
  printf 'native selection' >"$MS365_MCP_SELECTED_ACCOUNT_PATH"
- echo '{"success":true}';;
- *' --list-accounts '*) printf '{"accounts":[{"username":"%s"}]}' "$MS365_MCP_EXPECTED_USERNAME";;
+ if [ -f "$HOME/import-account" ]; then cat "$HOME/import-account"; else
+ printf '{"success":true,"account":{"tenant_id":"%s","local_account_id":"` + testObjectID + `","home_account_id":"` + testObjectID + `.%s"}}\n' "$MS365_MCP_TENANT_ID" "$MS365_MCP_TENANT_ID"; fi;;
+ *' --list-accounts '*) printf '{"accounts":[{"id":"%s"}]}' "$MS365_MCP_EXPECTED_HOME_ACCOUNT_ID";;
  ' verify ')
  read -r payload || :
+ printf '%s' "$payload" >"$HOME/verify-payload"
  case "$payload" in *refresh*) exit 83;; esac
  case "$payload" in *"\"tenant_id\":\"$MS365_MCP_TENANT_ID\""*) :;; *) exit 82;; esac
  test -f "$MS365_MCP_TOKEN_CACHE_PATH"
@@ -97,7 +99,7 @@ func piMCPMarkers(env Env, kind string, written bool) error {
 	switch {
 	case kind == "register" && written && marker("pi-add-fail"):
 		if marker("block-rollback") {
-			barrier := filepath.Join(env.Home, microsoftMCPDir, ".pending", "person@example.test")
+			barrier := filepath.Join(env.Home, microsoftMCPDir, ".pending", testName)
 			os.MkdirAll(barrier, 0700)
 			os.WriteFile(filepath.Join(barrier, "barrier"), []byte("barrier"), 0600)
 		}
@@ -128,6 +130,15 @@ func registeredEntry(t *testing.T, env Env, address string) (string, map[string]
 
 // testTenant is the organisation's Directory (tenant) ID, the only audience.
 const testTenant = "00000000-0000-4000-8000-0000000000aa"
+
+// testObjectID is the synthetic person's object id in the tenant: Graph
+// /me's id and MSAL's localAccountId. testHome is MSAL's homeAccountId for
+// them, the pin a sign-in writes.
+const testObjectID = "00000000-0000-4000-8000-0000000000f1"
+const testHome = testObjectID + "." + testTenant
+
+// testName is the synthetic person's connection name.
+const testName = "person@example.test~" + testTenant
 const testMicrosoftSite = "contoso.sharepoint.com,2C712604-1370-44E7-A1F5-426573FDA80A,2D2244C3-251A-49EA-93A8-39E1C3A060FE"
 const testMicrosoftMissingSite = "contoso.sharepoint.com,2C712604-1370-44E7-A1F5-426573FDA80A,00000000-0000-4000-8000-000000000001"
 
@@ -166,7 +177,7 @@ func syntheticMicrosoft(t *testing.T, upn, failure string) *microsoft {
 			}
 			switch r.URL.Path {
 			case "/v1.0/me":
-				body = fmt.Sprintf(`{"mail":%q,"userPrincipalName":%q}`, upn, upn)
+				body = fmt.Sprintf(`{"id":%q,"mail":%q,"userPrincipalName":%q}`, testObjectID, upn, upn)
 			case "/v1.0/me/drive":
 				body = `{"id":"primary-drive","name":"OneDrive","driveType":"business"}`
 			case "/v1.0/me/followedSites":
@@ -281,7 +292,7 @@ func TestMicrosoftNativeStoresSelectionAndRemoval(t *testing.T) {
 		t.Fatal(services)
 	}
 	raw, registered := registeredEntry(t, env, address)
-	if registered["MS365_MCP_EXPECTED_USERNAME"] != address || strings.Contains(raw, "secret") {
+	if registered[microsoftHomeEnv] != testHome || registered[microsoftUsernameEnv] != "" || strings.Contains(raw, "secret") {
 		t.Fatal("native MCP setup", raw)
 	}
 	skill := m.Skill(env, address)
@@ -513,7 +524,7 @@ func TestMicrosoftNativeRefreshUsesTheTenant(t *testing.T) {
 		t.Fatal("wrong rclone refresh authority", err)
 	}
 	app := env.microsoftApps()[LevelFull]
-	cmd, ok := microsoftMCPCommand(env, app, microsoftMCPDir+"/"+address, address, microsoftMCPScopes)
+	cmd, ok := microsoftMCPCommand(env, app, microsoftMCPDir+"/"+address, microsoftMCPScopes, microsoftPin{username: address})
 	if !ok || !strings.Contains(strings.Join(cmd.Env, "\n"), "MS365_MCP_TENANT_ID="+testTenant) {
 		t.Fatal("restart lost the tenant")
 	}
@@ -568,7 +579,7 @@ func TestMicrosoftFailedCommitPreservesPreviousNativeKeyAndCleansNewRegistration
 				}
 				return l
 			}
-			address := "person@example.test"
+			address := testName
 			if existing {
 				if err := connect().Commit(context.Background(), address); err != nil {
 					t.Fatal(err)
@@ -682,7 +693,7 @@ func TestMicrosoftReloginKeepsSyncingRootsAndDoesNotResyncHealthyPairs(t *testin
 		}
 		return l
 	}
-	address := "person@example.test"
+	address := testName
 	if err := connect().Commit(context.Background(), address); err != nil {
 		t.Fatal(err)
 	}
@@ -756,7 +767,7 @@ func TestMicrosoftConnectOffersNoFolderStepAndSyncsNothing(t *testing.T) {
 	if v["address"] != "person@example.test" {
 		t.Fatal(v)
 	}
-	address := "person@example.test"
+	address := testName
 	if remotes, err := microsoftRemotes(env, address); err != nil || len(remotes) != 0 {
 		t.Fatal("roots without a choice", remotes, err)
 	}
@@ -952,7 +963,7 @@ func TestMicrosoftRenewalKeepsRetainedSync(t *testing.T) {
 			}
 			h := c.Handler(allow)
 			if action == "level-change-fails" || action == "level-change-full" {
-				if v := waitState(t, h, ownerA, "failed"); v["address"] != address {
+				if v := waitState(t, h, ownerA, "failed"); v["address"] != microsoftAddressOf(address) {
 					t.Fatal(v)
 				}
 			} else {
@@ -1032,7 +1043,7 @@ func TestMicrosoftPartialExistingCacheSurvivesUncertainRegistrationAndIsRemoved(
 		t.Run(fmt.Sprint(blockRollback), func(t *testing.T) {
 			env := microsoftEnv(t)
 			m := syntheticMicrosoft(t, "person@example.test", "")
-			address := "person@example.test"
+			address := testName
 			dir := filepath.Join(env.Home, microsoftMCPDir, address)
 			if err := os.MkdirAll(dir, 0700); err != nil {
 				t.Fatal(err)
@@ -1113,7 +1124,7 @@ func TestMicrosoftRemovalFencesAnAttemptBeforeItsIdentityIsPublished(t *testing.
 		}
 		time.Sleep(time.Millisecond)
 	}
-	address := "person@example.test"
+	address := testName
 	// files_discovery is published before staging exists. The native import
 	// starts only after staging is ready, and hold-mcp keeps identity private.
 	waitFor(t, "native import", func() bool { return exists(filepath.Join(env.Home, "import-started")) })
@@ -1121,7 +1132,7 @@ func TestMicrosoftRemovalFencesAnAttemptBeforeItsIdentityIsPublished(t *testing.
 	if err := os.WriteFile(filepath.Join(env.Home, microsoftMCPDir, ".pending", address, ".token-cache.json"), []byte("native pending grant"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	code, out, _ := call(t, h, "DELETE", AccountsPath, "", map[string]any{"action": "remove", "provider": "microsoft", "address": address, "delete_directories": false})
+	code, out, _ := call(t, h, "DELETE", AccountsPath, "", map[string]any{"action": "remove", "provider": "microsoft", "address": microsoftAddressOf(address), "delete_directories": false})
 	if code != 200 {
 		t.Fatal(code, out)
 	}

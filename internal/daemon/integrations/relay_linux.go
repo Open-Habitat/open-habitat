@@ -193,7 +193,7 @@ func (r *relay) view(owner string, provider Provider) LoginView {
 	relogin := a.relogin
 	v := LoginView{SchemaVersion: 1, State: a.state, AttemptID: a.id, Provider: a.provider, Relogin: &relogin}
 	if a.address != "" && validCatalogAddress(a.provider, a.address) && (a.state != "completing" || a.syncing) {
-		v.Address = a.address
+		v.Address = catalogAddress(a.provider, a.address)
 	}
 	if a.state == "device_code" || (a.state == "completing" && !a.syncing) {
 		v.LoginPhase = a.prompt.Flow
@@ -646,7 +646,7 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 		// Cancelled as the tool finished: keep nothing new.
 		err = ctx.Err()
 	}
-	if err == nil && a.relogin && address != a.address {
+	if err == nil && a.relogin && !sameCatalogAccount(e.Provider(), a.address, address) {
 		// The person signed in to another account than the one being
 		// renewed; the person did not ask to connect that one.
 		err = AccountMismatch

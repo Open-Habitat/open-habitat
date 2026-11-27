@@ -117,10 +117,13 @@ func TestMicrosoftConfigWithATokenPerRootMigratesAtStart(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer func() { cancel(); c.Stop() }()
 	c.Start(ctx)
-	waitFor(t, "migration", func() bool { return strings.Contains(logs.String(), `"msg":"integration_config_migration"`) })
-	if !strings.Contains(logs.String(), `"outcome":"completed"`) {
+	waitFor(t, "migration", func() bool { return strings.Contains(logs.String(), `"change":"one_token_per_account"`) })
+	if !strings.Contains(logs.String(), `"outcome":"completed","change":"connection_name"`) || !strings.Contains(logs.String(), `"outcome":"completed","change":"one_token_per_account"`) {
 		t.Fatal(logs.String())
 	}
+	// The connection got its name first; its listings moved with it.
+	address = testName
+	oneDriveWork = filepath.Join(env.Home, microsoftWork(address, "onedrive"))
 	data, _ := os.ReadFile(filepath.Join(env.Home, microsoftDir, address+".conf"))
 	config := string(data)
 	if strings.Count(config, "\ntoken = ") != 1 || !strings.Contains(config, "access-newest") || !strings.Contains(config, microsoftDiscoveryFixed) || strings.Count(config, grantKey+" = ") != 1 {
@@ -200,15 +203,15 @@ func TestMicrosoftMigrationKeepsDirectionsAndWaitsForPasses(t *testing.T) {
 // pairs: their listings move to the alias's name with the new config.
 func TestMicrosoftSignInOverATokenPerRootConfigContinuesPairs(t *testing.T) {
 	env := microsoftEnv(t)
-	address := "person@example.test"
-	old := strings.Replace(legacyConfig(address, func(int) string { return grantLine(strings.Fields(microsoftScopes)) }, realisticToken("old", time.Now())), "drive_id = b!"+strings.Repeat("x", 60)+"0000", "drive_id = primary-drive", 1)
+	address := testName
+	old := strings.Replace(legacyConfig(microsoftAddressOf(address), func(int) string { return grantLine(strings.Fields(microsoftScopes)) }, realisticToken("old", time.Now())), "drive_id = b!"+strings.Repeat("x", 60)+"0000", "drive_id = primary-drive", 1)
 	writeConfig(t, env, address, []byte(old))
 	work := filepath.Join(env.Home, microsoftWork(address, "onedrive"))
 	os.MkdirAll(work, 0700)
 	for _, side := range []string{"path1", "path2"} {
 		os.WriteFile(filepath.Join(work, "local..onedrive_."+side+".lst"), []byte("native listing\n"), 0600)
 	}
-	l := msLogin(t, syntheticMicrosoft(t, address, ""), env, address)
+	l := msLogin(t, syntheticMicrosoft(t, "person@example.test", ""), env, address)
 	if _, err := l.WaitWithPrompt(context.Background(), func(Prompt) error { return nil }); err != nil {
 		t.Fatal(err)
 	}

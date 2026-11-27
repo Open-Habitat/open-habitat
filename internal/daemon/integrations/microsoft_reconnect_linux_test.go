@@ -19,8 +19,8 @@ import (
 // publication/verification wiring through the daemon and a persistent relay.
 func TestMicrosoftStopKeepsSlotForNativeCleanup(t *testing.T) {
 	env := microsoftEnv(t)
-	const address = "person@example.test"
-	m := syntheticMicrosoft(t, address, "")
+	const address = testName
+	m := syntheticMicrosoft(t, "person@example.test", "")
 	l := msLogin(t, m, env, "")
 	if _, err := l.Wait(context.Background()); err != nil {
 		t.Fatal(err)
@@ -75,25 +75,25 @@ func TestMicrosoftVerifyDeadlineIsUnknown(t *testing.T) {
 	if _, err := l.Wait(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if err := l.Commit(context.Background(), "person@example.test"); err != nil {
+	if err := l.Commit(context.Background(), testName); err != nil {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if state, _ := microsoftMCPState(ctx, env, "person@example.test"); state != StateUnknown {
+	if state, _, _ := microsoftMCPState(ctx, env, testName); state != StateUnknown {
 		t.Fatal("local deadline became provider failure", state)
 	}
 }
 
 func TestMicrosoftReconnectQuiescesSharedChild(t *testing.T) {
 	env := microsoftEnv(t)
-	const address = "person@example.test"
-	m := syntheticMicrosoft(t, address, "")
+	const address = testName
+	m := syntheticMicrosoft(t, "person@example.test", "")
 	tool := filepath.Join(t.TempDir(), "native-mcp")
 	const script = `#!/usr/bin/python3
 import json, os, sys
 if '--list-accounts' in sys.argv:
- print(json.dumps({'accounts':[{'username':os.environ['MS365_MCP_EXPECTED_USERNAME']}]}))
+ print(json.dumps({'accounts':[{'id':os.environ['MS365_MCP_EXPECTED_HOME_ACCOUNT_ID']}]}))
  sys.exit(0)
 keypath = os.path.join(os.path.dirname(os.environ['MS365_MCP_TOKEN_CACHE_PATH']), '.cache-key')
 with open(keypath) as f: key = f.read()

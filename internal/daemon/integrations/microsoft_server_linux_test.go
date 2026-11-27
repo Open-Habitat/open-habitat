@@ -152,7 +152,7 @@ func TestMicrosoftRegisterWritesAreas(t *testing.T) {
 	other := json.RawMessage(`{"url":"https://mcp.example.test"}`)
 	writePiMCP(t, env, map[string]json.RawMessage{microsoftLegacyServerName(address): microsoftServerEntry(env, address), microsoftPlainServer(address): microsoftServerEntry(env, address), "mine": other})
 	allowed := "User.Read Mail.ReadWrite Files.Read.All"
-	if err := microsoftRegister(context.Background(), env, *env.Config.Microsoft, address, allowed); err != nil {
+	if err := microsoftRegister(context.Background(), env, *env.Config.Microsoft, address, allowed, microsoftPin{username: microsoftAddressOf(address)}); err != nil {
 		t.Fatal(err)
 	}
 	root, servers := readPiMCP(t, env)
@@ -185,7 +185,7 @@ func TestMicrosoftRegisterWritesAreas(t *testing.T) {
 	}
 	// Without the relay path nothing is written.
 	env.Relay = ""
-	if err := microsoftRegister(context.Background(), env, *env.Config.Microsoft, address, allowed); err == nil {
+	if err := microsoftRegister(context.Background(), env, *env.Config.Microsoft, address, allowed, microsoftPin{username: microsoftAddressOf(address)}); err == nil {
 		t.Fatal("registered without a relay")
 	}
 }
@@ -197,7 +197,7 @@ func TestMicrosoftSingleEntryMigrates(t *testing.T) {
 	for _, legacy := range []bool{false, true} {
 		env := microsoftEnv(t)
 		m := &microsoft{}
-		address := "aino.virtanen@contoso.test"
+		address := microsoftName("aino.virtanen@contoso.test", testTenant)
 		allowed := "User.Read Mail.ReadWrite Mail.Send Calendars.ReadWrite Contacts.ReadWrite Files.Read.All Sites.Read.All"
 		name := microsoftPlainServer(address)
 		if legacy {
@@ -269,7 +269,7 @@ func TestMicrosoftSingleEntryMigrates(t *testing.T) {
 // reshaped: what it may run is asked of the tenant first, and while the
 // tenant cannot be asked, nothing is rewritten.
 func TestMicrosoftOutdatedSingleEntryAsksTenant(t *testing.T) {
-	const address = "person@example.test"
+	const address = testName
 	env := microsoftEnv(t)
 	m := &microsoft{}
 	outlook := "User.Read Mail.ReadWrite"
@@ -308,7 +308,7 @@ func TestMicrosoftBinding(t *testing.T) {
 	if _, err := microsoftBinding(env, address); err == nil {
 		t.Fatal("unregistered account bound")
 	}
-	if err := microsoftRegister(context.Background(), env, *env.Config.Microsoft, address, "User.Read Mail.Read"); err != nil {
+	if err := microsoftRegister(context.Background(), env, *env.Config.Microsoft, address, "User.Read Mail.Read", microsoftPin{username: microsoftAddressOf(address)}); err != nil {
 		t.Fatal(err)
 	}
 	b, err := microsoftBinding(env, address)
@@ -321,7 +321,7 @@ func TestMicrosoftBinding(t *testing.T) {
 	if _, err := microsoftBinding(env, "someone@else.test"); err == nil {
 		t.Fatal("another address bound")
 	}
-	if err := microsoftRegister(context.Background(), env, *env.Config.Microsoft, address, "User.Read Mail.ReadWrite"); err != nil {
+	if err := microsoftRegister(context.Background(), env, *env.Config.Microsoft, address, "User.Read Mail.ReadWrite", microsoftPin{username: microsoftAddressOf(address)}); err != nil {
 		t.Fatal(err)
 	}
 	if c, err := microsoftBinding(env, address); err != nil || c.Key == b.Key {
@@ -361,10 +361,10 @@ func TestMicrosoftUnregister(t *testing.T) {
 	env := microsoftEnv(t)
 	address := "person@example.test"
 	other := json.RawMessage(`{"url":"https://mcp.example.test"}`)
-	if err := microsoftRegister(context.Background(), env, *env.Config.Microsoft, address, "User.Read"); err != nil {
+	if err := microsoftRegister(context.Background(), env, *env.Config.Microsoft, address, "User.Read", microsoftPin{username: microsoftAddressOf(address)}); err != nil {
 		t.Fatal(err)
 	}
-	if err := microsoftRegister(context.Background(), env, *env.Config.Microsoft, "ville@example.test", "User.Read"); err != nil {
+	if err := microsoftRegister(context.Background(), env, *env.Config.Microsoft, "ville@example.test", "User.Read", microsoftPin{username: microsoftAddressOf("ville@example.test")}); err != nil {
 		t.Fatal(err)
 	}
 	root, servers := readPiMCP(t, env)
@@ -388,7 +388,7 @@ func TestMicrosoftRegisterKeepsForeignEntryUnderItsPrefix(t *testing.T) {
 	address := "person@example.test"
 	for _, foreignName := range []string{"ms-files", "ms_files"} {
 		env := microsoftEnv(t)
-		if err := microsoftRegister(context.Background(), env, *env.Config.Microsoft, address, "User.Read"); err != nil {
+		if err := microsoftRegister(context.Background(), env, *env.Config.Microsoft, address, "User.Read", microsoftPin{username: microsoftAddressOf(address)}); err != nil {
 			t.Fatal(err)
 		}
 		root, servers := readPiMCP(t, env)
@@ -402,7 +402,7 @@ func TestMicrosoftRegisterKeepsForeignEntryUnderItsPrefix(t *testing.T) {
 		root["mcpServers"], _ = json.Marshal(servers)
 		data, _ := json.Marshal(root)
 		os.WriteFile(filepath.Join(env.Home, ".pi/agent/mcp.json"), data, 0600)
-		if err := microsoftRegister(context.Background(), env, *env.Config.Microsoft, address, "User.Read"); err == nil {
+		if err := microsoftRegister(context.Background(), env, *env.Config.Microsoft, address, "User.Read", microsoftPin{username: microsoftAddressOf(address)}); err == nil {
 			t.Fatalf("%s: repair overwrote a foreign entry", foreignName)
 		}
 		if after, _ := os.ReadFile(filepath.Join(env.Home, ".pi/agent/mcp.json")); !bytes.Equal(after, data) {

@@ -684,6 +684,11 @@ const startServeWait = 15 * time.Second
 
 func (c *Catalog) Start(ctx context.Context) {
 	c.write.Lock()
+	// Connections from before names get theirs before any sync client or
+	// the Microsoft child starts with the old paths.
+	if m, ok := c.entry(Microsoft).(*microsoft); ok {
+		m.migrateNames(ctx, c.env, c.log)
+	}
 	c.reconcile()
 	queue := c.interruptedQueue()
 	c.write.Unlock()
@@ -810,6 +815,33 @@ func (c *Catalog) accounts() (out []listed, unread map[Provider]bool) {
 }
 
 var errInventory = errors.New("inventory unavailable")
+
+// accountKey is the catalog's key for an account the browser names by its
+// address: for Microsoft the one connection of that address (the catalog
+// keeps one per address until the browser can name the organisation), and
+// the address itself when there is none. Other providers key by address.
+func (c *Catalog) accountKey(e Entry, address string) (string, error) {
+	if e.Provider() != Microsoft {
+		return address, nil
+	}
+	keys, err := e.Accounts(c.env)
+	if err != nil {
+		return "", errInventory
+	}
+	var found []string
+	for _, k := range keys {
+		if microsoftAddressOf(k) == address {
+			found = append(found, k)
+		}
+	}
+	switch len(found) {
+	case 0:
+		return address, nil
+	case 1:
+		return found[0], nil
+	}
+	return "", errInventory
+}
 
 // has reports whether the tool holds the account; an unreadable inventory
 // is an error, never a "no".
@@ -1036,7 +1068,7 @@ func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
 			}
 		}
 	}
-	out := Account{Provider: e.Provider(), Address: address, Services: services, CheckedAt: c.now().UTC().Format(time.RFC3339), Grant: grant}
+	out := Account{Provider: e.Provider(), Address: catalogAddress(e.Provider(), address), Services: services, CheckedAt: c.now().UTC().Format(time.RFC3339), Grant: grant}
 	if le, ok := e.(LevelEntry); ok && grant != nil {
 		out.Level = le.Level(c.env, address, services)
 	}
@@ -1097,7 +1129,7 @@ func skillAccounts(env Env, accounts []listed) []SkillAccount {
 	var out []SkillAccount
 	for _, a := range accounts {
 		s := a.entry.Skill(env, a.address)
-		s.Provider, s.Address = a.entry.Provider(), a.address
+		s.Provider, s.Address = a.entry.Provider(), catalogAddress(a.entry.Provider(), a.address)
 		out = append(out, s)
 	}
 	return out

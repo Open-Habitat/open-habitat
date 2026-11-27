@@ -35,14 +35,14 @@ func TestMicrosoftRecoveryTerminatesPermanentFailures(t *testing.T) {
 			})
 			c := New(env, []Entry{m}, nil, WithQuota(func() Room { return Room{OK: true, Free: 1 << 30} }))
 			defer c.sync.stopAll()
-			if got := c.tryRecoverMicrosoft(context.Background(), m, "person@example.test"); got != tc.done {
+			if got := c.tryRecoverMicrosoft(context.Background(), m, testName); got != tc.done {
 				t.Fatalf("terminal=%v want %v", got, tc.done)
 			}
-			if tc.name == "deleted-site" && microsoftRecoveryNeeded(env, "person@example.test") {
+			if tc.name == "deleted-site" && microsoftRecoveryNeeded(env, testName) {
 				t.Fatal("genuine 404 kept scheduling disruptive repair")
 			}
-			roots, err := microsoftRemotes(env, "person@example.test")
-			if err != nil || len(roots) != 1 || !microsoftReady(env, "person@example.test", roots[0]) {
+			roots, err := microsoftRemotes(env, testName)
+			if err != nil || len(roots) != 1 || !microsoftReady(env, testName, roots[0]) {
 				t.Fatal("existing selection lost", roots, err)
 			}
 		})
@@ -52,7 +52,7 @@ func TestMicrosoftRecoveryTerminatesPermanentFailures(t *testing.T) {
 func TestMicrosoftRecoveryHandlesStoppedNativeLocks(t *testing.T) {
 	for _, expired := range []bool{false, true} {
 		env, m := recoveryAccount(t, false)
-		work := filepath.Join(env.Home, microsoftWork("person@example.test", "onedrive"))
+		work := filepath.Join(env.Home, microsoftWork(testName, "onedrive"))
 		expires := time.Now().Add(time.Hour)
 		if expired {
 			expires = time.Now().Add(-time.Hour)
@@ -61,11 +61,11 @@ func TestMicrosoftRecoveryHandlesStoppedNativeLocks(t *testing.T) {
 			t.Fatal(err)
 		}
 		c := New(env, []Entry{m}, nil, WithQuota(func() Room { return Room{OK: true, Free: 1 << 30} }))
-		if !c.tryRecoverMicrosoft(context.Background(), m, "person@example.test") {
+		if !c.tryRecoverMicrosoft(context.Background(), m, testName) {
 			t.Fatal("dead native lock blocked recovery")
 		}
 		c.sync.stopAll()
-		if microsoftRecoveryNeeded(env, "person@example.test") {
+		if microsoftRecoveryNeeded(env, testName) {
 			t.Fatal("dead lock prevented library repair")
 		}
 	}
@@ -78,7 +78,7 @@ func TestMicrosoftRecoveryYieldsToLoginAndQuota(t *testing.T) {
 	defer c.sync.stopAll()
 	busy := &attempt{provider: Microsoft, state: "device_code", done: make(chan struct{})}
 	c.relay.put(busy)
-	if c.tryRecoverMicrosoft(context.Background(), m, "person@example.test") {
+	if c.tryRecoverMicrosoft(context.Background(), m, testName) {
 		t.Fatal("busy login not deferred")
 	}
 	if c.relay.current() != busy {
@@ -86,10 +86,10 @@ func TestMicrosoftRecoveryYieldsToLoginAndQuota(t *testing.T) {
 	}
 	c.relay.attempts = nil
 	full = true
-	if c.tryRecoverMicrosoft(context.Background(), m, "person@example.test") {
+	if c.tryRecoverMicrosoft(context.Background(), m, testName) {
 		t.Fatal("full quota not deferred")
 	}
-	roots, _ := microsoftRemotes(env, "person@example.test")
+	roots, _ := microsoftRemotes(env, testName)
 	if len(roots) != 1 {
 		t.Fatal("mutated despite exclusion")
 	}

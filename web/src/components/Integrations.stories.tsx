@@ -188,14 +188,14 @@ export const TenantRefused: Story = {
             {
               id: "onedrive",
               state: "login_expired",
-              failure: "tenant_changed",
+              failure: "tenant_removed",
               directory: "~/cloud/onedrive/person@example.test",
             },
-            { id: "mail", state: "login_expired", failure: "tenant_changed" },
+            { id: "mail", state: "login_expired", failure: "tenant_removed" },
             {
               id: "calendar",
               state: "login_expired",
-              failure: "tenant_changed",
+              failure: "tenant_removed",
             },
           ],
         },

@@ -268,7 +268,7 @@ type removed struct {
 
 func (c *Catalog) accountsRequest(w http.ResponseWriter, r *http.Request) {
 	var in accountRequest
-	if (r.Method != http.MethodPost && r.Method != http.MethodDelete) || decode(r, &in, 8192) != nil || !validCatalogAddress(in.Provider, in.Address) {
+	if (r.Method != http.MethodPost && r.Method != http.MethodDelete) || decode(r, &in, 8192) != nil || !validRequestAddress(in.Provider, in.Address) {
 		fail(w, 400, "invalid_request")
 		return
 	}
@@ -321,7 +321,12 @@ func (c *Catalog) accountsRequest(w http.ResponseWriter, r *http.Request) {
 		err := pe.ChangePassword(r.Context(), c.env, in.Address, in.Password)
 		c.finishPassword(w, r, e, in.Address, err)
 	case r.Method == http.MethodDelete && in.Action == "remove" && in.DeleteDirectories != nil && in.Server == "" && in.Port == 0 && in.Security == "" && in.Username == "" && in.SMTPServer == "" && in.SMTPPort == 0 && in.SMTPSecurity == "" && in.URL == "" && in.Password == "":
-		c.remove(w, r, e, in.Address, *in.DeleteDirectories)
+		key, err := c.accountKey(e, in.Address)
+		if err != nil {
+			fail(w, 503, "native_unavailable")
+			return
+		}
+		c.remove(w, r, e, key, *in.DeleteDirectories)
 	default:
 		fail(w, 400, "invalid_request")
 	}
@@ -405,7 +410,7 @@ func (c *Catalog) remove(w http.ResponseWriter, r *http.Request, e Entry, addres
 	// Sync stops before its directory moves, so the client never sees its
 	// tree vanish and propagates that as a mass deletion.
 	skill := c.reconcile()
-	view := changeView{SchemaVersion: 1, Removed: &removed{e.Provider(), address}, Skill: skill}
+	view := changeView{SchemaVersion: 1, Removed: &removed{e.Provider(), catalogAddress(e.Provider(), address)}, Skill: skill}
 	for _, d := range dirs {
 		// Only whether the folder is there decides what the reply says; the
 		// move itself never follows a link or crosses a filesystem.
@@ -484,7 +489,7 @@ func (c *Catalog) loginRequestOwned(w http.ResponseWriter, r *http.Request, owne
 	switch {
 	case r.Method == http.MethodPost && in.Action == "start" && in.AttemptID == "" && in.RedirectURL == "" && in.Folders == nil:
 		e, ok := c.entry(in.Provider).(LoginEntry)
-		if !ok || (in.Address != "" && !validCatalogAddress(in.Provider, in.Address)) {
+		if !ok || (in.Address != "" && !validRequestAddress(in.Provider, in.Address)) {
 			fail(w, 400, "invalid_request")
 			return
 		}
@@ -504,6 +509,12 @@ func (c *Catalog) loginRequestOwned(w http.ResponseWriter, r *http.Request, owne
 			return
 		}
 		if in.Address != "" {
+			key, err := c.accountKey(e, in.Address)
+			if err != nil {
+				fail(w, 503, "native_unavailable")
+				return
+			}
+			in.Address = key
 			switch exists, err := c.has(e, in.Address); {
 			case err != nil:
 				fail(w, 503, "native_unavailable")

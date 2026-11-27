@@ -59,11 +59,44 @@ func piMCPOf(p Provider) *piMCP {
 	return nil
 }
 
+// validCatalogAddress admits the catalog's own key for an account: a Pi MCP
+// entry's name, a Microsoft connection's name (or a bare address from before
+// names), or an address.
 func validCatalogAddress(provider Provider, address string) bool {
 	if m := piMCPOf(provider); m != nil {
 		return m.owns(address)
 	}
+	if provider == Microsoft {
+		return validMicrosoftAccount(address)
+	}
 	return ValidAddress(address)
+}
+
+// validRequestAddress admits an account as the browser names it. The
+// browser addresses a Microsoft connection by its address; the daemon
+// finds its name (Catalog.accountKey).
+func validRequestAddress(provider Provider, address string) bool {
+	if provider == Microsoft {
+		return ValidAddress(address)
+	}
+	return validCatalogAddress(provider, address)
+}
+
+// catalogAddress is the address the browser contract shows for a catalog
+// key: a Microsoft connection's address part.
+func catalogAddress(provider Provider, key string) string {
+	if provider == Microsoft {
+		return microsoftAddressOf(key)
+	}
+	return key
+}
+
+// sameCatalogAccount says whether a renewal of requested ended in got.
+func sameCatalogAccount(provider Provider, requested, got string) bool {
+	if provider == Microsoft {
+		return microsoftSameAccount(requested, got)
+	}
+	return requested == got
 }
 
 func (m *piMCP) owns(name string) bool {

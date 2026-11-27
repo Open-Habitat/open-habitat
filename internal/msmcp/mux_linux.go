@@ -23,9 +23,10 @@ import (
 // keys share the running child; a different key means the slot must drain,
 // stop and reap the child before a replacement starts. The resolver builds
 // it from the daemon's own records, never from anything the relay says
-// beyond the account's address.
+// beyond which account it names.
 type Binding struct {
-	// Account is the address the binding signs in as; Key must include it.
+	// Account is the connection the binding runs as (its name, which
+	// carries its address and organisation); Key must include it.
 	Account string
 	Key     string
 	Path    string
@@ -34,7 +35,7 @@ type Binding struct {
 	Dir     string
 }
 
-// Resolver turns an account address into its binding, or refuses it. It is
+// Resolver turns an account into its binding, or refuses it. It is
 // asked again for every listing and every call, so a removed account or a
 // changed level takes effect at the next request.
 type Resolver func(account string) (Binding, error)
