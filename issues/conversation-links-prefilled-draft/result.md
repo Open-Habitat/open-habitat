@@ -90,6 +90,7 @@ linkki ei ole yhden painalluksen päässä omasta luvastaan.
 
 - Kun linkit eivät ole sallittuja: **tyhjä kenttä**.
 - Osion nimi: **Vaaralliset toiminnot**.
+- Linkin teko: linkissä on työtila mukana, joten se tehdään työtilan valikosta.
 - *Palaa linkkiin* ei tarvita: asetukset on modaali, ja sen sulkeminen palaa
   linkin avaamaan keskusteluun, jossa linkin viesti sitten näkyy.
 
