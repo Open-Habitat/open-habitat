@@ -250,6 +250,10 @@
 .si-grow {
   flex: 1;
 }
+/* A destructive action stands at least --ah-s4 from the control before it. */
+.si-foot > .si-destructive {
+  margin-left: calc(var(--ah-s4) - var(--ah-s2));
+}
 
 /* The last guide step: what is done in the console beside what comes back
    here. Narrower than two readable columns, the values go below. */

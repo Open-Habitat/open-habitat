@@ -149,9 +149,11 @@ div.ah-section-subhead > .s-h3 {
   justify-content: center;
   width: var(--ah-people-mark);
 }
+/* A badge link above a row's disclosure stays --ah-control-gap from it, so
+   their focus rings never touch (design-system/design.md). */
 .ah-people-person {
   display: grid;
-  gap: 2px;
+  gap: var(--ah-control-gap);
   min-width: 0;
 }
 .ah-people-name {
@@ -169,7 +171,8 @@ div.ah-section-subhead > .s-h3 {
   flex-wrap: wrap;
   justify-content: flex-end;
   align-items: center;
-  gap: var(--ah-s1) var(--ah-s2);
+  /* Wrapped actions keep the controls' gap between their lines. */
+  gap: var(--ah-control-gap) var(--ah-s2);
 }
 /* Too narrow for one line, the last column stays beside the name and the
    others go below it; the headers keep the name's and that column's. In a

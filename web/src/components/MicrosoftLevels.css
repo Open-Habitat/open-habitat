@@ -683,7 +683,8 @@
   padding: 0;
   list-style: none;
   display: grid;
-  gap: 2px;
+  /* Each set level's Remove is a control: --ah-control-gap apart. */
+  gap: var(--ah-control-gap);
   font-size: var(--ah-size-meta);
   color: var(--ah-ink-2);
 }
