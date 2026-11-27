@@ -1,5 +1,71 @@
 # Tulokset
 
+## Kierros 3
+
+Prototyyppi: `design-system/prototypes/rounds/2026-11-27-keskustelulinkit-3/`
+(rakennus ja tilanteet sen `NOTES.md`:ssä), tulos
+`design-system/prototypes/dist/2026-11-27-keskustelulinkit-3/offline.html`.
+1440 ja 390 px, kolme teemaa.
+
+### Jarin päätökset kierroksesta 2 ja mitä muuttui
+
+- **Linkit pois → tyhjä kenttä.** *Oma sivu* on poistettu. Työtilan uusi
+  keskustelu avautuu tyhjällä kentällä, ja ilmoitus *Linkin viestiä ei
+  kirjoitettu kenttään* tarjoaa *Avaa asetus*. Viestiä ei näytetä.
+- **Asetukset avautuu kuten tuotannossa:** kerroksena keskustelun päälle.
+  Keskustelu pysyy sen alla piilossa, eikä *Tulit linkistä · Palaa linkkiin*
+  -palkkia ole. *Avaa asetus* avaa osion, ja fokus on keskustelulinkkien
+  rivillä (tuotannon `/settings/<osio>#<rivi>`). Sallimisen vahvistus on sama
+  kuin kierroksella 2. Kun asetukset suljetaan, ollaan samassa uudessa
+  keskustelussa, ja viesti on kentässä merkin *Viesti linkistä. Mitään ei ole
+  lähetetty.* kanssa. Jos asetukset suljetaan sallimatta, kenttä ja ilmoitus
+  jäävät ennalleen. Jos henkilö ehti kirjoittaa kenttään, viesti odottaa
+  kortissa kuten oman luonnoksen kanssa muutenkin.
+- **Osion nimi *Vaaralliset toiminnot*.** Ulkoasu on yhä kierroksen 2
+  rauhallinen kortti, ei punaista tuhoavan toiminnon tyyliä.
+- **Linkin tekeminen siirtyi työtilaan** (valitsimen akseli, alla), eikä sitä
+  ole enää keskustelun ⋯-valikossa.
+
+### Valitsimen akseli: missä linkki tehdään
+
+- **A · työtilarivin ⋯.** Sivupalkin työtilarivi saa uuden ⋯-valikon, jossa
+  on *Kopioi linkki uuteen keskusteluun…*. Tuotannon rivillä on nyt vain +.
+- **A · työtilasivu (suositus).** Painike *Linkki uuteen keskusteluun…*
+  työtilasivun otsikkorivin alla.
+
+Molemmat näkyvät vain, kun linkit on sallittu. Suositus on työtilasivu,
+koska linkin teko on harvinainen ja harkittu teko. Se ei tarvitse jokaiselle
+sivupalkin riville uutta valikkoa, ja sivu toimii samoin puhelimessa, jossa
+sivupalkki on laatikon takana.
+
+### Päätökset katselmoitavaksi
+
+- **Viesti pysyy selaimessa, kunnes linkit sallitaan.** Viesti on linkin
+  fragmentissa (`#…&draft=`), jota selain ei lähetä hostille. Sovellus lukee
+  fragmentin avatessaan ja poistaa sen heti osoiteriviltä
+  (`history.replaceState`), joten viesti ei jää historiaan eikä kopioituun
+  osoitteeseen. Kun linkit eivät ole sallittuja, viesti on vain avoimen
+  keskustelunäkymän muistissa. Sitä ei kirjoiteta luonnossäilöön, ei
+  `sessionStorage`en eikä mihinkään hostille lähtevään. Asetuksen
+  tallennus lähettää daemonille vain päälle/pois-tiedon. Viesti siirtyy
+  uuden keskustelun luonnokseen (`prepareField`) vasta, kun asetukset
+  suljetaan linkit sallittuina. Jos välilehti ladataan uudelleen ennen sitä,
+  viesti katoaa, ja linkkiä painetaan uudelleen. Sallimaton linkki ei saa
+  jättää jälkeä mihinkään.
+- **Yksi kytkin heti *Vaarallisissa toiminnoissa*,** ei ensin
+  Kokeellisissa. Kokeellinen kertoo keskeneräisyydestä, ja tämä kytkin
+  kertoo riskistä. Kahdessa paikassa sama lupa pitäisi myöntää kahdesti.
+- Työtilarivin ⋯ ja työtilasivun painike piiloutuvat, kun linkit eivät ole
+  sallittuja. Ihminen, joka ei käytä linkkejä, ei näe niistä mitään.
+
+### Kysymykset Jarille
+
+1. Linkin teko työtilasivulta (suositus) vai sivupalkin työtilarivin
+   ⋯-valikosta?
+2. Riittääkö yksi kytkin *Vaarallisissa toiminnoissa* heti alusta?
+3. Riittääkö, että viesti katoaa, jos välilehti ladataan uudelleen ennen
+   sallimista?
+
 ## Kierros 2
 
 Prototyyppi: `design-system/prototypes/rounds/2026-11-27-keskustelulinkit-2/`
