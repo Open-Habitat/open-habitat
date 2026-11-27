@@ -35,6 +35,13 @@ export type AppSection =
   | "microsoft_drafts"
   | "microsoft_read"
   | "dropbox_app_folder";
+/** The operator's multi-tenant Microsoft applications, one per level,
+ * serving the allowed organisations (managed from root's CLI). */
+export type MicrosoftSharedSection =
+  | "microsoft_shared"
+  | "microsoft_shared_nosend"
+  | "microsoft_shared_drafts"
+  | "microsoft_shared_read";
 /** The narrower levels' sections of each provider, broadest first. */
 export const levelSections: Partial<
   Record<AppProvider, { section: AppSection; level: Level }[]>
@@ -47,11 +54,12 @@ export const levelSections: Partial<
   dropbox: [{ section: "dropbox_app_folder", level: "app_folder" }],
 };
 /** The provider a section registers an application for. */
-export const sectionProvider = (section: AppSection): AppProvider =>
-  section.split("_")[0] as AppProvider;
+export const sectionProvider = (
+  section: AppSection | MicrosoftSharedSection,
+): AppProvider => section.split("_")[0] as AppProvider;
 
 export type IntegrationApp = {
-  provider: AppSection;
+  provider: AppSection | MicrosoftSharedSection;
   client_id?: string;
   tenant_id?: string;
   usable: boolean;
@@ -127,6 +135,42 @@ export async function changeIntegrationApp(
   } catch {
     return { kind: "uncertain" };
   }
+  return changed(response);
+}
+
+/** Adds an organisation to the allowed list (or relabels it in place), or
+ * with no label takes it off. Nothing is retried: a lost reply is reported
+ * as uncertain. */
+export async function changeIntegrationTenant(
+  csrf: string,
+  tenant_id: string,
+  label?: string,
+): Promise<AppChange> {
+  let response: Response | undefined;
+  try {
+    response = await mutationFetch(
+      "server.integrations",
+      `${path}/tenants/${label === undefined ? "remove" : "set"}`,
+      {
+        method: "POST",
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Agent-Host-CSRF": csrf,
+        },
+        body: JSON.stringify(
+          label === undefined ? { tenant_id } : { tenant_id, label },
+        ),
+      },
+    );
+  } catch {
+    return { kind: "uncertain" };
+  }
+  return changed(response);
+}
+
+async function changed(response: Response): Promise<AppChange> {
   const outcome = await writeOutcome(response);
   if (outcome.kind === "refused")
     return { kind: "refused", code: outcome.code };
@@ -218,7 +262,10 @@ export function googleProject(id?: string): string | undefined {
 /** The client id's recognisable start: a Google id always ends in the same
  * domain, so its project number is what the console also shows; a Dropbox
  * App key has no structure, so four characters. */
-export function shortClientID(section: AppSection, id?: string): string {
+export function shortClientID(
+  section: AppSection | MicrosoftSharedSection,
+  id?: string,
+): string {
   if (!id) return "";
   const provider = sectionProvider(section);
   if (provider === "google") return `${id.split("-")[0]}-…`;

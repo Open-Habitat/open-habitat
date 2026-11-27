@@ -3,6 +3,7 @@ import type { Provider, ProviderId } from "../app/integrations";
 import type { IntegrationApps } from "../app/serverIntegrations";
 import { GoogleAudienceDialog } from "./GoogleGuide";
 import { MicrosoftLevelsDialog } from "./MicrosoftLevels";
+import { MicrosoftOrganisationsDialog } from "./MicrosoftOrganisations";
 import { AppSetupDialog, ServerIntegrations } from "./ServerIntegrations";
 
 // Synthetic states of the production Palvelimen ylläpito › Palvelinintegraatiot tab
@@ -278,6 +279,71 @@ export const MicrosoftLevelsNoneSet: StoryObj<typeof Levels> = {
 };
 export const MicrosoftLevelsPhone: StoryObj<typeof Levels> = {
   render: () => <Levels />,
+  globals: { viewport: { value: "mobile1" } },
+};
+/** Microsoft 365 for several organisations (prototype round 4): the
+ * shared applications at two levels and three organisations on the list,
+ * all synthetic. The row counts them; the dialog lists them. */
+const ownTenant = "b81e5c27-4a93-4f0d-86c2-1d9e7a3f5b60";
+const shared = (
+  provider: "microsoft_shared" | "microsoft_shared_read",
+  client_id: string,
+) => ({
+  provider,
+  client_id,
+  tenant_id: ownTenant,
+  usable: true,
+  source: "operator" as const,
+});
+const severalOrganisations: IntegrationApps = {
+  ...googleAndMicrosoft,
+  apps: [
+    ...googleAndMicrosoft.apps,
+    shared("microsoft_shared", "5b7c02d9-8e1f-4a3b-b6c4-0d9e2f1a7c52"),
+    shared("microsoft_shared_read", "a1c9e7f5-4d3b-4e2a-8f6c-2b0d9e7a5c96"),
+  ],
+  tenants: [
+    {
+      tenant_id: ownTenant,
+      label: "Esimerkki Konsultit Oy",
+      source: "operator",
+    },
+    {
+      tenant_id: "9a4e7b21-5c3d-4f60-8e1a-7b2c9d0e4f35",
+      label: "Asiakas Yksi Oy",
+      source: "site_admin",
+      actor: "51234000",
+      at: "2026-11-27T10:00:00Z",
+    },
+    {
+      tenant_id: "c3b8d5e0-1a2f-4b7c-a6d9-0e5f8a3b2c47",
+      label: "Asiakas Kaksi Oy",
+      source: "site_admin",
+      actor: "51234000",
+      at: "2026-11-27T10:05:00Z",
+    },
+  ],
+};
+export const MicrosoftSeveralOrganisations: Story = {
+  args: { providers: microsoftSet, apps: severalOrganisations },
+};
+function Organisations() {
+  return (
+    <MicrosoftOrganisationsDialog
+      apps={severalOrganisations}
+      locked={false}
+      onSet={async () => ({ kind: "changed", view: severalOrganisations })}
+      onRemove={async () => ({ kind: "changed", view: severalOrganisations })}
+      onReread={() => {}}
+      onClose={() => {}}
+    />
+  );
+}
+export const MicrosoftOrganisationsList: StoryObj<typeof Organisations> = {
+  render: () => <Organisations />,
+};
+export const MicrosoftOrganisationsPhone: StoryObj<typeof Organisations> = {
+  render: () => <Organisations />,
   globals: { viewport: { value: "mobile1" } },
 };
 /** Dropbox's guided setup: one App Console page per step, the keys beside

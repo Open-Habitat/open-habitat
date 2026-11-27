@@ -1,0 +1,216 @@
+/* Palvelinintegraatiot › Microsoft 365 › Organisaatiot (prototype round 4).
+   The dialog uses the production modal and overlay as Levels does, at the
+   modal's default width: Levels' 920 px is sized for its comparison table.
+   Adjacent controls are at least --ah-control-gap apart and a removal at
+   least --ah-s4 from the control before it (design-system/design.md). */
+.ah-modal.mo-modal {
+  display: flex;
+  flex-direction: column;
+}
+.mo-dialog {
+  box-sizing: border-box;
+  gap: var(--ah-s4);
+}
+.mo-h3 {
+  font-size: 14px;
+  margin: 0;
+}
+.mo-stephead {
+  outline: none;
+}
+/* Over .si-stepbody, whichever stylesheet loads last. */
+.mo-dialog .mo-orglist {
+  gap: var(--ah-s3);
+  justify-items: stretch;
+}
+.mo-note {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  margin: 0;
+}
+.mo-note svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 3px;
+}
+.mo-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ah-control-gap);
+}
+.mo-problem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ah-control-gap) var(--ah-s2);
+  font-size: var(--ah-size-meta);
+  color: var(--ah-err);
+}
+.mo-problem > svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+.mo-problem > span {
+  flex: 1 1 16em;
+  color: var(--ah-ink);
+}
+
+/* Lisätietoja */
+.mo-more {
+  display: grid;
+  gap: 6px;
+}
+.mo-morebody {
+  display: grid;
+  gap: 6px;
+  padding-left: 20px;
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+  line-height: 1.5;
+}
+.mo-morebody p {
+  margin: 0;
+}
+
+/* Rows: every row as tall as the tallest (the Oma badge would make the
+   first taller), actions at the row's end, removal last and at least s4
+   from the approval button. */
+.mo-orgs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-auto-rows: 1fr;
+  border-block: 1px solid var(--ah-line-soft, var(--ah-line));
+}
+.mo-orgs li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--ah-s2) var(--ah-s4);
+  padding: var(--ah-s3) 0;
+  border-bottom: 1px solid var(--ah-line-soft, var(--ah-line));
+}
+.mo-orgs li:last-child {
+  border-bottom: 0;
+}
+.mo-orgmain {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.mo-orgname {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.mo-orgname strong {
+  font-weight: 600;
+}
+.mo-orgstate {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+}
+.mo-orgstate svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--ah-muted);
+}
+.mo-orgstate[data-known] svg {
+  color: var(--ah-ok);
+}
+.mo-rowacts {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ah-s4);
+  flex: none;
+  justify-self: end;
+}
+/* On a phone the actions go under the name, as the lists elsewhere do, so
+   the name keeps the width and does not wrap beside two buttons. */
+@media (max-width: 640px) {
+  .mo-orgs {
+    grid-auto-rows: auto;
+  }
+  .mo-orgs li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .mo-rowacts {
+    justify-self: start;
+  }
+}
+
+/* Approval. */
+.mo-consent {
+  display: grid;
+  gap: var(--ah-s3);
+  min-width: 0;
+}
+.mo-consent > p {
+  margin: 0;
+}
+.mo-message {
+  margin: 0;
+  padding: var(--ah-s3);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  font: 13px / 1.5 var(--ah-font, system-ui);
+  background: var(--ah-surface-2, var(--ah-bg));
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  max-height: 300px;
+  overflow: auto;
+}
+.mo-message pre {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  font: 13px / 1.5 var(--ah-font, system-ui);
+}
+.mo-message:focus-visible {
+  outline: 2px solid var(--ah-focus, var(--ah-accent));
+  outline-offset: 2px;
+}
+.mo-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ah-control-gap);
+}
+.mo-linkstitle {
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+  margin-right: var(--ah-s1);
+}
+/* The fields take the dialog's width, so a GUID fits on one line. */
+.mo-dialog .mo-add {
+  gap: var(--ah-s3);
+  justify-items: stretch;
+}
+
+/* The Microsoft row's two buttons carry their count in the same pill. */
+.si-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 var(--ah-s1);
+  border-radius: var(--ah-r-pill);
+  background: var(--ah-bg);
+  border: 1px solid var(--ah-line);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}

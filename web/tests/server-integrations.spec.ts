@@ -267,12 +267,8 @@ test("@server-integrations @a11y an administrator sets Microsoft's level apps in
   const row = page.getByTestId("si-row-microsoft");
   await expect(row).toHaveAttribute("data-status", "needs_app");
   expect(await available(page, "microsoft")).toBe(false);
-  // The levels' table is behind its button on the page.
-  await expect(page.getByTestId("si-table-microsoft")).toHaveCount(0);
-  await page.getByTestId("si-levels-microsoft").click();
-  await expect(
-    page.getByTestId("si-table-microsoft").locator("thead th"),
-  ).toHaveCount(5);
+  // The levels are explained behind Levels, not on the row (round 4).
+  await expect(row.getByTestId("si-levels-microsoft")).toHaveCount(0);
 
   await row
     .getByRole("button")
@@ -368,8 +364,10 @@ test("@server-integrations @a11y an administrator sets Microsoft's level apps in
     "Täysi, Ei lähetystä",
   );
   await expect(dialog.getByTestId("ml-set-nosend")).toBeVisible();
-  await expect(row.getByTestId("si-levels-note")).toHaveText(
-    "2/4 tasoa asetettu: Täysi · Ei lähetystä",
+  // The row counts the levels set on its Levels button.
+  await expect(row.getByTestId("si-setup-microsoft")).toHaveAttribute(
+    "data-count",
+    "2/4",
   );
 
   // A level's removal leaves the provider; the last one removes it.
@@ -380,8 +378,9 @@ test("@server-integrations @a11y an administrator sets Microsoft's level apps in
     .getByRole("button")
     .and(page.getByTestId("si-remove-confirm"))
     .click();
-  await expect(row.getByTestId("si-levels-note")).toHaveText(
-    "1/4 tasoa asetettu: Täysi",
+  await expect(row.getByTestId("si-setup-microsoft")).toHaveAttribute(
+    "data-count",
+    "1/4",
   );
   await row
     .getByRole("button")

@@ -107,7 +107,7 @@ const cell = (table: HTMLElement, row: string, level: string) => {
   return r?.children[i]?.getAttribute("data-on");
 };
 
-it("keeps Microsoft's four levels in one row, the table behind Mitä tasot sallivat", () => {
+it("keeps Microsoft's four levels in one row, with the levels' count on its Levels button", () => {
   setup(two);
   // No row of its own for a level: they are all in Microsoft's.
   expect(
@@ -117,27 +117,21 @@ it("keeps Microsoft's four levels in one row, the table behind Mitä tasot salli
       .filter((t) => t?.startsWith("si-row-microsoft")),
   ).toEqual(["si-row-microsoft"]);
   const row = screen.getByTestId("si-row-microsoft");
-  expect(within(row).getByTestId("si-levels-note").textContent).toBe(
-    "2/4 tasoa asetettu: Täysi · Vain luku",
-  );
+  // Prototype round 4: the set levels are no longer a line on the row, and
+  // the row has no table of its own; Levels counts them and asks for the
+  // missing ones beside Organisations.
+  expect(within(row).queryByTestId("si-levels-note")).toBeNull();
+  expect(within(row).queryByTestId("si-levels-microsoft")).toBeNull();
   expect(within(row).getByTestId("si-status-microsoft").textContent).toContain(
     "2/4 tasoa tarjolla",
   );
-  expect(within(row).getByTestId("si-setup-microsoft").textContent).toBe(
-    "Aseta puuttuvat…",
-  );
-  // The table is closed until asked for, also before anything is set.
-  expect(screen.queryByTestId("si-table-microsoft")).toBeNull();
-  fireEvent.click(screen.getByTestId("si-levels-microsoft"));
-  const table = screen.getByTestId("si-table-microsoft");
-  expect(
-    [...table.querySelectorAll("thead th")].slice(1).map((c) => c.textContent),
-  ).toEqual([
-    "TäysiTarjolla",
-    "Kaikki paitsi postin lähetysEi tunnuksia",
-    "Luonnokset, muu vain lukuEi tunnuksia",
-    "Vain lukuTarjolla",
-  ]);
+  const levels = within(row).getByTestId("si-setup-microsoft");
+  expect(levels.dataset.count).toBe("2/4");
+  expect(levels.className).toContain("ah-button-secondary");
+  expect(within(row).getByTestId("si-orgs-microsoft").dataset.count).toBe("1");
+  // What each level allows is in the Levels dialog's table.
+  fireEvent.click(levels);
+  const table = d().getByTestId("ml-table");
   // Everything but sending: drafts, no sending, calendars and files changed.
   expect(cell(table, "Lähettää", "nosend")).toBe("no");
   expect(cell(table, "Lähettää", "full")).toBe("yes");
@@ -145,7 +139,11 @@ it("keeps Microsoft's four levels in one row, the table behind Mitä tasot salli
   expect(cell(table, "Muokkaa tapahtumia", "nosend")).toBe("yes");
   expect(cell(table, "Muokkaa tapahtumia", "drafts")).toBe("no");
   expect(cell(table, "Muokkaa ja voi jakaa", "nosend")).toBe("yes");
-  // The other providers' levels open the same way.
+});
+
+it("keeps the other providers' tables behind Mitä tasot sallivat", () => {
+  setup(two);
+  expect(screen.queryByTestId("si-table-dropbox")).toBeNull();
   fireEvent.click(screen.getByTestId("si-levels-dropbox"));
   expect(
     screen.getByTestId("si-table-dropbox").querySelectorAll("thead th"),
@@ -345,8 +343,10 @@ it("reads every level done and offers the levels behind one quiet button", () =>
       section("microsoft_drafts", draftsID),
     ],
   });
-  expect(screen.getByTestId("si-setup-microsoft").textContent).toBe("Tasot");
-  fireEvent.click(screen.getByTestId("si-setup-microsoft"));
+  const levels = screen.getByTestId("si-setup-microsoft");
+  expect(levels.dataset.count).toBe("4/4");
+  expect(levels.className).toContain("ah-button-quiet");
+  fireEvent.click(levels);
   expect(d().getByTestId("ml-finish")).toBeTruthy();
   expect(d().queryByTestId("ml-begin")).toBeNull();
 });

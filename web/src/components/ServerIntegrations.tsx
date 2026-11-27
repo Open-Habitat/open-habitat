@@ -1,5 +1,6 @@
 import { Fragment, type ReactNode, useState } from "react";
 import type { Provider, ProviderId } from "../app/integrations";
+import { adminOrganisations } from "../app/microsoftOrganisations";
 import { providerOrder } from "../app/onboardingConfig";
 import {
   type AppChange,
@@ -52,6 +53,10 @@ import {
   msLevels,
   type TableProvider,
 } from "./MicrosoftLevels";
+import {
+  MicrosoftOrganisationsDialog,
+  organisationName,
+} from "./MicrosoftOrganisations";
 import { Menu } from "./Overlays";
 import { TextField } from "./Primitives";
 import {
@@ -64,10 +69,12 @@ import { Badge, StatusMark } from "./Status";
 import "./ServerIntegrations.css";
 import { formatDate, liveText } from "../i18n";
 import { microsoftLevelsText } from "../text/microsoftLevels";
+import { microsoftOrganisationsText } from "../text/microsoftOrganisations";
 import { serverIntegrationsText } from "../text/serverIntegrations";
 
 const txt = liveText(serverIntegrationsText);
 const levelsTxt = liveText(microsoftLevelsText);
+const orgsTxt = liveText(microsoftOrganisationsText);
 
 // Asetukset › Palvelimen ylläpito › Palvelinintegraatiot (proto-server-integrations-
 // setup, round 2 direction 2 "Käytössä vai ei", Google's round 3 direction 2
@@ -833,6 +840,7 @@ function RemoveDialog({
           </ControlButton>
           <ControlButton
             data-testid="si-remove-confirm"
+            className="si-destructive"
             size="page"
             variant="danger"
             onPress={() => {
@@ -872,6 +880,7 @@ function RemoveDialog({
         </ControlButton>
         <ControlButton
           data-testid="si-remove-confirm"
+          className="si-destructive"
           size="page"
           variant="danger"
           onPress={() => {
@@ -916,8 +925,97 @@ function FixDialog({
   );
 }
 
+/** A row button whose count is a pill; the names behind the count are in
+ * its accessible name and tooltip (prototype round 4). */
+function CountButton({
+  testId,
+  label,
+  count,
+  name,
+  variant,
+  isDisabled,
+  onPress,
+}: {
+  testId: string;
+  label: string;
+  count: string;
+  name: string;
+  variant: "quiet" | "secondary";
+  isDisabled?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <ControlButton
+      data-testid={testId}
+      data-count={count}
+      size="row"
+      variant={variant}
+      aria-label={name}
+      tooltip={name}
+      isDisabled={isDisabled}
+      onPress={onPress}
+    >
+      {label}{" "}
+      <span className="si-count" aria-hidden="true">
+        {count}
+      </span>
+    </ControlButton>
+  );
+}
+
+/** Microsoft's row: Organisaatiot n and Tasot n/4, nothing else. A missing
+ * level makes Tasot ask for attention, as the state column does. */
+function MicrosoftRowButtons({
+  apps,
+  set,
+  locked,
+  onOrganisations,
+  onLevels,
+}: {
+  apps: IntegrationApps;
+  set: string[];
+  locked: boolean;
+  onOrganisations: () => void;
+  onLevels: () => void;
+}) {
+  const orgs = adminOrganisations(apps);
+  const missing = set.length < msLevels.length;
+  const names = msLevels
+    .filter((m) => set.includes(m.id))
+    .map((m) => levelsTxt.short[m.id])
+    .join(", ");
+  return (
+    <>
+      <CountButton
+        testId="si-orgs-microsoft"
+        label={orgsTxt.orgsButton}
+        count={String(orgs.length)}
+        variant="quiet"
+        name={orgsTxt.orgsName(
+          orgs.length,
+          orgs.map((o) => organisationName(o)).join(", "),
+        )}
+        onPress={onOrganisations}
+      />
+      <CountButton
+        testId="si-setup-microsoft"
+        label={levelsTxt.levels}
+        count={`${set.length}/${msLevels.length}`}
+        variant={missing ? "secondary" : "quiet"}
+        name={orgsTxt.levelsName(
+          levelsTxt.levelsSet(set.length, names),
+          missing,
+        )}
+        isDisabled={locked}
+        onPress={onLevels}
+      />
+    </>
+  );
+}
+
 type Open =
   | { kind: "levels" }
+  | { kind: "organisations" }
   | { kind: "setup"; provider: AppSection; replace?: IntegrationApp }
   | { kind: "audience"; clientID: string }
   | { kind: "remove"; provider: AppSection }
@@ -935,6 +1033,8 @@ export function ServerIntegrations({
   onOpenOnboarding,
   onSave,
   onRemove,
+  onTenantSet,
+  onTenantRemove,
   onRefresh,
   children,
   searchRows,
@@ -954,6 +1054,10 @@ export function ServerIntegrations({
   onOpenOnboarding?: () => void;
   onSave: (provider: AppSection, fields: AppFields) => Promise<AppChange>;
   onRemove: (provider: AppSection) => void;
+  /** Adds an organisation to Microsoft's allowed list or takes it off;
+   * without them the organisations can only be read. */
+  onTenantSet?: (tenant: string, label: string) => Promise<AppChange>;
+  onTenantRemove?: (tenant: string) => Promise<AppChange>;
   onRefresh: () => void;
   /** Rows above the services, such as a failed refresh. */
   children?: ReactNode;
@@ -1061,22 +1165,20 @@ export function ServerIntegrations({
                   detail={
                     ms ? (
                       <>
-                        <span
-                          className="ml-provnote"
-                          data-testid="si-levels-note"
-                        >
-                          {msSet.length
-                            ? levelsTxt.levelsSet(
-                                msSet.length,
-                                msSet
-                                  .map((x) => levelsTxt.short[x.level])
-                                  .join(" · "),
-                              )
-                            : levelsTxt.fourLevels}
-                        </span>
+                        {/* The levels set are named in the Levels button
+                            and its dialog; with none, the row says what the
+                            levels are (prototype round 4). */}
+                        {msSet.length ? null : (
+                          <span
+                            className="ml-provnote"
+                            data-testid="si-levels-note"
+                          >
+                            {levelsTxt.fourLevels}
+                          </span>
+                        )}
                         {msApps.map(
                           ({ level, app: a }) =>
-                            !pending[a.provider] &&
+                            !pending[a.provider as AppSection] &&
                             invalidApp(a) && (
                               <span
                                 key={level}
@@ -1098,11 +1200,6 @@ export function ServerIntegrations({
                               {problem.text}
                             </span>
                           )}
-                        <LevelsDisclosure
-                          open={tableOpen}
-                          onToggle={() => toggleTable("microsoft")}
-                          testId="si-levels-microsoft"
-                        />
                       </>
                     ) : (
                       <>
@@ -1148,23 +1245,27 @@ export function ServerIntegrations({
                   ]}
                   end={
                     ms && (s.kind === "ready" || s.kind === "needs_app") ? (
-                      <ControlButton
-                        data-testid="si-setup-microsoft"
-                        size="row"
-                        variant={
-                          msSet.length === msLevels.length
-                            ? "quiet"
-                            : "secondary"
-                        }
-                        isDisabled={locked}
-                        onPress={() => setOpen({ kind: "levels" })}
-                      >
-                        {msSet.length === msLevels.length
-                          ? levelsTxt.levels
-                          : msSet.length
-                            ? levelsTxt.setMissing
-                            : levelsTxt.createApps}
-                      </ControlButton>
+                      msSet.length ? (
+                        <MicrosoftRowButtons
+                          apps={apps}
+                          set={msSet.map((x) => x.level)}
+                          locked={locked}
+                          onOrganisations={() =>
+                            setOpen({ kind: "organisations" })
+                          }
+                          onLevels={() => setOpen({ kind: "levels" })}
+                        />
+                      ) : (
+                        <ControlButton
+                          data-testid="si-setup-microsoft"
+                          size="row"
+                          variant="secondary"
+                          isDisabled={locked}
+                          onPress={() => setOpen({ kind: "levels" })}
+                        >
+                          {levelsTxt.createApps}
+                        </ControlButton>
+                      )
                     ) : s.kind === "uncertain" ? (
                       <ControlButton
                         data-testid={`si-refresh-${p}`}
@@ -1413,6 +1514,24 @@ export function ServerIntegrations({
           invalid={invalidText}
           onSave={(section, fields) => onSave(section, fields)}
           onRemove={(section) => setOpen({ kind: "remove", provider: section })}
+          onClose={() => setOpen(undefined)}
+        />
+      )}
+      {open?.kind === "organisations" && (
+        <MicrosoftOrganisationsDialog
+          apps={apps}
+          locked={locked || !onTenantSet || !onTenantRemove}
+          onSet={(tenant, label) =>
+            onTenantSet
+              ? onTenantSet(tenant, label)
+              : Promise.resolve({ kind: "refused", code: "admin_required" })
+          }
+          onRemove={(tenant) =>
+            onTenantRemove
+              ? onTenantRemove(tenant)
+              : Promise.resolve({ kind: "refused", code: "admin_required" })
+          }
+          onReread={onRefresh}
           onClose={() => setOpen(undefined)}
         />
       )}

@@ -21,6 +21,7 @@ import {
   type AppSection,
   appRefusal,
   changeIntegrationApp,
+  changeIntegrationTenant,
   type IntegrationApps,
   readIntegrationApps,
 } from "./serverIntegrations";
@@ -141,6 +142,22 @@ export function ServerIntegrationsSettings({ csrf }: { csrf?: string }) {
       ? { kind: "refused", code: "login" }
       : result;
   };
+  // An organisation of Microsoft's allowed list; the dialog shows the
+  // outcome where the administrator is, so nothing goes on a row.
+  const changeTenant = async (
+    tenant: string,
+    label?: string,
+  ): Promise<AppChange> => {
+    if (!csrf) return { kind: "refused", code: "admin_required" };
+    changes.current++;
+    const result = await changeIntegrationTenant(csrf, tenant, label);
+    changes.current++;
+    if (result.kind === "changed") {
+      setApps(result.view);
+      await readCatalog();
+    }
+    return result;
+  };
   if (!apps)
     return (
       <SectionCard>
@@ -169,6 +186,8 @@ export function ServerIntegrationsSettings({ csrf }: { csrf?: string }) {
       onOpenOnboarding={() => navigate(settingsHref("kayttoonotto"))}
       onSave={(provider, fields) => change(provider, fields)}
       onRemove={(provider) => void change(provider)}
+      onTenantSet={(tenant, label) => changeTenant(tenant, label)}
+      onTenantRemove={(tenant) => changeTenant(tenant)}
       onRefresh={() => void reload()}
       searchRows={<SiteSearchRows csrf={csrf} />}
     >
