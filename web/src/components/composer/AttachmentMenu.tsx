@@ -17,6 +17,8 @@ export function AttachmentMenu({
       data-testid="attach-file"
       className="ah-crow-btn"
       aria-label={t.add}
+      // The label goes when the row has no room for it (useRowFit).
+      tooltip={t.add}
       isDisabled={disabled}
       onPress={onAttach}
     >

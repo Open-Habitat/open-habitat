@@ -1577,6 +1577,47 @@
     height: 30px;
   }
 }
+/* A conversation column too narrow for the labels (a file open beside it,
+   or a narrow window): the row measures itself (useRowFit) and shows the
+   aids as the phone does, square icons whose accessible names and tooltips
+   stay. The touch sizes remain the viewport's, so this sets only what the
+   labels took. */
+.ah-crow {
+  --ah-crow-icon: 28px;
+}
+@media (max-width: 440px) {
+  .ah-crow {
+    --ah-crow-icon: 36px;
+  }
+}
+.ah-composer .ah-crow[data-fit="icons"] .ah-crow-btn {
+  justify-content: center;
+  width: var(--ah-crow-icon);
+  padding: 0;
+}
+.ah-crow[data-fit="icons"] .ah-crow-btn .ah-crow-lbl,
+.ah-crow[data-fit="icons"] .ah-dictation-finish .ah-crow-lbl,
+.ah-crow[data-fit="icons"] .ah-crow-swap,
+.ah-crow[data-fit="icons"] .ah-crow-sep,
+.ah-crow[data-fit="icons"]
+  .ah-crow-chip-follow_up
+  > span:not(.ah-crow-chip-short),
+.ah-crow[data-fit="icons"] .ah-dictation-hint,
+.ah-crow[data-fit="icons"] .ah-dictation-bar .ah-dictation-state {
+  display: none;
+}
+.ah-crow[data-fit="icons"] .ah-crow-chip-short {
+  display: inline;
+}
+.ah-crow[data-fit="icons"] .ah-crow-mslot {
+  width: var(--ah-crow-icon);
+}
+.ah-crow[data-fit="icons"] .ah-dictation-finish {
+  justify-content: center;
+  min-height: var(--ah-crow-icon);
+  padding: 0;
+  border-radius: 50%;
+}
 @media (prefers-reduced-motion: reduce) {
   .ah-dictation-dot,
   .ah-dictation-caret,
