@@ -8,7 +8,7 @@ provenance: other
 provenance_detail: 'GitHub issue #2'
 source_ref: https://github.com/Open-Habitat/open-habitat/issues/2
 lane: unlaned
-preparation: pending
+preparation: ready
 ---
 
 # Microsoft 365: allow integrations with several Entra tenants on one server
@@ -41,3 +41,7 @@ Jari 27.11.2026: research first (the two directions, their security, consent and
 ### 2026-11-27T08:11:45Z · @jari
 
 Jari 27.11.2026: direction B. The server operator creates the multi-tenant applications once in their own (parent) tenant; each client organisation's administrator approves them in their tenant; the operator allows those tenants on the server. Existing single-tenant connections keep working. Conductor defaults (Jari may revisit): the operator's organisation is the publisher, publisher verification optional (unverified warning accepted at first); first case to prove is one person connecting their own organisation plus two client SharePoints as a guest. Next action (approved): a design (admin and person flows, connection identity per tenant+user, migration) for Jari's approval before implementation.
+
+### 2026-11-27T09:45:22Z · @jari
+
+Jari 27.11.2026: the design's three recommendations accepted (no who-connected list in v1; removing an organisation only stops connections; fetched files keep ~/cloud/microsoft-fetched/<address>/). UI first: a prototype round of the UI parts before any implementation, to see what it looks like. Next action (approved): prototype round 1.
