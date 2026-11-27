@@ -961,6 +961,12 @@ func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
 		}
 		c.write.Unlock()
 	}
+	if e.Provider() == Microsoft && !microsoftServed(c.env, address) {
+		// A sync started while the organisation was served stops at the
+		// first check after it is removed, as its tools do at their next
+		// call; reconcile does not start it again.
+		c.sync.stop(key{e.Provider(), address})
+	}
 	ctx, cancel := context.WithTimeout(ctx, 12*time.Second)
 	defer cancel()
 	// A native initial pass may hold the provider's mutex for hours. Never
@@ -1152,6 +1158,10 @@ func (c *Catalog) reconcile() SkillState {
 	}
 	for _, a := range accounts {
 		if blocked[key{a.entry.Provider(), a.address}] {
+			continue
+		}
+		if a.entry.Provider() == Microsoft && !microsoftServed(c.env, a.address) {
+			// An organisation the operator no longer serves syncs nothing.
 			continue
 		}
 		if s, ok := a.entry.(SyncEntry); ok && s.Available(c.env) {

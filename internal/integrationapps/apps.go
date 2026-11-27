@@ -355,7 +355,8 @@ func ReadTenants(raw []byte) ([]Tenant, bool) {
 	return out, true
 }
 
-// TenantsValue is the canonical member value for a list.
+// TenantsValue is the canonical member value for a list. Labels are not
+// HTML-escaped, so a full list of the longest labels stays within the file.
 func TenantsValue(list []Tenant) []byte {
 	var b bytes.Buffer
 	b.WriteByte('{')
@@ -364,10 +365,13 @@ func TenantsValue(list []Tenant) []byte {
 			b.WriteByte(',')
 		}
 		key, _ := json.Marshal(t.ID)
-		value, _ := json.Marshal(t.Label)
 		b.Write(key)
 		b.WriteByte(':')
-		b.Write(value)
+		var value bytes.Buffer
+		enc := json.NewEncoder(&value)
+		enc.SetEscapeHTML(false)
+		_ = enc.Encode(t.Label)
+		b.Write(bytes.TrimSuffix(value.Bytes(), []byte("\n")))
 	}
 	b.WriteByte('}')
 	return b.Bytes()

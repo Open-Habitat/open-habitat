@@ -156,6 +156,9 @@ func TestTenantListIsGUIDsAndLabels(t *testing.T) {
 	if !ok || len(list) != 2 || list[0] != (Tenant{own, "Own Ltd"}) || list[1].ID != client {
 		t.Fatalf("list %v %v", list, ok)
 	}
+	if !bytes.Contains(TenantsValue(list), []byte(`"Client Öy & Co"`)) {
+		t.Fatalf("label escaped: %s", TenantsValue(list))
+	}
 	if again, ok := ReadTenants(TenantsValue(list)); !ok || len(again) != 2 || again[1] != list[1] {
 		t.Fatalf("canonical value does not round-trip: %s", TenantsValue(list))
 	}

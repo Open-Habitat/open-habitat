@@ -73,6 +73,9 @@ export type AppChange =
   | { kind: "login" };
 
 const path = "/api/v1/server/integrations";
+// The broker's integrations reply bound (internal/provision.MaxReply): eleven
+// sections beside an allowed list of 32 organisations with escaped labels.
+const maxListBytes = 32768;
 
 export async function readIntegrationApps(
   signal?: AbortSignal,
@@ -83,7 +86,7 @@ export async function readIntegrationApps(
     signal,
   });
   if (!r.ok) throw new Error("Integration apps unavailable");
-  const value = await bounded(r, 16384);
+  const value = await bounded(r, maxListBytes);
   if (!validList(value)) throw new Error("Invalid integration apps");
   return value as IntegrationApps;
 }
@@ -119,7 +122,7 @@ export async function changeIntegrationApp(
     return { kind: "refused", code: outcome.code };
   if (outcome.kind !== "ok") return outcome;
   try {
-    const value = await bounded(outcome.response, 16384);
+    const value = await bounded(outcome.response, maxListBytes);
     if (validList(value))
       return { kind: "changed", view: value as IntegrationApps };
   } catch {}

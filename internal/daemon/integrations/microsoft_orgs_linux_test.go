@@ -405,3 +405,40 @@ func TestMicrosoftNotInOrganisation(t *testing.T) {
 		}
 	}
 }
+
+// A connection an earlier release left syncing stops syncing when its
+// organisation is no longer served: the next check stops the running sync
+// and reconcile does not start it again; served once more, it resumes.
+func TestMicrosoftRemovedOrganisationStopsItsSync(t *testing.T) {
+	env := microsoftEnv(t)
+	name := connectedSyncing(t, env)
+	if err := syntheticMicrosoft(t, "person@example.test", "").testChoose(context.Background(), env, name, []string{"onedrive"}); err != nil {
+		t.Fatal(err)
+	}
+	m := offline(t)
+	c := New(env, []Entry{m}, nil)
+	k := syncingOneDrive(t, c, env, name)
+	served := env.Config
+	moved := env.Config
+	moved.Microsoft = &MicrosoftApp{ClientID: env.Config.Microsoft.ClientID, TenantID: clientOne}
+	env.Config = moved
+	c.env = env
+	c.check(context.Background(), m, name)
+	if c.sync.supervised(k) {
+		t.Fatal("a removed organisation still syncs after a check")
+	}
+	c.write.Lock()
+	c.reconcile()
+	c.write.Unlock()
+	if c.sync.supervised(k) {
+		t.Fatal("reconcile restarted a removed organisation's sync")
+	}
+	env.Config = served
+	c.env = env
+	c.write.Lock()
+	c.reconcile()
+	c.write.Unlock()
+	if !c.sync.supervised(k) {
+		t.Fatal("served again, the sync did not resume")
+	}
+}

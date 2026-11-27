@@ -266,6 +266,11 @@ func (c *Catalog) interruptedQueue() []*pendingResume {
 	var queue []*pendingResume
 	accounts, _ := c.accounts()
 	for _, a := range accounts {
+		// An organisation the operator no longer serves resumes nothing, as
+		// it syncs nothing (reconcile).
+		if a.entry.Provider() == Microsoft && !microsoftServed(c.env, a.address) {
+			continue
+		}
 		if e, ok := a.entry.(resumableEntry); ok && e.Available(c.env) && len(e.interruptedPasses(c.env, a.address)) > 0 {
 			queue = append(queue, &pendingResume{entry: e, address: a.address, delay: c.resumeFirst})
 			services := map[string]bool{}

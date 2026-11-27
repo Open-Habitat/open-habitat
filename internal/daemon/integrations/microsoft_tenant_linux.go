@@ -186,6 +186,14 @@ func microsoftAccountApp(env Env, key string, n microsoftNative) (app MicrosoftA
 	return app, level, reason, true
 }
 
+// microsoftServed says whether the operator's file still serves the
+// connection's organisation; false only for tenant_removed, so a connection
+// whose configs cannot be read now is not stopped on that account.
+func microsoftServed(env Env, key string) bool {
+	_, _, reason, ok := microsoftAppOf(env, key)
+	return ok || reason != TenantRemoved
+}
+
 // microsoftAppOf reads the connection's native configs for microsoftAccountApp.
 func microsoftAppOf(env Env, key string) (MicrosoftApp, Level, string, bool) {
 	n, err := microsoftReadNative(env, key)

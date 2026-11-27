@@ -68,7 +68,9 @@ func TestIntegrationTenantListAddRelabelRemove(t *testing.T) {
 // page with every section and the longest labels still fits one reply.
 func TestIntegrationTenantListBound(t *testing.T) {
 	w := integrationWriter(t)
-	long := strings.Repeat("Ä", integrationapps.MaxLabel)
+	// Go's JSON escapes & to six bytes in the reply: the longest a label
+	// can be on the wire.
+	long := strings.Repeat("&", integrationapps.MaxLabel)
 	for i := 0; i < integrationapps.MaxTenants; i++ {
 		if r := tenantSet(w, fmt.Sprintf("00000000-0000-4000-8000-%012d", i), long, "12345678901234567890"); r.Failure != "" {
 			t.Fatalf("entry %d: %+v", i, r)
