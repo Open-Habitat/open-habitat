@@ -86,6 +86,12 @@ linkki ei ole yhden painalluksen päässä omasta luvastaan.
 3. Riittääkö linkin teko keskustelun valikosta, vai siirretäänkö se työtilan
    valikkoon?
 
+### Jarin vastaukset kierrokseen 2 (27.11.2026)
+
+- Kun linkit eivät ole sallittuja: **tyhjä kenttä**.
+- *Palaa linkkiin* ei tarvita: asetukset on modaali, ja sen sulkeminen palaa
+  linkin avaamaan keskusteluun, jossa linkin viesti sitten näkyy.
+
 ## Kierros 1
 
 Prototyyppi: `design-system/prototypes/rounds/2026-11-27-keskustelulinkit-1/`
