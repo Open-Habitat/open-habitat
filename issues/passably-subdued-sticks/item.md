@@ -8,7 +8,7 @@ provenance: other
 provenance_detail: 'GitHub issue #2'
 source_ref: https://github.com/Open-Habitat/open-habitat/issues/2
 lane: unlaned
-preparation: pending
+preparation: ready
 ---
 
 # Microsoft 365: allow integrations with several Entra tenants on one server
@@ -45,3 +45,7 @@ Jari 27.11.2026: direction B. The server operator creates the multi-tenant appli
 ### 2026-11-27T09:45:22Z · @jari
 
 Jari 27.11.2026: the design's three recommendations accepted (no who-connected list in v1; removing an organisation only stops connections; fetched files keep ~/cloud/microsoft-fetched/<address>/). UI first: a prototype round of the UI parts before any implementation, to see what it looks like. Next action (approved): prototype round 1.
+
+### 2026-11-27T10:11:21Z · @jari
+
+Jari 27.11.2026 on round 1: develop the administrator side from A, but with a collapsed state: the organisations and their states behind a button or a collapse, not open on the row. Cut the extra texts drastically. He did not find the person-side prototype at all: round 2 must show the person side clearly and separately. Next action (approved): prototype round 2 (riff).
