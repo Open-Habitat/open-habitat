@@ -339,7 +339,8 @@ test("nested same-view frames stay blocked and offer recovery", async ({
   page.on("request", (request) => {
     if (request.url().endsWith("/bundle.html")) requested.push(request.url());
   });
-  await view.goto(view.url());
+  // Without its theme fragment: a fragment-only change would not reload.
+  await view.goto(view.url().split("#")[0]);
   await expect(page.getByTestId("view-blocked")).toBeVisible();
   expect(requested).toEqual([]);
   await expect(
@@ -388,7 +389,7 @@ test("the own tab frames the view on the app's page, with no opener", async ({
     tab
       .frames()
       .some((f) =>
-        /^https:\/\/oh-view-[a-z2-7]{52}\.oh\.localhost\/index\.html$/.test(
+        /^https:\/\/oh-view-[a-z2-7]{52}\.oh\.localhost\/index\.html#ah-theme=light$/.test(
           f.url(),
         ),
       ),
@@ -401,6 +402,57 @@ test("the own tab frames the view on the app's page, with no opener", async ({
   await tab.reload();
   await expect(body).toHaveAttribute("data-style", "rgb(1, 2, 3)");
   await tab.close();
+});
+
+// The device stays light without media emulation, which would also force
+// the frame's media query and hide what Habitat passes on: Yö shows that the
+// view follows Habitat rather than the device, and Järjestelmä that it
+// follows the device when Habitat does.
+test.describe("view theme", () => {
+  test.use({ colorScheme: null });
+  for (const [choice, theme] of [
+    ["dark", "dark"],
+    ["system", "light"],
+  ] as const) {
+    test(`a view opens in Habitat's theme (${choice}) in the panel and its own tab`, async ({
+      page,
+      context,
+    }) => {
+      await context.addInitScript((choice) => {
+        if (!location.hostname.startsWith("app.")) return;
+        if (choice === "system") localStorage.removeItem("nah:theme");
+        else localStorage.setItem("nah:theme", choice);
+      }, choice);
+      const id = await conversation(page);
+      await offer(page, id);
+      const card = page.getByTestId("view-offer");
+      await card.getByTestId("offer-open").click();
+      const body = page
+        .frameLocator('[data-testid="view-frame"]')
+        .locator("body");
+      await expect(body).toHaveAttribute("data-script", "yes");
+      await expect(body).toHaveAttribute("data-scheme", theme);
+      await expect(body).toHaveAttribute(
+        "data-theme-hint",
+        `#ah-theme=${theme}`,
+      );
+
+      const opened = context.waitForEvent("page");
+      await card.hover();
+      await card.getByTestId("offer-open-tab").click();
+      const tab = await opened;
+      const tabBody = tab
+        .frameLocator('[data-testid="view-frame"]')
+        .locator("body");
+      await expect(tabBody).toHaveAttribute("data-script", "yes");
+      await expect(tabBody).toHaveAttribute("data-scheme", theme);
+      await expect(tabBody).toHaveAttribute(
+        "data-theme-hint",
+        `#ah-theme=${theme}`,
+      );
+      await tab.close();
+    });
+  }
 });
 
 test("a several-megabyte single-file view renders over a connection that stalls", async ({
@@ -531,7 +583,7 @@ test("an offered HTML file of several megabytes opens as its page in the view sa
   expect(viewRequests.length).toBeGreaterThan(0);
   const pageFrame = page.frames().find((f) => f.url().includes("oh-view-"));
   expect(pageFrame?.url()).toMatch(
-    /^https:\/\/oh-view-[a-z2-7]{52}\.[^/]+\/prototyyppi\.html$/,
+    /^https:\/\/oh-view-[a-z2-7]{52}\.[^/]+\/prototyyppi\.html#ah-theme=light$/,
   );
   const csp = await pageDocument;
   expect(csp).toMatch(/^sandbox allow-scripts;.*connect-src 'none'/);

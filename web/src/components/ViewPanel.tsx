@@ -10,6 +10,7 @@ import {
 } from "react";
 import { liveText } from "../i18n";
 import { viewPanelText } from "../text/viewPanel";
+import { isDarkTheme } from "../theme";
 import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
 import { type OfferKind, OfferMark } from "./OfferCard";
@@ -28,7 +29,25 @@ export function ViewFrame(props: ViewFrameProps) {
   return <RecoverableViewFrame key={props.src} {...props} />;
 }
 
-function RecoverableViewFrame({ src, title, onReopen }: ViewFrameProps) {
+/** The view starts in the theme Habitat is showing. The frame inherits the
+ * root's `color-scheme` (theme.ts), which the browser carries into the
+ * view's `prefers-color-scheme` where it supports that for frames, and live.
+ * `#ah-theme=light|dark` is the same fact for a view, or a browser, that does
+ * not: a fragment is never sent to the view host, survives its redirects, and
+ * tells the view only light or dark. It is fixed when the frame opens, since
+ * the hand-off URL is single-use. */
+function themedViewURL(src: string): string {
+  const url = new URL(src, window.location.href);
+  url.hash = `ah-theme=${isDarkTheme() ? "dark" : "light"}`;
+  return url.href;
+}
+
+function RecoverableViewFrame({
+  src: handoff,
+  title,
+  onReopen,
+}: ViewFrameProps) {
+  const [src] = useState(() => themedViewURL(handoff));
   const frame = useRef<HTMLIFrameElement>(null);
   const [blocked, setBlocked] = useState(false);
   const check = useRef<{ challenge: string; timer?: number } | undefined>(

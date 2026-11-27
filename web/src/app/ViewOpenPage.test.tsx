@@ -78,7 +78,7 @@ describe("a view at its stable address", () => {
     render(<ViewOpenPage />);
     await waitFor(() =>
       expect(screen.getByTestId("view-frame").getAttribute("src")).toBe(
-        handoff,
+        `${handoff}#ah-theme=light`,
       ),
     );
     // No request carries the secret in its URL.
@@ -151,7 +151,7 @@ describe("a view at its stable address", () => {
     render(<ViewOpenPage />);
     await waitFor(() =>
       expect(screen.getByTestId("view-frame").getAttribute("src")).toBe(
-        handoff,
+        `${handoff}#ah-theme=light`,
       ),
     );
   });

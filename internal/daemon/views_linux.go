@@ -1233,6 +1233,8 @@ var mark = document.getElementById("mark");
 function markState() { document.body.dataset.image = mark.naturalWidth > 0 ? "loaded" : "missing"; }
 if (mark.complete) { markState(); } else { mark.onload = markState; mark.onerror = markState; }
 fetch("assets/style.css").then(function () { document.body.dataset.fetch = "allowed"; }, function () { document.body.dataset.fetch = "denied"; });
+document.body.dataset.scheme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+document.body.dataset.themeHint = location.hash;
 `
 
 func viewErrorReply(w http.ResponseWriter, err error) {

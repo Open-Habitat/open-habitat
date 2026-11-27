@@ -55,6 +55,15 @@ muotoon 12.10.2026, ja rakennettu vedos todettiin kuvavertailussa samaksi.
 - `stage.js`:n seuranta katkeaa vain lukijan omasta vierityksestä (rulla,
   kosketus, näppäimet, vierityspalkki). Sisällön kutistuminen laskee myös
   `scrollTop`ia, joten kierros ei saa tulkita sitä lukijan teoksi.
+- Kierros avautuu Habitatissa näkymänä siinä teemassa, jota Habitat näyttää:
+  Habitat antaa sen kehykselle `prefers-color-scheme`-arvona ja
+  `#ah-theme=light|dark`-fragmenttina, koska kaikki selaimet eivät vie
+  kehyksen `color-scheme`a näkymän mediakyselyyn. `stage.js` lukee molemmat,
+  ja omalla `build.mjs`:llä rakennettu kierros ottaa Teema-valitsimensa
+  alkuarvon `lib/view-theme.js`:n `initialTheme()`-funktiosta eikä kiinnitä
+  sitä vaaleaksi; kierroksen oma `?theme=` voittaa edelleen. Näkymät ovat
+  jäädytettyjä kopioita, joten vanha kierros muuttuu vasta rakennettuna ja
+  tarjottuna uudelleen.
 - Valitsin, joka hakee ylöspäin attribuutilla, kuten `closest('[data-theme]')`,
   osuu myös sivun juureen, jolla on sama attribuutti. Dokumenttitason
   kuuntelija nielee silloin kaikki klikkaukset, joten valitsin rajataan

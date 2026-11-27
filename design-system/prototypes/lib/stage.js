@@ -44,6 +44,10 @@ stage.addEventListener('click', async (e) => {
 // ---------- Page chrome: theme and phone frame ----------
 const themeSel = document.getElementById('theme');
 const mq = matchMedia('(prefers-color-scheme: dark)');
+// An offered view opens with Habitat's theme as #ah-theme=light|dark; without
+// it Järjestelmä follows prefers-color-scheme, which Habitat's frame also sets.
+const themeHint = /(?:^#|&)ah-theme=(light|dark)(?:&|$)/.exec(location.hash)?.[1];
+if (themeHint) themeSel.value = themeHint;
 function applyTheme() {
   const v = themeSel.value;
   document.documentElement.dataset.theme = v === 'system' ? (mq.matches ? 'dark' : 'light') : v;

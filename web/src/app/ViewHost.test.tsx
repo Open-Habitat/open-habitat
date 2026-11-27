@@ -109,7 +109,7 @@ describe("agent HTML view offers", () => {
     fireEvent.click(button);
     const frame = (await page.findByTestId("view-frame")) as HTMLIFrameElement;
     expect(frame.getAttribute("sandbox")).toBe("allow-scripts");
-    expect(frame.src).toBe(handoff);
+    expect(frame.src).toBe(`${handoff}#ah-theme=light`);
     expect(frame.getAttribute("referrerpolicy")).toBe("no-referrer");
     expect(card.dataset.open).toBe("true");
     expect(button.getAttribute("aria-expanded")).toBe("true");
