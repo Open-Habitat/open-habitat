@@ -942,6 +942,7 @@ export function Entry({
               <SentQuote
                 entryKey={entry.reply_to.entry_key}
                 excerpt={entry.reply_to.excerpt}
+                offer={entry.reply_to.offer}
               />
             ) : undefined
           }

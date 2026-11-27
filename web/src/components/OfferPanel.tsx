@@ -227,11 +227,14 @@ export function OfferFolder({
   items,
   onOpen,
   onTab,
+  rowReply,
 }: {
   offer: FileOfferSummary;
   items: FileOfferItem[];
   onOpen: (path: string) => void;
   onTab?: (path: string) => void;
+  /** Each row's reply control after its own icons (reply-view-file). */
+  rowReply?: (item: FileOfferItem) => ReactNode;
 }) {
   return (
     <ul className="ah-offer-folder" data-testid="offer-folder">
@@ -260,7 +263,9 @@ export function OfferFolder({
             label={baseName(item.path)}
             onTab={onTab ? () => onTab(item.path) : undefined}
             download={offerDownload(offer, item)}
-          />
+          >
+            {rowReply?.(item)}
+          </OfferActions>
         </li>
       ))}
     </ul>
@@ -280,6 +285,7 @@ export function OfferPanel({
   onClose,
   visibility,
   problem,
+  rowReply,
 }: {
   offer: FileOfferSummary;
   state: OfferState;
@@ -296,6 +302,8 @@ export function OfferPanel({
   onSub: (path?: string) => void;
   onTab: (path?: string) => void;
   onClose: () => void;
+  /** A folder row's reply control (reply-view-file). */
+  rowReply?: (item: FileOfferItem) => ReactNode;
 }) {
   const manifest = state.state === "ready" ? state.manifest : undefined;
   const one = singleItem(manifest);
@@ -331,6 +339,7 @@ export function OfferPanel({
         items={state.manifest.items}
         onOpen={onSub}
         onTab={onTab}
+        rowReply={rowReply}
       />
     );
   return (

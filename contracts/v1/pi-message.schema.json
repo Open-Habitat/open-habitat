@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-habitat.invalid/contracts/v1/pi-message.schema.json",
   "title": "Native Pi message, with optional first-message-only model intent",
-  "description": "Body of send, steer and follow_up. reply_to (reply-to-message, experimental) answers one agent message on the conversation's current branch: the daemon reads that message's excerpt from the native session and prepends it as a <reply-to> block. It is refused with 400 invalid_request while the person's experimental switch is off or before a slash command, and with 409 reply_target_gone, before anything reaches Pi, when the entry is not an assistant message with text on the current branch. from and quote are the agent route's only (agent message create), refused with 400 invalid_request on the browser route, and the agent route refuses reply_to and first_choice. from is the sending Pi's launch context; a context that is not the live launch is refused with 409 current_context_stale, and without one the message is marked as from an agent outside the person's conversations. quote is a message id from the sender's own conversation, refused with 400 quote_not_found when it is not on its current branch. Every agent-route message gets the daemon's <agent-message> block in front of its text.",
+  "description": "Body of send, steer and follow_up. reply_to (reply-to-message, experimental) answers one agent message or one view or file offer card on the conversation's current branch: the daemon reads that message's excerpt, or the offer's facts from its native notice and the offer's own manifest, and prepends them as a <reply-to> block in English. path names one file of a several-file offer. It is refused with 400 invalid_request while the person's experimental switch is off, before a slash command or with a malformed path, and with 409 reply_target_gone, before anything reaches Pi, when the entry is neither an assistant message with text nor an offer notice on the current branch, when the offer was removed, or when path is given for a message or a view or is not a file of the offer. from and quote are the agent route's only (agent message create), refused with 400 invalid_request on the browser route, and the agent route refuses reply_to and first_choice. from is the sending Pi's launch context; a context that is not the live launch is refused with 409 current_context_stale, and without one the message is marked as from an agent outside the person's conversations. quote is a message id from the sender's own conversation, refused with 400 quote_not_found when it is not on its current branch. Every agent-route message gets the daemon's <agent-message> block in front of its text.",
   "type": "object",
   "required": [
     "message",
@@ -28,6 +28,12 @@
         "entry_key": {
           "type": "string",
           "pattern": "^[A-Za-z0-9_-]{1,128}$"
+        },
+        "path": {
+          "description": "One file of a several-file offer, as the offer's file list names it.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
         }
       }
     },

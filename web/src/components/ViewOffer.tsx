@@ -1,5 +1,5 @@
 import "./ViewPanel.css";
-import type { Ref } from "react";
+import type { ReactNode, Ref } from "react";
 import { viewZipURL } from "../app/views";
 import { formatDate, formatNumber, liveText } from "../i18n";
 import { fileOfferText } from "../text/fileOffer";
@@ -104,6 +104,7 @@ export function ViewOfferCard({
   visibility,
   problem,
   hitRef,
+  reply,
 }: {
   view: ViewSummary;
   state?: ViewOfferState;
@@ -117,6 +118,8 @@ export function ViewOfferCard({
   /** Why the last change of visibility did not go through. */
   problem?: string;
   hitRef?: Ref<HTMLButtonElement>;
+  /** The reply control in the card's corner (reply-view-file). */
+  reply?: ReactNode;
 }) {
   const shown = visibility?.public && !visibility.unknown;
   return (
@@ -133,6 +136,7 @@ export function ViewOfferCard({
       open={open}
       onToggle={onToggle}
       hitRef={hitRef}
+      reply={reply}
       actions={
         <OfferActions
           label={view.title}

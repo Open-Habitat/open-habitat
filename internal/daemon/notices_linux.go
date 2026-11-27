@@ -312,3 +312,34 @@ func (c *ConversationController) FixtureNotice(id, text string) bool {
 	c.journal.appendEvent("notice.created", id, map[string]any{"notice": n})
 	return true
 }
+
+// fixtureNotice publishes a fixture offer's notice: as a transient journal
+// event, or with native set through the live conversation's bridge, the
+// native writer createNotice uses, so the notice becomes a native entry of
+// its current branch. Fixture-only.
+func (c *ConversationController) fixtureNotice(target string, n agentNotice, native bool) bool {
+	if !native {
+		c.journal.appendEvent("notice.created", target, map[string]any{"notice": n})
+		return true
+	}
+	id := strings.TrimPrefix(target, "pi:")
+	c.mu.Lock()
+	s := c.sessions[id]
+	c.mu.Unlock()
+	if s == nil || s.dead {
+		return false
+	}
+	n.Persistence = "unknown"
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	var outcome struct {
+		Written bool `json:"written"`
+	}
+	if s.rpc.processRequest(ctx, map[string]any{"op": "notice", "notice": n, "session_id": id, "generation": s.rpc.processGeneration}, &outcome) != nil || !outcome.Written {
+		return false
+	}
+	n.Persistence = "persisted"
+	c.journal.appendEvent("notice.created", target, map[string]any{"notice": n})
+	c.journal.appendInvalidation(target)
+	return true
+}

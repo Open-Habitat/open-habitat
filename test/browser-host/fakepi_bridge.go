@@ -20,8 +20,10 @@ import (
 // messages, release lines and membership lines as the companion does, as
 // displayed custom messages with the companion's details. A participant's
 // text-only run answers in text; a released run makes one synthetic call,
-// asking the owner first when they approve each call. Every other op gets no
-// reply, as an unavailable bridge, so cases that never use it are unchanged.
+// asking the owner first when they approve each call. It also writes an
+// offer's notice as the companion's native writer does. Every other op gets
+// no reply, as an unavailable bridge, so cases that never use it are
+// unchanged.
 type fakeBridge struct {
 	s       *fakeSession
 	emit    func(any)
@@ -42,9 +44,10 @@ type fakeProc struct {
 	lastOutput        int64
 }
 
-// multiplayerOn reads the person's own experimental switch, as the daemon
-// does. Only then does the stand-in listen: every other case keeps the
-// unavailable bridge it had before, where a dial fails at once.
+// multiplayerOn reads the person's own experimental switches, as the daemon
+// does. Only with multiplayer, or with reply-to-message (whose offer replies
+// need native offer notices), does the stand-in listen: every other case
+// keeps the unavailable bridge it had before, where a dial fails at once.
 func multiplayerOn(home string) bool {
 	b, err := os.ReadFile(filepath.Join(home, ".config", "open-habitat", "preferences.json"))
 	if err != nil {
@@ -53,7 +56,7 @@ func multiplayerOn(home string) bool {
 	var p struct {
 		Experimental map[string]bool `json:"experimental"`
 	}
-	return json.Unmarshal(b, &p) == nil && p.Experimental["multiplayer"]
+	return json.Unmarshal(b, &p) == nil && (p.Experimental["multiplayer"] || p.Experimental["reply-to-message"])
 }
 
 func (b *fakeBridge) serve(path string) {
@@ -89,6 +92,7 @@ func (b *fakeBridge) handle(conn net.Conn) {
 		Line    map[string]any `json:"line"`
 		ID      string         `json:"id"`
 		Token   string         `json:"token"`
+		Notice  map[string]any `json:"notice"`
 	}
 	if json.Unmarshal(scanner.Bytes(), &q) != nil {
 		return
@@ -112,6 +116,14 @@ func (b *fakeBridge) handle(conn net.Conn) {
 		data = b.participant(q.Message)
 	case "release":
 		data = b.release(q.Line)
+	case "notice":
+		// The companion's native notice writer: one custom entry on the
+		// branch, outside the model's context.
+		if q.Notice == nil {
+			return
+		}
+		b.s.append(map[string]any{"type": "custom", "customType": "oh-agent-notice", "data": q.Notice})
+		data = map[string]any{"written": true}
 	default:
 		return // as an unavailable bridge
 	}

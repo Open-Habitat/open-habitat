@@ -51,7 +51,12 @@ export interface HistoryEntry {
   skill?: { name: string; description?: string };
   /** The agent message this message of the person's answers, and the
    * excerpt the agent received with it (reply-to-message, experimental). */
-  reply_to?: { entry_key: string; excerpt: string };
+  reply_to?: {
+    entry_key: string;
+    excerpt: string;
+    /** The offer card it answers (reply-view-file). */
+    offer?: { kind: "view" | "file" | "files"; title: string; path?: string };
+  };
   /** A message another agent of the person sent here, and one this
    * conversation's agent sent (agent-agent-messages). */
   agent_message?: import("../components/AgentMessage").AgentMessageFact;

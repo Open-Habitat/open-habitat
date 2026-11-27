@@ -27,6 +27,7 @@ import { GuidePanel } from "../components/GuidePanel";
 import { Icon } from "../components/Icon";
 import { OfferActions, OfferSeen } from "../components/OfferCard";
 import { OfferPanel } from "../components/OfferPanel";
+import { OfferReplyButton } from "../components/ReplyQuote";
 import {
   ViewOfferCard,
   type ViewOfferState,
@@ -50,6 +51,7 @@ import {
   useFileOffers,
 } from "./fileOffers";
 import { readGuide, setGuide, useGuide } from "./goalGuide";
+import { offerReplyActive, useOfferReply } from "./offerReply";
 import {
   addressOf,
   defaultExpiry,
@@ -710,8 +712,28 @@ function OpenedFilePanel({
 }) {
   const state = useFileOffer(opened.offer.offer_id);
   const visibility = useItemVisibility(opened.offer.offer_id, controls);
+  const offerId = opened.offer.offer_id;
+  const reply = useOfferReply();
   return (
     <OfferPanel
+      rowReply={
+        reply?.can(offerId)
+          ? (item) => (
+              <OfferReplyButton
+                title={item.path}
+                path={item.path}
+                active={offerReplyActive(reply, offerId, item.path)}
+                onReply={() => {
+                  // On a phone the panel covers the conversation: the
+                  // reply goes back to the field.
+                  if (window.matchMedia("(max-width: 800px)").matches)
+                    onClose();
+                  reply.reply({ offerId, path: item.path });
+                }}
+              />
+            )
+          : undefined
+      }
       offer={opened.offer}
       state={state}
       visibility={visibility}
@@ -761,6 +783,7 @@ function ViewOfferEntry({
   controls: OfferControls;
 }) {
   const visibility = useItemVisibility(view.view_id, controls);
+  const reply = useOfferReply();
   const noteView = controls.noteView;
   useEffect(() => {
     noteView(view);
@@ -774,6 +797,15 @@ function ViewOfferEntry({
       onOpenTab={() => controls.openTab({ kind: "view", view })}
       visibility={visibility}
       problem={controls.problem(view.view_id)}
+      reply={
+        reply?.can(view.view_id) ? (
+          <OfferReplyButton
+            title={view.title}
+            active={offerReplyActive(reply, view.view_id)}
+            onReply={() => reply.reply({ offerId: view.view_id })}
+          />
+        ) : undefined
+      }
     />
   );
 }
@@ -788,6 +820,7 @@ function FileOfferEntry({
   controls: OfferControls | null;
 }) {
   const state = useFileOffer(offer.offer_id);
+  const reply = useOfferReply();
   // An offer publishes only where views can: its public page is served on
   // the view namespace.
   const visibility = useItemVisibility(
@@ -813,6 +846,15 @@ function FileOfferEntry({
         controls
           ? () => controls.openTab({ kind: "file", offer, state })
           : undefined
+      }
+      reply={
+        reply?.can(offer.offer_id) ? (
+          <OfferReplyButton
+            title={offer.title}
+            active={offerReplyActive(reply, offer.offer_id)}
+            onReply={() => reply.reply({ offerId: offer.offer_id })}
+          />
+        ) : undefined
       }
     />
   );

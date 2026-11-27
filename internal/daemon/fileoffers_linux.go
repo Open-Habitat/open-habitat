@@ -1052,6 +1052,16 @@ func (c *ConversationController) agentFileOffers(w http.ResponseWriter, r *http.
 // once all of it has arrived and records what its sandbox let it do). It is not mounted by the
 // product and is unavailable outside the browser-host controller.
 func (c *ConversationController) FixtureFiles(target, set string) ([]string, bool) {
+	return c.fixtureFiles(target, set, false)
+}
+
+// FixtureFilesNative is FixtureFiles with each notice written into the
+// native session through the conversation's bridge (fixtureNotice).
+func (c *ConversationController) FixtureFilesNative(target, set string) ([]string, bool) {
+	return c.fixtureFiles(target, set, true)
+}
+
+func (c *ConversationController) fixtureFiles(target, set string, native bool) ([]string, bool) {
 	if !c.fixture || c.journal == nil || !viewConversationPattern.MatchString(target) {
 		return nil, false
 	}
@@ -1158,7 +1168,9 @@ document.body.dataset.rendered = String(payload.length);
 			return nil, false
 		}
 		n := agentNotice{ID: key, Origin: "agent", Timestamp: time.Now().UTC().Format(time.RFC3339Nano), Text: summary.Title, Persistence: "not_persisted", Files: &summary}
-		c.journal.appendEvent("notice.created", target, map[string]any{"notice": n})
+		if !c.fixtureNotice(target, n, native) {
+			return nil, false
+		}
 		ids = append(ids, summary.ID)
 	}
 	return ids, true

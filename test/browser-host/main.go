@@ -1172,6 +1172,8 @@ esac
 				offer := controller.FixtureView
 				if r.URL.Query().Get("page") == "large" {
 					offer = controller.FixtureLargeView
+				} else if r.URL.Query().Get("native") == "1" {
+					offer = controller.FixtureViewNative
 				}
 				id, ok := offer(r.URL.Query().Get("target"))
 				if !ok {
@@ -1182,7 +1184,12 @@ esac
 				fmt.Fprintf(w, `{"view_id":%q}`, id)
 				return
 			case "/fixture/files":
-				ids, ok := conversationHandlers[0].Load().(*daemon.ConversationController).FixtureFiles(r.URL.Query().Get("target"), r.URL.Query().Get("set"))
+				controller := conversationHandlers[0].Load().(*daemon.ConversationController)
+				files := controller.FixtureFiles
+				if r.URL.Query().Get("native") == "1" {
+					files = controller.FixtureFilesNative
+				}
+				ids, ok := files(r.URL.Query().Get("target"), r.URL.Query().Get("set"))
 				if !ok {
 					http.Error(w, "fixture failed", 400)
 					return

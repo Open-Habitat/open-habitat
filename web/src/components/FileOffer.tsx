@@ -1,5 +1,5 @@
 import "./FileOffer.css";
-import type { Ref } from "react";
+import type { ReactNode, Ref } from "react";
 import {
   downloadURL,
   type FileKind,
@@ -151,6 +151,7 @@ export function FileOfferCard({
   visibility,
   problem,
   hitRef,
+  reply,
 }: {
   offer: FileOfferSummary;
   state: OfferState;
@@ -162,6 +163,9 @@ export function FileOfferCard({
   /** Why the last change of visibility did not go through. */
   problem?: string;
   hitRef?: Ref<HTMLButtonElement>;
+  /** The reply control in the card's corner (reply-view-file); a removed
+   * offer's inert card has none. */
+  reply?: ReactNode;
 }) {
   const manifest = state.state === "ready" ? state.manifest : undefined;
   const one = singleItem(manifest);
@@ -220,6 +224,7 @@ export function FileOfferCard({
       inert={removed}
       onToggle={manifest ? onToggle : undefined}
       hitRef={hitRef}
+      reply={reply}
       media={media}
       status={status}
       actions={

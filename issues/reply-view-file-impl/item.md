@@ -3,7 +3,7 @@ created: 2026-11-27
 updated: 2026-11-27
 type: feature
 reporter: jari
-status: open
+status: testing
 priority: normal
 lane: unlaned
 preparation: ready

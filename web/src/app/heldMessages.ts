@@ -7,6 +7,7 @@ import {
 } from "react";
 import { liveText } from "../i18n";
 import { heldMessagesText } from "../text/heldMessages";
+import type { ReplyTo } from "./conversations";
 import {
   cancelHeld,
   continueConversation,
@@ -37,8 +38,8 @@ export type LocalHeld = {
   preexisting?: string[];
   /** The first message's model intent for a still-empty new conversation. */
   choice?: { provider?: string; model: string; thinking?: string };
-  /** The agent message it answers (reply-to-message, experimental). */
-  reply_to?: string;
+  /** The agent message or offer it answers (reply-to-message, experimental). */
+  reply_to?: ReplyTo;
 };
 
 export type WaitingView = {
@@ -267,7 +268,7 @@ export function useHeldMessages({
       choice?: LocalHeld["choice"],
       keepDraft = false,
       commandId?: string,
-      replyTo?: string,
+      replyTo?: ReplyTo,
     ) => {
       if (!text.trim()) return;
       const entry: LocalHeld = {

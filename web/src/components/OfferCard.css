@@ -35,7 +35,8 @@
 .ah-view-offer-mark,
 .ah-file-offer-mark,
 .ah-offer-chev,
-.ah-offer-acts {
+.ah-offer-acts,
+.ah-offer-reply {
   -webkit-user-select: none;
   user-select: none;
 }
@@ -222,6 +223,39 @@
   }
   .ah-offer-chev {
     display: none;
+  }
+}
+/* The reply control (reply-view-file) is always in the card's top-right
+   corner, the same control as on an agent message. The card's own icon row
+   floats beside it under the pointer, the title keeps clear of it and the
+   chevron moves to the card's bottom corner. */
+.ah-offer[data-reply] {
+  padding-inline-end: 48px;
+}
+.ah-offer[data-reply] > .ah-offer-reply,
+.ah-offer[data-reply] > .ah-offer-reply * {
+  pointer-events: auto;
+}
+.ah-offer[data-reply] > .ah-offer-reply {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  display: inline-flex;
+}
+.ah-offer[data-reply] > .ah-offer-acts {
+  right: 44px;
+}
+.ah-offer[data-reply] > .ah-offer-chev {
+  align-self: flex-end;
+  margin-inline-end: -36px;
+}
+@media (hover: none) {
+  /* The touch row reaches under the corner control, so its icons end where
+     the control does. */
+  .ah-offer[data-reply] > .ah-offer-acts {
+    flex-basis: calc(100% + 42px);
+    margin-inline-end: -42px;
   }
 }
 .ah-offer-ib.ah-button {

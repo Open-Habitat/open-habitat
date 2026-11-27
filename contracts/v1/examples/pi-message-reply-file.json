@@ -1,0 +1,8 @@
+{
+  "message": "A synthetic reply to one file of an offer",
+  "command_id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+  "reply_to": {
+    "entry_key": "d71f0c3a",
+    "path": "appendix/table.csv"
+  }
+}

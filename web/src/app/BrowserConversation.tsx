@@ -68,6 +68,7 @@ import {
   ComposerQuote,
   ReplyContext,
   type ReplyControl,
+  type ReplyOffer,
 } from "../components/ReplyQuote";
 import { RestCard } from "../components/RestartNotice";
 import { SpinoffContext } from "../components/Spinoffs";
@@ -127,6 +128,7 @@ import {
   type Recap,
   type RecapFailureReason,
   RecapGenerationFailed,
+  type ReplyTo,
   readRecap,
   regenerateTitle,
   renameConversation,
@@ -179,6 +181,7 @@ import {
   titleModelUnavailable,
 } from "./namingRefusal";
 import { useNextWaitingWindow } from "./nextWaiting";
+import { type OfferReplyControl, useProvideOfferReply } from "./offerReply";
 import { sshTarget } from "./ownMachines";
 import {
   OwnMachineUseProvider,
@@ -1118,7 +1121,7 @@ function BrowserConversationContent({
     text = draft,
     keepDraft = false,
     commandId?: string,
-    replyTo?: string,
+    replyTo?: ReplyTo,
   ) => {
     held.setNotice("");
     const sent = await submitDirect(text, keepDraft, commandId, replyTo);
@@ -1161,16 +1164,18 @@ function BrowserConversationContent({
   // Pi is not running: a send is held by the daemon and starts Pi. A previous
   // uncertain send does not block a new message then; it is never resent.
   const notStarted = piNotRunning(current?.state);
-  // Replying to one agent message (reply-to-message, experimental): the
-  // message the field's quote answers, for this conversation only. The next
-  // message sent takes it; a slash command goes without it, since Pi reads
-  // one only at the start of the text.
+  // Replying to one agent message or offer card (reply-to-message,
+  // experimental): what the field's quote answers, for this conversation
+  // only. The next message sent takes it; a slash command goes without it,
+  // since Pi reads one only at the start of the text.
   const replyOn = useExperimentalFeature("reply-to-message");
   const [replyTarget, setReplyTarget] = useState<{
     agent: string;
     key: string;
     excerpt: string;
     time?: string;
+    /** An offer card, or one file of it (reply-view-file). */
+    offer?: ReplyOffer & { id: string };
   }>();
   const replyNow =
     replyOn && replyTarget && replyTarget.agent === id
@@ -1179,7 +1184,10 @@ function BrowserConversationContent({
   const takeReply = (text: string) => {
     if (!replyNow || text.startsWith("/")) return undefined;
     setReplyTarget(undefined);
-    return replyNow.key;
+    return {
+      entry_key: replyNow.key,
+      ...(replyNow.offer?.path ? { path: replyNow.offer.path } : {}),
+    };
   };
   // Habitat's card of a rest, and the wake the person's typing starts.
   const rest = useRest({
@@ -1297,7 +1305,7 @@ function BrowserConversationContent({
     : !notStarted && !tellWorking && current?.state === "accepted"
       ? txt.waitIdle
       : undefined;
-  const tell = (text: string, replyTo?: string) => {
+  const tell = (text: string, replyTo?: ReplyTo) => {
     dismissRecapOnSend();
     rest.onSend();
     if (notStarted)
@@ -1509,8 +1517,8 @@ function BrowserConversationContent({
     id: string;
     text: string;
     mode?: "steer" | "follow_up";
-    /** The agent message it answers (reply-to-message). */
-    replyTo?: string;
+    /** The agent message or offer it answers (reply-to-message). */
+    replyTo?: ReplyTo;
   };
   const [kept, setKeptState] = useState<{ key: string; items: Kept[] }>();
   const keptItems = kept?.key === keptKey ? kept.items : [];
@@ -2182,7 +2190,7 @@ function BrowserConversationContent({
   const rewindOn = useExperimentalFeature("rewind-conversation");
   const replyControls = useMemo<ReplyControl>(
     () => ({
-      active: replyNow?.key,
+      active: replyNow?.offer ? undefined : replyNow?.key,
       onReply:
         replyOn && controlled
           ? (key) => {
@@ -2214,8 +2222,64 @@ function BrowserConversationContent({
         if (id) jumpToReply(id, key);
       },
     }),
-    [replyNow?.key, replyOn, controlled, entries, id],
+    [replyNow?.key, replyNow?.offer, replyOn, controlled, entries, id],
   );
+  // Offer cards and the panel's file rows (reply-view-file): an offer is
+  // answered through its notice's native entry on the loaded branch, the
+  // newest one if it was offered again.
+  const offerReplyControl = useMemo<OfferReplyControl | undefined>(() => {
+    if (!replyOn || !controlled || !id) return undefined;
+    const noticeOf = (offerId: string) =>
+      entries.findLast(
+        (e) =>
+          e.notice?.view?.view_id === offerId ||
+          e.notice?.file_offer?.offer_id === offerId,
+      );
+    return {
+      agent: id,
+      can: (offerId) => !!noticeOf(offerId),
+      active: replyNow?.offer
+        ? { offerId: replyNow.offer.id, path: replyNow.offer.path }
+        : undefined,
+      reply: ({ offerId, path }) => {
+        const entry = noticeOf(offerId);
+        const notice = entry?.notice;
+        if (!entry || !notice) return;
+        const single = notice.file_offer?.files === 1;
+        const offer: ReplyOffer & { id: string } = notice.view
+          ? { id: offerId, kind: "view", title: notice.view.title }
+          : {
+              id: offerId,
+              kind: single ? "file" : "files",
+              title: notice.file_offer?.title ?? "",
+              ...(path && !single ? { path } : {}),
+            };
+        const at = entry.timestamp ? Date.parse(entry.timestamp) : NaN;
+        setReplyTarget({
+          agent: id,
+          key: entry.entry_key,
+          excerpt: "",
+          offer,
+          time: Number.isNaN(at)
+            ? undefined
+            : formatDate(new Date(at), { hour: "2-digit", minute: "2-digit" }),
+        });
+        // After a phone's panel has closed and handed focus back.
+        window.setTimeout(
+          () =>
+            requestAnimationFrame(() =>
+              document
+                .querySelector<HTMLTextAreaElement>(
+                  '[data-testid="message-input"]',
+                )
+                ?.focus(),
+            ),
+          0,
+        );
+      },
+    };
+  }, [replyOn, controlled, id, entries, replyNow?.offer]);
+  useProvideOfferReply(offerReplyControl);
   const agentMessageControls = useAgentMessageControls(store, id);
   // Other people in this conversation (ADR 0038, experimental): the owner's
   // record and the daemon's facts, read again whenever history moves.
@@ -3935,6 +3999,7 @@ function BrowserConversationContent({
                       view === "opened" && controlled && replyOn && replyNow ? (
                         <ComposerQuote
                           excerpt={replyNow.excerpt}
+                          offer={replyNow.offer}
                           time={replyNow.time}
                           onJump={() =>
                             jumpToReply(replyNow.agent, replyNow.key)

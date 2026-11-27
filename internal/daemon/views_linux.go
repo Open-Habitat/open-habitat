@@ -1115,6 +1115,17 @@ func (c *ConversationController) viewCfg() transport.Config {
 // transient notice. It is not mounted by the product and is unavailable
 // outside the browser-host controller.
 func (c *ConversationController) FixtureView(target string) (string, bool) {
+	return c.fixtureView(target, false)
+}
+
+// FixtureViewNative is FixtureView with the notice written into the native
+// session through the conversation's bridge, as an agent's offer is
+// (fixtureNotice), so history carries the card with its native entry.
+func (c *ConversationController) FixtureViewNative(target string) (string, bool) {
+	return c.fixtureView(target, true)
+}
+
+func (c *ConversationController) fixtureView(target string, native bool) (string, bool) {
 	if !c.fixture || c.journal == nil || !viewConversationPattern.MatchString(target) {
 		return "", false
 	}
@@ -1135,7 +1146,7 @@ func (c *ConversationController) FixtureView(target string) (string, bool) {
 			return "", false
 		}
 	}
-	return c.fixtureOffer(target, filepath.Join(home, "src", "view-fixture"), "site", "index.html", "Synteettinen näkymä")
+	return c.fixtureOffer(target, filepath.Join(home, "src", "view-fixture"), "site", "index.html", "Synteettinen näkymä", native)
 }
 
 // FixtureLargeView offers a single-file page shaped like a prototype build's
@@ -1161,7 +1172,7 @@ document.body.dataset.rendered = String(payload.length);
 	if os.WriteFile(filepath.Join(site, "offline.html"), []byte(page), 0600) != nil {
 		return "", false
 	}
-	return c.fixtureOffer(target, filepath.Join(home, "src", "view-fixture"), "large", "offline.html", "Iso näkymä")
+	return c.fixtureOffer(target, filepath.Join(home, "src", "view-fixture"), "large", "offline.html", "Iso näkymä", false)
 }
 
 // FixtureViewOf offers a page already in one of the synthetic home's
@@ -1171,10 +1182,10 @@ func (c *ConversationController) FixtureViewOf(target, workspace, dir, entry, ti
 	if !c.fixture || c.journal == nil || !viewConversationPattern.MatchString(target) || !validViewTitle(title) || strings.Contains(workspace, "/") || workspace == "" || workspace == ".." {
 		return "", false
 	}
-	return c.fixtureOffer(target, filepath.Join(c.viewCfg().Home, "src", workspace), dir, entry, title)
+	return c.fixtureOffer(target, filepath.Join(c.viewCfg().Home, "src", workspace), dir, entry, title, false)
 }
 
-func (c *ConversationController) fixtureOffer(target, workspace, dir, entry, title string) (string, bool) {
+func (c *ConversationController) fixtureOffer(target, workspace, dir, entry, title string, native bool) (string, bool) {
 	home := c.viewCfg().Home
 	root, err := unix.Open(workspace, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC, 0)
 	if err != nil {
@@ -1192,7 +1203,9 @@ func (c *ConversationController) fixtureOffer(target, workspace, dir, entry, tit
 		return "", false
 	}
 	n := agentNotice{ID: key, Origin: "agent", Timestamp: time.Now().UTC().Format(time.RFC3339Nano), Text: summary.Title, Persistence: "not_persisted", View: &summary}
-	c.journal.appendEvent("notice.created", target, map[string]any{"notice": n})
+	if !c.fixtureNotice(target, n, native) {
+		return "", false
+	}
 	return summary.ID, true
 }
 

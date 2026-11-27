@@ -941,6 +941,7 @@ func (c *ConversationController) admitMessage(w http.ResponseWriter, r *http.Req
 		FirstChoice *piStartupChoice `json:"first_choice,omitempty"`
 		ReplyTo     *struct {
 			EntryKey string `json:"entry_key"`
+			Path     string `json:"path,omitempty"`
 		} `json:"reply_to,omitempty"`
 		From  *agentFrom `json:"from,omitempty"`
 		Quote string     `json:"quote,omitempty"`
@@ -975,12 +976,12 @@ func (c *ConversationController) admitMessage(w http.ResponseWriter, r *http.Req
 			agent.quote = quote
 		}
 	}
-	// A reply to one agent message (reply-to-message, experimental): only
-	// while the switch is on, and never in front of a slash command, which
-	// Pi reads only at the very start of the text.
+	// A reply to one agent message or offer card (reply-to-message,
+	// experimental): only while the switch is on, and never in front of a
+	// slash command, which Pi reads only at the very start of the text.
 	excerpt, enabled := "", false
 	if body.ReplyTo != nil {
-		if !replyblock.ValidKey(body.ReplyTo.EntryKey) || strings.HasPrefix(body.Message, "/") {
+		if !replyblock.ValidKey(body.ReplyTo.EntryKey) || body.ReplyTo.Path != "" && !validViewPath(body.ReplyTo.Path) || strings.HasPrefix(body.Message, "/") {
 			snapshotError(w, 400, "invalid_request")
 			return
 		}
@@ -988,7 +989,7 @@ func (c *ConversationController) admitMessage(w http.ResponseWriter, r *http.Req
 		// target that is gone are refused only below, after a repeat has
 		// been answered as the message it is.
 		if enabled = replyEnabled(c.home); enabled {
-			excerpt, _ = c.replyExcerpt(id, body.ReplyTo.EntryKey)
+			excerpt, _ = c.replyBody(id, body.ReplyTo.EntryKey, body.ReplyTo.Path)
 		}
 	}
 	if body.FirstChoice != nil {

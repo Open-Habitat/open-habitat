@@ -20,6 +20,7 @@ import {
   createTracked,
   NotAdmitted,
   queueMessage,
+  type ReplyTo,
   type Session,
   type Status,
   send,
@@ -143,7 +144,7 @@ export function useConversationActions({
   sentAfterKey: string;
   resentKey: string;
   /** This tab's lost send, proven never to have reached Pi (useConversation). */
-  lostSend?: { command: string; text: string; replyTo?: string };
+  lostSend?: { command: string; text: string; replyTo?: ReplyTo };
   setBusy: Dispatch<SetStateAction<boolean>>;
   setReceipt: Dispatch<SetStateAction<string>>;
   setSendObservation: Dispatch<SetStateAction<Observation | undefined>>;
@@ -253,7 +254,7 @@ export function useConversationActions({
     token: string,
     choice: typeof firstChoice,
     report: boolean,
-    replyTo?: string,
+    replyTo?: ReplyTo,
   ) => {
     try {
       ownWrites.begin(command);
@@ -341,12 +342,12 @@ export function useConversationActions({
   // not typed in the field (the editor's note) keeps the draft.
   // A message that waited for an AI sign-in brings its own command ID
   // (aiSignIn.ts). Resolves false when the view could not send it now.
-  // replyTo: the agent message this one answers (reply-to-message).
+  // replyTo: the agent message or offer this one answers (reply-to-message).
   const submit = async (
     text = draft,
     keepDraft = false,
     commandId?: string,
-    replyTo?: string,
+    replyTo?: ReplyTo,
   ): Promise<boolean> => {
     if (
       busy ||
@@ -387,7 +388,7 @@ export function useConversationActions({
     kind: "steer" | "follow_up",
     text = draft,
     keepDraft = false,
-    replyTo?: string,
+    replyTo?: ReplyTo,
   ) => {
     if (
       busy ||

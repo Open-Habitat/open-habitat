@@ -535,7 +535,7 @@
       ]
     },
     "replyTo": {
-      "description": "A person's message that answers one agent message (reply-to-message, experimental). The daemon reads a leading <reply-to entry=\"…\"> block from the native user text: entry_key is the answered agent entry and excerpt the text the agent received with the message. content and the first text block omit the block; block reads use the same projection.",
+      "description": "A person's message that answers one agent message or one offer card (reply-to-message, experimental). The daemon reads a leading <reply-to entry=\"…\"> block from the native user text: entry_key is the answered agent or offer entry and excerpt the text the agent received with the message. content and the first text block omit the block; block reads use the same projection.",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -550,6 +550,34 @@
         "excerpt": {
           "type": "string",
           "maxLength": 2048
+        },
+        "offer": {
+          "description": "Set when the block answers a view or file offer card: its kind (view; file, one offered file; files, several files offered together), the offer's title and, for one file of several, that file's path in the offer. The view shows the title instead of the English excerpt.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "title"
+          ],
+          "properties": {
+            "kind": {
+              "enum": [
+                "view",
+                "file",
+                "files"
+              ]
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024
+            }
+          }
         }
       }
     },

@@ -2,7 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { useConversationActions } from "./ConversationActions";
 import * as conversations from "./conversations";
-import { replyKeyOf } from "./sentMessages";
+import { rememberedReply } from "./sentMessages";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -202,20 +202,33 @@ it("resends a lost reply with its target and remembers a queued one", async () =
     }) as never;
   renderHook(() =>
     useConversationActions(
-      props("idle", { command, text: "Vastaus", replyTo: "a1" }),
+      props("idle", {
+        command,
+        text: "Vastaus",
+        replyTo: { entry_key: "a1" },
+      }),
     ),
   );
   await vi.waitFor(() => expect(sent).toHaveBeenCalled());
   expect(sent.mock.calls[0][2]).toBe(command);
-  expect(sent.mock.calls[0][5]).toBe("a1");
+  expect(sent.mock.calls[0][5]).toEqual({ entry_key: "a1" });
 
   sessionStorage.clear();
   const { result } = renderHook(() =>
     useConversationActions(props("accepted")),
   );
   await act(() =>
-    result.current.submitQueue("follow_up", "Jatkoksi", false, "a2"),
+    result.current.submitQueue("follow_up", "Jatkoksi", false, {
+      entry_key: "a2",
+      path: "liitteet/taulukko.csv",
+    }),
   );
-  expect(queued.mock.calls.at(-1)?.[5]).toBe("a2");
-  expect(sessionStorage.getItem(replyKeyOf("submitted"))).toBe("a2");
+  expect(queued.mock.calls.at(-1)?.[5]).toEqual({
+    entry_key: "a2",
+    path: "liitteet/taulukko.csv",
+  });
+  expect(rememberedReply("submitted")).toEqual({
+    entry_key: "a2",
+    path: "liitteet/taulukko.csv",
+  });
 });

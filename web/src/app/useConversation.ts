@@ -18,6 +18,7 @@ import {
   lostSendArrived,
   lostSendVerdict,
   ownWrites,
+  rememberedReply,
   replyKeyOf,
   type SendObservationValue,
 } from "./sentMessages";
@@ -312,8 +313,7 @@ export function useConversation({
                 ? "pending"
                 : "uncertain",
             command,
-            replyTo:
-              sessionStorage.getItem(replyKeyOf(submittedKey)) ?? undefined,
+            replyTo: rememberedReply(submittedKey),
           }
         : undefined,
     );

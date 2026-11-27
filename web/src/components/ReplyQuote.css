@@ -82,6 +82,13 @@
   overflow-wrap: anywhere;
 }
 
+/* An offer's quote is its title only (reply-view-file), as the card shows
+   it; two lines at most, a cut one ending in "…". */
+.ah-reply-body[data-offer-title] {
+  color: var(--ah-ink);
+  font-weight: 600;
+}
+
 /* The sent reply's quote: the same sunken surface above the text. */
 .ah-reply-sent {
   display: grid;

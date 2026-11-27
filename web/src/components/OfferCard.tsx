@@ -526,6 +526,7 @@ export function OfferCard({
   actions,
   media,
   status,
+  reply,
   inert = false,
   ...data
 }: {
@@ -544,6 +545,9 @@ export function OfferCard({
   /** An image's thumbnail or a folder's strip of images. */
   media?: ReactNode;
   status?: ReactNode;
+  /** The reply control (reply-view-file), always in the card's top-right
+   * corner as on an agent message; the card's own icons float beside it. */
+  reply?: ReactNode;
   inert?: boolean;
   "aria-label": string;
   "data-testid": string;
@@ -604,6 +608,7 @@ export function OfferCard({
       data-kind-mark={kind}
       data-open={open || undefined}
       data-inert={inert || undefined}
+      data-reply={(reply && !inert) || undefined}
       {...data}
     >
       {onToggle && !inert ? (
@@ -656,6 +661,7 @@ export function OfferCard({
       {actions && !inert ? (
         <span className="ah-offer-acts">{actions}</span>
       ) : null}
+      {reply && !inert ? <span className="ah-offer-reply">{reply}</span> : null}
       {onToggle && !inert ? (
         <span className="ah-offer-chev" aria-hidden="true">
           <Icon name="forward" className="ah-offer-chev-go" />

@@ -24,6 +24,11 @@ import {
 } from "./mutations";
 import type { TurnMark } from "./snapshot";
 
+/** What a message answers (reply-to-message, experimental): an agent
+ * message's or an offer notice's native entry, and for an offer optionally
+ * one file of it. The daemon writes the quote from these. */
+export type ReplyTo = { entry_key: string; path?: string };
+
 const validStartupChoice = new LazyAjv({
   strict: false,
   addFormats: true,
@@ -894,8 +899,9 @@ export async function send(
   commandId: string,
   csrf: string,
   choice?: { provider?: string; model: string; thinking?: string },
-  /** The agent message this one answers (reply-to-message, experimental). */
-  replyTo?: string,
+  /** The agent message or offer this one answers (reply-to-message,
+   * experimental). */
+  replyTo?: ReplyTo,
 ): Promise<"pending" | "held"> {
   if (
     !message ||
@@ -910,7 +916,7 @@ export async function send(
       message,
       command_id: commandId,
       ...(choice ? { first_choice: choice } : {}),
-      ...(replyTo ? { reply_to: { entry_key: replyTo } } : {}),
+      ...(replyTo ? { reply_to: replyTo } : {}),
     },
     csrf,
   );
@@ -1152,7 +1158,7 @@ export async function queueMessage(
   commandId: string,
   csrf: string,
   kind: "steer" | "follow_up",
-  replyTo?: string,
+  replyTo?: ReplyTo,
 ) {
   if (
     !message ||
@@ -1166,7 +1172,7 @@ export async function queueMessage(
     {
       message,
       command_id: commandId,
-      ...(replyTo ? { reply_to: { entry_key: replyTo } } : {}),
+      ...(replyTo ? { reply_to: replyTo } : {}),
     },
     csrf,
   );

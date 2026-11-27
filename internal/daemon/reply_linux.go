@@ -13,10 +13,12 @@ import (
 )
 
 // ReplyFeature is the experimental switch for replying to one agent message
-// (reply-to-message). The browser sends only the message's native entry key;
-// this daemon reads the excerpt from the native session and writes it as a
-// `<reply-to>` block at the start of the person's text (internal/replyblock),
-// so a block this daemon builds never carries excerpt text from the browser.
+// or one view or file offer card (reply-to-message). The browser sends only
+// the entry's native key (and for an offer, optionally one file's path in
+// it); this daemon reads the excerpt or the offer's facts from the native
+// session and the person's own offer store and writes them as a `<reply-to>`
+// block at the start of the person's text (internal/replyblock), so a block
+// this daemon builds never carries text from the browser.
 // (A person can still type such a block into their own message, as they can
 // Pi's <skill> wrapper; it is projected the same way and misleads only them.)
 const ReplyFeature = "reply-to-message"
@@ -27,75 +29,112 @@ func replyEnabled(home string) bool {
 }
 
 // replyRef is the projection of a person's message that answers one agent
-// message: the entry and the excerpt the agent received.
+// message or one offer card: the entry and the block's body the agent
+// received. Offer is set when the body names an offer the daemon wrote, so
+// the view can draw the card's title instead of the English body.
 type replyRef struct {
-	EntryKey string `json:"entry_key"`
-	Excerpt  string `json:"excerpt"`
+	EntryKey string      `json:"entry_key"`
+	Excerpt  string      `json:"excerpt"`
+	Offer    *replyOffer `json:"offer,omitempty"`
 }
 
-// replyExcerpt reads the excerpt of the agent message key on the
-// conversation's current branch (the compacted part included). It refuses a
-// key that is not there, not an assistant message or has no text.
-func (c *ConversationController) replyExcerpt(id, key string) (string, bool) {
-	if !replyblock.ValidKey(key) {
+type replyOffer struct {
+	Kind  string `json:"kind"`
+	Title string `json:"title"`
+	Path  string `json:"path,omitempty"`
+}
+
+// replyBody reads what the block says about entry key on the conversation's
+// current branch (the compacted part included): an agent message's excerpt,
+// or the facts of a view or file offer whose notice is there (path: one
+// file of a several-file offer). It refuses a key that is not on this
+// branch, an entry of another kind, a message without text, an offer that
+// was removed and a path the offer does not hold.
+func (c *ConversationController) replyBody(id, key, path string) (string, bool) {
+	if !replyblock.ValidKey(key) || path != "" && !validViewPath(path) {
 		return "", false
 	}
 	s, ok := c.rewindSource(id)
 	if !ok {
 		return "", false
 	}
-	path, ok := s.branch(s.leaf)
+	branch, ok := s.branch(s.leaf)
 	if !ok {
 		return "", false
 	}
-	for _, line := range path {
+	for _, line := range branch {
 		if line.id != key {
 			continue
 		}
-		if line.kind != "assistant" || !line.text {
-			return "", false
+		switch {
+		case line.kind == "assistant" && line.text && path == "":
+			record, ok := readNativeRecord(s.path, s.uid, line.offset)
+			if !ok {
+				return "", false
+			}
+			text, ok := assistantText(record)
+			if !ok {
+				return "", false
+			}
+			excerpt := replyblock.Excerpt(text)
+			return excerpt, excerpt != ""
+		case line.kind == "custom" && line.customType == noticeType:
+			record, ok := readNativeRecord(s.path, s.uid, line.offset)
+			if !ok {
+				return "", false
+			}
+			var e nativeEntry
+			if json.Unmarshal(record, &e) != nil || e.ID != key {
+				return "", false
+			}
+			e.Raw = record
+			notice, ok := nativeNotice(e)
+			if !ok {
+				return "", false
+			}
+			return c.offerReplyBody(notice, path, s.cwd)
 		}
-		text, ok := readAssistantText(s.path, s.uid, line.offset)
-		if !ok {
-			return "", false
-		}
-		excerpt := replyblock.Excerpt(text)
-		return excerpt, excerpt != ""
+		return "", false
 	}
 	return "", false
 }
 
-// readAssistantText reads one native record at offset and returns its text
-// blocks (never thinking or tool calls), with the same owner check as the
-// session read that found it.
-func readAssistantText(path string, uid int, offset int64) (string, bool) {
+// readNativeRecord reads one native record at offset, with the same owner
+// check as the session read that found it.
+func readNativeRecord(path string, uid int, offset int64) ([]byte, bool) {
 	info, err := os.Lstat(path)
-	if err != nil || !info.Mode().IsRegular() {
-		return "", false
+	if err != nil || !info.Mode().IsRegular() || offset < 0 || offset >= info.Size() {
+		return nil, false
 	}
 	if uid >= 0 {
 		if owner, ok := fileOwner(info); !ok || owner != uid {
-			return "", false
+			return nil, false
 		}
 	}
 	f, err := os.Open(path)
 	if err != nil {
-		return "", false
+		return nil, false
 	}
 	defer f.Close()
 	if opened, err := f.Stat(); err != nil || !os.SameFile(info, opened) {
-		return "", false
+		return nil, false
 	}
 	if _, err := f.Seek(offset, io.SeekStart); err != nil {
-		return "", false
+		return nil, false
 	}
 	var record []byte
 	if _, err := eachNativeLine(io.LimitReader(f, info.Size()-offset), func(line []byte) bool {
 		record = append([]byte(nil), line...)
 		return false
 	}); err != nil || record == nil {
-		return "", false
+		return nil, false
 	}
+	return record, true
+}
+
+// assistantText returns an assistant record's text blocks (never thinking
+// or tool calls).
+func assistantText(record []byte) (string, bool) {
 	var e struct {
 		Message struct {
 			Role    string          `json:"role"`
@@ -150,7 +189,11 @@ func projectUserReply(message json.RawMessage) (*replyRef, bool) {
 	if !ok {
 		return nil, false
 	}
-	return &replyRef{EntryKey: key, Excerpt: excerpt}, true
+	ref := &replyRef{EntryKey: key, Excerpt: excerpt}
+	if o, ok := replyblock.ParseOffer(excerpt); ok {
+		ref.Offer = &replyOffer{Kind: o.Kind, Title: o.Title, Path: o.Path}
+	}
+	return ref, true
 }
 
 // userText is a person's message text as the view shows it: without a

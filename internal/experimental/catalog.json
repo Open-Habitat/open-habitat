@@ -71,10 +71,10 @@
       },
       "reply-to-message": {
         "name": "Vastaa agentin viestiin",
-        "desc": "Vastaa johonkin agentin aiempaan viestiin. Agentti saa viestisi mukana lainauksen, josta se tietää, mihin vastaat.",
-        "where": "Agentin viestin oikeassa yläkulmassa Kopioi-painikkeen vieressä. Lainaus tulee kirjoituskentän ylimmäksi riviksi, ja ✕ poistaa sen.",
-        "shows": "Lähetetyn viestisi yllä näkyy lainaus. Lainauksen napautus vie alkuperäiseen viestiin ja korostaa sen hetkeksi.",
-        "needs": "Agentti saa viestin ensimmäisen virkkeen, enintään 160 merkkiä. Viestin pitää olla yhä tässä keskustelussa; Palaa tähän -toiminnolla sivuun jäänyttä viestiä ei voi lainata.",
+        "desc": "Vastaa johonkin agentin aiempaan viestiin tai sen tarjoamaan näkymään tai tiedostoon. Agentti saa viestisi mukana lainauksen, josta se tietää, mihin vastaat.",
+        "where": "Agentin viestin oikeassa yläkulmassa Kopioi-painikkeen vieressä ja näkymä- ja tiedostokortin oikeassa yläkulmassa. Tiedostopaketin tiedostolistassa jokaisella tiedostolla on oma painikkeensa. Lainaus tulee kirjoituskentän ylimmäksi riviksi, ja ✕ poistaa sen.",
+        "shows": "Lähetetyn viestisi yllä näkyy lainaus: viestin alku tai kortin otsikko. Lainauksen napautus vie alkuperäiseen viestiin tai korttiin ja korostaa sen hetkeksi.",
+        "needs": "Agentti saa viestin ensimmäisen virkkeen, enintään 160 merkkiä, tai näkymän tai tiedoston tunnisteen ja lähteen. Viestin tai kortin pitää olla yhä tässä keskustelussa; Palaa tähän -toiminnolla sivuun jäänyttä viestiä ei voi lainata, eikä poistettuun tiedostoon voi vastata.",
         "caption": "Vastaat agentin viestiin"
       },
       "conversation-times": {
@@ -178,10 +178,10 @@
       },
       "reply-to-message": {
         "name": "Reply to an agent message",
-        "desc": "Reply to one of the agent's earlier messages. The agent gets a quote with your message, so it knows what you are answering.",
-        "where": "In the top-right corner of the agent's message, next to Copy. The quote becomes the first row of the message field, and ✕ removes it.",
-        "shows": "The quote shows above your sent message. Tapping the quote takes you to the original message and highlights it for a moment.",
-        "needs": "The agent gets the message's first sentence, at most 160 characters. The message must still be in this conversation; a message set aside with Go back here cannot be quoted.",
+        "desc": "Reply to one of the agent's earlier messages, or to a view or file it offered. The agent gets a quote with your message, so it knows what you are answering.",
+        "where": "In the top-right corner of the agent's message, next to Copy, and in the top-right corner of a view or file card. In a file package's list each file has its own button. The quote becomes the first row of the message field, and ✕ removes it.",
+        "shows": "The quote shows above your sent message: the start of the message or the card's title. Tapping the quote takes you to the original message or card and highlights it for a moment.",
+        "needs": "The agent gets the message's first sentence, at most 160 characters, or the view's or file's id and source. The message or card must still be in this conversation; a message set aside with Go back here cannot be quoted, and a removed file cannot be answered.",
         "caption": "Replying to the agent's message"
       },
       "conversation-times": {
