@@ -8,7 +8,7 @@ provenance: other
 provenance_detail: 'GitHub issue #2'
 source_ref: https://github.com/Open-Habitat/open-habitat/issues/2
 lane: unlaned
-preparation: ready
+preparation: pending
 ---
 
 # Microsoft 365: allow integrations with several Entra tenants on one server
