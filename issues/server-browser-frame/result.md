@@ -13,6 +13,7 @@
   Pitkän tekstin liittäminen hoituu ⌘V:llä.
 - *Sulje tämä välilehti* → *Sulje välilehti*.
 - **Valmis**-painike on erityisen hyvä: juuri tällaista suoraviivaisuutta.
+- Näkymän sulkeminen silloin, kun ohjaat, antaa selaimen agentille: **kyllä**.
 
 ## Kierros 1
 
