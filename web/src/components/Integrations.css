@@ -912,3 +912,25 @@
 .gl-done dd {
   margin: 0;
 }
+
+/* Microsoft 365 with several organisations (prototype rounds 2 and 4): the
+   organisation under a card's address, the chosen organisation at the top
+   of the sign-in, and a files-only connection's missing services. */
+.ig-acc .ig-cardorg {
+  display: block;
+}
+.ig-orgline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: center;
+  margin: 0 0 var(--ah-s2);
+}
+.ig-orgline-icon {
+  width: 14px;
+  height: 14px;
+}
+.ig-offnote {
+  margin: 0;
+  padding: 4px var(--ah-s5) var(--ah-s3);
+}

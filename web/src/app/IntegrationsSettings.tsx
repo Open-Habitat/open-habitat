@@ -18,7 +18,9 @@ import {
   type ConnectStage,
   type GiteaIntent,
   IntegrationsOverview,
+  organisationLabel,
   RemoveDialog,
+  severalOrganisations,
 } from "../components/Integrations";
 import { liveText } from "../i18n";
 import { integrationsSettingsText } from "../text/integrationsSettings";
@@ -34,6 +36,7 @@ import { useGitLabSettings } from "./gitlabSettings";
 import {
   type Account,
   type AppleService,
+  accountKey,
   appleServiceOf,
   changePassword,
   connectApple,
@@ -51,6 +54,7 @@ import {
   readIntegrations,
   readLogin,
   removeAccount,
+  sameAccount,
 } from "./integrations";
 import { useWebSearchPerson } from "./WebSearchSettings";
 
@@ -106,8 +110,22 @@ const live = (v?: LoginView) =>
   v !== undefined &&
   ["starting", "device_code", "open_url", "completing"].includes(v.state);
 
-/** level is the account level the person chose, kept for a restart. */
-type Flow = { provider: Provider; stage: ConnectStage; level?: Level };
+/** level is the account level the person chose, kept for a restart;
+ * tenant the Microsoft organisation the sign-in is in, where the server
+ * serves several (a renewal's is its connection's). */
+type Flow = {
+  provider: Provider;
+  stage: ConnectStage;
+  level?: Level;
+  tenant?: string;
+};
+
+/** A new connection in a chosen organisation offers the levels that
+ * organisation has an application for, not every organisation's. */
+function organisationProvider(provider: Provider, tenant?: string): Provider {
+  const org = provider.organisations?.find((o) => o.tenant_id === tenant);
+  return org ? { ...provider, levels: org.levels } : provider;
+}
 
 /** The person's outside accounts: reads the catalog and the accounts live
  * from the person's tools through their daemon, and relays sign-ins.
@@ -207,7 +225,7 @@ export function IntegrationsSettings({
   }, [csrf]);
 
   const load = useCallback(async (one?: Account): Promise<boolean> => {
-    setChecking(one ? new Set([`${one.provider}:${one.address}`]) : "all");
+    setChecking(one ? new Set([accountKey(one)]) : "all");
     try {
       const next = await readIntegrations();
       if (!alive.current) return false;
@@ -318,7 +336,11 @@ export function IntegrationsSettings({
         void readIntegrations().then((l) => {
           const provider = l.providers.find((p) => p.id === view.provider);
           if (alive.current && provider)
-            setFlow({ provider, stage: { stage: "login", view } });
+            setFlow({
+              provider,
+              tenant: view.tenant_id,
+              stage: { stage: "login", view },
+            });
         });
       })
       .catch(() => {});
@@ -407,11 +429,13 @@ export function IntegrationsSettings({
     provider: Provider,
     address?: string,
     level?: Level,
+    tenant?: string,
   ) => {
     if (!csrf) return;
     setFlow({
       provider,
       level,
+      tenant,
       stage: {
         stage: "login",
         view: {
@@ -428,13 +452,28 @@ export function IntegrationsSettings({
         provider: provider.id,
         ...(address ? { address } : {}),
         ...(level ? { level } : {}),
+        ...(tenant ? { tenant_id: tenant } : {}),
       });
-      setFlow({ provider, level, stage: { stage: "login", view: next } });
-    } catch (e) {
-      const text = refusalText(e);
       setFlow({
         provider,
         level,
+        tenant,
+        stage: { stage: "login", view: next },
+      });
+    } catch (e) {
+      // An organisation the server stopped serving since the page was read
+      // is named by its label, as the other refusals in it are.
+      const text =
+        e instanceof Refused &&
+        e.code === "organisation_unavailable" &&
+        tenant &&
+        severalOrganisations(provider)
+          ? txt.orgUnavailable(organisationLabel(tenant, provider))
+          : refusalText(e);
+      setFlow({
+        provider,
+        level,
+        tenant,
         stage: text
           ? {
               stage: "login",
@@ -679,6 +718,7 @@ export function IntegrationsSettings({
       if (
         current.provider !== account.provider ||
         current.address !== account.address ||
+        (current.tenant_id ?? "") !== (account.tenant_id ?? "") ||
         current.state !== "completing" ||
         !current.attempt_id
       ) {
@@ -706,19 +746,14 @@ export function IntegrationsSettings({
         account.provider,
         account.address,
         deleteDirectories,
+        account.tenant_id,
       );
       setList((l) =>
         l
           ? {
               ...l,
               skill: change.skill,
-              accounts: l.accounts.filter(
-                (a) =>
-                  !(
-                    a.provider === account.provider &&
-                    a.address === account.address
-                  ),
-              ),
+              accounts: l.accounts.filter((a) => !sameAccount(a, account)),
             }
           : l,
       );
@@ -904,12 +939,18 @@ export function IntegrationsSettings({
         giteaChecks={giteaChecks}
         giteaBusy={giteaBusy}
         {...gitlab.overview}
-        onConnect={(provider) => {
+        onConnect={(provider, tenant) => {
           setNotice("");
           if (provider.id === "gitea") setGitea({ stage: { stage: "form" } });
           else if (provider.id === "gitlab") gitlab.connect();
           else if (provider.id === "apple")
             setApple({ mode: { kind: "new" }, stage: { stage: "steps" } });
+          else if (severalOrganisations(provider))
+            setFlow({
+              provider,
+              tenant,
+              stage: tenant ? { stage: "intro" } : { stage: "organisation" },
+            });
           else setFlow({ provider, stage: { stage: "intro" } });
         }}
         onApple={onApple}
@@ -923,7 +964,13 @@ export function IntegrationsSettings({
               provider,
               stage: { stage: "password", relogin: account.address },
             });
-          else void startLogin(provider, account.address);
+          else
+            void startLogin(
+              provider,
+              account.address,
+              undefined,
+              account.tenant_id,
+            );
         }}
         onChangeLevel={(account) => {
           const provider = list.providers.find(
@@ -931,7 +978,11 @@ export function IntegrationsSettings({
           );
           if (!provider) return;
           setNotice("");
-          setFlow({ provider, stage: { stage: "intro", account } });
+          setFlow({
+            provider,
+            tenant: account.tenant_id,
+            stage: { stage: "intro", account },
+          });
         }}
         onStopSync={(account) => void stopSync(account)}
         onRemove={(account) => {
@@ -941,8 +992,23 @@ export function IntegrationsSettings({
       />
       {flow ? (
         <ConnectDialog
-          provider={flow.provider}
+          provider={organisationProvider(flow.provider, flow.tenant)}
           stage={flow.stage}
+          organisation={
+            severalOrganisations(flow.provider) && flow.tenant
+              ? (flow.provider.organisations?.find(
+                  (o) => o.tenant_id === flow.tenant,
+                ) ?? {
+                  tenant_id: flow.tenant,
+                  own: false,
+                  levels: [],
+                })
+              : undefined
+          }
+          level={flow.level}
+          onOrganisation={(tenant) =>
+            setFlow((f) => f && { ...f, tenant, stage: { stage: "intro" } })
+          }
           accounts={
             flow.stage.stage === "login" &&
             flow.stage.view.attempt_id === freshAttempt
@@ -959,6 +1025,7 @@ export function IntegrationsSettings({
                   ? flow.stage.account?.address
                   : undefined,
                 level,
+                flow.tenant,
               );
           }}
           onPassword={(a) => void onPassword(a)}
@@ -1000,6 +1067,7 @@ export function IntegrationsSettings({
               flow.provider,
               v?.relogin ? v.address : undefined,
               flow.level,
+              flow.tenant ?? v?.tenant_id,
             );
           }}
           onClose={close}

@@ -925,3 +925,121 @@ export const DialogFinalSyncFailed: Story = {
     },
   }),
 };
+
+/** Microsoft 365 for several organisations (prototype rounds 2 and 4): one
+ * address connected in the server's own organisation and, as a guest
+ * without a mailbox, in a client's; the other client offered. Synthetic. */
+const ownOrg = "6d1f0c2a-3b7e-4a51-9c8d-2e4f6a8b0c13";
+const clientOne = "9a4e7b21-5c3d-4f60-8e1a-7b2c9d0e4f35";
+const clientTwo = "c3b8d5e0-1a2f-4b7c-a6d9-0e5f8a3b2c47";
+const levelsAll = (["full", "nosend", "drafts", "read"] as const).map((id) => ({
+  id,
+  available: true,
+}));
+const levelsShared = (["full", "nosend", "drafts", "read"] as const).map(
+  (id) =>
+    id === "full" || id === "read"
+      ? { id, available: true }
+      : { id, available: false, reason: "application_missing" as const },
+);
+const severalMicrosoft: Provider = {
+  ...microsoft,
+  services: ["onedrive", "sharepoint", "mail", "calendar", "contacts"],
+  levels: levelsAll,
+  organisations: [
+    {
+      tenant_id: ownOrg,
+      label: "Esimerkki Konsultit Oy",
+      own: true,
+      levels: levelsAll,
+    },
+    {
+      tenant_id: clientOne,
+      label: "Asiakas Yksi Oy",
+      own: false,
+      levels: levelsShared,
+    },
+    {
+      tenant_id: clientTwo,
+      label: "Asiakas Kaksi Oy",
+      own: false,
+      levels: levelsShared,
+    },
+  ],
+};
+const severalAccounts: Account[] = [
+  {
+    provider: "microsoft",
+    address: "henna@konsultit.example",
+    tenant_id: ownOrg,
+    organisation: "Esimerkki Konsultit Oy",
+    checked_at: checked,
+    level: "full",
+    services: [
+      { id: "onedrive", state: "ok", access: "full" },
+      { id: "sharepoint", state: "ok", access: "full" },
+      { id: "mail", state: "ok", access: "full" },
+      { id: "calendar", state: "ok", access: "full" },
+      { id: "contacts", state: "ok", access: "full" },
+    ],
+  },
+  {
+    provider: "microsoft",
+    address: "henna@konsultit.example",
+    tenant_id: clientOne,
+    organisation: "Asiakas Yksi Oy",
+    checked_at: checked,
+    level: "read",
+    services: [{ id: "sharepoint", state: "ok", access: "read" }],
+  },
+];
+export const SeveralOrganisations: Story = {
+  args: {
+    list: {
+      ...connected,
+      providers: [google, severalMicrosoft, imap, dropbox],
+      accounts: [...connected.accounts, ...severalAccounts],
+    },
+  },
+};
+export const DialogOrganisation: Story = {
+  render: () => (
+    <ConnectDialog
+      provider={severalMicrosoft}
+      stage={{ stage: "organisation" }}
+      onOrganisation={intent}
+      onContinue={intent}
+      onPassword={intent}
+      onPaste={intent}
+      onFolders={intent}
+      onRestart={intent}
+      onClose={intent}
+    />
+  ),
+};
+export const DialogOrganisationRefused: Story = {
+  render: () => (
+    <ConnectDialog
+      provider={severalMicrosoft}
+      organisation={severalMicrosoft.organisations?.[2]}
+      level="read"
+      stage={{
+        stage: "login",
+        view: {
+          schema_version: 1,
+          state: "failed",
+          provider: "microsoft",
+          tenant_id: clientTwo,
+          failure: "consent_required",
+          consent_url: `https://login.microsoftonline.com/${clientTwo}/v2.0/adminconsent?client_id=a1c9e7f5-4d3b-4e2a-8f6c-2b0d9e7a5c96`,
+        },
+      }}
+      onContinue={intent}
+      onPassword={intent}
+      onPaste={intent}
+      onFolders={intent}
+      onRestart={intent}
+      onClose={intent}
+    />
+  ),
+};

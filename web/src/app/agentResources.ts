@@ -395,7 +395,7 @@ function accountSources(
       const web = webLink(account, service.id);
       out.push({
         ...base,
-        id: `${service.id}:${account.provider}:${account.address}`,
+        id: `${service.id}:${account.provider}:${account.address}${account.tenant_id ? `~${account.tenant_id}` : ""}`,
         name: serviceName(account.provider, service.id),
         web,
         scope:
@@ -494,7 +494,7 @@ function accountSources(
       if (service.id === "sharepoint" && access !== "none" && roots) continue;
       out.push({
         ...base,
-        id: `files:${account.provider}:${account.address}:${service.id}`,
+        id: `files:${account.provider}:${account.address}${account.tenant_id ? `~${account.tenant_id}` : ""}:${service.id}`,
         name: service.id === "onedrive" ? "OneDrive" : name,
         web: webLink(account, service.id),
         scope: scope(),

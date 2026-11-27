@@ -14,6 +14,7 @@ import {
   type Access,
   type Account,
   type AppleService,
+  accountKey,
   appleGroups,
   appleServiceOf,
   appleServices,
@@ -27,6 +28,7 @@ import {
   listedProvider,
   minutesLeft,
   needsSignIn,
+  type Organisation,
   type PasswordAccount,
   type Provider,
   type ProviderId,
@@ -58,6 +60,32 @@ import { Icon, type IconName } from "./Icon";
 import { Checkbox, TextField } from "./Primitives";
 
 const txt = liveText(integrationsText);
+
+/** Microsoft serves several organisations here, so the person chooses one
+ * and every connection names its own. With one, nothing changes. */
+export const severalOrganisations = (provider?: Provider) =>
+  (provider?.organisations?.length ?? 0) > 1;
+
+/** An organisation's name as people see it: the allowed list's label. */
+export function organisationLabel(
+  tenant: string | undefined,
+  provider?: Provider,
+  listed?: string,
+): string {
+  const org = provider?.organisations?.find((o) => o.tenant_id === tenant);
+  if (listed) return listed;
+  if (org?.label) return org.label;
+  if (org?.own) return txt.org.server;
+  return txt.org.unnamed((tenant ?? "").slice(0, 8));
+}
+
+/** A Microsoft connection without a mailbox in its organisation (a guest's,
+ * usually) has only its files: the card says the rest is not there. */
+const filesOnly = (account: Account) =>
+  account.provider === "microsoft" &&
+  !account.services.some((s) =>
+    ["mail", "calendar", "contacts"].includes(s.id),
+  );
 
 // Asetukset › Tiedot agenteille (formerly Integraatiot) in the accepted "Tili" direction (ADR 0026,
 // proto-integrations): one card per provider account with its services
@@ -561,8 +589,11 @@ export function AccountCard({
   onStopSync,
   onRemove,
   unavailable,
+  organisation,
 }: {
   account: Account;
+  /** The connection's organisation, where the server serves several. */
+  organisation?: string;
   /** Signs the account in again at another level. */
   onChangeLevel?: () => void;
   /** Why the provider is out of use on this server; the account's own
@@ -579,13 +610,24 @@ export function AccountCard({
     <article
       data-testid={`integration-account-${account.provider}`}
       className="ig-card"
-      aria-label={`${copy.name} · ${account.address}`}
+      data-tenant={account.tenant_id}
+      aria-label={[copy.name, account.address, organisation]
+        .filter(Boolean)
+        .join(" · ")}
     >
       <div className="ig-acc">
         <ProviderMark provider={account.provider} />
         <div>
           <span className="ig-rn">{copy.name}</span>
           <span className="ig-meta">{account.address}</span>
+          {organisation ? (
+            <span
+              className="ig-meta ig-cardorg"
+              data-testid="integration-account-organisation"
+            >
+              {organisation}
+            </span>
+          ) : null}
         </div>
         <LevelPill account={account} />
         {(needsSignIn(account) ||
@@ -736,6 +778,11 @@ export function AccountCard({
           </div>
         </div>
       ))}
+      {filesOnly(account) ? (
+        <p className="ig-meta ig-offnote" data-testid="integration-files-only">
+          {txt.org.guestOff}
+        </p>
+      ) : null}
       {account.grant ? <GrantList grant={account.grant} /> : null}
     </article>
   );
@@ -950,7 +997,9 @@ export function IntegrationsOverview({
   /** Accounts whose check is under way; "all" for the whole page. */
   checking: Set<string> | "all";
   onCheck: (account?: Account) => void;
-  onConnect: (provider: Provider) => void;
+  /** tenant is the organisation chosen on the page (Microsoft with several);
+   * without it a provider with several asks for one first. */
+  onConnect: (provider: Provider, tenant?: string) => void;
   onSignInAgain: (account: Account) => void;
   /** Opens the level choice for an account of a provider with levels. */
   onChangeLevel?: (account: Account) => void;
@@ -972,7 +1021,7 @@ export function IntegrationsOverview({
   /** The clock a token's expiry is counted from. */
   now?: number;
 }) {
-  const key = (a: Account) => `${a.provider}:${a.address}`;
+  const key = accountKey;
   const isChecking = (a: Account) => checking === "all" || checking.has(key(a));
   const giteaConnections = list.gitea?.connections ?? [];
   const gitlabConnections = list.gitlab?.connections ?? [];
@@ -1178,12 +1227,20 @@ export function IntegrationsOverview({
                   ))}
                 </>
               ) : null}
-              {list.accounts
-                .filter((a) => p.id !== "apple" && listedProvider(a) === p.id)
-                .map((a) => (
+              {(() => {
+                const accounts = list.accounts.filter(
+                  (a) => p.id !== "apple" && listedProvider(a) === p.id,
+                );
+                const several = severalOrganisations(p);
+                const card = (a: Account) => (
                   <AccountCard
                     key={key(a)}
                     account={a}
+                    organisation={
+                      several && a.tenant_id
+                        ? organisationLabel(a.tenant_id, p, a.organisation)
+                        : undefined
+                    }
                     unavailable={
                       p.available
                         ? undefined
@@ -1202,7 +1259,60 @@ export function IntegrationsOverview({
                     onStopSync={onStopSync ? () => onStopSync(a) : undefined}
                     onRemove={() => onRemove(a)}
                   />
-                ))}
+                );
+                if (!several) return accounts.map(card);
+                // One place per organisation the server serves, its own
+                // first (prototype round 2): its connections, or an offer to
+                // connect it. A connection of an organisation no longer
+                // served keeps its card after them.
+                const orgs = p.organisations ?? [];
+                return (
+                  <>
+                    {orgs.map((o) => {
+                      const mine = accounts.filter(
+                        (a) => a.tenant_id === o.tenant_id,
+                      );
+                      if (mine.length) return mine.map(card);
+                      const label = organisationLabel(o.tenant_id, p);
+                      return (
+                        <article
+                          key={o.tenant_id}
+                          className="ig-card"
+                          data-testid={`integration-org-${o.tenant_id}`}
+                          aria-label={`${providerCopy[p.id].name} · ${label}`}
+                        >
+                          <div className="ig-acc">
+                            <ProviderMark provider={p.id} />
+                            <div>
+                              <span className="ig-rn">
+                                {providerCopy[p.id].name}
+                              </span>
+                              <span className="ig-meta ig-cardorg">
+                                {label}
+                              </span>
+                            </div>
+                            <span className="ig-meta">{txt.org.rowNot}</span>
+                            <ControlButton
+                              data-testid="integration-org-connect"
+                              size="row"
+                              variant="secondary"
+                              aria-label={txt.org.connectName(label)}
+                              onPress={() => onConnect(p, o.tenant_id)}
+                            >
+                              {txt.org.connect}
+                            </ControlButton>
+                          </div>
+                        </article>
+                      );
+                    })}
+                    {accounts
+                      .filter(
+                        (a) => !orgs.some((o) => o.tenant_id === a.tenant_id),
+                      )
+                      .map(card)}
+                  </>
+                );
+              })()}
               {p.available ? (
                 <div className="ig-another">
                   <ControlButton
@@ -1252,6 +1362,8 @@ export function IntegrationsOverview({
 // ---------- The connect dialog ----------
 
 export type ConnectStage =
+  /** Microsoft with several organisations: which one, before the level. */
+  | { stage: "organisation" }
   /** account is set when the person changes an existing account's level. */
   | { stage: "intro"; account?: Account }
   | { stage: "password"; relogin?: string; error?: string; busy?: boolean }
@@ -1801,10 +1913,71 @@ function FolderStep({
   );
 }
 
+/** Copies a ready request for another organisation's administrator. */
+function AskButton({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <ControlButton
+      data-testid="integration-org-ask"
+      size="row"
+      variant="secondary"
+      onPress={() => {
+        void navigator.clipboard?.writeText(value).then(
+          () => setCopied(true),
+          () => {},
+        );
+      }}
+    >
+      <Icon name={copied ? "check" : "copy"} />
+      {copied ? txt.copied : txt.org.copyAsk}
+    </ControlButton>
+  );
+}
+
+/** A refusal of a sign-in in an organisation the server serves among
+ * several, in prototype round 2's short words: what happened in that
+ * organisation and who can change it. */
+function OrganisationRefusal({
+  lead,
+  body,
+  extra,
+  ask,
+  restart,
+}: {
+  lead: string;
+  body: string;
+  extra?: string;
+  ask?: string;
+  restart: ReactNode;
+}) {
+  return (
+    <>
+      <p
+        className="ig-result bad"
+        role="alert"
+        data-testid="integration-org-refusal"
+      >
+        <Icon name="warning" />
+        <span>{lead}</span>
+      </p>
+      <p className="ig-p">{body}</p>
+      {extra ? <p className="ig-p ig-meta">{extra}</p> : null}
+      {ask ? (
+        <div className="ig-row start">
+          <AskButton value={ask} />
+        </div>
+      ) : null}
+      {restart}
+    </>
+  );
+}
+
 function FailedStep({
   view,
   error,
   others,
+  organisation,
+  level,
   onRestart,
   onClose,
 }: {
@@ -1813,6 +1986,10 @@ function FailedStep({
   error?: string;
   /** The login also serves other services than files. */
   others: boolean;
+  /** The organisation signed in at, where the server serves several. */
+  organisation?: { label: string; own: boolean };
+  /** The level asked for, when the person chose one. */
+  level?: Level;
   onRestart: () => void;
   onClose: () => void;
 }) {
@@ -1833,7 +2010,67 @@ function FailedStep({
       </ControlButton>
     </div>
   );
+  if (organisation) {
+    const o = organisation.label;
+    const named = level ? levelName("microsoft", level) : undefined;
+    switch (view.failure) {
+      case "consent_required":
+        if (named)
+          return (
+            <OrganisationRefusal
+              lead={txt.org.consentLead(o, named)}
+              body={txt.org.consentBody}
+              ask={txt.org.ask(o, named, consent)}
+              restart={restart}
+            />
+          );
+        break;
+      case "not_in_organisation":
+        return (
+          <OrganisationRefusal
+            lead={txt.org.notInLead(o)}
+            body={txt.org.notInBody}
+            restart={restart}
+          />
+        );
+      case "device_code_blocked":
+        return (
+          <OrganisationRefusal
+            lead={txt.org.blockedLead(o)}
+            body={txt.org.blockedBody}
+            restart={restart}
+          />
+        );
+      case "expired":
+        // Where an organisation asks for an administrator's approval, the
+        // person sees it only on Microsoft's page and the code expires.
+        return (
+          <OrganisationRefusal
+            lead={txt.org.expiredLead}
+            body={txt.org.expiredBody}
+            extra={organisation.own ? undefined : txt.org.expiredClient}
+            ask={organisation.own || !named ? undefined : txt.org.ask(o, named)}
+            restart={restart}
+          />
+        );
+    }
+  }
   switch (view.failure) {
+    case "not_in_organisation":
+      return (
+        <>
+          <p
+            className="ig-result bad"
+            role="alert"
+            data-testid="integration-org-refusal"
+          >
+            <Icon name="warning" />
+            <span>{txt.org.notInHere}</span>
+          </p>
+          <p className="ig-p">{txt.org.notInBody}</p>
+          {restart}
+        </>
+      );
     case "quota_insufficient":
     case "quota_unavailable":
       return (
@@ -2608,6 +2845,85 @@ function Intro({
   );
 }
 
+/** Which organisation's data a new Microsoft connection reaches, asked
+ * only where the server serves several: its own first, then the others. */
+function OrganisationStep({
+  provider,
+  onChoose,
+  onCancel,
+}: {
+  provider: Provider;
+  onChoose: (tenant: string) => void;
+  onCancel: () => void;
+}) {
+  const orgs = provider.organisations ?? [];
+  const [tenant, setTenant] = useState<string | undefined>(orgs[0]?.tenant_id);
+  return (
+    <>
+      <p className="ig-lead" id="integration-org-lead">
+        {txt.org.stepLead}
+      </p>
+      <AriaRadioGroup
+        className="ig-levels"
+        aria-labelledby="integration-org-lead"
+        value={tenant ?? null}
+        onChange={setTenant}
+        data-testid="integration-organisations"
+      >
+        {orgs.map((o) => (
+          <Radio
+            key={o.tenant_id}
+            value={o.tenant_id}
+            className="ig-level"
+            data-testid={`integration-organisation-${o.tenant_id}`}
+          >
+            <span className="ig-level-dot" aria-hidden="true" />
+            <span className="ig-level-body">
+              <b className="ig-level-name">
+                {organisationLabel(o.tenant_id, provider)}
+              </b>
+            </span>
+          </Radio>
+        ))}
+      </AriaRadioGroup>
+      {orgs.some((o) => !o.own) ? (
+        <p className="ig-meta">{txt.org.guestHint}</p>
+      ) : null}
+      <div className="ig-row">
+        <ControlButton
+          data-testid="cancel"
+          size="page"
+          variant="secondary"
+          onPress={onCancel}
+        >
+          {txt.cancel}
+        </ControlButton>
+        <ControlButton
+          data-testid="integration-organisation-continue"
+          size="page"
+          variant="primary"
+          isDisabled={!tenant}
+          onPress={() => tenant && onChoose(tenant)}
+        >
+          {txt.org.continue}
+        </ControlButton>
+      </div>
+    </>
+  );
+}
+
+/** The chosen organisation at the top of the sign-in, and for another
+ * organisation than the server's own, how a guest signs in. */
+function OrganisationLine({ label, guest }: { label: string; guest: boolean }) {
+  return (
+    <p className="ig-orgline" data-testid="integration-orgline">
+      <Icon className="ig-orgline-icon" name="users" />
+      <strong>{label}</strong>
+      {guest ? <span className="ig-meta">{txt.org.guestLine}</span> : null}
+    </p>
+  );
+}
+
 /** The sign-in dialog. The app decides the stage from the host's replies. */
 export function ConnectDialog({
   provider,
@@ -2619,10 +2935,20 @@ export function ConnectDialog({
   onSkipFolders,
   onRestart,
   onClose,
+  onOrganisation,
+  organisation,
+  level,
   accounts = [],
 }: {
   provider?: Provider;
   stage: ConnectStage;
+  /** Chooses the organisation of a new Microsoft connection. */
+  onOrganisation?: (tenant: string) => void;
+  /** The connection's organisation, where the server serves several: the
+   * dialog names it and its refusals speak of it. */
+  organisation?: Organisation;
+  /** The level the person chose, for a refusal that names it. */
+  level?: Level;
   /** The integration list's accounts, for the services a new grant reaches. */
   accounts?: Account[];
   /** Starts the sign-in, at the chosen level for a provider with levels. */
@@ -2667,8 +2993,20 @@ export function ConnectDialog({
       : relogin
         ? txt.titleRelogin(copy.name)
         : txt.titleConnect(copy.name);
+  const orgLabel = organisation
+    ? organisationLabel(organisation.tenant_id, provider)
+    : undefined;
   let body: ReactNode = null;
   switch (stage.stage) {
+    case "organisation":
+      body = (
+        <OrganisationStep
+          provider={provider}
+          onChoose={(t) => onOrganisation?.(t)}
+          onCancel={onClose}
+        />
+      );
+      break;
     case "intro":
       body = (
         <Intro
@@ -2841,6 +3179,12 @@ export function ConnectDialog({
             view={v}
             error={stage.error}
             others={provider.services.some((s) => !fileServices.includes(s))}
+            organisation={
+              organisation && orgLabel
+                ? { label: orgLabel, own: organisation.own }
+                : undefined
+            }
+            level={level}
             onRestart={onRestart}
             onClose={onClose}
           />
@@ -2865,6 +3209,24 @@ export function ConnectDialog({
               </span>
             </p>
             {granted(v.address)}
+            {(() => {
+              const a = accounts.find(
+                (x) =>
+                  x.provider === provider.id &&
+                  x.address === v.address &&
+                  (x.tenant_id ?? "") === (v.tenant_id ?? ""),
+              );
+              return a && filesOnly(a) ? (
+                <p
+                  className="ig-notice"
+                  role="status"
+                  data-testid="integration-guest-files"
+                >
+                  <Icon name="info" />
+                  <span>{txt.org.guestFiles}</span>
+                </p>
+              ) : null;
+            })()}
             {dir ? <p className="ig-p">{txt.foldersContinue}</p> : null}
             <div className="ig-row">
               <ControlButton
@@ -2921,7 +3283,23 @@ export function ConnectDialog({
               <Icon name="cross" />
             </ControlButton>
           </div>
-          <div className="ig-flow">{body}</div>
+          <div className="ig-flow">
+            {orgLabel &&
+            organisation &&
+            stage.stage !== "organisation" &&
+            stage.stage !== "uncertain" ? (
+              <OrganisationLine
+                label={orgLabel}
+                guest={
+                  !organisation.own &&
+                  (stage.stage === "intro" ||
+                    (stage.stage === "login" &&
+                      ["starting", "device_code"].includes(stage.view.state)))
+                }
+              />
+            ) : null}
+            {body}
+          </div>
         </AriaDialog>
       </Modal>
     </ModalOverlay>

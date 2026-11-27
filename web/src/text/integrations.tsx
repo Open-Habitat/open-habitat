@@ -257,14 +257,14 @@ const fi = {
     pass_failed: "Viimeisin synkronointi epäonnistui, yritetään uudelleen",
     app_changed: "Kirjaudu uudelleen",
     tenant_removed: "Organisaatio ei ole enää käytössä",
-    outside_tenant: "Ei palvelimen organisaatiossa",
+    outside_tenant: "Ei kuulu organisaatioon",
   } as Record<string, string>,
   appChanged: (name: string) =>
     `Palvelimen ${name}-sovellus on vaihtunut, eikä aiempi kirjautumisesi kelpaa uudelle sovellukselle. Kirjaudu uudelleen; synkronoitavat kansiot säilyvät.`,
   tenantRemoved: (name: string) =>
     `Palvelimella ei ole enää ${name}-sovellusta tämän yhteyden organisaatiolle, joten uusi kirjautuminen tällä kortilla ei auta. Kysy palvelimen ylläpitäjältä. Jos organisaatio palaa, yhteys jatkuu ilman kirjautumista.`,
   outsideTenant: (name: string) =>
-    `Tämä tili ei kuulu organisaatioon, jonka ${name}-sovellusta palvelin käyttää, joten uusi kirjautuminenkaan ei auta. Käytä organisaation tiliä tai kysy palvelimen ylläpitäjältä.`,
+    `Tämä tili ei enää kuulu yhteyden organisaatioon, joten uusi ${name}-kirjautuminenkaan ei auta. Käytä organisaation tiliä tai kysy organisaation pääkäyttäjältä.`,
   notChosenHelp:
     "Kansioita ei ole valittu, joten tiedostoja ei kopioitu. Voit valita ne kirjautumalla uudelleen.",
   deleteLimitHelp:
@@ -620,6 +620,45 @@ const fi = {
   trashHint:
     " Voit palauttaa ne kohdasta Asetukset › Tallennustila. Muuten tiedostot jäävät kotihakemistoosi tavallisiksi tiedostoiksi.",
   removeConfirm: "Poista",
+  // Microsoft 365 with several organisations (prototype rounds 2 and 4,
+  // 2026-11-27-entra-organisaatiot): the organisation is chosen first and
+  // named on the dialog and the card. A refusal names it by its label.
+  org: {
+    stepLead: "Minkä organisaation tiedot yhdistetään?",
+    guestHint:
+      "Jos olet organisaatiossa vieraana, kirjaudu omalla työtililläsi.",
+    choose: "Organisaatio",
+    continue: "Jatka",
+    /** The operator's own organisation when the allowed list names none. */
+    server: "Palvelimen organisaatio",
+    unnamed: (id: string) => `Organisaatio ${id}`,
+    guestLine: "Kirjaudu omalla työtililläsi.",
+    rowNot: "Ei yhdistetty",
+    connect: "Yhdistä",
+    connectName: (label: string) => `Yhdistä ${label}`,
+    guestFiles: "Ei postilaatikkoa: vain tiedostot.",
+    guestOff: "Posti, kalenteri ja yhteystiedot: ei vierastilillä.",
+    copyAsk: "Kopioi pyyntö",
+    ask: (label: string, level: string, url?: string) =>
+      `Hei, hyväksyisittekö organisaatiollenne ${label} Habitatin Microsoft 365 -sovelluksen tasolle ${level}?${url ? `\n${url}` : ""}`,
+    consentLead: (label: string, level: string) =>
+      `${label} ei ole hyväksynyt tasoa ${level}.`,
+    consentBody: "Pyydä pääkäyttäjältä hyväksyntä ja yhdistä sitten uudelleen.",
+    notInLead: (label: string) =>
+      `Sinulla ei ole tiliä organisaatiossa ${label}.`,
+    notInBody: "Hyväksy ensin vieraskutsu.",
+    notInHere: "Sinulla ei ole tiliä tässä organisaatiossa.",
+    blockedLead: (label: string) =>
+      `${label} estää laitekoodilla kirjautumisen.`,
+    blockedBody: "Asiasta päättää heidän pääkäyttäjänsä.",
+    unavailableLead: (label: string) =>
+      `${label} ei ole sallittu tällä palvelimella.`,
+    unavailableBody: "Kysy palvelimen ylläpitäjältä.",
+    expiredLead: "Koodi vanheni.",
+    expiredBody: "Aloita alusta.",
+    expiredClient:
+      "Jos Microsoft pyysi pääkäyttäjän hyväksyntää, kopioi pyyntö.",
+  },
 };
 
 export const integrationsText = catalog(
@@ -866,14 +905,14 @@ export const integrationsText = catalog(
       pass_failed: "The latest synchronization failed, trying again",
       app_changed: "Sign in again",
       tenant_removed: "Organization no longer available",
-      outside_tenant: "Not in the server's organization",
+      outside_tenant: "Not in the organization",
     },
     appChanged: (name) =>
       `The server's ${name} app has changed, and your earlier sign-in is not valid for the new app. Sign in again; the synchronized folders stay.`,
     tenantRemoved: (name) =>
       `The server no longer has a ${name} app for this connection's organization, so signing in again from this card does not help. Ask the server's administrator. If the organization comes back, the connection continues without signing in.`,
     outsideTenant: (name) =>
-      `This account does not belong to the organization whose ${name} app the server uses, so signing in again does not help either. Use the organization's account or ask the server's administrator.`,
+      `This account no longer belongs to the connection's organization, so signing in to ${name} again does not help either. Use the organization's account or ask the organization's administrator.`,
     notChosenHelp:
       "No folders are chosen, so no files were copied. You can choose them by signing in again.",
     deleteLimitHelp:
@@ -1221,8 +1260,49 @@ export const integrationsText = catalog(
     trashHint:
       " You can restore them under Settings › Storage. Otherwise the files stay in your home directory as ordinary files.",
     removeConfirm: "Remove",
+    org: {
+      stepLead: "Which organization's data do you connect?",
+      guestHint:
+        "If you are a guest in the organization, sign in with your own work account.",
+      choose: "Organization",
+      continue: "Continue",
+      server: "This server's organization",
+      unnamed: (id) => `Organization ${id}`,
+      guestLine: "Sign in with your own work account.",
+      rowNot: "Not connected",
+      connect: "Connect",
+      connectName: (label) => `Connect ${label}`,
+      guestFiles: "No mailbox: files only.",
+      guestOff: "Mail, calendar and contacts: not for guest accounts.",
+      copyAsk: "Copy request",
+      ask: (label, level, url) =>
+        `Hello, could you approve Habitat's Microsoft 365 application for ${label} at the ${level} level?${url ? `\n${url}` : ""}`,
+      consentLead: (label, level) =>
+        `${label} has not approved the ${level} level.`,
+      consentBody: "Ask their administrator to approve, then connect again.",
+      notInLead: (label) => `You have no account in ${label}.`,
+      notInBody: "Accept the guest invitation first.",
+      notInHere: "You have no account in this organization.",
+      blockedLead: (label) => `${label} blocks device code sign-in.`,
+      blockedBody: "Their administrator decides this.",
+      unavailableLead: (label) => `${label} is not allowed on this server.`,
+      unavailableBody: "Ask the server's administrator.",
+      expiredLead: "The code expired.",
+      expiredBody: "Start over.",
+      expiredClient:
+        "If Microsoft asked for administrator approval, copy the request.",
+    },
   },
   {
+    org: {
+      stepLead: "Which organisation's data do you connect?",
+      guestHint:
+        "If you are a guest in the organisation, sign in with your own work account.",
+      choose: "Organisation",
+      server: "This server's organisation",
+      unnamed: (id) => `Organisation ${id}`,
+      notInHere: "You have no account in this organisation.",
+    },
     narrowedOrg: (missing) => (
       <>
         <strong>Your organisation has limited Habitat's permissions.</strong>{" "}
@@ -1232,7 +1312,7 @@ export const integrationsText = catalog(
       </>
     ),
     failure: {
-      outside_tenant: "Not in the server's organisation",
+      outside_tenant: "Not in the organisation",
       tenant_removed: "Organisation no longer available",
     },
     drafts: "Reads, organises and writes drafts. Cannot send.",
@@ -1242,7 +1322,7 @@ export const integrationsText = catalog(
     tenantRemoved: (name) =>
       `The server no longer has a ${name} app for this connection's organisation, so signing in again from this card does not help. Ask the server's administrator. If the organisation comes back, the connection continues without signing in.`,
     outsideTenant: (name) =>
-      `This account does not belong to the organisation whose ${name} app the server uses, so signing in again does not help either. Use the organisation's account or ask the server's administrator.`,
+      `This account no longer belongs to the connection's organisation, so signing in to ${name} again does not help either. Use the organisation's account or ask the organisation's administrator.`,
     consentLead: "Your organisation requires an administrator's consent.",
     consentBody:
       "Users cannot themselves allow apps access to mail, calendar or files. An administrator has to approve this server's app once for the whole organisation.",

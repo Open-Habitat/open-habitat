@@ -83,6 +83,24 @@ export type Provider = {
     available: boolean;
     reason?: "application_missing" | "not_offered";
   }[];
+  /** Microsoft, while available: the organisations a new connection can be
+   * made in, the operator's own first. With one there is nothing to choose. */
+  organisations?: Organisation[];
+};
+/** An organisation a Microsoft connection can be made in. */
+export type Organisation = {
+  tenant_id: string;
+  /** The allowed list's name; absent for one only a single-tenant
+   * application of its own serves. */
+  label?: string;
+  own: boolean;
+  /** The levels it has an application for; whether its administrator
+   * approved one is only known at sign-in. */
+  levels: {
+    id: Level;
+    available: boolean;
+    reason?: "application_missing";
+  }[];
 };
 /** An account level the provider itself enforces. */
 export type Level = "full" | "nosend" | "drafts" | "read" | "app_folder";
@@ -144,6 +162,11 @@ export type Account = {
   /** The level the grant amounts to, read from the grant; absent when it
    * cannot be read or is none of the levels. */
   level?: Level;
+  /** Microsoft: the connection's organisation, which with the address names
+   * it in every request (the same address may be connected in several). */
+  tenant_id?: string;
+  /** Microsoft: the organisation's name on the allowed list, while listed. */
+  organisation?: string;
 };
 export type IntegrationList = {
   schema_version: 1;
@@ -158,7 +181,7 @@ export type IntegrationList = {
 export type IntegrationChange = {
   schema_version: 1;
   account?: Account;
-  removed?: { provider: ProviderId; address: string };
+  removed?: { provider: ProviderId; address: string; tenant_id?: string };
   /** An Apple write: the accounts it connected or renewed. */
   accounts?: Account[];
   /** An Apple write: the chosen services it could not connect. */
@@ -210,6 +233,8 @@ export type LoginView = {
   attempt_id?: string;
   provider?: ProviderId;
   address?: string;
+  /** Microsoft: the organisation the attempt signs in at. */
+  tenant_id?: string;
   relogin?: boolean;
   expires_at?: string;
   verification_uri?: string;
@@ -351,6 +376,23 @@ export async function connectPasswordAccount(
 
 /** The provider whose card shows an account: an account on Apple's
  * servers belongs to the Apple card whatever form connected it. */
+/** One connection among the list's: a Microsoft address may be connected
+ * in several organisations, each its own connection. */
+export const accountKey = (a: {
+  provider: ProviderId;
+  address: string;
+  tenant_id?: string;
+}) => `${a.provider}:${a.address}${a.tenant_id ? `~${a.tenant_id}` : ""}`;
+
+/** Whether two references name the same connection. */
+export const sameAccount = (
+  a: { provider?: ProviderId; address?: string; tenant_id?: string },
+  b: { provider?: ProviderId; address?: string; tenant_id?: string },
+) =>
+  a.provider === b.provider &&
+  a.address === b.address &&
+  (a.tenant_id ?? "") === (b.tenant_id ?? "");
+
 export const listedProvider = (a: Account): ProviderId =>
   a.apple_id ? "apple" : a.provider;
 
@@ -433,6 +475,7 @@ export async function removeAccount(
   provider: ProviderId,
   address: string,
   deleteDirectories: boolean,
+  tenantID?: string,
 ): Promise<IntegrationChange> {
   const response = await write(
     "integrations.account",
@@ -443,6 +486,7 @@ export async function removeAccount(
       action: "remove",
       provider,
       address,
+      ...(tenantID ? { tenant_id: tenantID } : {}),
       delete_directories: deleteDirectories,
     },
   );
@@ -450,7 +494,13 @@ export async function removeAccount(
 }
 
 type LoginControl =
-  | { action: "start"; provider: ProviderId; address?: string; level?: Level }
+  | {
+      action: "start";
+      provider: ProviderId;
+      address?: string;
+      level?: Level;
+      tenant_id?: string;
+    }
   | { action: "redirect"; attempt_id: string; redirect_url: string }
   | { action: "folders"; attempt_id: string; folders: string[] }
   | { action: "skip_folders"; attempt_id: string }
