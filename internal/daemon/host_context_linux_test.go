@@ -140,6 +140,22 @@ func TestHostContextRunningSection(t *testing.T) {
 	}
 }
 
+// Shared-path advice must distinguish the daemon's temporary directories from
+// the home and workspaces visible to terminals and user-manager workers.
+func TestHostContextSharedFileGuidance(t *testing.T) {
+	guide := strings.Join(strings.Fields(hostContext), " ")
+	for _, want := range []string{
+		"Your `/tmp` and `/var/tmp` are private to the daemon",
+		"not shared with the person's terminal, Taskfleet workers or SSH sessions",
+		"Put files the person or another process should use in the home directory or a workspace instead",
+		"Write its output to a file in the home directory or a workspace",
+	} {
+		if !strings.Contains(guide, want) {
+			t.Errorf("missing shared-file guidance: %s", want)
+		}
+	}
+}
+
 func TestHostContextOfferGuidance(t *testing.T) {
 	for _, want := range []string{"Only the person can share", "globe button", "*Julkinen* / *Public*", "Each offer command's `--help` has the limits"} {
 		if !strings.Contains(hostContext, want) {

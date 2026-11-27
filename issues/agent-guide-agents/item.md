@@ -3,10 +3,11 @@ created: 2026-11-27
 updated: 2026-11-27
 type: bug
 reporter: agent
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 preparation: ready
+closed: 2026-11-27
 ---
 
 # Agent guide: the agent's /tmp and /var/tmp are not shared with the terminal

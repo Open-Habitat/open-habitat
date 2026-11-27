@@ -153,8 +153,8 @@ Work that has to survive this conversation therefore belongs in a Taskfleet
 worker, which runs in a user unit, or in a tmux session in the browser shell
 once the shell reports that it survives restarts (without a running,
 lingering user manager it ends with the daemon). Write its output to a file
-outside `/tmp`. After a restart the worker may still be running: inspect it
-and start a fresh wait before starting the job again.
+in the home directory or a workspace. After a restart the worker may still be
+running: inspect it and start a fresh wait before starting the job again.
 
 ## Worktree agents
 
@@ -192,6 +192,10 @@ The browser has a workspace editor (code-server) and a shell backed by the
 person's tmux sessions, both as the same Linux user on the same files. Shell
 sessions survive a browser disconnect, and Taskfleet shell output is read-only
 there. Opening the editor or the shell is the person's action.
+
+Your `/tmp` and `/var/tmp` are private to the daemon, not shared with the
+person's terminal, Taskfleet workers or SSH sessions. Put files the person or
+another process should use in the home directory or a workspace instead.
 
 A workspace-relative path with a line number in backticks, such as
 `src/main.ts:42` or `src/main.ts:42-48`, opens that file in the person's
