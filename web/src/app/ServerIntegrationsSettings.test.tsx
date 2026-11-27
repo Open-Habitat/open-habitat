@@ -39,6 +39,7 @@ function host(write: (url: string, body: string) => Response | undefined) {
         schema_version: 1,
         browser_setup: true,
         apps: set ? [app] : [],
+        tenants: [],
       });
     }
     if (url === "/api/v1/server/integrations")
@@ -46,6 +47,7 @@ function host(write: (url: string, body: string) => Response | undefined) {
         schema_version: 1,
         browser_setup: true,
         apps: set ? [app] : [],
+        tenants: [],
       });
     if (url === "/api/v1/integrations")
       return json({
@@ -150,6 +152,7 @@ it("never lets an older catalog answer undo a later confirmed removal", async ()
         schema_version: 1,
         browser_setup: true,
         apps: [...set].map(appOf),
+        tenants: [],
       });
     }
     if (url === "/api/v1/server/integrations")
@@ -157,6 +160,7 @@ it("never lets an older catalog answer undo a later confirmed removal", async ()
         schema_version: 1,
         browser_setup: true,
         apps: [...set].map(appOf),
+        tenants: [],
       });
     if (url === "/api/v1/integrations") {
       const answer = catalog();

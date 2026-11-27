@@ -47,6 +47,7 @@ const partial: Provider[] = fresh.map((p) =>
 const none: IntegrationApps = {
   schema_version: 1,
   browser_setup: true,
+  tenants: [],
   apps: [],
 };
 const google: IntegrationApps = {

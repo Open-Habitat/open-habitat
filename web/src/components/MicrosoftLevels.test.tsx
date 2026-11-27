@@ -51,6 +51,7 @@ const section = (
 const two: IntegrationApps = {
   schema_version: 1,
   browser_setup: true,
+  tenants: [],
   apps: [
     section("microsoft", fullID),
     section("microsoft_read", readID, {

@@ -59,10 +59,20 @@ export type IntegrationApp = {
   actor?: string;
   at?: string;
 };
+/** One organisation the shared Microsoft applications may serve. */
+export type IntegrationTenant = {
+  tenant_id: string;
+  label: string;
+  source: "site_admin" | "operator";
+  actor?: string;
+  at?: string;
+};
 export type IntegrationApps = {
   schema_version: 1;
   browser_setup: boolean;
   apps: IntegrationApp[];
+  tenants: IntegrationTenant[];
+  tenants_invalid?: true;
 };
 export type AppFields = Record<string, string>;
 

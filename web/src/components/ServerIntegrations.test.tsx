@@ -46,6 +46,7 @@ const providers: Provider[] = [
 const apps: IntegrationApps = {
   schema_version: 1,
   browser_setup: true,
+  tenants: [],
   apps: [
     {
       provider: "google",
