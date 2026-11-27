@@ -1565,7 +1565,11 @@ The broker writes these as it writes the other sections:
 --tenant-id <GUID>` (each with `--dry-run`), and `admin integrations
 consent-link --tenant-id <GUID>`, which computes each configured level's
 admin-consent link for that organisation's administrator and changes
-nothing. The server cannot see whether a client approved: the first person's
+nothing. While `integrations.browser_setup` is on, a browser administrator
+manages the same list from Palvelinintegraatiot › Microsoft 365 ›
+Organisaatiot, which also shows each organisation's message and links for
+its administrator; the shared sections themselves are set from this CLI.
+The server cannot see whether a client approved: the first person's
 sign-in is the test. Approving creates an enterprise application in the
 client's Entra, which its administrator can restrict (*Assignment required*)
 or remove at any time.
