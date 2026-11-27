@@ -1,5 +1,91 @@
 # Tulokset
 
+## Kierros 2
+
+Prototyyppi: `design-system/prototypes/rounds/2026-11-27-keskustelulinkit-2/`
+(rakennus ja tilanteet sen `NOTES.md`:ssä), tulos
+`design-system/prototypes/dist/2026-11-27-keskustelulinkit-2/offline.html`.
+1440 ja 390 px, kolme teemaa. Mukana myös `risky-features-settings`-osio.
+
+### Päätökset kierroksesta 1 ja mitä muuttui
+
+- **Vain A.** B ja C poistettu. Valitsimessa on kaksi A:n muunnelmaa
+  kierroksen ainoasta uudesta kysymyksestä (alla).
+- **Linkki avaa aina uuden keskustelun työtilassa:**
+  `<origin>/new/<työtila>#n=<pituus>&draft=<viesti>`. Ei keskustelun nimeä,
+  ei `from`-lähdettä, ei "keskustelua ei löydy → saa nimen" -logiikkaa eikä
+  arkistoidun keskustelun tilannetta. Olemassa olevaan keskusteluun avaamista
+  ei tehty edes tavallisella osoitteella: käyttötapaus (ilmoitus → tee jotain)
+  on uuden tehtävän aloitus, ja olemassa olevan keskustelun kenttä toisi
+  takaisin kesken olevan vuoron ja keskustelun oman luonnoksen tilanteet.
+- **Merkki on yksi rivi:** *Viesti linkistä. Mitään ei ole lähetetty.* ja ×.
+  Henkilö painoi linkkiä itse, joten rivi sanoo vain sen, mitä painallus ei
+  kerro: teksti ei ole hänen, eikä mitään ole vielä lähtenyt.
+- Säilyivät: oma luonnos ensin (kortti *Lisää viestisi perään / Korvaa /
+  Hylkää*, nyt työtilan uuden keskustelun luonnokselle), arkistoitu työtila,
+  puuttuva työtila, kirjautuminen, liian pitkä viesti. Linkin tekeminen
+  keskustelun ⋯-valikosta: *Kopioi linkki uuteen keskusteluun tässä
+  työtilassa…*, ikkunassa vain viesti, merkkimäärä ja linkki.
+
+### Linkki, kun linkit eivät ole sallittuja (valitsimen akseli)
+
+- **A · oma sivu (suositus).** Mitään ei avata. Sivu kertoo, mitä linkki
+  tekisi, näyttää viestin vain luettavana ilman kopiointipainiketta ja tarjoaa
+  *Avaa asetus* tai *Avaa työtila* ilman viestiä.
+- **A · tyhjä kenttä.** Työtilan uusi keskustelu avautuu tyhjällä kentällä,
+  ja ilmoitus kertoo, ettei viestiä kirjoitettu, sekä *Avaa asetus*. Viestiä
+  ei näytetä.
+
+Suositus on oma sivu: pois päältä oleva linkki ei saa ohjata sovellusta
+mihinkään, ja tässä kohdassa ihminen päättää, salliiko hän linkit lainkaan,
+joten viesti on juuri se tieto, jolla hän päättää. Kopiointipainike olisi
+sama kyky toista reittiä. *Avaa asetus* vie osioon, rivi saa fokuksen, ja
+osion yläreunassa on *Tulit linkistä · Palaa linkkiin*; sallimisen jälkeen
+paluu tuo viestin kenttään. Sallia ei voi linkin sivulta, jotta vahingollinen
+linkki ei ole yhden painalluksen päässä omasta luvastaan.
+
+### Asetusosio riskialttiille toiminnoille
+
+- **Nimi: *Sallitut riskit*.** Sanoo, mitä osiossa tehdään (sallitaan) ja
+  mitä jäsenet ovat (riskejä), ilman hälytyssanaa. *Vaaralliset toiminnot*
+  sekoittuisi vaaralliseen (punaiseen, tuhoavaan) painikkeeseen ja poistoon,
+  eikä design-kielen rauhallinen sävy kanna sitä. Katselmointipalkissa voi
+  vaihtaa nimeksi myös *Vaaralliset toiminnot* tai *Erikseen sallittavat*.
+- **Paikka:** heti Tilin, Laitteiden ja Avainten jälkeen eli turvallisuusosioiden
+  joukossa, kaukana listan lopun *Kokeellisista ominaisuuksista*. Ikoni kilpi.
+- **Ulkoasu, tarkoituksella eri kuin Kokeelliset:** yksi kortti riveinä, ei
+  kuvia eikä Pois/Päällä-segmenttiä. Rivillä nimi, yksi rivi siitä mitä
+  toiminto tekee, tila sanana (*Ei sallittu* / varoitusmerkki ja *Sallittu*) ja teon nimeävä
+  painike (*Salli…* / *Poista käytöstä*). *Sallii:* -lause on aina näkyvissä,
+  ja kun toiminto on päällä, se korostuu pehmeällä punaisella reunalla ja
+  rivi kertoo, milloin se sallittiin.
+- **Päälle vahvistuksella, pois heti.** *Salli…* avaa ikkunan: varoituslaatikko
+  (*Kun tämä on päällä* ja kuka voi käyttää kykyä), *Ei koskaan* (mitä se ei
+  tee) ja tieto, että asetus koskee tiliä kaikilla laitteilla. Painikkeet
+  *Salli keskustelulinkit* ja *Peru*; Esc peruu. Poisto ei kysy mitään, koska
+  pois on aina turvallinen suunta.
+- **Skaalautuvuus:** tilanne *kolme jäsentä* näyttää kaksi neutraalia
+  paikkamerkkiä, joista toisessa on kolmen lauseen varoitus.
+
+### Päätökset katselmoitavaksi
+
+- Asetus on tilin (daemonin tallentama kuten Kokeelliset), ei laitteen.
+  Linkin viestin lukee selain, mutta lupa koskee ihmistä, ja laitekohtainen
+  lupa pitäisi myöntää jokaisessa selaimessa erikseen.
+- Linkin tekeminen on keskustelun ⋯-valikossa, ja kohta näkyy vain, kun
+  linkit on sallittu. Luontevampi paikka toteutuksessa voi olla työtilarivin
+  `…`-valikko tai työtilasivu, koska linkki kohdistuu työtilaan.
+- Varoituksen värinä on vaarallisen sävyn pehmeä pinta, koska tokeneissa ei
+  ole erillistä varoitussävyä.
+
+### Kysymykset Jarille
+
+1. Oma sivu (suositus) vai tyhjä kenttä, kun linkit eivät ole sallittuja?
+2. Osion nimi: *Sallitut riskit*, *Vaaralliset toiminnot* vai *Erikseen
+   sallittavat*?
+3. Riittääkö linkin teko keskustelun valikosta, vai siirretäänkö se työtilan
+   valikkoon?
+
 ## Kierros 1
 
 Prototyyppi: `design-system/prototypes/rounds/2026-11-27-keskustelulinkit-1/`

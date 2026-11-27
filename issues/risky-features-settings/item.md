@@ -9,7 +9,7 @@ provenance: chat
 source_ref: chat:conductor-2711/risky-features
 lane: conversation-links
 lane_seq: 0
-preparation: ready
+preparation: pending
 ---
 
 # Settings section for risky features the person switches on with a warning
