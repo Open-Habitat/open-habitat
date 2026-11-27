@@ -7,8 +7,10 @@ priority: normal
 provenance: other
 provenance_detail: 'GitHub issue #2'
 source_ref: https://github.com/Open-Habitat/open-habitat/issues/2
-lane: unlaned
+lane: m365-tenants
 preparation: pending
+lane_seq: 4
+blocked_by: ['@m365-tenants-ui']
 ---
 
 # Microsoft 365: allow integrations with several Entra tenants on one server
@@ -49,3 +51,13 @@ Jari 27.11.2026: the design's three recommendations accepted (no who-connected l
 ### 2026-11-27T10:11:21Z · @jari
 
 Jari 27.11.2026 on round 1: develop the administrator side from A, but with a collapsed state: the organisations and their states behind a button or a collapse, not open on the row. Cut the extra texts drastically. He did not find the person-side prototype at all: round 2 must show the person side clearly and separately. Next action (approved): prototype round 2 (riff).
+
+### 2026-11-27 · @jari (via conductor)
+
+Prototype round 4 approved for implementation. Work split into
+`m365-tenants-connection-identity` (1), `m365-tenants-allowed-list` (2) and
+`m365-tenants-ui` (3) in lane `m365-tenants`. This issue remains step 4: the
+proof with real accounts (operator applications, two client administrators,
+guest invitations) and `docs/operations.md`; it needs real people and stays
+`pending` until Jari arranges them.
+
