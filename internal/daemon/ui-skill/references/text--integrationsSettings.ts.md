@@ -27,7 +27,14 @@ const fi = {
     attempt_active:
       "Kirjautuminen tai ensimmäinen synkronointi on kesken. Odota, että se päättyy.",
     attempt_not_found: "Kirjautuminen ei ole enää voimassa. Aloita alusta.",
+    organisation_unavailable:
+      "Organisaatio ei ole sallittu tällä palvelimella. Kysy palvelimen ylläpitäjältä.",
+    organisation_required:
+      "Tämä osoite on yhdistetty useaan organisaatioon. Lataa sivu uudelleen ja yritä uudelleen kortilta.",
   } as Record<string, string>,
+  /** An organisation the server stopped serving after the page was read. */
+  orgUnavailable: (label: string) =>
+    `${label} ei ole sallittu tällä palvelimella. Kysy palvelimen ylläpitäjältä.`,
   gitea: {
     invalid_address:
       "Anna palvelimen HTTPS-osoite, esimerkiksi https://git.example.org.",
@@ -130,7 +137,13 @@ export const integrationsSettingsText = catalog(
       attempt_active:
         "A sign-in or the first synchronization is under way. Wait for it to end.",
       attempt_not_found: "The sign-in is no longer valid. Start over.",
+      organisation_unavailable:
+        "The organization is not allowed on this server. Ask the server's administrator.",
+      organisation_required:
+        "This address is connected in several organizations. Reload the page and try again from the card.",
     },
+    orgUnavailable: (label) =>
+      `${label} is not allowed on this server. Ask the server's administrator.`,
     gitea: {
       invalid_address:
         "Give the server's HTTPS address, for example https://git.example.org.",
@@ -214,6 +227,12 @@ export const integrationsSettingsText = catalog(
   {
     cancelUncertain:
       "Cancelling the sign-in was not confirmed. It may still finish; check the situation on this page.",
+    refusals: {
+      organisation_unavailable:
+        "The organisation is not allowed on this server. Ask the server's administrator.",
+      organisation_required:
+        "This address is connected in several organisations. Reload the page and try again from the card.",
+    },
   },
 );
 

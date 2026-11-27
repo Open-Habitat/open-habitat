@@ -166,6 +166,7 @@ A label alone does not establish that a control is available to this person.
 - [text/largeContent.ts](text--largeContent.ts.md)
 - [text/markdownRenderer.ts](text--markdownRenderer.ts.md)
 - [text/microsoftLevels.tsx](text--microsoftLevels.tsx.md)
+- [text/microsoftOrganisations.ts](text--microsoftOrganisations.ts.md)
 - [text/models.tsx](text--models.tsx.md)
 - [text/multiplayer.ts](text--multiplayer.ts.md)
 - [text/naming.ts](text--naming.ts.md)

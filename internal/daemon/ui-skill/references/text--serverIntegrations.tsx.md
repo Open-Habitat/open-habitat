@@ -178,6 +178,8 @@ const fi = {
     login: "Istunto on päättynyt. Kirjaudu uudelleen.",
     admin_required: "Vain ylläpitäjä voi asettaa tunnuksia.",
     invalid_request: "Palvelin ei hyväksynyt tunnuksia. Tarkista kentät.",
+    integration_tenants_full:
+      "Listalla on jo 32 organisaatiota, enempää ei voi lisätä. Mitään ei muutettu.",
   } as Record<string, string>,
   refused: "Palvelin ei tehnyt muutosta.",
   sessionEnded: "Istunto on päättynyt. Kirjaudu uudelleen.",
@@ -345,6 +347,8 @@ export const serverIntegrationsText = catalog(
       admin_required: "Only an administrator can set credentials.",
       invalid_request:
         "The server did not accept the credentials. Check the fields.",
+      integration_tenants_full:
+        "The list already has 32 organizations; no more can be added. Nothing was changed.",
     },
     refused: "The server made no change.",
     sessionEnded: "The session has ended. Sign in again.",
@@ -364,6 +368,10 @@ export const serverIntegrationsText = catalog(
     dropboxName: "Open Habitat <organisation>",
     dropboxOwner:
       "The app belongs to the account you create it with. Use the organisation's shared Dropbox account.",
+    refusals: {
+      integration_tenants_full:
+        "The list already has 32 organisations; no more can be added. Nothing was changed.",
+    },
   },
 );
 

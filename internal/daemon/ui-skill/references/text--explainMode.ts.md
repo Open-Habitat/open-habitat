@@ -1995,6 +1995,51 @@ const fi = {
       lead: "Poistaa tämän yhteyden kirjautumisen agenttien käytöstä.",
       know: "Tauluja ja kortteja ei poisteta. Muut Trello-yhteydet säilyvät.",
     },
+    MS01: {
+      name: "Organisaatiot",
+      lead: "Näyttää organisaatiot, joiden ihmiset voivat yhdistää Microsoft 365:n tällä palvelimella.",
+      know: "Luku kertoo, montako niitä on. Ikkunassa lisäät organisaation, haet sen hyväksyntäviestin tai poistat sen.",
+    },
+    MS02: {
+      name: "Tasot",
+      lead: "Näyttää Microsoft 365:n tasot ja niiden sovellukset.",
+      know: "Luku kertoo, montako neljästä tasosta on asetettu. Jos jokin puuttuu, painike pyytää huomiota ja ikkunassa asetat puuttuvat.",
+    },
+    MS03: {
+      name: "Hyväksyntä",
+      lead: "Näyttää viestin ja linkit, joilla organisaation pääkäyttäjä hyväksyy sovellukset.",
+      know: "Palvelin ei näe, onko organisaatio jo hyväksynyt. Ensimmäinen kirjautuminen kertoo sen.",
+    },
+    MS04: {
+      name: "Poista organisaatio",
+      lead: "Kysyy, poistetaanko organisaatio listalta.",
+      know: "Mitään ei vielä poisteta: vahvistus kertoo, mitä poisto tekee.",
+    },
+    MS05: {
+      name: "Poista",
+      lead: "Pysäyttää organisaation Microsoft-yhteydet tällä palvelimella.",
+      know: "Microsoftissa ei peruta mitään, ja tiedostot jäävät. Jos lisäät organisaation takaisin, yhteydet jatkuvat ilman kirjautumista.",
+    },
+    MS06: {
+      name: "Lisää organisaatio",
+      lead: "Lisää organisaation nimen ja tenant ID:n listalle.",
+      know: "Nimi näkyy kaikille palvelimen käyttäjille. Tallennuksen jälkeen saat viestin organisaation pääkäyttäjälle.",
+    },
+    MS07: {
+      name: "Lisää",
+      lead: "Tallentaa organisaation listalle.",
+      know: "Sen ihmiset voivat yhdistää, kun organisaation pääkäyttäjä on hyväksynyt sovellukset.",
+    },
+    MS08: {
+      name: "Yhdistä organisaatio",
+      lead: "Yhdistää Microsoft 365:n tämän organisaation tietoihin.",
+      know: "Vieraana kirjaudut omalla työtililläsi. Jokainen organisaatio on oma yhteytensä ja korttinsa.",
+    },
+    MS09: {
+      name: "Organisaatio",
+      lead: "Valitse, minkä organisaation tiedot yhteys tuo agenteille.",
+      know: "Samalla osoitteella voi yhdistää usean organisaation tiedot, kunkin omana korttinaan.",
+    },
     N01: {
       name: "Työtilan lähde",
       lead: "Valitse, kloonataanko työtila valmiista reposta vai luodaanko uusi tyhjä hakemisto.",
@@ -2122,2079 +2167,2182 @@ const fi = {
   },
 };
 
-export const explainModeText = catalog(fi, {
-  bar: {
-    title: "Explain mode",
-    hint: "Point at any part; a click works as always.",
-    hintTouch: "Tap any part to see what it does.",
-    now: "Now",
-    showState: "Show the state",
-    stop: "Stop",
-    report: "Report a mistake",
-    reportDescription:
-      "Point at a part and press F to report a mistake in its explanation. A click opens general feedback about Habitat.",
-  },
-  card: {
-    clickHint: (action: string) => `A click: ${action}.`,
-    clickOpens: "A click opens it; the explain mode stays on.",
-    tapAgain: "Tap again to do it.",
-    open: "Open",
-    close: "Close the card",
-    waits:
-      "In explain mode this waits, so nothing happens by accident. Stop the mode and the button works.",
-    waited:
-      "In explain mode this does nothing. Stop the mode (Esc) and the button works.",
-    onlyHover:
-      "Shows only while the pointer is on the row. A touch screen always shows it.",
-    now: "Right now",
-    can: "You can now",
-    pinned: "Pinned",
-  },
-  feedback: {
-    report: "Report a mistake",
-    reportSub: "The explanation is wrong or incomplete",
-    reportKey: "F: report a mistake in this explanation.",
-    dest: "Public GitHub issue · needs a GitHub account",
-    label: "What should be fixed in the explanation",
-    placeholder: "What is wrong, or what is missing?",
-    needText: "Write first what should be fixed.",
-    tooLong: (max: string) => `At most ${max} characters.`,
-    send: "Open in GitHub",
-    newTab: "(opens in a new tab)",
-    cancel: "Cancel",
-    facts:
-      "Opens in a new tab as a ready issue. It is sent when you press Submit in GitHub, and it is public. Nothing stays on this server.",
-    what: "Show what is sent",
-    whatLead:
-      "Opens in GitHub. It holds only your text, the card's name and id, the Open Habitat version and the language:",
-    finishFirst:
-      "Send or cancel the report first, so what you wrote is not lost.",
-    done: "Opened in GitHub. The report is sent when you press Submit there.",
-    noAccount:
-      "GitHub asks you to sign in if needed. You can copy the report text here.",
-    copy: "Copy text",
-    copied: "Text copied.",
-    copyFailed: "Copying did not work.",
-    reported: "You opened a report about this card in GitHub.",
-  },
-  strip: {
-    title: "What is on the screen?",
-    text: "Point at any part to see what it does.",
-    textTouch: "Tap any part to see what it does.",
-    go: "Explain these to me",
-    end: "Stop explaining",
-    close: "Close the strip",
-  },
-  entry: "Explain this view",
-  toggle: "Explain",
-  workerLegend: {
-    caption: "Worker marks",
-    working: "Working",
-    idle: "Waiting for you",
-    waiting_parent: "Waiting for the parent agent",
-    unknown: "State unknown",
-    merged: "Done",
-    unfinished: "Unfinished, work kept",
-    failed: "Failed, no work kept",
-    unmerged: "Ended unfinished, no work kept",
-    checking: "Agent handling the request",
-    answer: "Waiting for your answer",
-    reported: "A helper's new round report",
-    waited: "Outer ring: agent waiting for the worker",
-    gone: "Work cleaned up",
-  },
-  kinds: {
-    panel: "Panel",
-    once: "One-off action",
-    info: "Information",
-    menu: "Menu",
-    nav: "Navigation",
-    list: "List",
-    input: "Writing",
-    page: "Settings page",
-  },
-  cards: {
-    GH01: {
-      name: "GitHub connection",
-      lead: "Shows whether the agents’ GitHub connection works on this server.",
-      know: "The account is the GitHub account used by the server. Unknown does not mean disconnected.",
-    },
-    GH02: {
-      name: "Permissions",
-      lead: "Shows the permissions of the server’s current GitHub grant.",
-    },
-    GH03: {
-      name: "Sign in with GitHub again",
-      lead: "Renews the GitHub grant saved on the server.",
-      know: "Opens GitHub sign-in in the same tab. Allowed workflow permission is retained.",
-    },
-    GH04: {
-      name: "Disconnect…",
-      lead: "Opens a dialog for disconnecting the server from GitHub.",
-      know: "Opening the dialog does not remove the grant. Signing out of the browser does not remove it either.",
-      try: "Open the disconnect dialog",
-    },
-    GH05: {
-      name: "Confirm with GitHub",
-      lead: "Confirms on GitHub that you may disconnect.",
-      know: "You return to the same dialog. Disconnecting still needs a separate press.",
-    },
-    GH06: {
-      name: "Disconnect",
-      lead: "Removes your GitHub grant from this server.",
-      know: "Workspaces and conversations stay. Sign in with GitHub to reconnect; the grant stays on your GitHub account.",
-    },
-    GH07: {
-      name: "GitHub Actions workflows",
-      lead: "Shows whether agents may change GitHub workflows.",
-      know: "Workflows can read repository secrets. A missing permission blocks pushes that change workflows.",
-    },
-    GH08: {
-      name: "Allow on GitHub",
-      lead: "Asks GitHub for permission to change workflows.",
-      know: "Sign-in opens in the same tab. You can retry an unfinished sign-in.",
-    },
-    GH09: {
-      name: "Remove permission",
-      lead: "Clears the choice and opens GitHub sign-in without workflow permission.",
-      know: "The previous grant is not revoked on GitHub.",
-    },
-    GH10: {
-      name: "Don’t allow",
-      lead: "Forgets the wish to allow workflows when the current grant lacks permission.",
-      know: "Does not open GitHub or change the current grant.",
-    },
-    GH11: {
-      name: "Cancel",
-      lead: "Clears this card’s unfinished sign-in mark.",
-      know: "GitHub permissions do not change.",
-    },
-    GH12: {
-      name: "GitHub settings",
-      lead: "Opens GitHub’s application grants in a new tab.",
-      know: "You can remove Open Habitat’s grant there yourself.",
-    },
-    GH13: {
-      name: "Check again",
-      lead: "Checks whether the connection can now be removed.",
-      know: "Does not disconnect. Disconnecting needs a separate press.",
-    },
-    J10: {
-      name: "Close",
-      lead: "× closes this view and returns to where you were.",
-      know: "Your conversation and draft stay intact. A view opened directly returns to Home.",
-      try: "Close view",
-    },
-    J01: {
-      name: "Outputs",
-      lead: "Opens views and files the agent gave you, grouped by conversation.",
-      know: "Includes private outputs and those shared by link. The sidebar count shows how many addresses are public.",
-      try: "Open Outputs",
-    },
-    J02: {
-      name: "Outputs",
-      lead: "Shows views and files the agent gave you and the selected output's content.",
-      know: "An output may be private or shared by link. Conversations follow latest activity.",
-    },
-    J03: {
-      name: "Conversation",
-      lead: "Opens the conversation these outputs came from.",
-      know: "The date is the conversation's latest activity, not when it was shared.",
-      try: "Open conversation",
-    },
-    J04: {
-      name: "Output filter",
-      lead: "Narrows the list to public, private or expired outputs.",
-      know: "Expired also includes addresses whose item has been removed.",
-    },
-    J05: {
-      name: "Output",
-      lead: "Opens the output's content and controls for sharing it by link.",
-      know: "The created date records the output's creation. Publishing a link does not change it.",
-      try: "Open output",
-    },
-    J06: {
-      name: "Share status",
-      lead: "Shows who can open the address and until when.",
-      know: "Only you requires your own sign-in. A removed item no longer opens.",
-    },
-    J07: {
-      name: "Share address",
-      lead: "Use the icon to copy the field's address to the clipboard.",
-      know: "Give the address to anyone you want to show the public item to.",
-      try: "Copy link",
-    },
-    J09: {
-      name: "Make private",
-      lead: "Ends publication while keeping the address.",
-      know: "You can publish the same address again when the server allows sharing.",
-    },
-    J08: {
-      name: "Delete address",
-      lead: "Permanently deletes the address after confirmation.",
-      know: "The old link stops working. The item's files stay, but its address cannot be restored.",
-    },
-    X01: {
-      name: "Explain these to me",
-      lead: "Opens the explain mode, which shows what any part of the screen does.",
-      know: "The strip shows on your first empty start page. Later the mode is in the account menu and behind the conversation's ? button.",
-    },
-    X02: {
-      name: "Explain mode",
-      lead: "Tells you the screen is in explain mode: what you point at is explained, and a press works as always.",
-      know: "Esc or Stop returns to the normal view. Archiving, deleting and sending wait until you stop.",
-    },
-    X03: {
-      name: "Explain this view",
-      lead: "Opens the explain mode in the view you are in.",
-      know: "The same mode as the start page's strip; it is always in the account menu, and on a phone also in ⋯.",
-    },
-    X05: {
-      name: "Explain",
-      lead: "Opens the explain mode at the state card.",
-      know: "A second press ends the mode. The state in the bar at the top brings the state card back.",
-    },
-    Y01: {
-      name: "Conversation name",
-      lead: "Click the name to give the conversation a name of your own.",
-      know: "After the first message a name appears by itself; yours stays until you change it.",
-      try: "Rename",
-      menu: "On a phone also ⋯ › Rename.",
-    },
-    Y02: {
-      name: "Workspace",
-      lead: "Takes you to the workspace page: introduction, Git state and other open conversations.",
-      know: "A workspace is a folder on the server, usually a Git repository, and the agent works in it.",
-      try: "Open the workspace",
-      menu: "On a narrow screen the name is the top row of ⋯.",
-    },
-    Y03: {
-      name: "Conversation state",
-      lead: "Shows with one dot whether the agent is working, waiting for you or done.",
-      know: "Tap the dot to see the state in words, with how long the turn has taken.",
-      try: "Show the state",
-    },
-    Y04: {
-      name: "Git state",
-      lead: "Shows the workspace's branch: ↑ not yet pushed, ↓ incoming, and how many files changed.",
-      know: "Opens the Git details with the commits and changed files. Looking changes nothing.",
-      try: "Open Git details",
-    },
-    Y05: {
-      name: "Context",
-      lead: "Shows how much of the agent's memory this conversation already takes.",
-      know: "As it fills, the agent condenses the oldest part into a summary and carries on. A press opens the breakdown.",
-      try: "Open the breakdown",
-    },
-    Y06: {
-      name: "Model",
-      lead: "The model and thinking level the agent answers with in this conversation.",
-      know: "A press tells what the model is good for. The model is chosen before the first message; the default for new ones is in Settings.",
-      try: "Show the model details",
-    },
-    Y07: {
-      name: "Editor",
-      lead: "Opens the workspace's files for editing beside the conversation.",
-      know: "The agent's changes arrive in the open file; if you both edit the same line, you choose which stays.",
-      try: "Open the editor",
-    },
-    Y08: {
-      name: "Terminal",
-      lead: "Opens a command line in this workspace's folder, below the conversation.",
-      know: "The terminal keeps running on the server when you close the browser. The number is how many are open.",
-      try: "Open the terminal",
-    },
-    Y09: {
-      name: "Make a recap now",
-      lead: "Asks for a short summary of what was done in the conversation and what comes next.",
-      know: "The recap appears as a card above the conversation. It does not enter the agent's memory.",
-      try: "Make a recap",
-      grey: "Grey while the conversation has no messages yet.",
-      menu: "On a narrow screen ⋯ › Make a recap now.",
-    },
-    Y10: {
-      name: "Create a new title",
-      lead: "Gives the conversation a new name from what it is about now.",
-      know: "Useful when the conversation has turned to another subject than it began with.",
-      try: "Create a title",
-      menu: "On a narrow screen ⋯ › Create a new title.",
-    },
-    Y11: {
-      name: "Archive",
-      lead: "Moves the conversation off the lists. Nothing is deleted.",
-      know: "Bring an archived conversation back from the workspace page's archive.",
-      grey: "Grey while the agent's turn is on: wait for it to end.",
-      menu: "On a narrow screen ⋯ › Archive.",
-    },
-    Y12: {
-      name: "Close",
-      lead: "Closes this empty conversation.",
-      know: "Only an empty conversation started in the browser can be closed; nothing of it is kept.",
-    },
-    Y13: {
-      name: "Details",
-      lead: "Shows the conversation's basics: workspace, model, thinking level and when it started.",
-      know: "Copy the identifier if you want to continue the same conversation in a terminal.",
-      try: "Open details",
-      menu: "On a narrow screen ⋯ › Details.",
-    },
-    Y14: {
-      name: "Conversation actions",
-      lead: "Holds the conversation's actions that do not fit on the row right now.",
-      know: "It lists only what the row does not show; in a wider window the same are on the row.",
-      try: "Open the menu",
-    },
-    Y15: {
-      name: "Guide",
-      lead: "Shows or hides the chosen goal's guide beside the conversation.",
-      know: "The guide lists the steps and what you get. It does not track where the agent is.",
-      try: "Hide the guide",
-    },
-    Y16: {
-      name: "Open navigation",
-      lead: "Opens the sidebar with all your conversations and workspaces.",
-      know: "When something waits for you, a mark shows on this button.",
-      try: "Open the sidebar",
-    },
-    Y17: {
-      name: "Conversation details",
-      lead: "Gathers the workspace, Git state, context and model in one place on a phone.",
-      know: "Each row opens what the matching header button opens on a wide screen.",
-    },
-    Y18: {
-      name: "Notice",
-      lead: "Tells you what just happened, such as what was archived or which icon is now in use.",
-      know: "An error stays until you dismiss it or try again. × closes the notice; it does not undo anything.",
-    },
-    Y19: {
-      name: "Restore",
-      lead: "Takes back the change you just made: brings back what was archived or the previous icon.",
-      know: "In the icon notice the button is called Undo.",
-    },
-    Y20: {
-      name: "Archived",
-      lead: "Says when the conversation was archived and shows its helpers.",
-      know: "You can read the conversation but not write in it until you restore it.",
-    },
-    Y21: {
-      name: "Restore",
-      lead: "Brings the conversation back from the archive so you can continue it.",
-      know: "The message field returns and its helpers come back without starting. You can archive the conversation again.",
-    },
-    Y22: {
-      name: "Connection notice",
-      lead: "Reports a lost connection, a required sign-in or a new version.",
-      know: "A spinning mark means Habitat is trying by itself. The notice stays until the situation changes.",
-    },
-    Y23: {
-      name: "Try connecting again",
-      lead: "Checks the connection and reads the current state. Does not send your messages again.",
-      try: "Check connection",
-    },
-    Y24: {
-      name: "Load new version",
-      lead: "Reloads the page so you can use the version on the server.",
-      know: "Your unfinished message draft stays in this tab.",
-    },
-    Y25: {
-      name: "Terminal notice",
-      lead: "Reports a terminal event or an action that did not succeed. An uncertain result does not mean nothing happened.",
-      know: "The notice does not expire on a timer. × dismisses it without changing the terminal's state.",
-    },
-    S01: {
-      name: "Server name",
-      lead: "This Habitat's name; a click takes you home.",
-      know: "The administrator names the server, and everyone sees the name.",
-    },
-    S02: {
-      name: "Connection",
-      lead: "Shows whether the browser is connected to the server right now.",
-      know: "If the connection drops, what you see may be old, and Habitat says so here.",
-    },
-    S03: {
-      name: "Home",
-      lead: "Shows all your workspaces and their open conversations on one page.",
-      try: "Open Home",
-    },
-    S04: {
-      name: "Close navigation",
-      lead: "Narrows the sidebar to a row of icons so the conversation gets more room.",
-      know: "The same spot brings the sidebar back; on a phone it closes the drawer.",
-    },
-    S05: {
-      name: "Your turn",
-      lead: "Conversations where the agent waits for you: an answer, a decision or something to read.",
-      know: "The conversation stays here until you reply or press Not now on its row. Reading it does not move it away.",
-      keyboard: `${altKey("↑/↓")}: previous/next visible conversation. ${altKey("↑/↓", true)}: conversations waiting for you. Keep typing straight away.`,
-    },
-    S06: {
-      name: "Running",
-      lead: "Conversations where an agent or a worker is working right now, by workspace.",
-      know: "When the work is done, the conversation moves to Your turn.",
-    },
-    S07: {
-      name: "Quiet",
-      lead: "Conversations where nothing waits for you and nothing runs.",
-      know: "Raise on a row moves the conversation to Your turn. The heading folds the list away; the open conversation stays in view.",
-      try: "Fold the list",
-    },
-    S08: {
-      name: "Filter and sort Quiet",
-      lead: "Shows only one workspace in Quiet and chooses the order.",
-      know: "The letters stand for workspaces. Your choice follows you to every device.",
-      try: "Open the filter",
-    },
-    S09: {
-      name: "Conversation row",
-      lead: "Opens the conversation. The row shows state, the workspace's icon, name and when something last happened.",
-      know: "The open conversation's row has a frame around it. Point at the row or its icon to see the workspace's name.",
-    },
-    S10: {
-      name: "State mark",
-      lead: "The conversation's state as the Open Habitat mark: the ring is the agent's home, the dot the agent and the gap its door. A door travelling round the ring means working; a yellow dot knocking at the door means it is your turn.",
-      know: "A closed ring is done, a hollow dot in the error colour failed and a dashed ring unknown. A hollow dot at the door: you have read the reply. In the narrow rail the ring goes round the workspace icon.",
-    },
-    S11: {
-      name: "Workers in the mark",
-      lead: "The conversation has handed work to workers. Each worker is a small dot around the agent; with more than three a number shows beside the mark.",
-      know: "A yellow dot waits for you. Open them from the conversation's Workers badge.",
-    },
-    S12: {
-      name: "Rename",
-      lead: "Gives the conversation a name of your own straight from the list.",
-      know: "The button shows while the pointer is over the row.",
-    },
-    S13: {
-      name: "Archive",
-      lead: "Moves the conversation off the lists. Nothing is deleted.",
-      know: "Bring an archived conversation back from the workspace page's archive.",
-    },
-    S14: {
-      name: "Workspaces",
-      lead: "All your workspaces; the number is how many there are.",
-      know: "Hidden workspaces are a group of their own at the end of the list.",
-    },
-    S15: {
-      name: "New workspace",
-      lead: "Adds a workspace: clone a repository from a code host or create an empty folder.",
-      know: "It goes in your home directory's src folder, and an agent can start in it at once.",
-    },
-    S16: {
-      name: "Filter workspaces",
-      lead: "Narrows the sidebar's workspaces and conversations to the name you type.",
-      know: "Clear the field to see everything again.",
-    },
-    S17: {
-      name: "Refresh",
-      lead: "Reads the workspaces and conversations from the server again.",
-      know: "The list usually updates by itself; use this when something looks out of date.",
-      try: "Refresh",
-    },
-    S18: {
-      name: "Workspace row",
-      lead: "Opens the workspace page: introduction, Git state and open conversations.",
-      know: "A mark at the end of the row means work is running in that workspace.",
-      try: "Open the workspace",
-    },
-    S19: {
-      name: "New conversation in workspace",
-      lead: "Starts a new conversation right in this workspace.",
-      know: "It opens on the workspace's start page, with ready-made goals.",
-      try: "Start a conversation",
-    },
-    S20: {
-      name: "All workspaces",
-      lead: "Opens the narrowed sidebar back to full width.",
-      know: "Narrowed, the sidebar shows only icons and state dots.",
-    },
-    S42: {
-      name: "Feedback about Habitat…",
-      lead: "Opens a feedback panel to report a problem or suggest an improvement.",
-      know: "Feedback is submitted as a public GitHub issue. You can preview its contents before submitting.",
-      try: "Open feedback panel",
-    },
-    S21: {
-      name: "Account menu",
-      lead: "Settings, theme, how much of the agent's work shows, and sign out.",
-      know: "Explain this view is here too, wherever you are.",
-      try: "Open the account menu",
-    },
-    S22: {
-      name: "Settings",
-      lead: "Opens your settings: account, models, connected services and appearance.",
-      try: "Open Settings",
-    },
-    S23: {
-      name: "Server administration",
-      lead: "The server's settings, which apply to everyone who uses it.",
-      know: "Only administrators see this.",
-    },
-    S24: {
-      name: "Theme",
-      lead: "Chooses the light or dark look, or follows the device.",
-      know: "The choice applies to this browser only.",
-    },
-    S25: {
-      name: "Agent's work",
-      lead: "Chooses whether the agent's thinking and tools show open or hidden in conversations.",
-      know: "Hidden, the work is one row that opens with a press.",
-    },
-    S26: {
-      name: "Sign out…",
-      lead: "Signs you out of this browser. Agents keep working on the server.",
-      know: "It asks first; your other devices stay signed in.",
-    },
-    S27: {
-      name: "Order",
-      lead: "Sorts Quiet by newest, by workspace or by name.",
-    },
-    S28: {
-      name: "Workspace tile",
-      lead: "Shows only this workspace's conversations in the list; All brings back the whole list.",
-      know: "The number is how many of the list's conversations belong to the workspace.",
-    },
-    S29: {
-      name: "Done",
-      lead: "Closes the filter; your choice is already saved.",
-    },
-    S30: {
-      name: "Workspace icon",
-      lead: "Opens a card with the workspace's full name and where its icon comes from.",
-      know: "From the card you can go to the workspace's page or start a new conversation there.",
-    },
-    S31: {
-      name: "Raise to Your turn",
-      lead: "Moves a quiet conversation to Your turn as a reminder to yourself.",
-      know: "The agent's state does not change. Lower moves it back to Quiet.",
-    },
-    S32: {
-      name: "Lower to Quiet",
-      lead: "Moves a conversation you raised back to Quiet.",
-    },
-    S33: {
-      name: "Not now",
-      lead: "Moves the conversation out of Your turn when you cannot reply now.",
-      know: "Background work stays in Running; otherwise the conversation moves to Quiet. A new reply brings it back to Your turn.",
-    },
-    S34: {
-      name: "Search conversations",
-      lead: "Opens a search that finds a conversation by its name or by what you or the agent said in it.",
-      know: "An empty search lists recently opened conversations with the previous one chosen, so the key and Enter swap between two. Tool output and the agent's thinking are not searched.",
-      keyboard:
-        "⌘K on a Mac, Ctrl+K elsewhere; / outside text fields. The terminal keeps Ctrl+K for itself.",
-    },
-    S35: {
-      name: "Search results",
-      lead: "A row is a conversation with the sentence that matched inside it. Enter opens the conversation right at that sentence.",
-      know: "Name matches come first and archived conversations last. A conversation's other hits are a count that → opens under the row and ← closes.",
-      keyboard:
-        "↑↓ choose, → and ← open and close the hits, Enter opens and Esc closes.",
-    },
-    S36: {
-      name: "Filter by workspace",
-      lead: "Shows only one workspace's conversations in Your turn or Running.",
-      know: `Each list and Quiet keep their own filter, and your choice follows you to every device. While filtered, the heading's number reads shown/total. The open conversation stays in view even outside the filter, and ${altKey("↑/↓")} steps only through what is shown.`,
-      try: "Open the filter",
-    },
-    S37: {
-      name: "Show all",
-      lead: "Removes the list's filter when the chosen workspace has nothing in it right now.",
-    },
-    S38: {
-      name: "Conversations out of sight",
-      lead: "Says which sections have conversations further up or down, and how many. A press scrolls to the section.",
-      know: "The conversations scroll in their own area only when they do not fit. Workspaces always scroll in theirs, so browsing them never moves a conversation. When the rail is full, Quiet folds itself until you open or fold it yourself.",
-    },
-    S39: {
-      name: "Agent resources",
-      lead: "Opens the services and folders your agents use, by kind.",
-      know: "Each one says what is included and what the agent may do. Everything is done with your own accounts.",
-      try: "Open Agent resources",
-    },
-    S40: {
-      name: "Workspace tile",
-      lead: "Opens the folded Quiet list showing only this workspace's conversations.",
-      know: "The number is how many quiet conversations the workspace has. The choice stays on all your devices.",
-      try: "Open this workspace's Quiet",
-    },
-    S41: {
-      name: "Workspaces out of sight",
-      lead: "Says how many workspaces lie further up or down the list. A press scrolls the list by a page.",
-      know: "In the adaptive sidebar Workspaces gets as many rows as the height allows, and the rest scroll in the list's own area.",
-    },
-    E01: {
-      name: "Workspaces",
-      lead: "Home gathers all your workspaces and their open work on one page.",
-      know: "The summary at the top says how many conversations wait for you and how many run.",
-    },
-    E02: {
-      name: "Workspace heading",
-      lead: "The workspace's name and branch; its open conversations follow as cards.",
-      know: "The name opens the workspace page; + starts a new conversation.",
-    },
-    E03: {
-      name: "Conversation card",
-      lead: "The conversation's state and latest recap: what was done and what comes next.",
-      know: "The recap lets you see where things stand without opening the conversation.",
-    },
-    E04: {
-      name: "Read only",
-      lead: "The conversation is being driven elsewhere, for example from a terminal, so here you can read it.",
-      know: "When that ends, you can write to it from the browser again.",
-    },
-    E05: { name: "Recap age", lead: "Shows how old the card's recap is." },
-    E06: {
-      name: "Open",
-      lead: "Takes you into the conversation, to carry on where it left off.",
-      try: "Open the conversation",
-    },
-    E07: {
-      name: "No open work",
-      lead: "Workspaces with no open conversations right now.",
-      know: "Start a new conversation with the row's +.",
-    },
-    E08: {
-      name: "Close recap",
-      lead: "Hides the recap from view; the conversation is not affected.",
-    },
-    T01: {
-      name: "Workspace name",
-      lead: "The workspace's name; the folder's name unless it has been given a display name.",
-    },
-    T46: {
-      name: "Workspace folder",
-      lead: "Shows where the workspace's folder is on the server.",
-      know: "Use Copy path to copy the full path to the clipboard.",
-    },
-    T02: {
-      name: "Copy path",
-      lead: "Copies where the workspace's folder is, to paste into a terminal, for example.",
-      try: "Copy",
-    },
-    T03: {
-      name: "Open on GitHub",
-      lead: "Opens the workspace's repository on GitHub in a new tab.",
-      grey: "Grey when the workspace was not cloned from GitHub.",
-    },
-    T04: {
-      name: "Change display name…",
-      lead: "Gives the workspace a name that shows only in Habitat.",
-      know: "The folder keeps its name, so the terminal and the agent work as before.",
-    },
-    T05: {
-      name: "Hide workspace",
-      lead: "Moves the workspace to the sidebar's Hidden group. Files and conversations stay.",
-      know: "Bring it back from there with Restore.",
-    },
-    T06: {
-      name: "Delete workspace…",
-      lead: "Moves the workspace's folder to the trash.",
-      know: "It asks first. You can restore it from the trash: Settings › Storage.",
-    },
-    T07: {
-      name: "New worktree agent",
-      lead: "Starts an agent in its own worktree: a separate copy and branch that leave your current work alone.",
-      know: "Good for trying something out, or doing two things at once in the same repository.",
-    },
-    T08: {
-      name: "Start a new conversation",
-      lead: "Starts a new conversation with an agent in this workspace.",
-      try: "Start a conversation",
-    },
-    T09: {
-      name: "Start page",
-      lead: "The workspace's introduction and suggestions for what you can do here.",
-      know: "The agent writes and updates it on request; the same page opens every new conversation.",
-    },
-    T10: {
-      name: "Show the whole introduction",
-      lead: "Opens the whole introduction; Show less shortens it again.",
-      try: "Show it all",
-    },
-    T11: {
-      name: "Goal",
-      lead: "Starts a new conversation with the request already written.",
-      know: "Before sending you can add your own details to the request.",
-      try: "Start with this goal",
-    },
-    T12: {
-      name: "Git",
-      lead: "The workspace's branch and how many changes; a press opens the Git details.",
-      know: "↑ is not yet pushed, ↓ is incoming from the remote.",
-    },
-    T13: {
-      name: "Open conversations",
-      lead: "This workspace's conversations that are not archived, as cards.",
-    },
-    T14: {
-      name: "Workspace archive",
-      lead: "This workspace's archived conversations, newest archived first and grouped by day.",
-      know: "Nothing is deleted: open a conversation to read it, or restore it to the open ones.",
-    },
-    T15: {
-      name: "Worktrees",
-      lead: "The agents' and your own Git working copies (worktrees) and the disk they take.",
-      know: "On a workspace page the ones that need you come first. The rest take care of themselves.",
-    },
-    T16: {
-      name: "Working copy",
-      lead: "Says whose working copy it is, which conversation it came from and what happens to it next.",
-      know: "A helper's working copy releases itself once its rounds are merged and it has been idle for a day.",
-    },
-    T17: {
-      name: "Git details",
-      lead: "Shows the working copy's directory, branch, size and run ID.",
-      know: "With them you find the same working copy in a terminal. Looking changes nothing.",
-      try: "Show Git details",
-    },
-    T18: {
-      name: "Takes care of itself",
-      lead: "Working copies an agent is still using, or that release themselves.",
-      know: "You do not need to do anything with them.",
-      try: "Show them",
-    },
-    T19: {
-      name: "Restore conversation",
-      lead: "Brings the conversation back from the archive and opens it, so the agent can decide about the worker.",
-      know: "Habitat does not merge or discard the worker itself; the conversation's agent does. You can archive the conversation again.",
-    },
-    T20: {
-      name: "Conversation",
-      lead: "Opens the conversation where the agent looks after this working copy.",
-      try: "Open the conversation",
-    },
-    T21: {
-      name: "Delete…",
-      lead: "Deletes a working copy nobody uses any more. First you see what would be lost.",
-      know: "Unmerged work stays on the branch. Save and delete commits the changes to the branch first.",
-    },
-    T22: {
-      name: "Clean up entry",
-      lead: "Removes a working copy whose directory is already gone from Git's list.",
-      know: "No files are lost, because they no longer exist.",
-    },
-    T23: {
-      name: "Clean up all merged",
-      lead: "Deletes at once the working copies whose work is merged and that nobody keeps.",
-      know: "First you see the list. No committed work is lost. On a workspace page the button shows only when there is something to clean up.",
-    },
-    T24: {
-      name: "Change icon",
-      lead: "Opens the choice of the workspace's icon: automatic, your own letters or an emoji.",
-      know: "The icon shows in the sidebar and on the home page.",
-    },
-    T25: {
-      name: "Icon choice",
-      lead: "Puts this icon to use for the workspace right away.",
-      know: "The choice is saved in the workspace, and in a Git repository Habitat commits it; the notice says how it went. Undo restores the previous one.",
-    },
-    T26: {
-      name: "Letters",
-      lead: "Type 1–3 letters; Enter makes them the icon right away.",
-    },
-    T27: {
-      name: "Suggestions from a model…",
-      lead: "Asks a model to suggest icons from the workspace's name and introduction.",
-      know: "The suggestions appear on the workspace page; nothing changes until you choose one.",
-    },
-    T28: {
-      name: "Icon suggestion",
-      lead: "Icons a model suggests for this workspace, each with its reason.",
-      know: "A wish or a quick wish asks for new suggestions; the arrows go through earlier rounds. If no model can be reached, choices without a model show instead.",
-    },
-    T29: {
-      name: "Suggestion",
-      lead: "Makes this suggestion the workspace's icon.",
-      know: "The choice is saved in the workspace, and in a Git repository Habitat commits it. Undo in the notice restores the previous one.",
-    },
-    T30: {
-      name: "Wish for the model",
-      lead: "Say what kind of icon you would like, such as a fox, blue or letters.",
-      know: "You can attach an image or text as an example.",
-    },
-    T31: {
-      name: "Send",
-      lead: "Sends your wish to the model, which answers with new icon suggestions.",
-      grey: "Grey while the field is empty or the model is still thinking.",
-    },
-    T32: {
-      name: "Quick wish",
-      lead: "Asks for new suggestions with a ready-made wish, such as more playful.",
-    },
-    T33: {
-      name: "Not now",
-      lead: "Hides the suggestions. The icon stays as it is.",
-      know: "Bring the suggestions back from the icon choice: Suggestions from a model….",
-    },
-    T34: {
-      name: "Done",
-      lead: "The workspace's conversations whose agent has closed and that have nothing unread.",
-      know: "They are not archived. A row opens the conversation.",
-      try: "Open the list",
-    },
-    T35: {
-      name: "Change display name",
-      lead: "Type the name Habitat shows for the workspace; Save puts it to use.",
-      know: "The folder keeps its name.",
-    },
-    T36: {
-      name: "Delete workspace",
-      lead: "Checks before deleting whether anything is using the workspace and what exists only on this machine.",
-      know: "Conversations stay in the agent's history. Check again reads the situation once you have removed what is in the way.",
-    },
-    T37: {
-      name: "Move to Trash",
-      lead: "Moves the workspace's folder to the trash and takes it off the lists.",
-      know: "You can restore it from the trash: Settings › Storage.",
-    },
-    T39: {
-      name: "Icon source",
-      lead: "Says where the workspace's icon comes from: letters from the name, the repository's logo or your own choice.",
-    },
-    T40: {
-      name: "Your own emoji",
-      lead: "Type a single emoji; Use makes it the icon.",
-    },
-    T41: {
-      name: "Try again",
-      lead: "Asks the model for suggestions again after the last request failed.",
-    },
-    T42: {
-      name: "Find by title",
-      lead: "Narrows the archived conversations by their titles.",
-      know: "It looks at titles only, not at what was said in the conversations.",
-    },
-    T43: {
-      name: "Archived conversation",
-      lead: "Opens the conversation to read, as it was left.",
-      know: "You cannot write in an archived conversation; restore it to continue. The row's date says when it was archived.",
-      try: "Open conversation",
-    },
-    T44: {
-      name: "Restore",
-      lead: "Brings the conversation back from the archive to the open conversations.",
-      know: "Its helpers come back with it without starting. You can archive the conversation again.",
-    },
-    T45: {
-      name: "Traces",
-      lead: "Says what the conversation left behind: a helper by name, or its workers' work and its state.",
-      know: "Darker text is work that still waits for someone. Open the conversation to see the exact state and branch.",
-    },
-    T47: {
-      name: "Delete from Trash",
-      lead: "Opens a confirmation showing the item to delete and its size.",
-      know: "Delete permanently removes the item for good. No need to type its name. If the Trash changed meanwhile, open the confirmation again.",
-    },
-    T38: {
-      name: "Delete permanently",
-      lead: "Permanently deletes the folder named in the confirmation and its content.",
-      know: "The folder cannot be restored. Work that is on the remote stays there and can be cloned again.",
-    },
-    A01: {
-      name: "Workspace introduction",
-      lead: "Says what this workspace is before you write your first message.",
-      know: "It goes away once the conversation starts.",
-    },
-    A02: {
-      name: "Goal",
-      lead: "Writes the request into the message field and opens any accompanying guide.",
-      know: "A ready goal can start work immediately. If the request needs input or the field has your own text, it waits for Send. In Explain mode the request is only prepared.",
-      try: "Choose the goal",
-    },
-    A03: {
-      name: "Chosen goal",
-      lead: "The goal whose request goes with your message; a press shows the request.",
-    },
-    A04: {
-      name: "Remove goal",
-      lead: "Takes the goal out of the message; your own text stays in the field.",
-    },
-    A05: {
-      name: "New conversation's model",
-      lead: "Chooses the model and thinking level this conversation starts with.",
-      know: "It defaults to the model chosen in Settings; a change applies to this conversation only.",
-      try: "Open the models",
-    },
-    K01: {
-      name: "Your message",
-      lead: "A message you sent to the agent.",
-      know: "A long message shows shortened; Show the whole message opens it.",
-    },
-    K02: {
-      name: "Copy message",
-      lead: "Copies the message's text to the clipboard, formatting included.",
-      try: "Copy",
-    },
-    K03: {
-      name: "Interim reply",
-      lead: "The agent says what it is doing while it works.",
-      know: "It is not the finished answer yet; the work continues below it.",
-    },
-    K04: {
-      name: "Agent's work",
-      lead: "The agent's steps as one row: how many tools, whether any failed and how long it took.",
-      know: "A press opens each step as a row of its own.",
-      try: "Open the work",
-    },
-    K05: {
-      name: "Command",
-      lead: "The agent ran a command in the workspace; the row shows the command and whether it worked.",
-      know: "Open the row to see the whole output, as if you had run it yourself.",
-      try: "Open the output",
-    },
-    K06: {
-      name: "File read",
-      lead: "The agent read a file; the row shows its name and how many lines it read.",
-      know: "Reading does not change the file.",
-      try: "Show the content",
-    },
-    K07: {
-      name: "File written",
-      lead: "The agent wrote a whole file; new means it did not exist before.",
-      know: "Open the row to see what was written.",
-      try: "Show the content",
-    },
-    K08: {
-      name: "File edited",
-      lead: "The agent changed a file; +1 −1 counts the lines added and removed.",
-      know: "Open the row to see the change in green and red.",
-      try: "Show the change",
-    },
-    K09: {
-      name: "Background process",
-      lead: "The agent started a program that stays running, such as a development server.",
-      know: "See running processes in the Processes badge above the message field.",
-    },
-    K10: {
-      name: "Failed step",
-      lead: "This step did not work, and the row is marked red.",
-      know: "Open the row to see the error; the agent usually says in its reply what it did next.",
-      try: "Show the error",
-    },
-    K11: {
-      name: "Reply done",
-      lead: "The agent's answer once its turn has ended.",
-      know: "It is your turn now: reply, carry on, or leave the conversation for later.",
-    },
-    K12: {
-      name: "File link",
-      lead: "Opens the mentioned file in the editor, at the mentioned lines.",
-      know: "The line numbers say where the editor opens.",
-      try: "Open in the editor",
-    },
-    K13: {
-      name: "Diagram",
-      lead: "The agent drew a diagram; Diagram source shows the text it was drawn from.",
-    },
-    K14: {
-      name: "Diagram source",
-      lead: "Shows the diagram as text, so you can copy or change it.",
-    },
-    K20: {
-      name: "Markdown preview",
-      lead: "Switches between the block's source and formatted preview. Copy always takes the source.",
-    },
-    K21: {
-      name: "Preview length",
-      lead: "Expands a long draft or limits its height again.",
-    },
-    K22: {
-      name: "Compaction",
-      lead: "Shows that the agent is compacting or compacted the oldest messages into a summary, or why it did not.",
-      know: "The old messages stay readable; the agent now sees only their summary. The summary opens under the row.",
-    },
-    K15: { name: "Copy code", lead: "Copies the whole box to the clipboard." },
-    K16: {
-      name: "Wrap long lines",
-      lead: "Wraps long lines into view so you need not scroll sideways.",
-    },
-    K17: {
-      name: "Agent working",
-      lead: "Says what the agent is doing right now and how long the turn has taken.",
-      know: "You can write meanwhile: the message goes as steering or after the work.",
-    },
-    K18: {
-      name: "Show work",
-      lead: "Opens the agent's thinking and tools during the turn.",
-      know: "Hide work folds them back into one row.",
-    },
-    K19: {
-      name: "Check the conversation's state",
-      lead: "Asks the server for the conversation's state again when it seems stuck.",
-      know: "The check itself sends nothing. If it shows that the agent never got your message, Habitat sends it once more.",
-    },
-    K26: {
-      name: "Conversation size",
-      lead: "Tells you when the conversation has grown large enough to start slowing down.",
-      know: "Size comes mostly from pictures. Past 512 MB the conversation opens from the newest messages. Nothing is lost, and you can still continue it.",
-    },
-    K27: {
-      name: "New conversation",
-      lead: "Takes you to the workspace, where you start a fresh conversation.",
-      know: "This conversation stays as it is, readable and ready to archive.",
-      try: "Go to the workspace",
-    },
-    K28: {
-      name: "Got it",
-      lead: "Hides the size warning for this conversation.",
-      know: "The warning returns when you reload the page, and past 512 MB it always shows.",
-      try: "Hide the warning",
-    },
-    K29: {
-      name: "Open pictures",
-      lead: "Shows the row's pictures; each then loads from its own button.",
-      know: "Many large pictures are gathered on one row so the rest of the history stays light to read.",
-      try: "Open pictures",
-    },
-    K30: {
-      name: "Changes",
-      lead: "Shows the files this turn changed and their line counts, and opens the list here.",
-      know: "It comes from the agent's tool calls. A file a command changed shows only when the command names it.",
-      try: "Open the changes",
-    },
-    K31: {
-      name: "Timeline",
-      lead: "Shows the turn's changes on its clock instead of the list.",
-      know: "A circle is the agent's edit and a square a command. A mark opens that change.",
-      try: "Show the timeline",
-    },
-    K32: {
-      name: "Open in editor",
-      lead: "Opens the file in the editor beside the conversation at its first changed line.",
-      know: "The line is known when the turn read the file before changing it. Otherwise the file opens at the top.",
-      try: "Open in editor",
-    },
-    K33: {
-      name: "Reply to this message",
-      lead: "Starts a reply to exactly this agent message. A quote goes into the message field.",
-      know: "With your message the agent gets the message's first sentence, at most 160 characters, so it knows what you are answering. Another press changes the quote.",
-      try: "Reply",
-    },
-    K34: {
-      name: "Quote",
-      lead: "The agent message you are replying or replied to. Tapping it takes you to the message and highlights it for a moment.",
-      know: "The quote shows the same excerpt the agent gets.",
-    },
-    K35: {
-      name: "Remove quote",
-      lead: "Removes the quote from the field. Your text stays.",
-      try: "Remove",
-    },
-    V33: {
-      name: "More notices",
-      lead: "Shows the other notices for this conversation and draft.",
-      know: "Normally two notices show, blockers first. Press again to collapse the stack.",
-      try: "Show or hide other notices",
-    },
-    V34: {
-      name: "Try again",
-      lead: "Tries saving attachments again after an interrupted upload.",
-      know: "Saved attachments appear in the draft. This does not send the message.",
-    },
-    V36: {
-      name: "Attachment progress",
-      lead: "The mark's ring and percentage show how much of the file has left.",
-      know: "A shut door and Saved: the file is safe. Send waits for every attachment, and the message leaves only when you press it.",
-    },
-    V37: {
-      name: "Cancel attaching a file",
-      lead: "× stops uploading this file and removes it from the draft.",
-      know: "Saved attachments stay in the message, and queued files continue.",
-    },
-    V35: {
-      name: "Conversation notice",
-      lead: "Shows what blocks work, is uncertain, is underway or has recovered.",
-      know: "Conditions stay until they change. Refusals stay until the next attempt or dismissal.",
-    },
-    V32: {
-      name: "Dismiss attachment notice",
-      lead: "Hides the notice without changing your message or its attachments.",
-      know: "If the attachments do not fit in one message, sending shows the warning again.",
-    },
-    V01: {
-      name: "Message to the agent",
-      lead: "Write what you want the agent to do; Enter sends, Shift+Enter starts a new line.",
-      know: "The draft stays in this tab even if you switch conversations.",
-    },
-    V02: {
-      name: "Attach",
-      lead: "Attaches files or pictures from your own device to the message.",
-      know: "You can also drag files into the field.",
-    },
-    V03: {
-      name: "Commands",
-      lead: "Lists the agent's commands and skills you can put at the start of a message.",
-      know: "Typing / at the start of the field opens the same list.",
-      try: "Open commands",
-    },
-    V04: {
-      name: "File",
-      lead: "Adds a reference to a workspace file, so the agent knows what you mean.",
-      know: "Type @ in the field or press Ctrl+P to open the same folder tree inside the field. Tab marks files; Enter adds the marked files.",
-      try: "Open files",
-    },
-    V38: {
-      name: "Dictation time left",
-      lead: "Shows how much longer the microphone listens during the final minute.",
-      know: "A tone sounds one minute and ten seconds before the two-hour limit, and at the limit. Your text stays; you can continue after it.",
-    },
-    V39: {
-      name: "The agent asks for permission",
-      lead: "The agent has stopped to ask whether it may act on your connected account, for example delete something or share a calendar.",
-      know: "The question takes the message field's place until you answer. A line in the conversation keeps your decision. The action runs only if you allow it.",
-    },
-    V44: {
-      name: "Reopen the view",
-      lead: "Opens the agent's original view again from the start.",
-      know: "Choices made inside the view reset. Embedded pages stay blocked, so the same problem may return.",
-      try: "Reopen the view",
-    },
-    V45: {
-      name: "Page or source",
-      lead: "An HTML file the agent offered shows as its page. Source and details shows it as text, with its type and size.",
-      know: "The page is kept apart from Habitat and cannot reach the network. Downloading always gives the file as it is.",
-    },
-    V40: {
-      name: "Allow",
-      lead: "Lets the agent take the action it asked about.",
-      know: "The permission covers this one action. The next one is asked separately.",
-    },
-    V41: {
-      name: "Don't allow",
-      lead: "Blocks the action. The agent is told you did not allow it and goes on without it.",
-      know: "Nothing changes on the account.",
-    },
-    V42: {
-      name: "Technical call",
-      lead: "Shows which tool the agent would run, and with what.",
-      know: "The identifiers are the service's own. The description above says the same in plain words.",
-    },
-    V43: {
-      name: "Stop the agent",
-      lead: "Stops the agent's work at once, including the open question.",
-      know: "Stopping does not allow the action.",
-    },
-    V05: {
-      name: "Dictate",
-      lead: "Writes what you say into the field; tap to start, or hold while you speak.",
-      know: "The text stays in the field for you to check, and Esc cancels. Without a dictation key, a press says where to get one.",
-    },
-    V06: {
-      name: "Send",
-      lead: "Sends the message to the agent.",
-      know: "While the agent works, the same button sends it as steering or for after the work.",
-      grey: "Grey while the field is empty.",
-    },
-    V07: {
-      name: "Stop the agent",
-      lead: "Stops the agent's work at once.",
-      know: "What is done stays done: changes to files are not undone.",
-    },
-    V08: {
-      name: "How the message goes",
-      lead: "Chooses whether the agent gets your message during its work (Steer) or after it.",
-      know: "Alt+Enter sends once the other way without changing the choice.",
-    },
-    V09: {
-      name: "Background work",
-      lead: "The badges above the field show workers and processes that carry on in the background.",
-      know: "A badge is missing when nothing runs in the background.",
-    },
-    V10: {
-      name: "Processes",
-      lead: "Programs the agent started that stay running, such as a development server.",
-      know: "A question mark means the state cannot be read right now, not that none run.",
-    },
-    V11: {
-      name: "Workers",
-      lead: "Workers the agent handed work to.",
-      know: "The agent can wait for a worker to finish and carry on by itself afterwards.",
-      try: "Open workers",
-    },
-    V12: {
-      name: "Worker marks",
-      lead: "The same mark shows a worker’s state in the chip, list and sidebar.",
-      know: "The outer ring means the agent is waiting. No ring does not prove it is not waiting: the worker being waited for is not always known.",
-    },
-    V13: {
-      name: "Views and files",
-      lead: "Everything the agent has offered in this conversation: views and files, newest first.",
-      know: "When the agent offers the same file or folder again, the new version joins its row; a report of the same name from elsewhere gets its own. A row opens the item beside the conversation, and the same row closes it.",
-      try: "Open the list",
-    },
-    V14: {
-      name: "Offered item",
-      lead: "A view or file the agent offered. The card opens it beside the conversation, and another press closes it.",
-      know: "The corner icons publish the item, open it in a new tab and download it. Anyone who receives a public item's link can open it without signing in; a folder is shared whole.",
-    },
-    V15: {
-      name: "Helpers",
-      lead: "The robot icon opens your helpers. Each has a state mark beside it.",
-      know: "Helpers wait after each round. Messages, landing rounds and stopping go through the main agent.",
-      try: "Open helpers",
-    },
-    V16: {
-      name: "Helper",
-      lead: "Opens the helper's conversation to read. The row shows its task, rounds and latest report.",
-      know: "Write to helpers through the main agent. Opening a report marks it as seen, without landing the work.",
-    },
-    V17: {
-      name: "Open item",
-      lead: "Opens the view or file beside the conversation. Press again to close it.",
-      know: "The list icon shows the kind of item; the time says when it was offered. Public items show their expiry.",
-    },
-    V18: {
-      name: "Versions",
-      lead: "Shows or hides earlier versions of the same view.",
-      know: "The number counts all versions. The top row opens the latest one.",
-    },
-    V19: {
-      name: "Show in the conversation",
-      lead: "The speech bubble takes you to the message where the agent offered the item.",
-    },
-    V20: {
-      name: "Public",
-      lead: "The globe publishes the item by link or makes it private again.",
-      know: "Anyone with a public link can open the item without signing in. Change its expiry from the date.",
-      grey: "Publication details are being checked or a change is still in progress.",
-    },
-    V21: {
-      name: "Expiry",
-      lead: "Opens choices for how long the public link works.",
-      know: "Opening the menu does not change the expiry.",
-    },
-    V22: {
-      name: "Change expiry",
-      lead: "Sets a new expiry for the public link.",
-    },
-    V23: {
-      name: "Copy link",
-      lead: "Copies the public address to your clipboard to share.",
-      try: "Copy link",
-    },
-    V24: {
-      name: "Open in a new tab",
-      lead: "The diagonal arrow opens the item in its own browser tab.",
-      know: "Opening it does not publish it.",
-    },
-    V25: {
-      name: "Download",
-      lead: "The downward arrow downloads the item to your device.",
-      know: "The item on the server stays unchanged.",
-      try: "Download item",
-    },
-    V26: {
-      name: "Close list",
-      lead: "Closes the views and files list without removing anything.",
-      try: "Close list",
-    },
-    V27: {
-      name: "Stop waiting",
-      lead: "Stops the main agent's wait. The helper or worker keeps working.",
-      know: "This wait will no longer wake the main agent when the work finishes.",
-    },
-    V28: {
-      name: "The message was not sent",
-      lead: "Tells you the attachments do not fit in one message, and how many and how large they are.",
-      know: "One message holds 30 files and 100 MB in total. Remove attachments: once the rest fit, you can send the message.",
-    },
-    V29: {
-      name: "Handle",
-      lead: "Asks the agent to check the ended workers' worktrees and recommend what to do with them.",
-      know: "The request goes to the agent as a message, and it answers in the conversation. Nothing is removed until you decide.",
-    },
-    V30: {
-      name: "Ended",
-      lead: "Opens or folds the rows that have ended.",
-    },
-    V31: {
-      name: "Tell the agent",
-      lead: "Asks the agent to check this worker's worktree and recommend what to do with it.",
-      know: "The request goes to the agent as a message. Nothing is removed until you decide.",
-    },
-    B01: {
-      name: "Browser",
-      lead: "Shows what the agent did in your browser during this turn. Opened, it lists the pages, downloads and actions.",
-      know: "When the agent needs your help, the card carries its request and Take control and do it. While you control, it has Give back. Afterwards it stays as the record of the visit.",
-    },
-    B02: {
-      name: "Browser mark",
-      lead: "Shows on a conversation's row that its agent is using your browser or waits for you there.",
-      know: "A quiet window means the agent is working. A bordered mark with the word browser means it is waiting for you.",
-    },
-    B03: {
-      name: "Look",
-      lead: "Opens the browser large to watch, without taking control.",
-    },
-    B04: {
-      name: "Take control",
-      lead: "Hands browser control to you. The agent waits meanwhile.",
-      know: "Give control back to the agent when you are done.",
-      grey: "Control is still changing or the browser is unavailable.",
-    },
-    B05: {
-      name: "Give back",
-      lead: "Hands browser control back to the agent, which carries on.",
-    },
-    B06: {
-      name: "Close browser",
-      lead: "Closes the browser on the server and its windows.",
-      know: "You can start it again from Your browser in the sidebar.",
-    },
-    B07: {
-      name: "Your browser",
-      lead: "Opens the view of your browser on the server, and starts the browser if it is off.",
-      know: "The end of the row shows the browser's state: its window count, the agent at work, waiting for you or you in control.",
-    },
-    B08: {
-      name: "Close view",
-      lead: "Closes the large browser view. The browser keeps running on the server.",
-      try: "Close view",
-    },
-    B09: {
-      name: "Password as keystrokes",
-      lead: "Paste one password from your own device here. Characters start masked.",
-      know: "Keep your password manager on your device. The entered password and signed-in session are not hidden from the agent.",
-    },
-    B10: {
-      name: "Type as keystrokes",
-      lead: "Types the password into the selected page field and clears this field.",
-      know: "Does not use the remote clipboard. Select the page's password field before sending.",
-      grey: "Take control, wait for the connection and enter a password first.",
-    },
-    B11: {
-      name: "Show or hide text",
-      lead: "The eye reveals the field's text. The crossed-out eye masks it again.",
-      know: "Revealing does not send text to the page. Masking does not hide text already entered on the page from the agent.",
-    },
-    B12: {
-      name: "Browser window",
-      lead: "Brings the selected window or tab into view and gives you control.",
-      know: "Popups appear in the list too. The agent waits while you drive.",
-    },
-    B13: {
-      name: "Close window",
-      lead: "Closes only this window or tab and gives you control.",
-      know: "Other windows stay open. Closing the last window opens a blank one in its place. Unsaved page data may be lost.",
-    },
-    H01: {
-      name: "Conversation's helper",
-      lead: "Shows the helper's round state and whether its work has been landed.",
-      know: "A branch marks unfinished or unconfirmed work; a check marks landed work. Archiving neither stops the helper nor lands its work.",
-    },
-    H02: {
-      name: "Show branch",
-      lead: "Opens the helper's branch details for inspection.",
-      know: "Looking neither lands nor removes the work.",
-    },
-    L01: {
-      name: "Search commands and skills",
-      lead: "Narrows the list as you type; Enter puts the top one at the start of the message.",
-    },
-    L02: {
-      name: "Skill",
-      lead: "A way of working the agent knows, such as committing or fixing a test.",
-      know: "A personal skill is yours; a project skill comes with this repository.",
-    },
-    L03: {
-      name: "Command",
-      lead: "A ready request template or one of the agent's own commands, run at the start of a message.",
-      know: "A command that needs the terminal's menus cannot run from the browser; the list says so.",
-    },
-    L04: {
-      name: "File row",
-      lead: "A file in the workspace; choosing it adds its name to the message.",
-      know: "Changed files come first, since they are the ones most often talked about.",
-    },
-    L05: {
-      name: "Change mark",
-      lead: "Shows how the file has changed: U new, M modified, D deleted.",
-    },
-    L06: {
-      name: "Provider",
-      lead: "Chooses whose subscription or key the models come from.",
-      know: "A grey option is not available; the reason and the fix show below.",
-    },
-    L07: {
-      name: "Model",
-      lead: "A model the agent answers with; the most capable first, and its description tells what each is good for.",
-    },
-    L08: {
-      name: "Older models",
-      lead: "Also shows older models that are still available.",
-    },
-    L09: {
-      name: "Thinking level",
-      lead: "How much the model thinks before answering: higher is more thorough but slower.",
-      know: "Only levels the model supports can be chosen.",
-    },
-    L10: {
-      name: "Default model settings",
-      lead: "Takes you to Settings, where you choose the default model for new conversations.",
-    },
-    L11: {
-      name: "Choose",
-      lead: "Uses the chosen model and level for this conversation.",
-    },
-    L12: {
-      name: "AI settings",
-      lead: "Opens the settings where you sign in to a model service or add a key.",
-    },
-    L13: {
-      name: "/compact",
-      lead: "Turns earlier messages into a summary to free space in the conversation.",
-      know: "Runs immediately while the agent waits for your message. Earlier messages stay in history.",
-    },
-    L14: {
-      name: "/new",
-      lead: "Opens a new conversation in the same workspace.",
-      know: "The current conversation is kept. Work in progress does not stop.",
-      try: "Open a new conversation",
-    },
-    P01: {
-      name: "Git state",
-      lead: "The workspace's branch compared with the remote and the base branch, and the changed files.",
-      know: "The panel only shows; changes to the branch go through the agent or the terminal.",
-    },
-    P02: {
-      name: "Upstream branch",
-      lead: "The remote's branch this branch pushes to and pulls changes from.",
-      know: "↑ is not yet pushed, ↓ is incoming.",
-    },
-    P03: {
-      name: "Not pushed",
-      lead: "Commits that are on this machine but not yet in the remote.",
-      know: "Ask the agent to push when you want them in the remote.",
-    },
-    P04: {
-      name: "Incoming",
-      lead: "Commits that are in the remote but not yet in this branch.",
-      know: "The number is from the last fetch; Update state fetches again.",
-    },
-    P05: {
-      name: "Base branch",
-      lead: "The branch this one was made from, usually main.",
-      know: "Ahead and behind say how far the two have drifted apart.",
-    },
-    P06: {
-      name: "Ahead of the base",
-      lead: "This branch's commits that the base branch does not have yet.",
-      know: "They are the work that goes in when the branch is merged.",
-    },
-    P07: {
-      name: "Behind the base",
-      lead: "Commits that reached the base branch and are not in this branch yet.",
-      know: "Ask the agent to bring them in if you need them before merging.",
-    },
-    P08: {
-      name: "Changes",
-      lead: "Files changed since the latest commit, and how many lines changed.",
-      know: "The letter says how: M modified, U new, D deleted.",
-    },
-    P09: {
-      name: "Update state",
-      lead: "Fetches the remote's latest and reads the branch's state again.",
-      know: "It changes neither the branch nor the files; ask the agent to bring changes in.",
-    },
-    P10: {
-      name: "Details",
-      lead: "The conversation's workspace, model, thinking level, control and start time.",
-      know: "The copy buttons give each value exactly, for pasting into a terminal for example.",
-    },
-    P11: {
-      name: "Conversation's model",
-      lead: "Tells the conversation's model and thinking level and what they are good for.",
-      know: "Nothing can be changed here. In the browser the model is chosen before the first message, at the left edge of the message box.",
-    },
-    P12: {
-      name: "Guide",
-      lead: "The chosen goal's steps and what you get, beside the conversation.",
-      know: "Instructions, not progress: Habitat does not know which step the agent is at.",
-    },
-    P13: {
-      name: "Width",
-      lead: "Drag the edge to change how wide the conversation and the panel are.",
-    },
-    P14: {
-      name: "Background tabs",
-      lead: "Switches the panel between workers and processes.",
-    },
-    P15: {
-      name: "Worker row",
-      lead: "One worker: its task, how long it has run, and whether the agent waits for it. A press opens its view.",
-      try: "Open the worker",
-    },
-    P16: {
-      name: "Close",
-      lead: "Closes the panel, menu or notice. Nothing changes.",
-    },
-    P17: {
-      name: "Back to the conversation",
-      lead: "Returns to the conversation you opened the context breakdown from.",
-      try: "Go back",
-    },
-    P18: {
-      name: "Context breakdown",
-      lead: "Shows what the agent's memory in this conversation is made of and when it is compacted next.",
-      know: "The Turns table shows how the context grew turn by turn. Looking changes nothing in the conversation.",
-    },
-    R01: {
-      name: "Terminal",
-      lead: "An ordinary command line in the workspace's folder, as your own user.",
-      know: "Tab and Esc belong to the terminal; Ctrl+Alt+T moves focus to the tabs and back.",
-    },
-    R02: {
-      name: "Terminal tab",
-      lead: "One open terminal; the name says what is running in it.",
-      know: "A dot means it waits at the prompt; otherwise a program is running.",
-    },
-    R03: {
-      name: "End terminal",
-      lead: "Closes the terminal and ends whatever runs in it.",
-    },
-    R04: {
-      name: "New terminal",
-      lead: "Opens another terminal in the same workspace, in a tab of its own.",
-    },
-    R05: {
-      name: "Maximize",
-      lead: "Gives the terminal the whole view; Restore size brings the conversation back.",
-    },
-    R06: {
-      name: "Hide panel",
-      lead: "Hides the terminal panel; the terminals keep running behind the Terminal button.",
-      know: "On a phone this is the Back to conversation arrow.",
-    },
-    R07: {
-      name: "Panel height",
-      lead: "Drag the edge to move the line between the terminal and the conversation.",
-    },
-    R08: {
-      name: "Terminal keys",
-      lead: `A reminder: select text by dragging with Shift held, ${terminalCopyKey} copies and ${terminalPasteKey} pastes.`,
-    },
-    R09: {
-      name: "Key row",
-      lead: "The keys a phone keyboard lacks: Esc, Tab, Ctrl, Alt and the arrows.",
-      know: "Ctrl and Alt stay down for the next key.",
-    },
-    R10: {
-      name: "Selection",
-      lead: "Copies the text selected in the terminal or puts it in the conversation's message field.",
-      know: `${terminalCopyKey} copies the same.`,
-    },
-    R11: {
-      name: "Address from the terminal",
-      lead: "A program in the terminal asked to open a web address; the card shows where it leads.",
-      know: "The address opens in a new tab only when you press. Dismiss closes the card.",
-    },
-    D01: {
-      name: "Editor",
-      lead: "A workspace file open for editing beside the conversation; the title is the file's name.",
-      know: "The agent's changes arrive in the open file, and in a conflict you choose what stays.",
-    },
-    D02: {
-      name: "Files",
-      lead: "Shows or hides the file tree beside the editor.",
-    },
-    D03: {
-      name: "Save",
-      lead: "Saves your changes to the file.",
-      grey: "Grey when the file has no unsaved changes.",
-    },
-    D04: {
-      name: "Editor full window",
-      lead: "Gives the editor the whole window; Restore side by side brings the conversation back.",
-    },
-    D05: {
-      name: "Close editor",
-      lead: "Closes the editor; it asks first about unsaved changes.",
-    },
-    D06: {
-      name: "Workspace files",
-      lead: "The workspace's folders and files; a press opens a file in the editor.",
-      know: "The search looks only in folders already opened.",
-    },
-    D07: {
-      name: "Filter by name",
-      lead: "Narrows the file tree to the name you type.",
-    },
-    D09: {
-      name: "YAML and JSON preview",
-      lead: "Shows nested data fully open, with lists as cards or bullets.",
-      know: "The preview follows your edits. Return to Text to edit; invalid content appears as source.",
-    },
-    D10: {
-      name: "Start page check",
-      lead: "Shows whether your edited content can be displayed as a start page.",
-      know: "An error names the field to correct. Checking does not save the page.",
-    },
-    D11: {
-      name: "Preview presentation",
-      lead: "Switches between the start page and a plain document without changing content.",
-      try: "Switch presentation",
-    },
-    D12: {
-      name: "Goal preview",
-      lead: "Moves to the goal's guide below the preview.",
-      know: "Does not start a conversation or send a request.",
-      try: "See the goal guide",
-    },
-    D13: {
-      name: "Goal guides",
-      lead: "Shows the goal's steps and the starting request intended for the agent.",
-      know: "Edit the guide in Text view. The preview does not run it.",
-    },
-    D08: {
-      name: "No file open",
-      lead: "Open a file from the tree or from a file link in the conversation.",
-    },
-    W01: {
-      name: "Worker",
-      lead: "You are looking at a worker: an agent the main conversation gave a task, in its own worktree.",
-      know: "Its work shows here, but you steer it through the main conversation.",
-    },
-    W02: {
-      name: "To the main conversation",
-      lead: "Goes back to the conversation this worker got its task from.",
-      try: "Back to the main conversation",
-    },
-    W03: {
-      name: "Agent and profile",
-      lead: "Which agent and settings the worker does its work with.",
-    },
-    W04: {
-      name: "Read only · ask through the main agent",
-      lead: "You do not write to a worker directly; this takes you to the main conversation to ask about it.",
-      try: "Ask the main agent",
-    },
-    W05: {
-      name: "Main agent · task",
-      lead: "The task the main agent gave the worker, word for word.",
-    },
-    M01: {
-      name: "Search settings",
-      lead: "Finds a setting by its name or a word from its description, across every page.",
-    },
-    M02: {
-      name: "Close settings",
-      lead: "Goes back to the view you opened Settings from.",
-    },
-    M03: {
-      name: "Account",
-      lead: "Your name and picture, Git identity, and signing out.",
-    },
-    M04: {
-      name: "Devices",
-      lead: "Sign in on a phone with a code, and see which devices are signed in.",
-    },
-    M05: {
-      name: "Keys",
-      lead: "Your account's public SSH and age keys, which an administrator needs for access or secrets.",
-    },
-    M06: {
-      name: "AI",
-      lead: "The default model, how the agent's work shows, and the subscriptions and keys that provide models.",
-    },
-    M07: {
-      name: "Recap",
-      lead: "When and with which model recaps are made, and how much they read and write.",
-    },
-    M08: {
-      name: "Dictation",
-      lead: "The key with which dictation writes your speech into the message field.",
-    },
-    M09: {
-      name: "Code hosts",
-      lead: "GitHub, Gitea and GitLab: where workspaces are cloned from and where agents push.",
-    },
-    M10: {
-      name: "Data for agents",
-      lead: "Email, calendars, contacts and files your agents may use.",
-    },
-    M11: {
-      name: "Own machines",
-      lead: "Your own computers that the agent can reach through Tailscale.",
-    },
-    M12: {
-      name: "Appearance",
-      lead: "The theme for this browser and the interface language for all your devices.",
-    },
-    M13: { name: "Editor", lead: "Which editor opens the workspace's files." },
-    M14: {
-      name: "Storage",
-      lead: "How much space you use, and the trash that deleted workspaces are restored from.",
-    },
-    M15: {
-      name: "Experimental features",
-      lead: "Features still in the works that you can turn on yourself.",
-      know: "They may change or go away; they are off by default.",
-    },
-    M16: {
-      name: "Server administration",
-      lead: "Administrator pages: settings that apply to everyone on the server.",
-    },
-    M17: {
-      name: "Server",
-      lead: "The server's name, default language and running version.",
-    },
-    M18: {
-      name: "Server integrations",
-      lead: "Which services people can use on this server.",
-    },
-    M19: {
-      name: "AI key",
-      lead: "A shared key for people without a subscription or key of their own.",
-    },
-    M20: {
-      name: "Dictation key",
-      lead: "A shared dictation key for everyone without their own.",
-    },
-    M21: {
-      name: "Onboarding",
-      lead: "What a new person goes through on first sign-in, and how it looks to them.",
-    },
-    M22: {
-      name: "Users and access",
-      lead: "Who may sign in, the people who have joined, and shared links.",
-    },
-    M23: {
-      name: "Disk space",
-      lead: "The home directories' disk and each person's storage limit.",
-    },
-    M24: {
-      name: "Edit Git identity",
-      lead: "Sets the name and email that go into your and your agents' commits.",
-    },
-    M83: {
-      name: "Ask an agent to clean up",
-      lead: "Opens a request built from your selections in a new conversation's composer.",
-      know: "You can edit the request before sending it. Nothing is cleaned up yet.",
-      try: "Open the request",
-    },
-    M84: {
-      name: "Show details",
-      lead: "Shows the group's folders and their sizes.",
-      know: "You can select individual cache and build folders. Other groups are read-only.",
-      try: "Show or hide folders",
-    },
-    M25: {
-      name: "Version",
-      lead: "The server's Habitat version, and whether this tab is up to date with it.",
-      know: "If not, reloading the page brings the new version.",
-    },
-    M26: {
-      name: "Conversations",
-      lead: "How many conversations may work at once, for everyone and per person.",
-    },
-    M27: {
-      name: "Settings",
-      lead: "On a phone, returns to the list of settings or to the search results.",
-    },
-    M28: {
-      name: "Your settings",
-      lead: "Returns from administration to your own settings.",
-    },
-    M29: {
-      name: "Sounds",
-      lead: "The attention sound: whether it plays, which sound and length, when it stays quiet, workspaces' own sounds and this device's mute and volume.",
-      know: "Experimental. The sound plays once when a conversation moves to Your turn. Pressing a tile plays the sound and chooses it; listening plays even when sounds are off.",
-    },
-    AS07: {
-      name: "Silent sounds",
-      lead: "Shows every reason this device is quiet.",
-      know: "Each reason has its own fix. Night follows the device's local clock, not its dark theme.",
-    },
-    AS08: {
-      name: "Turn off night quiet",
-      lead: "Turns night quiet off on all your devices, including future nights.",
-      know: "Turn it back on with Quiet at night. Device mute stays unchanged.",
-    },
-    AS09: {
-      name: "Change hours",
-      lead: "Takes you to the night start and end times.",
-      try: "Show night settings",
-    },
-    AS10: {
-      name: "Turn sounds on",
-      lead: "Restores attention sounds on all your devices.",
-      know: "Device mute and night quiet stay unchanged. You can turn sounds off again with Sounds.",
-    },
-    AS11: {
-      name: "Unmute",
-      lead: "Unmutes this device only.",
-      know: "Night quiet and the all-device Sounds choice stay unchanged. You can mute this device again on the Sounds row.",
-    },
-    AS01: {
-      name: "Sounds on this device",
-      lead: "Mutes the attention sound in this browser only, or brings it back.",
-      know: "Below the row is the main reason for silence; every reason with its fix is in Settings › Sounds. Device mute affects only this browser; sounds and night quiet choices affect all your devices.",
-    },
-    AS12: {
-      name: "Sound settings",
-      lead: "Opens Settings › Sounds, which lists every reason for silence and its fix.",
-    },
-    AS02: {
-      name: "Device quiet",
-      lead: "A mark on the account picture: this device is muted.",
-      know: "Bring the sound back on the Sounds row of the account menu or in Settings.",
-    },
-    AS03: {
-      name: "Workspace settings",
-      lead: "The workspace's icon, name and sound in one strip.",
-      know: "Experimental. While it shows, the strip is the one place to change them.",
-    },
-    AS04: {
-      name: "Icon",
-      lead: "Opens the workspace icon choice: automatic, letters or an emoji.",
-      know: "Below it says where the icon comes from. A choice is saved to the workspace's settings file at once.",
-    },
-    AS05: {
-      name: "Name",
-      lead: "Changes the workspace's display name right in its box.",
-      know: "Enter or a click elsewhere saves, Esc cancels. The folder stays the same, and an empty name brings back the folder's name.",
-    },
-    AS06: {
-      name: "Workspace sound",
-      lead: "Chooses the sound that plays when a conversation in this workspace finishes.",
-      know: "A press chooses and plays, ▶ plays without choosing. Same as the default follows the sound in Settings.",
-    },
-    M70: {
-      name: "Atlassian",
-      lead: "Connect Jira and Confluence with your own account.",
-      know: "Choose requested permissions. The connection shows the actual grant, which may be broader than requested.",
-    },
-    M71: {
-      name: "Request for your administrator",
-      lead: "Copy the full request and give it to your administrator.",
-      know: "Habitat sends nothing. Waiting alone does not mean an administrator is reviewing the request.",
-    },
-    M73: {
-      name: "Atlassian sign-in",
-      lead: "Starts sign-in or completes it with the return URL you pasted.",
-      know: "Changing the level removes the previous sign-in before requesting a new grant.",
-    },
-    M74: {
-      name: "Requested permissions",
-      lead: "Choose read or read and write before signing in.",
-      know: "The choice does not change the connection yet. Check granted permissions after sign-in.",
-    },
-    M75: {
-      name: "Remove Atlassian connection",
-      lead: "Removes this connection's sign-in from agents' use.",
-      know: "Jira issues and Confluence pages are not deleted. You can connect the account again.",
-    },
-    M76: {
-      name: "Trello",
-      lead: "Connect Trello boards and cards with your own account.",
-      know: "Each connection is its own sign-in. It shows the actual grant, which may be broader than requested.",
-    },
-    M77: {
-      name: "Add another Trello connection",
-      lead: "Adds a new Trello sign-in, for example for another Workspace.",
-      know: "Your existing connections stay as they are.",
-    },
-    M78: {
-      name: "Request for your administrator",
-      lead: "Copy the full request and give it to your administrator.",
-      know: "Habitat sends nothing. Only an administrator can reliably limit Trello to reading.",
-    },
-    MP01: {
-      name: "People in the conversation",
-      lead: "Shows who is in your conversation and who is here. Opens the panel where you change what they may do.",
-      know: "The agent, model, quota and connections are yours. The agent answers a participant without tools until you let it continue.",
-    },
-    MP02: {
-      name: "Invite",
-      lead: "Invite someone who has signed in to this server.",
-      know: "The person sees the conversation only after joining. The picker lists everyone who has signed in here.",
-    },
-    MP03: {
-      name: "Give full rights",
-      lead: "The agent answers their messages with the same tools as yours.",
-      know: "The agent then acts as your user: your files, GitHub, connected services and own machines. The confirmation lists what you lend.",
-    },
-    MP04: {
-      name: "Take rights back",
-      lead: "Makes them a participant again at once. A run in progress continues as text only.",
-      know: "Processes are not stopped by themselves. A card lists them for stopping.",
-    },
-    MP05: {
-      name: "Remove from conversation",
-      lead: "They no longer see the conversation or write in it.",
-      know: "A waiting request stays for you to decide. You can invite them again.",
-    },
-    MP06: {
-      name: "Stopped request",
-      lead: "The agent answered a participant with text only. Decide whether it may continue with your tools.",
-      know: "Allow all lets the agent continue, Approve one by one asks about each tool call, and Don't allow leaves the request undone.",
-    },
-    MP07: {
-      name: "Tool call approval",
-      lead: "Shows the whole call before it runs.",
-      know: "Allow runs this call, Don't allow blocks it, and Allow all lets the rest of this run's calls through without asking.",
-    },
-    MP08: {
-      name: "Rights taken back",
-      lead: "Shows the run in progress and the processes after you took rights back or removed a participant.",
-      know: "Nothing is stopped by itself. Stop only what you recognise as their request.",
-    },
-    MP09: {
-      name: "Shared with you",
-      lead: "Conversations other people on this server invited you to.",
-      know: "Until you join, an invitation shows only who invited you and the conversation's name.",
-    },
-    MP10: {
-      name: "Turn mode",
-      lead: "Says whether the agent answers you with text only or may use tools, and which of your requests wait for the owner.",
-      know: "The owner's server decides the mode. You can cancel your waiting messages before the agent gets them.",
-    },
-    MP11: {
-      name: "Join",
-      lead: "You join the conversation and see all of it.",
-      know: "The agent belongs to the person who invited you: their model, quota and connections.",
-    },
-    MP12: {
-      name: "Stop the turn",
-      lead: "Stops the agent's turn in progress, whoever started it.",
-    },
-    M80: {
-      name: "Trello sign-in",
-      lead: "Starts sign-in or completes it with the return URL you pasted.",
-      know: "Trello asks at sign-in which Workspace the connection may reach.",
-    },
-    M81: {
-      name: "Requested permissions",
-      lead: "Choose read or read and write before signing in.",
-      know: "Trello may grant more than requested. Check the actual grant after sign-in.",
-    },
-    M82: {
-      name: "Remove Trello connection",
-      lead: "Removes this connection's sign-in from agents' use.",
-      know: "Boards and cards are not deleted. Your other Trello connections stay.",
-    },
-    N01: {
-      name: "Workspace source",
-      lead: "Choose whether to clone the workspace from an existing repository or create a new empty folder.",
-    },
-    N02: {
-      name: "Search repositories",
-      lead: "Narrows the list by name. Type owner/repo to look up any other repository.",
-    },
-    N03: {
-      name: "Updated",
-      lead: "Shows only the repositories that changed in the chosen period.",
-    },
-    N04: {
-      name: "Repository",
-      lead: "Selects the repository and shows its details. Nothing is cloned yet.",
-      know: "The row shows the latest change and the size; a lock means a private repository.",
-    },
-    N05: {
-      name: "Owner",
-      lead: "Repositories grouped by owner: your own, your groups' and those you collaborate on.",
-    },
-    N06: {
-      name: "Show all",
-      lead: "Shows every repository in the group; Show less shortens the list again.",
-    },
-    N07: {
-      name: "Repository details",
-      lead: "The selected repository before cloning: its size, default branch and where it will go.",
-      know: "If the repository is already a workspace, you can open it from here.",
-    },
-    N08: {
-      name: "Cloning",
-      lead: "Choose the full history or a light clone that fetches old file versions only when needed.",
-      know: "A light clone is faster and smaller, but some ways of looking at history need a connection.",
-    },
-    N09: {
-      name: "Clone as a workspace",
-      lead: "Starts cloning. The finished repository shows up as a workspace.",
-      know: "Cloning goes on on the server even if you leave the page.",
-    },
-    N10: {
-      name: "Clones",
-      lead: "Clones under way, queued and recently ended.",
-      know: "The sidebar row shows while a clone runs and leads to this page.",
-    },
-    N11: {
-      name: "Cancel or remove",
-      lead: "Cancels a clone, takes it off the queue or removes an unfinished folder.",
-      know: "Habitat removes the unfinished folder when it can do so safely; the notice says whether anything was left on disk.",
-    },
-    N12: {
-      name: "Name",
-      lead: "The new workspace's folder name: lowercase letters, numbers and . _ -.",
-    },
-    N14: {
-      name: "Cancel",
-      lead: "Asks first whether to cancel the clone and says what of it is removed.",
-    },
-    N15: {
-      name: "Try again",
-      lead: "Starts the clone again when it failed or did not start.",
-      know: "For an interrupted clone the same button is Start over.",
-    },
-    N13: {
-      name: "Create workspace",
-      lead: "Creates an empty folder, sets it up as a Git repository and adds it to your workspaces.",
-      grey: "Grey while the name is missing or workspaces cannot be created right now.",
-    },
-  },
-  states: {
-    notStarted: {
-      name: "Not started yet",
-      lead: "The conversation starts when you send the first message.",
-      know: "Nothing is kept before that: close the page and no empty conversation is left on the lists.",
-      can: {
-        V01: "Write what you want the agent to do",
-        A02: "Or choose a goal to have the request written for you",
-        A05: "Change the model for this conversation",
+export const explainModeText = catalog(
+  fi,
+  {
+    bar: {
+      title: "Explain mode",
+      hint: "Point at any part; a click works as always.",
+      hintTouch: "Tap any part to see what it does.",
+      now: "Now",
+      showState: "Show the state",
+      stop: "Stop",
+      report: "Report a mistake",
+      reportDescription:
+        "Point at a part and press F to report a mistake in its explanation. A click opens general feedback about Habitat.",
+    },
+    card: {
+      clickHint: (action: string) => `A click: ${action}.`,
+      clickOpens: "A click opens it; the explain mode stays on.",
+      tapAgain: "Tap again to do it.",
+      open: "Open",
+      close: "Close the card",
+      waits:
+        "In explain mode this waits, so nothing happens by accident. Stop the mode and the button works.",
+      waited:
+        "In explain mode this does nothing. Stop the mode (Esc) and the button works.",
+      onlyHover:
+        "Shows only while the pointer is on the row. A touch screen always shows it.",
+      now: "Right now",
+      can: "You can now",
+      pinned: "Pinned",
+    },
+    feedback: {
+      report: "Report a mistake",
+      reportSub: "The explanation is wrong or incomplete",
+      reportKey: "F: report a mistake in this explanation.",
+      dest: "Public GitHub issue · needs a GitHub account",
+      label: "What should be fixed in the explanation",
+      placeholder: "What is wrong, or what is missing?",
+      needText: "Write first what should be fixed.",
+      tooLong: (max: string) => `At most ${max} characters.`,
+      send: "Open in GitHub",
+      newTab: "(opens in a new tab)",
+      cancel: "Cancel",
+      facts:
+        "Opens in a new tab as a ready issue. It is sent when you press Submit in GitHub, and it is public. Nothing stays on this server.",
+      what: "Show what is sent",
+      whatLead:
+        "Opens in GitHub. It holds only your text, the card's name and id, the Open Habitat version and the language:",
+      finishFirst:
+        "Send or cancel the report first, so what you wrote is not lost.",
+      done: "Opened in GitHub. The report is sent when you press Submit there.",
+      noAccount:
+        "GitHub asks you to sign in if needed. You can copy the report text here.",
+      copy: "Copy text",
+      copied: "Text copied.",
+      copyFailed: "Copying did not work.",
+      reported: "You opened a report about this card in GitHub.",
+    },
+    strip: {
+      title: "What is on the screen?",
+      text: "Point at any part to see what it does.",
+      textTouch: "Tap any part to see what it does.",
+      go: "Explain these to me",
+      end: "Stop explaining",
+      close: "Close the strip",
+    },
+    entry: "Explain this view",
+    toggle: "Explain",
+    workerLegend: {
+      caption: "Worker marks",
+      working: "Working",
+      idle: "Waiting for you",
+      waiting_parent: "Waiting for the parent agent",
+      unknown: "State unknown",
+      merged: "Done",
+      unfinished: "Unfinished, work kept",
+      failed: "Failed, no work kept",
+      unmerged: "Ended unfinished, no work kept",
+      checking: "Agent handling the request",
+      answer: "Waiting for your answer",
+      reported: "A helper's new round report",
+      waited: "Outer ring: agent waiting for the worker",
+      gone: "Work cleaned up",
+    },
+    kinds: {
+      panel: "Panel",
+      once: "One-off action",
+      info: "Information",
+      menu: "Menu",
+      nav: "Navigation",
+      list: "List",
+      input: "Writing",
+      page: "Settings page",
+    },
+    cards: {
+      GH01: {
+        name: "GitHub connection",
+        lead: "Shows whether the agents’ GitHub connection works on this server.",
+        know: "The account is the GitHub account used by the server. Unknown does not mean disconnected.",
+      },
+      GH02: {
+        name: "Permissions",
+        lead: "Shows the permissions of the server’s current GitHub grant.",
+      },
+      GH03: {
+        name: "Sign in with GitHub again",
+        lead: "Renews the GitHub grant saved on the server.",
+        know: "Opens GitHub sign-in in the same tab. Allowed workflow permission is retained.",
+      },
+      GH04: {
+        name: "Disconnect…",
+        lead: "Opens a dialog for disconnecting the server from GitHub.",
+        know: "Opening the dialog does not remove the grant. Signing out of the browser does not remove it either.",
+        try: "Open the disconnect dialog",
+      },
+      GH05: {
+        name: "Confirm with GitHub",
+        lead: "Confirms on GitHub that you may disconnect.",
+        know: "You return to the same dialog. Disconnecting still needs a separate press.",
+      },
+      GH06: {
+        name: "Disconnect",
+        lead: "Removes your GitHub grant from this server.",
+        know: "Workspaces and conversations stay. Sign in with GitHub to reconnect; the grant stays on your GitHub account.",
+      },
+      GH07: {
+        name: "GitHub Actions workflows",
+        lead: "Shows whether agents may change GitHub workflows.",
+        know: "Workflows can read repository secrets. A missing permission blocks pushes that change workflows.",
+      },
+      GH08: {
+        name: "Allow on GitHub",
+        lead: "Asks GitHub for permission to change workflows.",
+        know: "Sign-in opens in the same tab. You can retry an unfinished sign-in.",
+      },
+      GH09: {
+        name: "Remove permission",
+        lead: "Clears the choice and opens GitHub sign-in without workflow permission.",
+        know: "The previous grant is not revoked on GitHub.",
+      },
+      GH10: {
+        name: "Don’t allow",
+        lead: "Forgets the wish to allow workflows when the current grant lacks permission.",
+        know: "Does not open GitHub or change the current grant.",
+      },
+      GH11: {
+        name: "Cancel",
+        lead: "Clears this card’s unfinished sign-in mark.",
+        know: "GitHub permissions do not change.",
+      },
+      GH12: {
+        name: "GitHub settings",
+        lead: "Opens GitHub’s application grants in a new tab.",
+        know: "You can remove Open Habitat’s grant there yourself.",
+      },
+      GH13: {
+        name: "Check again",
+        lead: "Checks whether the connection can now be removed.",
+        know: "Does not disconnect. Disconnecting needs a separate press.",
+      },
+      J10: {
+        name: "Close",
+        lead: "× closes this view and returns to where you were.",
+        know: "Your conversation and draft stay intact. A view opened directly returns to Home.",
+        try: "Close view",
+      },
+      J01: {
+        name: "Outputs",
+        lead: "Opens views and files the agent gave you, grouped by conversation.",
+        know: "Includes private outputs and those shared by link. The sidebar count shows how many addresses are public.",
+        try: "Open Outputs",
+      },
+      J02: {
+        name: "Outputs",
+        lead: "Shows views and files the agent gave you and the selected output's content.",
+        know: "An output may be private or shared by link. Conversations follow latest activity.",
+      },
+      J03: {
+        name: "Conversation",
+        lead: "Opens the conversation these outputs came from.",
+        know: "The date is the conversation's latest activity, not when it was shared.",
+        try: "Open conversation",
+      },
+      J04: {
+        name: "Output filter",
+        lead: "Narrows the list to public, private or expired outputs.",
+        know: "Expired also includes addresses whose item has been removed.",
+      },
+      J05: {
+        name: "Output",
+        lead: "Opens the output's content and controls for sharing it by link.",
+        know: "The created date records the output's creation. Publishing a link does not change it.",
+        try: "Open output",
+      },
+      J06: {
+        name: "Share status",
+        lead: "Shows who can open the address and until when.",
+        know: "Only you requires your own sign-in. A removed item no longer opens.",
+      },
+      J07: {
+        name: "Share address",
+        lead: "Use the icon to copy the field's address to the clipboard.",
+        know: "Give the address to anyone you want to show the public item to.",
+        try: "Copy link",
+      },
+      J09: {
+        name: "Make private",
+        lead: "Ends publication while keeping the address.",
+        know: "You can publish the same address again when the server allows sharing.",
+      },
+      J08: {
+        name: "Delete address",
+        lead: "Permanently deletes the address after confirmation.",
+        know: "The old link stops working. The item's files stay, but its address cannot be restored.",
+      },
+      X01: {
+        name: "Explain these to me",
+        lead: "Opens the explain mode, which shows what any part of the screen does.",
+        know: "The strip shows on your first empty start page. Later the mode is in the account menu and behind the conversation's ? button.",
+      },
+      X02: {
+        name: "Explain mode",
+        lead: "Tells you the screen is in explain mode: what you point at is explained, and a press works as always.",
+        know: "Esc or Stop returns to the normal view. Archiving, deleting and sending wait until you stop.",
+      },
+      X03: {
+        name: "Explain this view",
+        lead: "Opens the explain mode in the view you are in.",
+        know: "The same mode as the start page's strip; it is always in the account menu, and on a phone also in ⋯.",
+      },
+      X05: {
+        name: "Explain",
+        lead: "Opens the explain mode at the state card.",
+        know: "A second press ends the mode. The state in the bar at the top brings the state card back.",
+      },
+      Y01: {
+        name: "Conversation name",
+        lead: "Click the name to give the conversation a name of your own.",
+        know: "After the first message a name appears by itself; yours stays until you change it.",
+        try: "Rename",
+        menu: "On a phone also ⋯ › Rename.",
+      },
+      Y02: {
+        name: "Workspace",
+        lead: "Takes you to the workspace page: introduction, Git state and other open conversations.",
+        know: "A workspace is a folder on the server, usually a Git repository, and the agent works in it.",
+        try: "Open the workspace",
+        menu: "On a narrow screen the name is the top row of ⋯.",
+      },
+      Y03: {
+        name: "Conversation state",
+        lead: "Shows with one dot whether the agent is working, waiting for you or done.",
+        know: "Tap the dot to see the state in words, with how long the turn has taken.",
+        try: "Show the state",
+      },
+      Y04: {
+        name: "Git state",
+        lead: "Shows the workspace's branch: ↑ not yet pushed, ↓ incoming, and how many files changed.",
+        know: "Opens the Git details with the commits and changed files. Looking changes nothing.",
+        try: "Open Git details",
+      },
+      Y05: {
+        name: "Context",
+        lead: "Shows how much of the agent's memory this conversation already takes.",
+        know: "As it fills, the agent condenses the oldest part into a summary and carries on. A press opens the breakdown.",
+        try: "Open the breakdown",
+      },
+      Y06: {
+        name: "Model",
+        lead: "The model and thinking level the agent answers with in this conversation.",
+        know: "A press tells what the model is good for. The model is chosen before the first message; the default for new ones is in Settings.",
+        try: "Show the model details",
+      },
+      Y07: {
+        name: "Editor",
+        lead: "Opens the workspace's files for editing beside the conversation.",
+        know: "The agent's changes arrive in the open file; if you both edit the same line, you choose which stays.",
+        try: "Open the editor",
+      },
+      Y08: {
+        name: "Terminal",
+        lead: "Opens a command line in this workspace's folder, below the conversation.",
+        know: "The terminal keeps running on the server when you close the browser. The number is how many are open.",
+        try: "Open the terminal",
+      },
+      Y09: {
+        name: "Make a recap now",
+        lead: "Asks for a short summary of what was done in the conversation and what comes next.",
+        know: "The recap appears as a card above the conversation. It does not enter the agent's memory.",
+        try: "Make a recap",
+        grey: "Grey while the conversation has no messages yet.",
+        menu: "On a narrow screen ⋯ › Make a recap now.",
+      },
+      Y10: {
+        name: "Create a new title",
+        lead: "Gives the conversation a new name from what it is about now.",
+        know: "Useful when the conversation has turned to another subject than it began with.",
+        try: "Create a title",
+        menu: "On a narrow screen ⋯ › Create a new title.",
+      },
+      Y11: {
+        name: "Archive",
+        lead: "Moves the conversation off the lists. Nothing is deleted.",
+        know: "Bring an archived conversation back from the workspace page's archive.",
+        grey: "Grey while the agent's turn is on: wait for it to end.",
+        menu: "On a narrow screen ⋯ › Archive.",
+      },
+      Y12: {
+        name: "Close",
+        lead: "Closes this empty conversation.",
+        know: "Only an empty conversation started in the browser can be closed; nothing of it is kept.",
+      },
+      Y13: {
+        name: "Details",
+        lead: "Shows the conversation's basics: workspace, model, thinking level and when it started.",
+        know: "Copy the identifier if you want to continue the same conversation in a terminal.",
+        try: "Open details",
+        menu: "On a narrow screen ⋯ › Details.",
+      },
+      Y14: {
+        name: "Conversation actions",
+        lead: "Holds the conversation's actions that do not fit on the row right now.",
+        know: "It lists only what the row does not show; in a wider window the same are on the row.",
+        try: "Open the menu",
+      },
+      Y15: {
+        name: "Guide",
+        lead: "Shows or hides the chosen goal's guide beside the conversation.",
+        know: "The guide lists the steps and what you get. It does not track where the agent is.",
+        try: "Hide the guide",
+      },
+      Y16: {
+        name: "Open navigation",
+        lead: "Opens the sidebar with all your conversations and workspaces.",
+        know: "When something waits for you, a mark shows on this button.",
+        try: "Open the sidebar",
+      },
+      Y17: {
+        name: "Conversation details",
+        lead: "Gathers the workspace, Git state, context and model in one place on a phone.",
+        know: "Each row opens what the matching header button opens on a wide screen.",
+      },
+      Y18: {
+        name: "Notice",
+        lead: "Tells you what just happened, such as what was archived or which icon is now in use.",
+        know: "An error stays until you dismiss it or try again. × closes the notice; it does not undo anything.",
+      },
+      Y19: {
+        name: "Restore",
+        lead: "Takes back the change you just made: brings back what was archived or the previous icon.",
+        know: "In the icon notice the button is called Undo.",
+      },
+      Y20: {
+        name: "Archived",
+        lead: "Says when the conversation was archived and shows its helpers.",
+        know: "You can read the conversation but not write in it until you restore it.",
+      },
+      Y21: {
+        name: "Restore",
+        lead: "Brings the conversation back from the archive so you can continue it.",
+        know: "The message field returns and its helpers come back without starting. You can archive the conversation again.",
+      },
+      Y22: {
+        name: "Connection notice",
+        lead: "Reports a lost connection, a required sign-in or a new version.",
+        know: "A spinning mark means Habitat is trying by itself. The notice stays until the situation changes.",
+      },
+      Y23: {
+        name: "Try connecting again",
+        lead: "Checks the connection and reads the current state. Does not send your messages again.",
+        try: "Check connection",
+      },
+      Y24: {
+        name: "Load new version",
+        lead: "Reloads the page so you can use the version on the server.",
+        know: "Your unfinished message draft stays in this tab.",
+      },
+      Y25: {
+        name: "Terminal notice",
+        lead: "Reports a terminal event or an action that did not succeed. An uncertain result does not mean nothing happened.",
+        know: "The notice does not expire on a timer. × dismisses it without changing the terminal's state.",
+      },
+      S01: {
+        name: "Server name",
+        lead: "This Habitat's name; a click takes you home.",
+        know: "The administrator names the server, and everyone sees the name.",
+      },
+      S02: {
+        name: "Connection",
+        lead: "Shows whether the browser is connected to the server right now.",
+        know: "If the connection drops, what you see may be old, and Habitat says so here.",
+      },
+      S03: {
+        name: "Home",
+        lead: "Shows all your workspaces and their open conversations on one page.",
+        try: "Open Home",
+      },
+      S04: {
+        name: "Close navigation",
+        lead: "Narrows the sidebar to a row of icons so the conversation gets more room.",
+        know: "The same spot brings the sidebar back; on a phone it closes the drawer.",
+      },
+      S05: {
+        name: "Your turn",
+        lead: "Conversations where the agent waits for you: an answer, a decision or something to read.",
+        know: "The conversation stays here until you reply or press Not now on its row. Reading it does not move it away.",
+        keyboard: `${altKey("↑/↓")}: previous/next visible conversation. ${altKey("↑/↓", true)}: conversations waiting for you. Keep typing straight away.`,
+      },
+      S06: {
+        name: "Running",
+        lead: "Conversations where an agent or a worker is working right now, by workspace.",
+        know: "When the work is done, the conversation moves to Your turn.",
+      },
+      S07: {
+        name: "Quiet",
+        lead: "Conversations where nothing waits for you and nothing runs.",
+        know: "Raise on a row moves the conversation to Your turn. The heading folds the list away; the open conversation stays in view.",
+        try: "Fold the list",
+      },
+      S08: {
+        name: "Filter and sort Quiet",
+        lead: "Shows only one workspace in Quiet and chooses the order.",
+        know: "The letters stand for workspaces. Your choice follows you to every device.",
+        try: "Open the filter",
+      },
+      S09: {
+        name: "Conversation row",
+        lead: "Opens the conversation. The row shows state, the workspace's icon, name and when something last happened.",
+        know: "The open conversation's row has a frame around it. Point at the row or its icon to see the workspace's name.",
+      },
+      S10: {
+        name: "State mark",
+        lead: "The conversation's state as the Open Habitat mark: the ring is the agent's home, the dot the agent and the gap its door. A door travelling round the ring means working; a yellow dot knocking at the door means it is your turn.",
+        know: "A closed ring is done, a hollow dot in the error colour failed and a dashed ring unknown. A hollow dot at the door: you have read the reply. In the narrow rail the ring goes round the workspace icon.",
+      },
+      S11: {
+        name: "Workers in the mark",
+        lead: "The conversation has handed work to workers. Each worker is a small dot around the agent; with more than three a number shows beside the mark.",
+        know: "A yellow dot waits for you. Open them from the conversation's Workers badge.",
+      },
+      S12: {
+        name: "Rename",
+        lead: "Gives the conversation a name of your own straight from the list.",
+        know: "The button shows while the pointer is over the row.",
+      },
+      S13: {
+        name: "Archive",
+        lead: "Moves the conversation off the lists. Nothing is deleted.",
+        know: "Bring an archived conversation back from the workspace page's archive.",
+      },
+      S14: {
+        name: "Workspaces",
+        lead: "All your workspaces; the number is how many there are.",
+        know: "Hidden workspaces are a group of their own at the end of the list.",
+      },
+      S15: {
+        name: "New workspace",
+        lead: "Adds a workspace: clone a repository from a code host or create an empty folder.",
+        know: "It goes in your home directory's src folder, and an agent can start in it at once.",
+      },
+      S16: {
+        name: "Filter workspaces",
+        lead: "Narrows the sidebar's workspaces and conversations to the name you type.",
+        know: "Clear the field to see everything again.",
+      },
+      S17: {
+        name: "Refresh",
+        lead: "Reads the workspaces and conversations from the server again.",
+        know: "The list usually updates by itself; use this when something looks out of date.",
+        try: "Refresh",
+      },
+      S18: {
+        name: "Workspace row",
+        lead: "Opens the workspace page: introduction, Git state and open conversations.",
+        know: "A mark at the end of the row means work is running in that workspace.",
+        try: "Open the workspace",
+      },
+      S19: {
+        name: "New conversation in workspace",
+        lead: "Starts a new conversation right in this workspace.",
+        know: "It opens on the workspace's start page, with ready-made goals.",
+        try: "Start a conversation",
+      },
+      S20: {
+        name: "All workspaces",
+        lead: "Opens the narrowed sidebar back to full width.",
+        know: "Narrowed, the sidebar shows only icons and state dots.",
+      },
+      S42: {
+        name: "Feedback about Habitat…",
+        lead: "Opens a feedback panel to report a problem or suggest an improvement.",
+        know: "Feedback is submitted as a public GitHub issue. You can preview its contents before submitting.",
+        try: "Open feedback panel",
+      },
+      S21: {
+        name: "Account menu",
+        lead: "Settings, theme, how much of the agent's work shows, and sign out.",
+        know: "Explain this view is here too, wherever you are.",
+        try: "Open the account menu",
+      },
+      S22: {
+        name: "Settings",
+        lead: "Opens your settings: account, models, connected services and appearance.",
+        try: "Open Settings",
+      },
+      S23: {
+        name: "Server administration",
+        lead: "The server's settings, which apply to everyone who uses it.",
+        know: "Only administrators see this.",
+      },
+      S24: {
+        name: "Theme",
+        lead: "Chooses the light or dark look, or follows the device.",
+        know: "The choice applies to this browser only.",
+      },
+      S25: {
+        name: "Agent's work",
+        lead: "Chooses whether the agent's thinking and tools show open or hidden in conversations.",
+        know: "Hidden, the work is one row that opens with a press.",
+      },
+      S26: {
+        name: "Sign out…",
+        lead: "Signs you out of this browser. Agents keep working on the server.",
+        know: "It asks first; your other devices stay signed in.",
+      },
+      S27: {
+        name: "Order",
+        lead: "Sorts Quiet by newest, by workspace or by name.",
+      },
+      S28: {
+        name: "Workspace tile",
+        lead: "Shows only this workspace's conversations in the list; All brings back the whole list.",
+        know: "The number is how many of the list's conversations belong to the workspace.",
+      },
+      S29: {
+        name: "Done",
+        lead: "Closes the filter; your choice is already saved.",
+      },
+      S30: {
+        name: "Workspace icon",
+        lead: "Opens a card with the workspace's full name and where its icon comes from.",
+        know: "From the card you can go to the workspace's page or start a new conversation there.",
+      },
+      S31: {
+        name: "Raise to Your turn",
+        lead: "Moves a quiet conversation to Your turn as a reminder to yourself.",
+        know: "The agent's state does not change. Lower moves it back to Quiet.",
+      },
+      S32: {
+        name: "Lower to Quiet",
+        lead: "Moves a conversation you raised back to Quiet.",
+      },
+      S33: {
+        name: "Not now",
+        lead: "Moves the conversation out of Your turn when you cannot reply now.",
+        know: "Background work stays in Running; otherwise the conversation moves to Quiet. A new reply brings it back to Your turn.",
+      },
+      S34: {
+        name: "Search conversations",
+        lead: "Opens a search that finds a conversation by its name or by what you or the agent said in it.",
+        know: "An empty search lists recently opened conversations with the previous one chosen, so the key and Enter swap between two. Tool output and the agent's thinking are not searched.",
+        keyboard:
+          "⌘K on a Mac, Ctrl+K elsewhere; / outside text fields. The terminal keeps Ctrl+K for itself.",
+      },
+      S35: {
+        name: "Search results",
+        lead: "A row is a conversation with the sentence that matched inside it. Enter opens the conversation right at that sentence.",
+        know: "Name matches come first and archived conversations last. A conversation's other hits are a count that → opens under the row and ← closes.",
+        keyboard:
+          "↑↓ choose, → and ← open and close the hits, Enter opens and Esc closes.",
+      },
+      S36: {
+        name: "Filter by workspace",
+        lead: "Shows only one workspace's conversations in Your turn or Running.",
+        know: `Each list and Quiet keep their own filter, and your choice follows you to every device. While filtered, the heading's number reads shown/total. The open conversation stays in view even outside the filter, and ${altKey("↑/↓")} steps only through what is shown.`,
+        try: "Open the filter",
+      },
+      S37: {
+        name: "Show all",
+        lead: "Removes the list's filter when the chosen workspace has nothing in it right now.",
+      },
+      S38: {
+        name: "Conversations out of sight",
+        lead: "Says which sections have conversations further up or down, and how many. A press scrolls to the section.",
+        know: "The conversations scroll in their own area only when they do not fit. Workspaces always scroll in theirs, so browsing them never moves a conversation. When the rail is full, Quiet folds itself until you open or fold it yourself.",
+      },
+      S39: {
+        name: "Agent resources",
+        lead: "Opens the services and folders your agents use, by kind.",
+        know: "Each one says what is included and what the agent may do. Everything is done with your own accounts.",
+        try: "Open Agent resources",
+      },
+      S40: {
+        name: "Workspace tile",
+        lead: "Opens the folded Quiet list showing only this workspace's conversations.",
+        know: "The number is how many quiet conversations the workspace has. The choice stays on all your devices.",
+        try: "Open this workspace's Quiet",
+      },
+      S41: {
+        name: "Workspaces out of sight",
+        lead: "Says how many workspaces lie further up or down the list. A press scrolls the list by a page.",
+        know: "In the adaptive sidebar Workspaces gets as many rows as the height allows, and the rest scroll in the list's own area.",
+      },
+      E01: {
+        name: "Workspaces",
+        lead: "Home gathers all your workspaces and their open work on one page.",
+        know: "The summary at the top says how many conversations wait for you and how many run.",
+      },
+      E02: {
+        name: "Workspace heading",
+        lead: "The workspace's name and branch; its open conversations follow as cards.",
+        know: "The name opens the workspace page; + starts a new conversation.",
+      },
+      E03: {
+        name: "Conversation card",
+        lead: "The conversation's state and latest recap: what was done and what comes next.",
+        know: "The recap lets you see where things stand without opening the conversation.",
+      },
+      E04: {
+        name: "Read only",
+        lead: "The conversation is being driven elsewhere, for example from a terminal, so here you can read it.",
+        know: "When that ends, you can write to it from the browser again.",
+      },
+      E05: { name: "Recap age", lead: "Shows how old the card's recap is." },
+      E06: {
+        name: "Open",
+        lead: "Takes you into the conversation, to carry on where it left off.",
+        try: "Open the conversation",
+      },
+      E07: {
+        name: "No open work",
+        lead: "Workspaces with no open conversations right now.",
+        know: "Start a new conversation with the row's +.",
+      },
+      E08: {
+        name: "Close recap",
+        lead: "Hides the recap from view; the conversation is not affected.",
+      },
+      T01: {
+        name: "Workspace name",
+        lead: "The workspace's name; the folder's name unless it has been given a display name.",
+      },
+      T46: {
+        name: "Workspace folder",
+        lead: "Shows where the workspace's folder is on the server.",
+        know: "Use Copy path to copy the full path to the clipboard.",
+      },
+      T02: {
+        name: "Copy path",
+        lead: "Copies where the workspace's folder is, to paste into a terminal, for example.",
+        try: "Copy",
+      },
+      T03: {
+        name: "Open on GitHub",
+        lead: "Opens the workspace's repository on GitHub in a new tab.",
+        grey: "Grey when the workspace was not cloned from GitHub.",
+      },
+      T04: {
+        name: "Change display name…",
+        lead: "Gives the workspace a name that shows only in Habitat.",
+        know: "The folder keeps its name, so the terminal and the agent work as before.",
+      },
+      T05: {
+        name: "Hide workspace",
+        lead: "Moves the workspace to the sidebar's Hidden group. Files and conversations stay.",
+        know: "Bring it back from there with Restore.",
+      },
+      T06: {
+        name: "Delete workspace…",
+        lead: "Moves the workspace's folder to the trash.",
+        know: "It asks first. You can restore it from the trash: Settings › Storage.",
+      },
+      T07: {
+        name: "New worktree agent",
+        lead: "Starts an agent in its own worktree: a separate copy and branch that leave your current work alone.",
+        know: "Good for trying something out, or doing two things at once in the same repository.",
+      },
+      T08: {
+        name: "Start a new conversation",
+        lead: "Starts a new conversation with an agent in this workspace.",
+        try: "Start a conversation",
+      },
+      T09: {
+        name: "Start page",
+        lead: "The workspace's introduction and suggestions for what you can do here.",
+        know: "The agent writes and updates it on request; the same page opens every new conversation.",
+      },
+      T10: {
+        name: "Show the whole introduction",
+        lead: "Opens the whole introduction; Show less shortens it again.",
+        try: "Show it all",
+      },
+      T11: {
+        name: "Goal",
+        lead: "Starts a new conversation with the request already written.",
+        know: "Before sending you can add your own details to the request.",
+        try: "Start with this goal",
+      },
+      T12: {
+        name: "Git",
+        lead: "The workspace's branch and how many changes; a press opens the Git details.",
+        know: "↑ is not yet pushed, ↓ is incoming from the remote.",
+      },
+      T13: {
+        name: "Open conversations",
+        lead: "This workspace's conversations that are not archived, as cards.",
+      },
+      T14: {
+        name: "Workspace archive",
+        lead: "This workspace's archived conversations, newest archived first and grouped by day.",
+        know: "Nothing is deleted: open a conversation to read it, or restore it to the open ones.",
+      },
+      T15: {
+        name: "Worktrees",
+        lead: "The agents' and your own Git working copies (worktrees) and the disk they take.",
+        know: "On a workspace page the ones that need you come first. The rest take care of themselves.",
+      },
+      T16: {
+        name: "Working copy",
+        lead: "Says whose working copy it is, which conversation it came from and what happens to it next.",
+        know: "A helper's working copy releases itself once its rounds are merged and it has been idle for a day.",
+      },
+      T17: {
+        name: "Git details",
+        lead: "Shows the working copy's directory, branch, size and run ID.",
+        know: "With them you find the same working copy in a terminal. Looking changes nothing.",
+        try: "Show Git details",
+      },
+      T18: {
+        name: "Takes care of itself",
+        lead: "Working copies an agent is still using, or that release themselves.",
+        know: "You do not need to do anything with them.",
+        try: "Show them",
+      },
+      T19: {
+        name: "Restore conversation",
+        lead: "Brings the conversation back from the archive and opens it, so the agent can decide about the worker.",
+        know: "Habitat does not merge or discard the worker itself; the conversation's agent does. You can archive the conversation again.",
+      },
+      T20: {
+        name: "Conversation",
+        lead: "Opens the conversation where the agent looks after this working copy.",
+        try: "Open the conversation",
+      },
+      T21: {
+        name: "Delete…",
+        lead: "Deletes a working copy nobody uses any more. First you see what would be lost.",
+        know: "Unmerged work stays on the branch. Save and delete commits the changes to the branch first.",
+      },
+      T22: {
+        name: "Clean up entry",
+        lead: "Removes a working copy whose directory is already gone from Git's list.",
+        know: "No files are lost, because they no longer exist.",
+      },
+      T23: {
+        name: "Clean up all merged",
+        lead: "Deletes at once the working copies whose work is merged and that nobody keeps.",
+        know: "First you see the list. No committed work is lost. On a workspace page the button shows only when there is something to clean up.",
+      },
+      T24: {
+        name: "Change icon",
+        lead: "Opens the choice of the workspace's icon: automatic, your own letters or an emoji.",
+        know: "The icon shows in the sidebar and on the home page.",
+      },
+      T25: {
+        name: "Icon choice",
+        lead: "Puts this icon to use for the workspace right away.",
+        know: "The choice is saved in the workspace, and in a Git repository Habitat commits it; the notice says how it went. Undo restores the previous one.",
+      },
+      T26: {
+        name: "Letters",
+        lead: "Type 1–3 letters; Enter makes them the icon right away.",
+      },
+      T27: {
+        name: "Suggestions from a model…",
+        lead: "Asks a model to suggest icons from the workspace's name and introduction.",
+        know: "The suggestions appear on the workspace page; nothing changes until you choose one.",
+      },
+      T28: {
+        name: "Icon suggestion",
+        lead: "Icons a model suggests for this workspace, each with its reason.",
+        know: "A wish or a quick wish asks for new suggestions; the arrows go through earlier rounds. If no model can be reached, choices without a model show instead.",
+      },
+      T29: {
+        name: "Suggestion",
+        lead: "Makes this suggestion the workspace's icon.",
+        know: "The choice is saved in the workspace, and in a Git repository Habitat commits it. Undo in the notice restores the previous one.",
+      },
+      T30: {
+        name: "Wish for the model",
+        lead: "Say what kind of icon you would like, such as a fox, blue or letters.",
+        know: "You can attach an image or text as an example.",
+      },
+      T31: {
+        name: "Send",
+        lead: "Sends your wish to the model, which answers with new icon suggestions.",
+        grey: "Grey while the field is empty or the model is still thinking.",
+      },
+      T32: {
+        name: "Quick wish",
+        lead: "Asks for new suggestions with a ready-made wish, such as more playful.",
+      },
+      T33: {
+        name: "Not now",
+        lead: "Hides the suggestions. The icon stays as it is.",
+        know: "Bring the suggestions back from the icon choice: Suggestions from a model….",
+      },
+      T34: {
+        name: "Done",
+        lead: "The workspace's conversations whose agent has closed and that have nothing unread.",
+        know: "They are not archived. A row opens the conversation.",
+        try: "Open the list",
+      },
+      T35: {
+        name: "Change display name",
+        lead: "Type the name Habitat shows for the workspace; Save puts it to use.",
+        know: "The folder keeps its name.",
+      },
+      T36: {
+        name: "Delete workspace",
+        lead: "Checks before deleting whether anything is using the workspace and what exists only on this machine.",
+        know: "Conversations stay in the agent's history. Check again reads the situation once you have removed what is in the way.",
+      },
+      T37: {
+        name: "Move to Trash",
+        lead: "Moves the workspace's folder to the trash and takes it off the lists.",
+        know: "You can restore it from the trash: Settings › Storage.",
+      },
+      T39: {
+        name: "Icon source",
+        lead: "Says where the workspace's icon comes from: letters from the name, the repository's logo or your own choice.",
+      },
+      T40: {
+        name: "Your own emoji",
+        lead: "Type a single emoji; Use makes it the icon.",
+      },
+      T41: {
+        name: "Try again",
+        lead: "Asks the model for suggestions again after the last request failed.",
+      },
+      T42: {
+        name: "Find by title",
+        lead: "Narrows the archived conversations by their titles.",
+        know: "It looks at titles only, not at what was said in the conversations.",
+      },
+      T43: {
+        name: "Archived conversation",
+        lead: "Opens the conversation to read, as it was left.",
+        know: "You cannot write in an archived conversation; restore it to continue. The row's date says when it was archived.",
+        try: "Open conversation",
+      },
+      T44: {
+        name: "Restore",
+        lead: "Brings the conversation back from the archive to the open conversations.",
+        know: "Its helpers come back with it without starting. You can archive the conversation again.",
+      },
+      T45: {
+        name: "Traces",
+        lead: "Says what the conversation left behind: a helper by name, or its workers' work and its state.",
+        know: "Darker text is work that still waits for someone. Open the conversation to see the exact state and branch.",
+      },
+      T47: {
+        name: "Delete from Trash",
+        lead: "Opens a confirmation showing the item to delete and its size.",
+        know: "Delete permanently removes the item for good. No need to type its name. If the Trash changed meanwhile, open the confirmation again.",
+      },
+      T38: {
+        name: "Delete permanently",
+        lead: "Permanently deletes the folder named in the confirmation and its content.",
+        know: "The folder cannot be restored. Work that is on the remote stays there and can be cloned again.",
+      },
+      A01: {
+        name: "Workspace introduction",
+        lead: "Says what this workspace is before you write your first message.",
+        know: "It goes away once the conversation starts.",
+      },
+      A02: {
+        name: "Goal",
+        lead: "Writes the request into the message field and opens any accompanying guide.",
+        know: "A ready goal can start work immediately. If the request needs input or the field has your own text, it waits for Send. In Explain mode the request is only prepared.",
+        try: "Choose the goal",
+      },
+      A03: {
+        name: "Chosen goal",
+        lead: "The goal whose request goes with your message; a press shows the request.",
+      },
+      A04: {
+        name: "Remove goal",
+        lead: "Takes the goal out of the message; your own text stays in the field.",
+      },
+      A05: {
+        name: "New conversation's model",
+        lead: "Chooses the model and thinking level this conversation starts with.",
+        know: "It defaults to the model chosen in Settings; a change applies to this conversation only.",
+        try: "Open the models",
+      },
+      K01: {
+        name: "Your message",
+        lead: "A message you sent to the agent.",
+        know: "A long message shows shortened; Show the whole message opens it.",
+      },
+      K02: {
+        name: "Copy message",
+        lead: "Copies the message's text to the clipboard, formatting included.",
+        try: "Copy",
+      },
+      K03: {
+        name: "Interim reply",
+        lead: "The agent says what it is doing while it works.",
+        know: "It is not the finished answer yet; the work continues below it.",
+      },
+      K04: {
+        name: "Agent's work",
+        lead: "The agent's steps as one row: how many tools, whether any failed and how long it took.",
+        know: "A press opens each step as a row of its own.",
+        try: "Open the work",
+      },
+      K05: {
+        name: "Command",
+        lead: "The agent ran a command in the workspace; the row shows the command and whether it worked.",
+        know: "Open the row to see the whole output, as if you had run it yourself.",
+        try: "Open the output",
+      },
+      K06: {
+        name: "File read",
+        lead: "The agent read a file; the row shows its name and how many lines it read.",
+        know: "Reading does not change the file.",
+        try: "Show the content",
+      },
+      K07: {
+        name: "File written",
+        lead: "The agent wrote a whole file; new means it did not exist before.",
+        know: "Open the row to see what was written.",
+        try: "Show the content",
+      },
+      K08: {
+        name: "File edited",
+        lead: "The agent changed a file; +1 −1 counts the lines added and removed.",
+        know: "Open the row to see the change in green and red.",
+        try: "Show the change",
+      },
+      K09: {
+        name: "Background process",
+        lead: "The agent started a program that stays running, such as a development server.",
+        know: "See running processes in the Processes badge above the message field.",
+      },
+      K10: {
+        name: "Failed step",
+        lead: "This step did not work, and the row is marked red.",
+        know: "Open the row to see the error; the agent usually says in its reply what it did next.",
+        try: "Show the error",
+      },
+      K11: {
+        name: "Reply done",
+        lead: "The agent's answer once its turn has ended.",
+        know: "It is your turn now: reply, carry on, or leave the conversation for later.",
+      },
+      K12: {
+        name: "File link",
+        lead: "Opens the mentioned file in the editor, at the mentioned lines.",
+        know: "The line numbers say where the editor opens.",
+        try: "Open in the editor",
+      },
+      K13: {
+        name: "Diagram",
+        lead: "The agent drew a diagram; Diagram source shows the text it was drawn from.",
+      },
+      K14: {
+        name: "Diagram source",
+        lead: "Shows the diagram as text, so you can copy or change it.",
+      },
+      K20: {
+        name: "Markdown preview",
+        lead: "Switches between the block's source and formatted preview. Copy always takes the source.",
+      },
+      K21: {
+        name: "Preview length",
+        lead: "Expands a long draft or limits its height again.",
+      },
+      K22: {
+        name: "Compaction",
+        lead: "Shows that the agent is compacting or compacted the oldest messages into a summary, or why it did not.",
+        know: "The old messages stay readable; the agent now sees only their summary. The summary opens under the row.",
+      },
+      K15: {
+        name: "Copy code",
+        lead: "Copies the whole box to the clipboard.",
+      },
+      K16: {
+        name: "Wrap long lines",
+        lead: "Wraps long lines into view so you need not scroll sideways.",
+      },
+      K17: {
+        name: "Agent working",
+        lead: "Says what the agent is doing right now and how long the turn has taken.",
+        know: "You can write meanwhile: the message goes as steering or after the work.",
+      },
+      K18: {
+        name: "Show work",
+        lead: "Opens the agent's thinking and tools during the turn.",
+        know: "Hide work folds them back into one row.",
+      },
+      K19: {
+        name: "Check the conversation's state",
+        lead: "Asks the server for the conversation's state again when it seems stuck.",
+        know: "The check itself sends nothing. If it shows that the agent never got your message, Habitat sends it once more.",
+      },
+      K26: {
+        name: "Conversation size",
+        lead: "Tells you when the conversation has grown large enough to start slowing down.",
+        know: "Size comes mostly from pictures. Past 512 MB the conversation opens from the newest messages. Nothing is lost, and you can still continue it.",
+      },
+      K27: {
+        name: "New conversation",
+        lead: "Takes you to the workspace, where you start a fresh conversation.",
+        know: "This conversation stays as it is, readable and ready to archive.",
+        try: "Go to the workspace",
+      },
+      K28: {
+        name: "Got it",
+        lead: "Hides the size warning for this conversation.",
+        know: "The warning returns when you reload the page, and past 512 MB it always shows.",
+        try: "Hide the warning",
+      },
+      K29: {
+        name: "Open pictures",
+        lead: "Shows the row's pictures; each then loads from its own button.",
+        know: "Many large pictures are gathered on one row so the rest of the history stays light to read.",
+        try: "Open pictures",
+      },
+      K30: {
+        name: "Changes",
+        lead: "Shows the files this turn changed and their line counts, and opens the list here.",
+        know: "It comes from the agent's tool calls. A file a command changed shows only when the command names it.",
+        try: "Open the changes",
+      },
+      K31: {
+        name: "Timeline",
+        lead: "Shows the turn's changes on its clock instead of the list.",
+        know: "A circle is the agent's edit and a square a command. A mark opens that change.",
+        try: "Show the timeline",
+      },
+      K32: {
+        name: "Open in editor",
+        lead: "Opens the file in the editor beside the conversation at its first changed line.",
+        know: "The line is known when the turn read the file before changing it. Otherwise the file opens at the top.",
+        try: "Open in editor",
+      },
+      K33: {
+        name: "Reply to this message",
+        lead: "Starts a reply to exactly this agent message. A quote goes into the message field.",
+        know: "With your message the agent gets the message's first sentence, at most 160 characters, so it knows what you are answering. Another press changes the quote.",
+        try: "Reply",
+      },
+      K34: {
+        name: "Quote",
+        lead: "The agent message you are replying or replied to. Tapping it takes you to the message and highlights it for a moment.",
+        know: "The quote shows the same excerpt the agent gets.",
+      },
+      K35: {
+        name: "Remove quote",
+        lead: "Removes the quote from the field. Your text stays.",
+        try: "Remove",
+      },
+      V33: {
+        name: "More notices",
+        lead: "Shows the other notices for this conversation and draft.",
+        know: "Normally two notices show, blockers first. Press again to collapse the stack.",
+        try: "Show or hide other notices",
+      },
+      V34: {
+        name: "Try again",
+        lead: "Tries saving attachments again after an interrupted upload.",
+        know: "Saved attachments appear in the draft. This does not send the message.",
+      },
+      V36: {
+        name: "Attachment progress",
+        lead: "The mark's ring and percentage show how much of the file has left.",
+        know: "A shut door and Saved: the file is safe. Send waits for every attachment, and the message leaves only when you press it.",
+      },
+      V37: {
+        name: "Cancel attaching a file",
+        lead: "× stops uploading this file and removes it from the draft.",
+        know: "Saved attachments stay in the message, and queued files continue.",
+      },
+      V35: {
+        name: "Conversation notice",
+        lead: "Shows what blocks work, is uncertain, is underway or has recovered.",
+        know: "Conditions stay until they change. Refusals stay until the next attempt or dismissal.",
+      },
+      V32: {
+        name: "Dismiss attachment notice",
+        lead: "Hides the notice without changing your message or its attachments.",
+        know: "If the attachments do not fit in one message, sending shows the warning again.",
+      },
+      V01: {
+        name: "Message to the agent",
+        lead: "Write what you want the agent to do; Enter sends, Shift+Enter starts a new line.",
+        know: "The draft stays in this tab even if you switch conversations.",
+      },
+      V02: {
+        name: "Attach",
+        lead: "Attaches files or pictures from your own device to the message.",
+        know: "You can also drag files into the field.",
+      },
+      V03: {
+        name: "Commands",
+        lead: "Lists the agent's commands and skills you can put at the start of a message.",
+        know: "Typing / at the start of the field opens the same list.",
+        try: "Open commands",
+      },
+      V04: {
+        name: "File",
+        lead: "Adds a reference to a workspace file, so the agent knows what you mean.",
+        know: "Type @ in the field or press Ctrl+P to open the same folder tree inside the field. Tab marks files; Enter adds the marked files.",
+        try: "Open files",
+      },
+      V38: {
+        name: "Dictation time left",
+        lead: "Shows how much longer the microphone listens during the final minute.",
+        know: "A tone sounds one minute and ten seconds before the two-hour limit, and at the limit. Your text stays; you can continue after it.",
+      },
+      V39: {
+        name: "The agent asks for permission",
+        lead: "The agent has stopped to ask whether it may act on your connected account, for example delete something or share a calendar.",
+        know: "The question takes the message field's place until you answer. A line in the conversation keeps your decision. The action runs only if you allow it.",
+      },
+      V44: {
+        name: "Reopen the view",
+        lead: "Opens the agent's original view again from the start.",
+        know: "Choices made inside the view reset. Embedded pages stay blocked, so the same problem may return.",
+        try: "Reopen the view",
+      },
+      V45: {
+        name: "Page or source",
+        lead: "An HTML file the agent offered shows as its page. Source and details shows it as text, with its type and size.",
+        know: "The page is kept apart from Habitat and cannot reach the network. Downloading always gives the file as it is.",
+      },
+      V40: {
+        name: "Allow",
+        lead: "Lets the agent take the action it asked about.",
+        know: "The permission covers this one action. The next one is asked separately.",
+      },
+      V41: {
+        name: "Don't allow",
+        lead: "Blocks the action. The agent is told you did not allow it and goes on without it.",
+        know: "Nothing changes on the account.",
+      },
+      V42: {
+        name: "Technical call",
+        lead: "Shows which tool the agent would run, and with what.",
+        know: "The identifiers are the service's own. The description above says the same in plain words.",
+      },
+      V43: {
+        name: "Stop the agent",
+        lead: "Stops the agent's work at once, including the open question.",
+        know: "Stopping does not allow the action.",
+      },
+      V05: {
+        name: "Dictate",
+        lead: "Writes what you say into the field; tap to start, or hold while you speak.",
+        know: "The text stays in the field for you to check, and Esc cancels. Without a dictation key, a press says where to get one.",
+      },
+      V06: {
+        name: "Send",
+        lead: "Sends the message to the agent.",
+        know: "While the agent works, the same button sends it as steering or for after the work.",
+        grey: "Grey while the field is empty.",
+      },
+      V07: {
+        name: "Stop the agent",
+        lead: "Stops the agent's work at once.",
+        know: "What is done stays done: changes to files are not undone.",
+      },
+      V08: {
+        name: "How the message goes",
+        lead: "Chooses whether the agent gets your message during its work (Steer) or after it.",
+        know: "Alt+Enter sends once the other way without changing the choice.",
+      },
+      V09: {
+        name: "Background work",
+        lead: "The badges above the field show workers and processes that carry on in the background.",
+        know: "A badge is missing when nothing runs in the background.",
+      },
+      V10: {
+        name: "Processes",
+        lead: "Programs the agent started that stay running, such as a development server.",
+        know: "A question mark means the state cannot be read right now, not that none run.",
+      },
+      V11: {
+        name: "Workers",
+        lead: "Workers the agent handed work to.",
+        know: "The agent can wait for a worker to finish and carry on by itself afterwards.",
+        try: "Open workers",
+      },
+      V12: {
+        name: "Worker marks",
+        lead: "The same mark shows a worker’s state in the chip, list and sidebar.",
+        know: "The outer ring means the agent is waiting. No ring does not prove it is not waiting: the worker being waited for is not always known.",
+      },
+      V13: {
+        name: "Views and files",
+        lead: "Everything the agent has offered in this conversation: views and files, newest first.",
+        know: "When the agent offers the same file or folder again, the new version joins its row; a report of the same name from elsewhere gets its own. A row opens the item beside the conversation, and the same row closes it.",
+        try: "Open the list",
+      },
+      V14: {
+        name: "Offered item",
+        lead: "A view or file the agent offered. The card opens it beside the conversation, and another press closes it.",
+        know: "The corner icons publish the item, open it in a new tab and download it. Anyone who receives a public item's link can open it without signing in; a folder is shared whole.",
+      },
+      V15: {
+        name: "Helpers",
+        lead: "The robot icon opens your helpers. Each has a state mark beside it.",
+        know: "Helpers wait after each round. Messages, landing rounds and stopping go through the main agent.",
+        try: "Open helpers",
+      },
+      V16: {
+        name: "Helper",
+        lead: "Opens the helper's conversation to read. The row shows its task, rounds and latest report.",
+        know: "Write to helpers through the main agent. Opening a report marks it as seen, without landing the work.",
+      },
+      V17: {
+        name: "Open item",
+        lead: "Opens the view or file beside the conversation. Press again to close it.",
+        know: "The list icon shows the kind of item; the time says when it was offered. Public items show their expiry.",
+      },
+      V18: {
+        name: "Versions",
+        lead: "Shows or hides earlier versions of the same view.",
+        know: "The number counts all versions. The top row opens the latest one.",
+      },
+      V19: {
+        name: "Show in the conversation",
+        lead: "The speech bubble takes you to the message where the agent offered the item.",
+      },
+      V20: {
+        name: "Public",
+        lead: "The globe publishes the item by link or makes it private again.",
+        know: "Anyone with a public link can open the item without signing in. Change its expiry from the date.",
+        grey: "Publication details are being checked or a change is still in progress.",
+      },
+      V21: {
+        name: "Expiry",
+        lead: "Opens choices for how long the public link works.",
+        know: "Opening the menu does not change the expiry.",
+      },
+      V22: {
+        name: "Change expiry",
+        lead: "Sets a new expiry for the public link.",
+      },
+      V23: {
+        name: "Copy link",
+        lead: "Copies the public address to your clipboard to share.",
+        try: "Copy link",
+      },
+      V24: {
+        name: "Open in a new tab",
+        lead: "The diagonal arrow opens the item in its own browser tab.",
+        know: "Opening it does not publish it.",
+      },
+      V25: {
+        name: "Download",
+        lead: "The downward arrow downloads the item to your device.",
+        know: "The item on the server stays unchanged.",
+        try: "Download item",
+      },
+      V26: {
+        name: "Close list",
+        lead: "Closes the views and files list without removing anything.",
+        try: "Close list",
+      },
+      V27: {
+        name: "Stop waiting",
+        lead: "Stops the main agent's wait. The helper or worker keeps working.",
+        know: "This wait will no longer wake the main agent when the work finishes.",
+      },
+      V28: {
+        name: "The message was not sent",
+        lead: "Tells you the attachments do not fit in one message, and how many and how large they are.",
+        know: "One message holds 30 files and 100 MB in total. Remove attachments: once the rest fit, you can send the message.",
+      },
+      V29: {
+        name: "Handle",
+        lead: "Asks the agent to check the ended workers' worktrees and recommend what to do with them.",
+        know: "The request goes to the agent as a message, and it answers in the conversation. Nothing is removed until you decide.",
+      },
+      V30: {
+        name: "Ended",
+        lead: "Opens or folds the rows that have ended.",
+      },
+      V31: {
+        name: "Tell the agent",
+        lead: "Asks the agent to check this worker's worktree and recommend what to do with it.",
+        know: "The request goes to the agent as a message. Nothing is removed until you decide.",
+      },
+      B01: {
+        name: "Browser",
+        lead: "Shows what the agent did in your browser during this turn. Opened, it lists the pages, downloads and actions.",
+        know: "When the agent needs your help, the card carries its request and Take control and do it. While you control, it has Give back. Afterwards it stays as the record of the visit.",
+      },
+      B02: {
+        name: "Browser mark",
+        lead: "Shows on a conversation's row that its agent is using your browser or waits for you there.",
+        know: "A quiet window means the agent is working. A bordered mark with the word browser means it is waiting for you.",
+      },
+      B03: {
+        name: "Look",
+        lead: "Opens the browser large to watch, without taking control.",
+      },
+      B04: {
+        name: "Take control",
+        lead: "Hands browser control to you. The agent waits meanwhile.",
+        know: "Give control back to the agent when you are done.",
+        grey: "Control is still changing or the browser is unavailable.",
+      },
+      B05: {
+        name: "Give back",
+        lead: "Hands browser control back to the agent, which carries on.",
+      },
+      B06: {
+        name: "Close browser",
+        lead: "Closes the browser on the server and its windows.",
+        know: "You can start it again from Your browser in the sidebar.",
+      },
+      B07: {
+        name: "Your browser",
+        lead: "Opens the view of your browser on the server, and starts the browser if it is off.",
+        know: "The end of the row shows the browser's state: its window count, the agent at work, waiting for you or you in control.",
+      },
+      B08: {
+        name: "Close view",
+        lead: "Closes the large browser view. The browser keeps running on the server.",
+        try: "Close view",
+      },
+      B09: {
+        name: "Password as keystrokes",
+        lead: "Paste one password from your own device here. Characters start masked.",
+        know: "Keep your password manager on your device. The entered password and signed-in session are not hidden from the agent.",
+      },
+      B10: {
+        name: "Type as keystrokes",
+        lead: "Types the password into the selected page field and clears this field.",
+        know: "Does not use the remote clipboard. Select the page's password field before sending.",
+        grey: "Take control, wait for the connection and enter a password first.",
+      },
+      B11: {
+        name: "Show or hide text",
+        lead: "The eye reveals the field's text. The crossed-out eye masks it again.",
+        know: "Revealing does not send text to the page. Masking does not hide text already entered on the page from the agent.",
+      },
+      B12: {
+        name: "Browser window",
+        lead: "Brings the selected window or tab into view and gives you control.",
+        know: "Popups appear in the list too. The agent waits while you drive.",
+      },
+      B13: {
+        name: "Close window",
+        lead: "Closes only this window or tab and gives you control.",
+        know: "Other windows stay open. Closing the last window opens a blank one in its place. Unsaved page data may be lost.",
+      },
+      H01: {
+        name: "Conversation's helper",
+        lead: "Shows the helper's round state and whether its work has been landed.",
+        know: "A branch marks unfinished or unconfirmed work; a check marks landed work. Archiving neither stops the helper nor lands its work.",
+      },
+      H02: {
+        name: "Show branch",
+        lead: "Opens the helper's branch details for inspection.",
+        know: "Looking neither lands nor removes the work.",
+      },
+      L01: {
+        name: "Search commands and skills",
+        lead: "Narrows the list as you type; Enter puts the top one at the start of the message.",
+      },
+      L02: {
+        name: "Skill",
+        lead: "A way of working the agent knows, such as committing or fixing a test.",
+        know: "A personal skill is yours; a project skill comes with this repository.",
+      },
+      L03: {
+        name: "Command",
+        lead: "A ready request template or one of the agent's own commands, run at the start of a message.",
+        know: "A command that needs the terminal's menus cannot run from the browser; the list says so.",
+      },
+      L04: {
+        name: "File row",
+        lead: "A file in the workspace; choosing it adds its name to the message.",
+        know: "Changed files come first, since they are the ones most often talked about.",
+      },
+      L05: {
+        name: "Change mark",
+        lead: "Shows how the file has changed: U new, M modified, D deleted.",
+      },
+      L06: {
+        name: "Provider",
+        lead: "Chooses whose subscription or key the models come from.",
+        know: "A grey option is not available; the reason and the fix show below.",
+      },
+      L07: {
+        name: "Model",
+        lead: "A model the agent answers with; the most capable first, and its description tells what each is good for.",
+      },
+      L08: {
+        name: "Older models",
+        lead: "Also shows older models that are still available.",
+      },
+      L09: {
+        name: "Thinking level",
+        lead: "How much the model thinks before answering: higher is more thorough but slower.",
+        know: "Only levels the model supports can be chosen.",
+      },
+      L10: {
+        name: "Default model settings",
+        lead: "Takes you to Settings, where you choose the default model for new conversations.",
+      },
+      L11: {
+        name: "Choose",
+        lead: "Uses the chosen model and level for this conversation.",
+      },
+      L12: {
+        name: "AI settings",
+        lead: "Opens the settings where you sign in to a model service or add a key.",
+      },
+      L13: {
+        name: "/compact",
+        lead: "Turns earlier messages into a summary to free space in the conversation.",
+        know: "Runs immediately while the agent waits for your message. Earlier messages stay in history.",
+      },
+      L14: {
+        name: "/new",
+        lead: "Opens a new conversation in the same workspace.",
+        know: "The current conversation is kept. Work in progress does not stop.",
+        try: "Open a new conversation",
+      },
+      P01: {
+        name: "Git state",
+        lead: "The workspace's branch compared with the remote and the base branch, and the changed files.",
+        know: "The panel only shows; changes to the branch go through the agent or the terminal.",
+      },
+      P02: {
+        name: "Upstream branch",
+        lead: "The remote's branch this branch pushes to and pulls changes from.",
+        know: "↑ is not yet pushed, ↓ is incoming.",
+      },
+      P03: {
+        name: "Not pushed",
+        lead: "Commits that are on this machine but not yet in the remote.",
+        know: "Ask the agent to push when you want them in the remote.",
+      },
+      P04: {
+        name: "Incoming",
+        lead: "Commits that are in the remote but not yet in this branch.",
+        know: "The number is from the last fetch; Update state fetches again.",
+      },
+      P05: {
+        name: "Base branch",
+        lead: "The branch this one was made from, usually main.",
+        know: "Ahead and behind say how far the two have drifted apart.",
+      },
+      P06: {
+        name: "Ahead of the base",
+        lead: "This branch's commits that the base branch does not have yet.",
+        know: "They are the work that goes in when the branch is merged.",
+      },
+      P07: {
+        name: "Behind the base",
+        lead: "Commits that reached the base branch and are not in this branch yet.",
+        know: "Ask the agent to bring them in if you need them before merging.",
+      },
+      P08: {
+        name: "Changes",
+        lead: "Files changed since the latest commit, and how many lines changed.",
+        know: "The letter says how: M modified, U new, D deleted.",
+      },
+      P09: {
+        name: "Update state",
+        lead: "Fetches the remote's latest and reads the branch's state again.",
+        know: "It changes neither the branch nor the files; ask the agent to bring changes in.",
+      },
+      P10: {
+        name: "Details",
+        lead: "The conversation's workspace, model, thinking level, control and start time.",
+        know: "The copy buttons give each value exactly, for pasting into a terminal for example.",
+      },
+      P11: {
+        name: "Conversation's model",
+        lead: "Tells the conversation's model and thinking level and what they are good for.",
+        know: "Nothing can be changed here. In the browser the model is chosen before the first message, at the left edge of the message box.",
+      },
+      P12: {
+        name: "Guide",
+        lead: "The chosen goal's steps and what you get, beside the conversation.",
+        know: "Instructions, not progress: Habitat does not know which step the agent is at.",
+      },
+      P13: {
+        name: "Width",
+        lead: "Drag the edge to change how wide the conversation and the panel are.",
+      },
+      P14: {
+        name: "Background tabs",
+        lead: "Switches the panel between workers and processes.",
+      },
+      P15: {
+        name: "Worker row",
+        lead: "One worker: its task, how long it has run, and whether the agent waits for it. A press opens its view.",
+        try: "Open the worker",
+      },
+      P16: {
+        name: "Close",
+        lead: "Closes the panel, menu or notice. Nothing changes.",
+      },
+      P17: {
+        name: "Back to the conversation",
+        lead: "Returns to the conversation you opened the context breakdown from.",
+        try: "Go back",
+      },
+      P18: {
+        name: "Context breakdown",
+        lead: "Shows what the agent's memory in this conversation is made of and when it is compacted next.",
+        know: "The Turns table shows how the context grew turn by turn. Looking changes nothing in the conversation.",
+      },
+      R01: {
+        name: "Terminal",
+        lead: "An ordinary command line in the workspace's folder, as your own user.",
+        know: "Tab and Esc belong to the terminal; Ctrl+Alt+T moves focus to the tabs and back.",
+      },
+      R02: {
+        name: "Terminal tab",
+        lead: "One open terminal; the name says what is running in it.",
+        know: "A dot means it waits at the prompt; otherwise a program is running.",
+      },
+      R03: {
+        name: "End terminal",
+        lead: "Closes the terminal and ends whatever runs in it.",
+      },
+      R04: {
+        name: "New terminal",
+        lead: "Opens another terminal in the same workspace, in a tab of its own.",
+      },
+      R05: {
+        name: "Maximize",
+        lead: "Gives the terminal the whole view; Restore size brings the conversation back.",
+      },
+      R06: {
+        name: "Hide panel",
+        lead: "Hides the terminal panel; the terminals keep running behind the Terminal button.",
+        know: "On a phone this is the Back to conversation arrow.",
+      },
+      R07: {
+        name: "Panel height",
+        lead: "Drag the edge to move the line between the terminal and the conversation.",
+      },
+      R08: {
+        name: "Terminal keys",
+        lead: `A reminder: select text by dragging with Shift held, ${terminalCopyKey} copies and ${terminalPasteKey} pastes.`,
+      },
+      R09: {
+        name: "Key row",
+        lead: "The keys a phone keyboard lacks: Esc, Tab, Ctrl, Alt and the arrows.",
+        know: "Ctrl and Alt stay down for the next key.",
+      },
+      R10: {
+        name: "Selection",
+        lead: "Copies the text selected in the terminal or puts it in the conversation's message field.",
+        know: `${terminalCopyKey} copies the same.`,
+      },
+      R11: {
+        name: "Address from the terminal",
+        lead: "A program in the terminal asked to open a web address; the card shows where it leads.",
+        know: "The address opens in a new tab only when you press. Dismiss closes the card.",
+      },
+      D01: {
+        name: "Editor",
+        lead: "A workspace file open for editing beside the conversation; the title is the file's name.",
+        know: "The agent's changes arrive in the open file, and in a conflict you choose what stays.",
+      },
+      D02: {
+        name: "Files",
+        lead: "Shows or hides the file tree beside the editor.",
+      },
+      D03: {
+        name: "Save",
+        lead: "Saves your changes to the file.",
+        grey: "Grey when the file has no unsaved changes.",
+      },
+      D04: {
+        name: "Editor full window",
+        lead: "Gives the editor the whole window; Restore side by side brings the conversation back.",
+      },
+      D05: {
+        name: "Close editor",
+        lead: "Closes the editor; it asks first about unsaved changes.",
+      },
+      D06: {
+        name: "Workspace files",
+        lead: "The workspace's folders and files; a press opens a file in the editor.",
+        know: "The search looks only in folders already opened.",
+      },
+      D07: {
+        name: "Filter by name",
+        lead: "Narrows the file tree to the name you type.",
+      },
+      D09: {
+        name: "YAML and JSON preview",
+        lead: "Shows nested data fully open, with lists as cards or bullets.",
+        know: "The preview follows your edits. Return to Text to edit; invalid content appears as source.",
+      },
+      D10: {
+        name: "Start page check",
+        lead: "Shows whether your edited content can be displayed as a start page.",
+        know: "An error names the field to correct. Checking does not save the page.",
+      },
+      D11: {
+        name: "Preview presentation",
+        lead: "Switches between the start page and a plain document without changing content.",
+        try: "Switch presentation",
+      },
+      D12: {
+        name: "Goal preview",
+        lead: "Moves to the goal's guide below the preview.",
+        know: "Does not start a conversation or send a request.",
+        try: "See the goal guide",
+      },
+      D13: {
+        name: "Goal guides",
+        lead: "Shows the goal's steps and the starting request intended for the agent.",
+        know: "Edit the guide in Text view. The preview does not run it.",
+      },
+      D08: {
+        name: "No file open",
+        lead: "Open a file from the tree or from a file link in the conversation.",
+      },
+      W01: {
+        name: "Worker",
+        lead: "You are looking at a worker: an agent the main conversation gave a task, in its own worktree.",
+        know: "Its work shows here, but you steer it through the main conversation.",
+      },
+      W02: {
+        name: "To the main conversation",
+        lead: "Goes back to the conversation this worker got its task from.",
+        try: "Back to the main conversation",
+      },
+      W03: {
+        name: "Agent and profile",
+        lead: "Which agent and settings the worker does its work with.",
+      },
+      W04: {
+        name: "Read only · ask through the main agent",
+        lead: "You do not write to a worker directly; this takes you to the main conversation to ask about it.",
+        try: "Ask the main agent",
+      },
+      W05: {
+        name: "Main agent · task",
+        lead: "The task the main agent gave the worker, word for word.",
+      },
+      M01: {
+        name: "Search settings",
+        lead: "Finds a setting by its name or a word from its description, across every page.",
+      },
+      M02: {
+        name: "Close settings",
+        lead: "Goes back to the view you opened Settings from.",
+      },
+      M03: {
+        name: "Account",
+        lead: "Your name and picture, Git identity, and signing out.",
+      },
+      M04: {
+        name: "Devices",
+        lead: "Sign in on a phone with a code, and see which devices are signed in.",
+      },
+      M05: {
+        name: "Keys",
+        lead: "Your account's public SSH and age keys, which an administrator needs for access or secrets.",
+      },
+      M06: {
+        name: "AI",
+        lead: "The default model, how the agent's work shows, and the subscriptions and keys that provide models.",
+      },
+      M07: {
+        name: "Recap",
+        lead: "When and with which model recaps are made, and how much they read and write.",
+      },
+      M08: {
+        name: "Dictation",
+        lead: "The key with which dictation writes your speech into the message field.",
+      },
+      M09: {
+        name: "Code hosts",
+        lead: "GitHub, Gitea and GitLab: where workspaces are cloned from and where agents push.",
+      },
+      M10: {
+        name: "Data for agents",
+        lead: "Email, calendars, contacts and files your agents may use.",
+      },
+      M11: {
+        name: "Own machines",
+        lead: "Your own computers that the agent can reach through Tailscale.",
+      },
+      M12: {
+        name: "Appearance",
+        lead: "The theme for this browser and the interface language for all your devices.",
+      },
+      M13: {
+        name: "Editor",
+        lead: "Which editor opens the workspace's files.",
+      },
+      M14: {
+        name: "Storage",
+        lead: "How much space you use, and the trash that deleted workspaces are restored from.",
+      },
+      M15: {
+        name: "Experimental features",
+        lead: "Features still in the works that you can turn on yourself.",
+        know: "They may change or go away; they are off by default.",
+      },
+      M16: {
+        name: "Server administration",
+        lead: "Administrator pages: settings that apply to everyone on the server.",
+      },
+      M17: {
+        name: "Server",
+        lead: "The server's name, default language and running version.",
+      },
+      M18: {
+        name: "Server integrations",
+        lead: "Which services people can use on this server.",
+      },
+      M19: {
+        name: "AI key",
+        lead: "A shared key for people without a subscription or key of their own.",
+      },
+      M20: {
+        name: "Dictation key",
+        lead: "A shared dictation key for everyone without their own.",
+      },
+      M21: {
+        name: "Onboarding",
+        lead: "What a new person goes through on first sign-in, and how it looks to them.",
+      },
+      M22: {
+        name: "Users and access",
+        lead: "Who may sign in, the people who have joined, and shared links.",
+      },
+      M23: {
+        name: "Disk space",
+        lead: "The home directories' disk and each person's storage limit.",
+      },
+      M24: {
+        name: "Edit Git identity",
+        lead: "Sets the name and email that go into your and your agents' commits.",
+      },
+      M83: {
+        name: "Ask an agent to clean up",
+        lead: "Opens a request built from your selections in a new conversation's composer.",
+        know: "You can edit the request before sending it. Nothing is cleaned up yet.",
+        try: "Open the request",
+      },
+      M84: {
+        name: "Show details",
+        lead: "Shows the group's folders and their sizes.",
+        know: "You can select individual cache and build folders. Other groups are read-only.",
+        try: "Show or hide folders",
+      },
+      M25: {
+        name: "Version",
+        lead: "The server's Habitat version, and whether this tab is up to date with it.",
+        know: "If not, reloading the page brings the new version.",
+      },
+      M26: {
+        name: "Conversations",
+        lead: "How many conversations may work at once, for everyone and per person.",
+      },
+      M27: {
+        name: "Settings",
+        lead: "On a phone, returns to the list of settings or to the search results.",
+      },
+      M28: {
+        name: "Your settings",
+        lead: "Returns from administration to your own settings.",
+      },
+      M29: {
+        name: "Sounds",
+        lead: "The attention sound: whether it plays, which sound and length, when it stays quiet, workspaces' own sounds and this device's mute and volume.",
+        know: "Experimental. The sound plays once when a conversation moves to Your turn. Pressing a tile plays the sound and chooses it; listening plays even when sounds are off.",
+      },
+      AS07: {
+        name: "Silent sounds",
+        lead: "Shows every reason this device is quiet.",
+        know: "Each reason has its own fix. Night follows the device's local clock, not its dark theme.",
+      },
+      AS08: {
+        name: "Turn off night quiet",
+        lead: "Turns night quiet off on all your devices, including future nights.",
+        know: "Turn it back on with Quiet at night. Device mute stays unchanged.",
+      },
+      AS09: {
+        name: "Change hours",
+        lead: "Takes you to the night start and end times.",
+        try: "Show night settings",
+      },
+      AS10: {
+        name: "Turn sounds on",
+        lead: "Restores attention sounds on all your devices.",
+        know: "Device mute and night quiet stay unchanged. You can turn sounds off again with Sounds.",
+      },
+      AS11: {
+        name: "Unmute",
+        lead: "Unmutes this device only.",
+        know: "Night quiet and the all-device Sounds choice stay unchanged. You can mute this device again on the Sounds row.",
+      },
+      AS01: {
+        name: "Sounds on this device",
+        lead: "Mutes the attention sound in this browser only, or brings it back.",
+        know: "Below the row is the main reason for silence; every reason with its fix is in Settings › Sounds. Device mute affects only this browser; sounds and night quiet choices affect all your devices.",
+      },
+      AS12: {
+        name: "Sound settings",
+        lead: "Opens Settings › Sounds, which lists every reason for silence and its fix.",
+      },
+      AS02: {
+        name: "Device quiet",
+        lead: "A mark on the account picture: this device is muted.",
+        know: "Bring the sound back on the Sounds row of the account menu or in Settings.",
+      },
+      AS03: {
+        name: "Workspace settings",
+        lead: "The workspace's icon, name and sound in one strip.",
+        know: "Experimental. While it shows, the strip is the one place to change them.",
+      },
+      AS04: {
+        name: "Icon",
+        lead: "Opens the workspace icon choice: automatic, letters or an emoji.",
+        know: "Below it says where the icon comes from. A choice is saved to the workspace's settings file at once.",
+      },
+      AS05: {
+        name: "Name",
+        lead: "Changes the workspace's display name right in its box.",
+        know: "Enter or a click elsewhere saves, Esc cancels. The folder stays the same, and an empty name brings back the folder's name.",
+      },
+      AS06: {
+        name: "Workspace sound",
+        lead: "Chooses the sound that plays when a conversation in this workspace finishes.",
+        know: "A press chooses and plays, ▶ plays without choosing. Same as the default follows the sound in Settings.",
+      },
+      M70: {
+        name: "Atlassian",
+        lead: "Connect Jira and Confluence with your own account.",
+        know: "Choose requested permissions. The connection shows the actual grant, which may be broader than requested.",
+      },
+      M71: {
+        name: "Request for your administrator",
+        lead: "Copy the full request and give it to your administrator.",
+        know: "Habitat sends nothing. Waiting alone does not mean an administrator is reviewing the request.",
+      },
+      M73: {
+        name: "Atlassian sign-in",
+        lead: "Starts sign-in or completes it with the return URL you pasted.",
+        know: "Changing the level removes the previous sign-in before requesting a new grant.",
+      },
+      M74: {
+        name: "Requested permissions",
+        lead: "Choose read or read and write before signing in.",
+        know: "The choice does not change the connection yet. Check granted permissions after sign-in.",
+      },
+      M75: {
+        name: "Remove Atlassian connection",
+        lead: "Removes this connection's sign-in from agents' use.",
+        know: "Jira issues and Confluence pages are not deleted. You can connect the account again.",
+      },
+      M76: {
+        name: "Trello",
+        lead: "Connect Trello boards and cards with your own account.",
+        know: "Each connection is its own sign-in. It shows the actual grant, which may be broader than requested.",
+      },
+      M77: {
+        name: "Add another Trello connection",
+        lead: "Adds a new Trello sign-in, for example for another Workspace.",
+        know: "Your existing connections stay as they are.",
+      },
+      M78: {
+        name: "Request for your administrator",
+        lead: "Copy the full request and give it to your administrator.",
+        know: "Habitat sends nothing. Only an administrator can reliably limit Trello to reading.",
+      },
+      MP01: {
+        name: "People in the conversation",
+        lead: "Shows who is in your conversation and who is here. Opens the panel where you change what they may do.",
+        know: "The agent, model, quota and connections are yours. The agent answers a participant without tools until you let it continue.",
+      },
+      MP02: {
+        name: "Invite",
+        lead: "Invite someone who has signed in to this server.",
+        know: "The person sees the conversation only after joining. The picker lists everyone who has signed in here.",
+      },
+      MP03: {
+        name: "Give full rights",
+        lead: "The agent answers their messages with the same tools as yours.",
+        know: "The agent then acts as your user: your files, GitHub, connected services and own machines. The confirmation lists what you lend.",
+      },
+      MP04: {
+        name: "Take rights back",
+        lead: "Makes them a participant again at once. A run in progress continues as text only.",
+        know: "Processes are not stopped by themselves. A card lists them for stopping.",
+      },
+      MP05: {
+        name: "Remove from conversation",
+        lead: "They no longer see the conversation or write in it.",
+        know: "A waiting request stays for you to decide. You can invite them again.",
+      },
+      MP06: {
+        name: "Stopped request",
+        lead: "The agent answered a participant with text only. Decide whether it may continue with your tools.",
+        know: "Allow all lets the agent continue, Approve one by one asks about each tool call, and Don't allow leaves the request undone.",
+      },
+      MP07: {
+        name: "Tool call approval",
+        lead: "Shows the whole call before it runs.",
+        know: "Allow runs this call, Don't allow blocks it, and Allow all lets the rest of this run's calls through without asking.",
+      },
+      MP08: {
+        name: "Rights taken back",
+        lead: "Shows the run in progress and the processes after you took rights back or removed a participant.",
+        know: "Nothing is stopped by itself. Stop only what you recognise as their request.",
+      },
+      MP09: {
+        name: "Shared with you",
+        lead: "Conversations other people on this server invited you to.",
+        know: "Until you join, an invitation shows only who invited you and the conversation's name.",
+      },
+      MP10: {
+        name: "Turn mode",
+        lead: "Says whether the agent answers you with text only or may use tools, and which of your requests wait for the owner.",
+        know: "The owner's server decides the mode. You can cancel your waiting messages before the agent gets them.",
+      },
+      MP11: {
+        name: "Join",
+        lead: "You join the conversation and see all of it.",
+        know: "The agent belongs to the person who invited you: their model, quota and connections.",
+      },
+      MP12: {
+        name: "Stop the turn",
+        lead: "Stops the agent's turn in progress, whoever started it.",
+      },
+      M80: {
+        name: "Trello sign-in",
+        lead: "Starts sign-in or completes it with the return URL you pasted.",
+        know: "Trello asks at sign-in which Workspace the connection may reach.",
+      },
+      M81: {
+        name: "Requested permissions",
+        lead: "Choose read or read and write before signing in.",
+        know: "Trello may grant more than requested. Check the actual grant after sign-in.",
+      },
+      M82: {
+        name: "Remove Trello connection",
+        lead: "Removes this connection's sign-in from agents' use.",
+        know: "Boards and cards are not deleted. Your other Trello connections stay.",
+      },
+      MS01: {
+        name: "Organizations",
+        lead: "Shows the organizations whose people can connect Microsoft 365 on this server.",
+        know: "The number says how many there are. In the dialog you add one, get its approval message or remove it.",
+      },
+      MS02: {
+        name: "Levels",
+        lead: "Shows Microsoft 365's levels and their apps.",
+        know: "The number says how many of the four levels are set. With one missing, the button asks for attention and the dialog sets the rest.",
+      },
+      MS03: {
+        name: "Approval",
+        lead: "Shows the message and links with which the organization's administrator approves the apps.",
+        know: "The server cannot see whether the organization has approved. The first sign-in shows it.",
+      },
+      MS04: {
+        name: "Remove organization",
+        lead: "Asks whether to take the organization off the list.",
+        know: "Nothing is removed yet: the confirmation says what removing does.",
+      },
+      MS05: {
+        name: "Remove",
+        lead: "Stops the organization's Microsoft connections on this server.",
+        know: "Nothing is revoked at Microsoft and files stay. Adding the organization back resumes the connections without a sign-in.",
+      },
+      MS06: {
+        name: "Add organization",
+        lead: "Adds an organization's name and tenant ID to the list.",
+        know: "The name is visible to everyone on this server. After saving you get a message for the organization's administrator.",
+      },
+      MS07: {
+        name: "Add",
+        lead: "Saves the organization to the list.",
+        know: "Its people can connect once the organization's administrator has approved the apps.",
+      },
+      MS08: {
+        name: "Connect organization",
+        lead: "Connects Microsoft 365 to this organization's data.",
+        know: "As a guest, you sign in with your own work account. Each organization is its own connection and card.",
+      },
+      MS09: {
+        name: "Organization",
+        lead: "Choose which organization's data the connection brings to agents.",
+        know: "One address can connect several organizations' data, each as its own card.",
+      },
+      N01: {
+        name: "Workspace source",
+        lead: "Choose whether to clone the workspace from an existing repository or create a new empty folder.",
+      },
+      N02: {
+        name: "Search repositories",
+        lead: "Narrows the list by name. Type owner/repo to look up any other repository.",
+      },
+      N03: {
+        name: "Updated",
+        lead: "Shows only the repositories that changed in the chosen period.",
+      },
+      N04: {
+        name: "Repository",
+        lead: "Selects the repository and shows its details. Nothing is cloned yet.",
+        know: "The row shows the latest change and the size; a lock means a private repository.",
+      },
+      N05: {
+        name: "Owner",
+        lead: "Repositories grouped by owner: your own, your groups' and those you collaborate on.",
+      },
+      N06: {
+        name: "Show all",
+        lead: "Shows every repository in the group; Show less shortens the list again.",
+      },
+      N07: {
+        name: "Repository details",
+        lead: "The selected repository before cloning: its size, default branch and where it will go.",
+        know: "If the repository is already a workspace, you can open it from here.",
+      },
+      N08: {
+        name: "Cloning",
+        lead: "Choose the full history or a light clone that fetches old file versions only when needed.",
+        know: "A light clone is faster and smaller, but some ways of looking at history need a connection.",
+      },
+      N09: {
+        name: "Clone as a workspace",
+        lead: "Starts cloning. The finished repository shows up as a workspace.",
+        know: "Cloning goes on on the server even if you leave the page.",
+      },
+      N10: {
+        name: "Clones",
+        lead: "Clones under way, queued and recently ended.",
+        know: "The sidebar row shows while a clone runs and leads to this page.",
+      },
+      N11: {
+        name: "Cancel or remove",
+        lead: "Cancels a clone, takes it off the queue or removes an unfinished folder.",
+        know: "Habitat removes the unfinished folder when it can do so safely; the notice says whether anything was left on disk.",
+      },
+      N12: {
+        name: "Name",
+        lead: "The new workspace's folder name: lowercase letters, numbers and . _ -.",
+      },
+      N14: {
+        name: "Cancel",
+        lead: "Asks first whether to cancel the clone and says what of it is removed.",
+      },
+      N15: {
+        name: "Try again",
+        lead: "Starts the clone again when it failed or did not start.",
+        know: "For an interrupted clone the same button is Start over.",
+      },
+      N13: {
+        name: "Create workspace",
+        lead: "Creates an empty folder, sets it up as a Git repository and adds it to your workspaces.",
+        grey: "Grey while the name is missing or workspaces cannot be created right now.",
       },
     },
-    working: {
-      name: "Working",
-      lead: "The agent is doing what you asked: running commands and reading files in this workspace.",
-      know: "The work goes on on the server when you close the browser; the sidebar's ball tells you when it is done.",
-      can: {
-        V01: "Write your next message now: it goes as steering or after the work",
-        K18: "See what the agent is doing right now",
-        V07: "Stop it if the work is heading the wrong way",
+    states: {
+      notStarted: {
+        name: "Not started yet",
+        lead: "The conversation starts when you send the first message.",
+        know: "Nothing is kept before that: close the page and no empty conversation is left on the lists.",
+        can: {
+          V01: "Write what you want the agent to do",
+          A02: "Or choose a goal to have the request written for you",
+          A05: "Change the model for this conversation",
+        },
       },
-    },
-    yourTurn: {
-      name: "Waiting for you",
-      lead: "The agent has answered, and it is your turn.",
-      know: "The conversation waits as long as you like. If you do not come back, it moves to Quiet in the sidebar.",
-      can: {
-        K04: "Open the agent's work to see what it did",
-        V01: "Reply or ask for the next thing",
-        Y04: "See what changed in the workspace",
+      working: {
+        name: "Working",
+        lead: "The agent is doing what you asked: running commands and reading files in this workspace.",
+        know: "The work goes on on the server when you close the browser; the sidebar's ball tells you when it is done.",
+        can: {
+          V01: "Write your next message now: it goes as steering or after the work",
+          K18: "See what the agent is doing right now",
+          V07: "Stop it if the work is heading the wrong way",
+        },
       },
-    },
-    stopped: {
-      name: "You stopped the turn",
-      lead: "The agent stopped midway and wrote no reply.",
-      know: "What the agent had done stays in the workspace. It remembers the conversation so far, so you can carry on from there.",
-      can: { K04: "See where the agent stopped", V01: "Say how to carry on" },
-    },
-    failed: {
-      name: "The turn failed",
-      lead: "The agent could not finish its reply, and the turn ended in an error.",
-      know: "Your message is kept. Sending it again in a moment is often enough.",
-      can: {
-        V01: "Send it again or write what comes next",
-        Y06: "Change the model if the same error repeats",
+      yourTurn: {
+        name: "Waiting for you",
+        lead: "The agent has answered, and it is your turn.",
+        know: "The conversation waits as long as you like. If you do not come back, it moves to Quiet in the sidebar.",
+        can: {
+          K04: "Open the agent's work to see what it did",
+          V01: "Reply or ask for the next thing",
+          Y04: "See what changed in the workspace",
+        },
       },
-    },
-    background: {
-      name: "Waiting for you, work goes on in the background",
-      lead: "The agent has answered, but a worker it started is still doing its part.",
-      know: "You can carry on meanwhile; the worker finishing shows above the message field.",
-      can: { V11: "See what the worker is doing", V01: "Carry on meanwhile" },
+      stopped: {
+        name: "You stopped the turn",
+        lead: "The agent stopped midway and wrote no reply.",
+        know: "What the agent had done stays in the workspace. It remembers the conversation so far, so you can carry on from there.",
+        can: { K04: "See where the agent stopped", V01: "Say how to carry on" },
+      },
+      failed: {
+        name: "The turn failed",
+        lead: "The agent could not finish its reply, and the turn ended in an error.",
+        know: "Your message is kept. Sending it again in a moment is often enough.",
+        can: {
+          V01: "Send it again or write what comes next",
+          Y06: "Change the model if the same error repeats",
+        },
+      },
+      background: {
+        name: "Waiting for you, work goes on in the background",
+        lead: "The agent has answered, but a worker it started is still doing its part.",
+        know: "You can carry on meanwhile; the worker finishing shows above the message field.",
+        can: { V11: "See what the worker is doing", V01: "Carry on meanwhile" },
+      },
     },
   },
-});
+  {
+    cards: {
+      MS01: {
+        name: "Organisations",
+        lead: "Shows the organisations whose people can connect Microsoft 365 on this server.",
+        know: "The number says how many there are. In the dialog you add one, get its approval message or remove it.",
+      },
+      MS02: {
+        name: "Levels",
+        lead: "Shows Microsoft 365's levels and their apps.",
+        know: "The number says how many of the four levels are set. With one missing, the button asks for attention and the dialog sets the rest.",
+      },
+      MS03: {
+        name: "Approval",
+        lead: "Shows the message and links with which the organisation's administrator approves the apps.",
+        know: "The server cannot see whether the organisation has approved. The first sign-in shows it.",
+      },
+      MS04: {
+        name: "Remove organisation",
+        lead: "Asks whether to take the organisation off the list.",
+        know: "Nothing is removed yet: the confirmation says what removing does.",
+      },
+      MS05: {
+        name: "Remove",
+        lead: "Stops the organisation's Microsoft connections on this server.",
+        know: "Nothing is revoked at Microsoft and files stay. Adding the organisation back resumes the connections without a sign-in.",
+      },
+      MS06: {
+        name: "Add organisation",
+        lead: "Adds an organisation's name and tenant ID to the list.",
+        know: "The name is visible to everyone on this server. After saving you get a message for the organisation's administrator.",
+      },
+      MS07: {
+        name: "Add",
+        lead: "Saves the organisation to the list.",
+        know: "Its people can connect once the organisation's administrator has approved the apps.",
+      },
+      MS08: {
+        name: "Connect organisation",
+        lead: "Connects Microsoft 365 to this organisation's data.",
+        know: "As a guest, you sign in with your own work account. Each organisation is its own connection and card.",
+      },
+      MS09: {
+        name: "Organisation",
+        lead: "Choose which organisation's data the connection brings to agents.",
+        know: "One address can connect several organisations' data, each as its own card.",
+      },
+    },
+  },
+);
 
 ```
