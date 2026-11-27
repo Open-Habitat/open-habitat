@@ -184,17 +184,13 @@ func (e *browserCDPRejected) Error() string {
 }
 
 func (c *browserCDP) evaluate(expression string) (json.RawMessage, error) {
-	return c.evaluateGesture(expression, false)
-}
-
-func (c *browserCDP) evaluateGesture(expression string, gesture bool) (json.RawMessage, error) {
 	var out struct {
 		Result struct {
 			Value json.RawMessage `json:"value"`
 		} `json:"result"`
 		Exception json.RawMessage `json:"exceptionDetails"`
 	}
-	err := c.call("Runtime.evaluate", map[string]any{"expression": expression, "awaitPromise": true, "returnByValue": true, "userGesture": gesture}, &out)
+	err := c.call("Runtime.evaluate", map[string]any{"expression": expression, "awaitPromise": true, "returnByValue": true}, &out)
 	if err != nil {
 		return nil, err
 	}

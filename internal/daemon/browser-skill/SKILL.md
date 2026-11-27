@@ -60,7 +60,12 @@ A command that times out or loses its reply may still have acted. Look at the
 page before repeating anything that writes. If a failed `goto` names its tab in
 the error, inspect or close it; otherwise check `tabs` for a tab left open.
 
-A selector has to match exactly one element. `type` replaces the field's
+A selector has to match exactly one element. `click` scrolls it into view and
+presses the mouse at its visible centre, as a person would, so menus and
+listbox options that react to pointer or mouse down work; the result gives the
+`point`. It refuses an element that is hidden or has no visible box, and one
+covered by something else at that point, naming what covers it; nothing is
+clicked then, so close the overlay or pick the element on top. `type` replaces the field's
 value and does not submit. It takes the text from a file or stdin verbatim,
 trailing newline included, so prepare a one-line value with `printf`. It
 refuses password and file inputs, and values the field would alter. `text`

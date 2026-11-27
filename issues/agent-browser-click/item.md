@@ -3,10 +3,12 @@ created: 2026-11-27
 updated: 2026-11-27
 type: bug
 reporter: agent
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 preparation: ready
+closed: 2026-11-27
+closed_by: agent
 ---
 
 # agent browser click does not select options in ARIA listbox comboboxes
@@ -29,3 +31,9 @@ reports success, but the option is not selected and the field stays empty. Dispa
 - A browser-host test with a synthetic React-style listbox combobox (option selected on
   pointerdown/mousedown) that fails before the fix.
 - The browser skill (`internal/daemon/browser-skill/SKILL.md`) and `--help` say what click does.
+
+## Resolution
+
+### 2026-11-27T05:57:02Z · @agent
+
+Real CDP pointer click with scroll, visible-centre hit test and covered/not-visible refusals; see result.md.

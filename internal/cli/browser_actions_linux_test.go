@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net"
@@ -167,6 +168,8 @@ func TestBrowserActionsNative(t *testing.T) {
 			case <-r.Context().Done():
 			}
 			w.WriteHeader(204)
+		case "/listbox":
+			io.WriteString(w, listboxFixture)
 		case "/held":
 			requested <- struct{}{}
 			select {
@@ -372,6 +375,31 @@ func TestBrowserActionsNative(t *testing.T) {
 	if got := run(browserAction{verb: "eval", tab: tab, value: "popup.closed && document.title === 'Redirected'"}); got["value"] != true {
 		t.Fatalf("opener after popup close: %v", got)
 	}
+	// A React-style listbox selects on pointerdown/mousedown and ignores a
+	// synthetic element.click(); the option starts below the fold.
+	run(browserAction{verb: "goto", tab: tab, value: server.URL + "/listbox"})
+	run(browserAction{verb: "click", tab: tab, selector: "#fruit"})
+	picked := run(browserAction{verb: "click", tab: tab, selector: "[role=option][data-value=pear]"})
+	if point, ok := picked["point"].(map[string]any); !ok || point["x"] == nil || point["y"] == nil {
+		t.Fatalf("click did not report its point: %v", picked)
+	}
+	if got := run(browserAction{verb: "eval", tab: tab, value: "[document.querySelector('#fruit').textContent, window.events.join(' ')]"}); fmt.Sprint(got["value"]) != "[pear pointerdown mousedown pointerup mouseup click]" {
+		t.Fatalf("listbox option not selected by a real pointer click: %v", got["value"])
+	}
+	for _, c := range []struct{ selector, want string }{
+		{"#covered", "covered by div#veil"},
+		{"#hidden", "not_visible"},
+		{"#empty", "not_visible"},
+	} {
+		_, err := executeBrowserAction(browserAction{verb: "click", tab: tab, selector: c.selector, timeout: 5 * time.Second}, st)
+		var cli *cliError
+		if !errors.As(err, &cli) || cli.code != "browser_action_refused" || !strings.Contains(cli.message, c.want) {
+			t.Fatalf("click %s: want refusal naming %q, got %v", c.selector, c.want, err)
+		}
+	}
+	if got := run(browserAction{verb: "eval", tab: tab, value: "window.coveredClicks"}); got["value"] != float64(0) {
+		t.Fatalf("refused click reached the page: %v", got)
+	}
 	// Closing must remain a recovery path when the renderer cannot evaluate
 	// metadata (for example a modal dialog left by a page action).
 	if _, err := executeBrowserAction(browserAction{verb: "eval", tab: tab, value: "alert('synthetic dialog')", timeout: time.Second}, st); err == nil {
@@ -394,7 +422,7 @@ func TestBrowserActionsNative(t *testing.T) {
 	if len(run(browserAction{verb: "tabs"})["tabs"].([]any)) != 1 {
 		t.Fatal("last tab disappeared")
 	}
-	t.Log("native browser actions: held load and redirect, cookie-authenticated multichunk PDF bytes, SVG links, form activation, definite guard refusals, screenshot, tabs, marker, close and last-tab protection passed")
+	t.Log("native browser actions: held load and redirect, cookie-authenticated multichunk PDF bytes, SVG links, form activation, pointer-click listbox selection, definite guard refusals, screenshot, tabs, marker, close and last-tab protection passed")
 }
 
 // A command the host held while the person drove comes back as its own
@@ -424,3 +452,23 @@ func TestHeldCommandFailsAsPersonTookControl(t *testing.T) {
 		t.Fatalf("held command error %v", err)
 	}
 }
+
+const listboxFixture = `<!doctype html><title>Listbox</title>
+<style>body{margin:0}#spacer{height:1600px}#veil{position:fixed;left:0;top:0;width:300px;height:60px;background:#eee}#covered{position:fixed;left:10px;top:10px}</style>
+<button id="covered" onclick="window.coveredClicks++">Covered</button><div id="veil"></div>
+<div id="hidden" style="display:none">Hidden</div><span id="empty"></span>
+<div id="spacer"></div>
+<button id="fruit" role="combobox" aria-expanded="false" aria-controls="fruits"></button>
+<ul id="fruits" role="listbox" hidden><li role="option" data-value="apple">Apple</li><li role="option" data-value="pear">Pear</li></ul>
+<script>
+window.coveredClicks = 0;
+window.events = [];
+const box = document.querySelector('#fruit'), list = document.querySelector('#fruits');
+box.addEventListener('click', () => { list.hidden = false; box.setAttribute('aria-expanded', 'true'); });
+for (const o of list.querySelectorAll('[role=option]')) {
+  for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) o.addEventListener(type, () => window.events.push(type));
+  // Like many React selects: choose on pointerdown, keep focus by cancelling mousedown.
+  o.addEventListener('pointerdown', () => { box.textContent = o.dataset.value; });
+  o.addEventListener('mousedown', e => e.preventDefault());
+}
+</script>`

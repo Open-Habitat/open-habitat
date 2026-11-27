@@ -342,7 +342,8 @@ synthetic Pi and require both processes to disappear within five seconds.
 native CDP command fixture. It runs sandboxed headless Chrome in a disposable
 profile against a synthetic localhost site, through the production browser
 host and CLI action implementation. It covers load/redirect waits, sign-in
-cookies, original multichunk download bytes, forms, screenshots and last-tab
+cookies, original multichunk download bytes, forms, real pointer clicks (a
+pointerdown listbox, covered and hidden refusals), screenshots and last-tab
 protection. Without the variable the test skips. Use an outer `timeout` and
 private scratch as above. A synthetic display stands in for VNC: this is not
 viewer, installed systemd socket, real-account or distinct-UID evidence. If the
