@@ -212,8 +212,39 @@ func (*microsoft) Organisations(env Env) []MicrosoftOrganisation {
 	return env.microsoftTable().orgs
 }
 
-func (*microsoft) Level(_ Env, _ string, services []Service) Level {
+func (*microsoft) Level(env Env, key string, services []Service) Level {
+	if n, err := microsoftReadNative(env, key); err == nil && n.mcpFilesOnly {
+		return microsoftFilesOnlyLevel(env, key, n, services)
+	}
 	return microsoftLevelOf(services)
+}
+
+// microsoftFilesOnlyLevel is the level of a connection without a mailbox.
+// Its files alone cannot tell the levels apart (drafts and read both read
+// files), so it is the level of the application it signed in with, while
+// the files' access is what that level gives.
+func microsoftFilesOnlyLevel(env Env, key string, n microsoftNative, services []Service) Level {
+	_, level, reason, ok := microsoftAccountApp(env, key, n)
+	if !ok || reason != "" {
+		return ""
+	}
+	want := AccessRead
+	if level == LevelFull || level == LevelNoSend {
+		want = AccessFull
+	}
+	files := false
+	for _, s := range services {
+		if s.ID == "onedrive" || s.ID == "sharepoint" {
+			if s.Access != want {
+				return ""
+			}
+			files = true
+		}
+	}
+	if !files {
+		return ""
+	}
+	return level
 }
 func (*microsoft) Tools() []string {
 	return []string{"rclone", "ms-365-mcp-server", "pi", "microsoft-native"}
@@ -500,6 +531,63 @@ type microsoftLogin struct {
 	allowed string
 	// granted is the token's Graph permissions, kept with each cloud root.
 	granted []string
+	// mailbox is the mailbox probe's answer for this sign-in.
+	mailbox microsoftMailbox
+}
+
+// microsoftMailbox is what the organisation answered when the sign-in asked
+// for the account's inbox.
+type microsoftMailbox int
+
+const (
+	// mailboxUndecided: the grant has no mail, or the answer was not one
+	// that decides (an outage, a timeout, throttling, a refusal).
+	mailboxUndecided microsoftMailbox = iota
+	mailboxPresent
+	mailboxAbsent
+)
+
+func (b microsoftMailbox) String() string {
+	return [...]string{"undecided", "present", "absent"}[b]
+}
+
+// microsoftNoMailbox are Graph's answers to an inbox read that mean the
+// account has no Exchange Online mailbox in the tenant: a B2B guest's usual
+// answer, and an unlicensed member's. Only these decide; any other failure
+// leaves the connection as it would have been without the probe.
+var microsoftNoMailbox = map[int]map[string]bool{
+	http.StatusNotFound:     {"MailboxNotEnabledForRESTAPI": true, "MailboxNotFound": true, "ErrorNonExistentMailbox": true, "ResourceNotFound": true},
+	http.StatusUnauthorized: {"OrganizationFromTenantGuidNotFound": true},
+}
+
+// microsoftMailboxProbeTimeout bounds the probe; an organisation that does
+// not answer in time leaves the sign-in as it would have been without it.
+var microsoftMailboxProbeTimeout = 15 * time.Second
+
+// probeMailbox asks Graph once for the account's inbox with the sign-in's
+// own access token. It never fails the sign-in: an answer that does not
+// decide is mailboxUndecided.
+func (m *microsoft) probeMailbox(ctx context.Context, access string) (microsoftMailbox, int, string) {
+	ctx, cancel := context.WithTimeout(ctx, microsoftMailboxProbeTimeout)
+	defer cancel()
+	var inbox struct {
+		ID string `json:"id"`
+	}
+	err := m.request(ctx, "https://graph.microsoft.com/v1.0/me/mailFolders/inbox?$select=id", nil, access, &inbox)
+	if err == nil {
+		if inbox.ID == "" {
+			return mailboxUndecided, http.StatusOK, "not_applicable"
+		}
+		return mailboxPresent, http.StatusOK, "not_applicable"
+	}
+	var response microsoftResponseError
+	if errors.As(err, &response) {
+		if microsoftNoMailbox[response.status][response.code] {
+			return mailboxAbsent, response.status, response.code
+		}
+		return mailboxUndecided, response.status, response.code
+	}
+	return mailboxUndecided, 0, "not_applicable"
 }
 
 func (m *microsoft) StartLogin(ctx context.Context, env Env, address string) (Login, error) {
@@ -744,6 +832,26 @@ func (l *microsoftLogin) WaitWithPrompt(ctx context.Context, show func(Prompt) e
 	}
 	if !ValidAddress(address) {
 		return "", ToolFailed
+	}
+	// A guest usually has no mailbox in the client's tenant whatever mail
+	// permissions the application was granted. Asked once, while the
+	// sign-in's token is at hand; Commit registers the files area alone
+	// when the tenant says there is none.
+	l.mailbox = mailboxUndecided
+	// Without files the connection has nothing to keep, so it is asked only
+	// when the grant reaches both.
+	if microsoftRules.access("mail", scopes) != AccessNone && microsoftRules.access("onedrive", scopes) != AccessNone {
+		phase = "mailbox_probe"
+		var status int
+		var code string
+		l.mailbox, status, code = l.entry.probeMailbox(ctx, token.Access)
+		if ctx.Err() != nil {
+			return "", ctx.Err()
+		}
+		if l.log != nil {
+			// Fixed vocabulary and allowlisted Graph codes only.
+			l.log.Info("integration_login", "provider", "microsoft", "outcome", "observed", "flow", "microsoft", "transition", "mailbox_probe", "mailbox", l.mailbox.String(), "http_status", status, "graph_code", code)
+		}
 	}
 	tenant := strings.ToLower(l.app.TenantID)
 	name := microsoftName(address, tenant)
@@ -990,9 +1098,21 @@ func (l *microsoftLogin) Commit(ctx context.Context, address string) (result err
 			return err
 		}
 	}
-	hadServer, err := microsoftMCPConfigured(l.env, address)
+	registration, _, err := microsoftServerOf(l.env, address)
 	if err != nil {
 		return err
+	}
+	hadServer := registration.configured()
+	// The probe's answer decides the areas; one that did not decide keeps
+	// what the connection had (all five for a new one), so a probe failure
+	// never takes tools away and an outage at a guest's renewal does not
+	// bring back mail tools that can only fail.
+	filesOnly := registration.filesOnly()
+	switch l.mailbox {
+	case mailboxAbsent:
+		filesOnly = true
+	case mailboxPresent:
+		filesOnly = false
 	}
 	parent, err := openHomeDir(l.env.Home, false, splitPath(microsoftMCPDir)...)
 	if err != nil {
@@ -1099,7 +1219,7 @@ func (l *microsoftLogin) Commit(ctx context.Context, address string) (result err
 	}
 	published = true
 
-	if err := microsoftRegister(ctx, l.env, l.app, address, l.allowed, microsoftPin{home: l.home}); err != nil {
+	if err := microsoftRegister(ctx, l.env, l.app, address, l.allowed, microsoftPin{home: l.home}, filesOnly); err != nil {
 		return err
 	}
 	if err := writeFileAt(fd, address+".conf", l.config, 0600); err != nil {
@@ -1306,9 +1426,19 @@ func (m *microsoft) CheckGrant(ctx context.Context, env Env, address string) ([]
 	// allows; a separate SharePoint row only for synced libraries, or when
 	// the grant says why there is none.
 	shown := func(i int) bool { return out[i].Access != "" && out[i].Access != AccessFull }
+	// A connection registered without a mailbox has its files alone: mail,
+	// calendar and contacts are not its services, and the files row stays
+	// even before the grant is read, since it is all the card has.
+	filesOnly := false
+	if n, err := microsoftReadNative(env, address); err == nil {
+		filesOnly = n.mcpFilesOnly
+	}
 	var kept []Service
 	for i, s := range out {
-		if i == 0 && inventoryErr == nil && !synced[0] && out[0].Access == "" {
+		if filesOnly && i >= 2 {
+			continue
+		}
+		if i == 0 && !filesOnly && inventoryErr == nil && !synced[0] && out[0].Access == "" {
 			continue
 		}
 		if i == 1 && inventoryErr == nil && !synced[1] && !shown(1) {
@@ -1439,7 +1569,15 @@ func (m *microsoft) Skill(env Env, key string) SkillAccount {
 	}
 	var services []Service
 	uses, search := "Outlook mail, calendars and contacts", ""
-	if n, err := microsoftReadNative(env, key); err == nil && n.mcpAllowed != "" {
+	n, nerr := microsoftReadNative(env, key)
+	filesOnly := nerr == nil && n.mcpFilesOnly
+	if filesOnly {
+		// The files area alone: no mail, calendar or contacts to describe.
+		if n.mcpAllowed != "" {
+			allowed := microsoftGranted(strings.Fields(n.mcpAllowed))
+			search = "\n\n" + microsoftSearchSkill(address, syncs, microsoftWritable("sharepoint", allowed))
+		}
+	} else if nerr == nil && n.mcpAllowed != "" {
 		// The Outlook server's scopes were derived from the grant at sign-in.
 		allowed := microsoftGranted(strings.Fields(n.mcpAllowed))
 		for _, id := range []string{"mail", "calendar", "contacts"} {
@@ -1454,7 +1592,11 @@ func (m *microsoft) Skill(env Env, key string) SkillAccount {
 	if server, _, err := microsoftServerOf(env, key); err == nil && server.index > 0 {
 		index = server.index
 	}
-	body := microsoftAreasSkill(uses, index) + files + search + list +
+	areas, kinds := microsoftAreasSkill(uses, index), []string{"mail", "calendar", "contacts", "files"}
+	if filesOnly {
+		areas, kinds = microsoftFilesAreaSkill(index), []string{"files"}
+	}
+	body := areas + files + search + list +
 		accessSummary(services, map[string]string{"mail": "Outlook mail", "calendar": "Outlook calendar", "contacts": "Outlook contacts"})
 	// The same address may be connected in several organisations; the
 	// allowed list's name tells the agent which one this is.
@@ -1462,7 +1604,17 @@ func (m *microsoft) Skill(env Env, key string) SkillAccount {
 	if org := microsoftOrganisationLabel(env, key); org != "" {
 		label += " (" + org + ")"
 	}
-	return SkillAccount{Label: label, Kinds: []string{"mail", "calendar", "contacts", "files"}, Synced: ready && !mirror, Mirrored: ready && mirror, Body: body}
+	return SkillAccount{Label: label, Kinds: kinds, Synced: ready && !mirror, Mirrored: ready && mirror, Body: body}
+}
+
+// microsoftFilesAreaSkill describes a connection without a mailbox: its one
+// files area, and why there is no mail, calendar or contacts to look for.
+func microsoftFilesAreaSkill(index int) string {
+	files := microsoftAreaEntryName(index, "files")
+	return fmt.Sprintf("Microsoft 365 files are reached through one Pi MCP area, `%s`, signed in as this account only. The account has no mailbox in this organisation (usual for a guest account), so it has no Outlook mail, calendar or contacts here; do not look for them under this account. ", files) +
+		fmt.Sprintf("`describeNamespace(%q)` lists its tools and `searchTools(query, {namespace: %q})` searches them; their tool descriptions carry the syntax. ", files, files) +
+		"Deleting and sharing a file first ask the person in the browser; when they do not allow it, the call is not made and you are told so. " +
+		"A sign-in problem stops the files, and the person renews it in Settings → Integrations; if the organisation has since given the account a mailbox, that renewal also brings its mail, calendar and contacts."
 }
 
 // microsoftAreasSkill names the account's five areas and says to pick one

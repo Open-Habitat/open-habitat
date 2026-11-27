@@ -73,6 +73,10 @@ type microsoftNative struct {
 	// release would write differently), so it is rewritten as area
 	// entries with its own native environment, without a new sign-in.
 	mcpReshape bool
+	// mcpFilesOnly: the registration is the files area alone, because the
+	// sign-in's mailbox probe found no mailbox. Mail, calendar and contacts
+	// are then not the connection's services, whatever the grant says.
+	mcpFilesOnly bool
 }
 
 // client is the application the configs were signed in with.
@@ -258,10 +262,11 @@ func microsoftReadNative(env Env, key string) (microsoftNative, error) {
 		}
 	} else {
 		n.mcpAllowed = server.Env[microsoftAllowedEnv]
+		n.mcpFilesOnly = registration.filesOnly()
 	}
 	if n.mcpClient != "" && !n.mcpOutdated() {
 		app := MicrosoftApp{ClientID: n.mcpClient, TenantID: n.mcpTenant}
-		n.mcpReshape = !microsoftAreasCurrent(env, servers, registration, app, key, n.mcpAllowed, n.pin(key))
+		n.mcpReshape = !microsoftAreasCurrent(env, servers, registration, app, key, n.mcpAllowed, n.pin(key), n.mcpFilesOnly)
 	}
 	return n, nil
 }
@@ -343,7 +348,7 @@ func (m *microsoft) Align(ctx context.Context, env Env, key string, stop func())
 		if allowed == "" {
 			allowed = microsoftMCPScopes
 		}
-		return microsoftRegister(ctx, env, MicrosoftApp{ClientID: n.mcpClient, TenantID: n.mcpTenant}, key, allowed, n.pin(key))
+		return microsoftRegister(ctx, env, MicrosoftApp{ClientID: n.mcpClient, TenantID: n.mcpTenant}, key, allowed, n.pin(key), n.mcpFilesOnly)
 	}
 	app, _, reason, ok := microsoftAccountApp(env, key, n)
 	if !ok || reason != "" || !n.mcpOutdated() {
@@ -367,7 +372,7 @@ func (m *microsoft) Align(ctx context.Context, env Env, key string, stop func())
 	default:
 		return ServerUnreachable
 	}
-	return microsoftRegister(ctx, env, app, key, allowed, n.pin(key))
+	return microsoftRegister(ctx, env, app, key, allowed, n.pin(key), n.mcpFilesOnly)
 }
 
 // alignedView shows a connection that cannot run with the operator's

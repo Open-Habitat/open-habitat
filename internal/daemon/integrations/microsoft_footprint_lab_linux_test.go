@@ -47,7 +47,7 @@ func TestMicrosoftFootprintLab(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(home, microsoftMCPDir, address), 0700); err != nil {
 		t.Fatal(err)
 	}
-	if err := microsoftRegister(context.Background(), env, app, address, allowed, microsoftPin{username: microsoftAddressOf(address)}); err != nil {
+	if err := microsoftRegister(context.Background(), env, app, address, allowed, microsoftPin{username: microsoftAddressOf(address)}, false); err != nil {
 		t.Fatal(err)
 	}
 	selfBefore := memory(os.Getpid())

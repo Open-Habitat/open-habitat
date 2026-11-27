@@ -396,10 +396,15 @@ test("@m365-orgs a person connects one address in two organisations, a guest's f
   );
   await expect(page.getByTestId(`integration-org-${one}`)).toHaveCount(0);
 
+  // The mailbox was asked about at sign-in: the organisation giving the
+  // person one afterwards changes nothing until the next sign-in.
+  await integrations(page, `action=mailbox&tenant=${one}`);
   // Renewing one of the two connections of that address names its
   // organisation, so the daemon does not ask which one.
   await integrations(page, "action=expire&provider=microsoft");
   await guestCard.getByTestId("integration-recheck").click();
+  await expect(guestCard.getByTestId("integration-reauth")).toBeVisible();
+  await expect(guestCard.getByTestId("integration-files-only")).toBeVisible();
   const renew = nextBody(page, "/api/v1/integrations/login", "POST");
   await guestCard.getByTestId("integration-reauth").click();
   expect(await renew).toMatchObject({
@@ -408,8 +413,15 @@ test("@m365-orgs a person connects one address in two organisations, a guest's f
     tenant_id: one,
   });
   await expect(dialog.getByTestId("integration-device-code")).toBeVisible();
-  await dialog.getByTestId("dialog-close").click();
+  // The renewal finds the mailbox: the card gains mail, calendar and
+  // contacts, and the guest's files-only lines go.
+  await integrations(page, "action=approve");
+  await expect(dialog.getByTestId("integration-connected")).toBeVisible();
+  await expect(dialog.getByTestId("integration-guest-files")).toHaveCount(0);
+  await dialog.getByTestId("integration-done").click();
   await expect(dialog).toHaveCount(0);
+  await expect(guestCard.getByTestId("integration-files-only")).toHaveCount(0);
+  await expect(guestCard.getByTestId("integration-service-mail")).toBeVisible();
   await integrations(page, "action=reset");
   await integrations(page, `action=guest&tenant=${one}`);
 

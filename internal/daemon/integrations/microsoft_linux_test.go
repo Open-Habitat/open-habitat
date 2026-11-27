@@ -178,6 +178,9 @@ func syntheticMicrosoft(t *testing.T, upn, failure string) *microsoft {
 			switch r.URL.Path {
 			case "/v1.0/me":
 				body = fmt.Sprintf(`{"id":%q,"mail":%q,"userPrincipalName":%q}`, testObjectID, upn, upn)
+			case "/v1.0/me/mailFolders/inbox":
+				// A grant with mail asks for the inbox once (the mailbox probe).
+				body = `{"id":"inbox-folder"}`
 			case "/v1.0/me/drive":
 				body = `{"id":"primary-drive","name":"OneDrive","driveType":"business"}`
 			case "/v1.0/me/followedSites":

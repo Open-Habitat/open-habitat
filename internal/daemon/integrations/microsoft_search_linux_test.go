@@ -202,7 +202,7 @@ func TestMicrosoftOutdatedRegistrationAligns(t *testing.T) {
 	if n, err := microsoftReadNative(env, address); err != nil || n.mcpOutdated() || !n.mcpReshape {
 		t.Fatalf("current single entry: %+v %v", n, err)
 	}
-	if err := microsoftRegister(context.Background(), env, *env.Config.Microsoft, address, outlook+" Files.Read.All", microsoftPin{username: microsoftAddressOf(address)}); err != nil {
+	if err := microsoftRegister(context.Background(), env, *env.Config.Microsoft, address, outlook+" Files.Read.All", microsoftPin{username: microsoftAddressOf(address)}, false); err != nil {
 		t.Fatal(err)
 	}
 	if (&microsoft{}).Misaligned(env, address) {

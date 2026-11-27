@@ -45,7 +45,9 @@ type integrationControl struct {
 	bigDrive map[integrations.Provider]bool
 	count    chan struct{}
 	// guests lists the Microsoft organisations where the person has no
-	// mailbox: a connection there has its files alone.
+	// mailbox: the stand-in's answer to the native entry's mailbox probe,
+	// asked at sign-in. A connection signed in there has its files alone
+	// until a sign-in finds a mailbox ("mailbox" takes the tenant off).
 	guests map[string]bool
 }
 
@@ -74,6 +76,8 @@ func (c *integrationControl) set(q url.Values) bool {
 		c.bigDrive[integrations.Provider(q.Get("provider"))] = true
 	case "guest":
 		c.guests[strings.ToLower(q.Get("tenant"))] = true
+	case "mailbox":
+		delete(c.guests, strings.ToLower(q.Get("tenant")))
 	case "count":
 		close(c.count)
 		c.count = make(chan struct{})
@@ -188,8 +192,10 @@ func (f *fixtureEntry) Check(ctx context.Context, env integrations.Env, address 
 	expired := integrationFixture.expired[f.provider]
 	integrationFixture.mu.Unlock()
 	_, chosen := f.SyncCommand(env, address)
-	_, tenant, named := strings.Cut(address, "~")
-	guest := named && integrationFixture.guestOf(tenant)
+	// As the native entry: the sign-in's probe recorded the connection as
+	// files-only, and the services follow that record, not the tenant now.
+	_, err := os.Stat(filepath.Join(f.store(env)+"-files-only", address))
+	guest := err == nil
 	var out []integrations.Service
 	for _, s := range f.services {
 		if guest && s != f.files {
@@ -229,6 +235,7 @@ func (f *fixtureEntry) CheckGrant(ctx context.Context, env integrations.Env, add
 }
 
 func (f *fixtureEntry) Remove(_ context.Context, env integrations.Env, address string) error {
+	_ = os.Remove(filepath.Join(f.store(env)+"-files-only", address))
 	return os.Remove(filepath.Join(f.store(env), address))
 }
 
@@ -413,6 +420,21 @@ func (l *fixtureLogin) Wait(ctx context.Context) (string, error) {
 			return "", err
 		}
 		if err := os.WriteFile(filepath.Join(dir, l.address), []byte(l.level), 0o600); err != nil {
+			return "", err
+		}
+	}
+	if _, tenant, named := strings.Cut(l.address, "~"); named && l.entry.provider == integrations.Microsoft {
+		// The mailbox probe: asked at each sign-in, its answer recorded.
+		dir := l.entry.store(l.env) + "-files-only"
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			return "", err
+		}
+		record := filepath.Join(dir, l.address)
+		if integrationFixture.guestOf(tenant) {
+			if err := os.WriteFile(record, nil, 0o600); err != nil {
+				return "", err
+			}
+		} else if err := os.Remove(record); err != nil && !errors.Is(err, os.ErrNotExist) {
 			return "", err
 		}
 	}

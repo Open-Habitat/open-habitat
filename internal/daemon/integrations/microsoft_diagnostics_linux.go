@@ -21,7 +21,9 @@ func microsoftGraphError(data []byte) (code, message string) {
 		return
 	}
 	switch body.Error.Code {
-	case "accessDenied", "AccessDenied", "Authorization_RequestDenied", "InvalidAuthenticationToken", "itemNotFound", "ResourceNotFound", "BadRequest", "invalidRequest", "notSupported", "serviceNotAvailable", "generalException", "UnknownError", "unauthenticated", "TooManyRequests", "activityLimitReached":
+	case "accessDenied", "AccessDenied", "Authorization_RequestDenied", "InvalidAuthenticationToken", "itemNotFound", "ResourceNotFound", "BadRequest", "invalidRequest", "notSupported", "serviceNotAvailable", "generalException", "UnknownError", "unauthenticated", "TooManyRequests", "activityLimitReached",
+		// The mailbox probe's answers (microsoftNoMailbox).
+		"MailboxNotEnabledForRESTAPI", "MailboxNotFound", "ErrorNonExistentMailbox", "OrganizationFromTenantGuidNotFound":
 		code = body.Error.Code
 	}
 	switch body.Error.Message {

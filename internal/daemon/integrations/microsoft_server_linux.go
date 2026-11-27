@@ -174,6 +174,22 @@ type microsoftServer struct {
 // configured says whether any entry of the account exists.
 func (s microsoftServer) configured() bool { return len(s.areas) > 0 || len(s.old) > 0 }
 
+// filesOnly says whether the registration is the files area alone: the
+// record of a sign-in whose mailbox probe found no mailbox in the
+// organisation (microsoftProbeMailbox), as a B2B guest usually has none.
+func (s microsoftServer) filesOnly() bool {
+	return len(s.old) == 0 && len(s.areas) == 1 && s.areas["files"] != ""
+}
+
+// microsoftRegisteredAreas are the areas a registration writes: all five,
+// or the files area alone for a connection without a mailbox.
+func microsoftRegisteredAreas(filesOnly bool) []string {
+	if filesOnly {
+		return []string{"files"}
+	}
+	return msmcp.AreaNames()
+}
+
 // names are every entry of the account.
 func (s microsoftServer) names() []string {
 	out := slices.Clone(s.old)
@@ -309,11 +325,17 @@ func microsoftAreaEntry(env Env, relay string, app MicrosoftApp, key, allowed st
 	}
 }
 
-// microsoftAreasCurrent says whether the account has all five area entries
-// exactly as this release writes them, and nothing of an earlier form.
-func microsoftAreasCurrent(env Env, servers map[string]json.RawMessage, s microsoftServer, app MicrosoftApp, key, allowed string, pin microsoftPin) bool {
-	if len(s.old) > 0 || len(s.areas) != len(msmcp.Areas) || env.Relay == "" {
+// microsoftAreasCurrent says whether the account has its area entries (all
+// five, or the files area alone when filesOnly) exactly as this release
+// writes them, and nothing of an earlier form.
+func microsoftAreasCurrent(env Env, servers map[string]json.RawMessage, s microsoftServer, app MicrosoftApp, key, allowed string, pin microsoftPin, filesOnly bool) bool {
+	if len(s.old) > 0 || len(s.areas) != len(microsoftRegisteredAreas(filesOnly)) || env.Relay == "" {
 		return false
+	}
+	for _, area := range microsoftRegisteredAreas(filesOnly) {
+		if s.areas[area] == "" {
+			return false
+		}
 	}
 	for area, name := range s.areas {
 		want, _ := json.Marshal(microsoftAreaEntry(env, env.Relay, app, key, allowed, pin, area))
@@ -366,10 +388,14 @@ func writePiServers(ctx context.Context, env Env, kind string, root, servers map
 	return nil
 }
 
-// microsoftRegister writes, or replaces, the account's five area entries
-// with the current application's environment and pin, and removes any entry
-// of an earlier form, in one atomic rewrite of mcp.json.
-func microsoftRegister(ctx context.Context, env Env, app MicrosoftApp, address, allowed string, pin microsoftPin) error {
+// microsoftRegister writes, or replaces, the account's area entries with the
+// current application's environment and pin, and removes any entry of an
+// earlier form, in one atomic rewrite of mcp.json. filesOnly writes the
+// files area alone, for a connection without a mailbox: an agent offered
+// mail tools that can only fail is worse off than one offered none. The
+// prefix stays the one chosen for five, so the connection gains its other
+// areas under the same names once a sign-in finds a mailbox.
+func microsoftRegister(ctx context.Context, env Env, app MicrosoftApp, address, allowed string, pin microsoftPin, filesOnly bool) error {
 	if env.Relay == "" || !filepath.IsAbs(env.Relay) || !validMicrosoftAccount(address) || !pin.valid() {
 		return ToolFailed
 	}
@@ -389,10 +415,10 @@ func microsoftRegister(ctx context.Context, env Env, app MicrosoftApp, address, 
 	if s.index == 0 {
 		return ToolFailed
 	}
-	// A kept prefix is checked again: any of its five names, or a name Pi
-	// folds onto one of them, that is not the account's own is never
+	// A kept prefix is checked again: any of the names written, or a name
+	// Pi folds onto one of them, that is not the account's own is never
 	// overwritten.
-	for _, area := range msmcp.AreaNames() {
+	for _, area := range microsoftRegisteredAreas(filesOnly) {
 		want := microsoftAreaEntryName(s.index, area)
 		for name, raw := range servers {
 			if folded(name) == folded(want) && !microsoftOwnsServer(env, raw, address) {
@@ -403,7 +429,7 @@ func microsoftRegister(ctx context.Context, env Env, app MicrosoftApp, address, 
 	for _, name := range s.names() {
 		delete(servers, name)
 	}
-	for _, area := range msmcp.AreaNames() {
+	for _, area := range microsoftRegisteredAreas(filesOnly) {
 		servers[microsoftAreaEntryName(s.index, area)], _ = json.Marshal(microsoftAreaEntry(env, env.Relay, app, address, allowed, pin, area))
 	}
 	return writePiServers(ctx, env, "register", root, servers)

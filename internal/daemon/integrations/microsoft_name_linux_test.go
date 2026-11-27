@@ -208,7 +208,7 @@ func TestMicrosoftUsernamePinnedConnectionGainsTheImmutablePin(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := microsoftRegister(context.Background(), env, *env.Config.Microsoft, name, "User.Read", microsoftPin{username: "person@example.test"}); err != nil {
+	if err := microsoftRegister(context.Background(), env, *env.Config.Microsoft, name, "User.Read", microsoftPin{username: "person@example.test"}, false); err != nil {
 		t.Fatal(err)
 	}
 	other := `{"id":"` + testObjectID + `","userPrincipalName":"other@example.test"}`
