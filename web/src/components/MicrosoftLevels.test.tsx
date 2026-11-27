@@ -8,8 +8,8 @@ import {
 import { expect, it, vi } from "vitest";
 import type { Provider, ProviderId } from "../app/integrations";
 import type {
+  AnySection,
   AppChange,
-  AppSection,
   IntegrationApp,
   IntegrationApps,
 } from "../app/serverIntegrations";
@@ -33,7 +33,7 @@ const provider = (id: ProviderId, available: boolean): Provider => ({
   ...(available ? {} : { unavailable_reason: "app_credentials_required" }),
 });
 const section = (
-  provider: AppSection,
+  provider: AnySection,
   client_id: string,
   extra: Partial<IntegrationApp> = {},
 ): IntegrationApp => ({
@@ -65,14 +65,14 @@ const none: IntegrationApps = { ...two, apps: [] };
 
 function setup(
   apps: IntegrationApps,
-  reply: (s: AppSection) => AppChange = (s) => ({
+  reply: (s: AnySection) => AppChange = (s) => ({
     kind: "changed",
     view: { ...apps, apps: [...apps.apps, section(s, nosendID)] },
   }),
   props: Partial<Parameters<typeof ServerIntegrations>[0]> = {},
 ) {
   const calls = {
-    onSave: vi.fn(async (s: AppSection) => reply(s)),
+    onSave: vi.fn(async (s: AnySection) => reply(s)),
     onRemove: vi.fn(),
     onRefresh: vi.fn(),
   };
@@ -376,4 +376,32 @@ it("keeps an unsaved application's id when the walk goes back to the start", () 
   expect(
     (screen.getByTestId("ml-field-client-nosend") as HTMLInputElement).value,
   ).toBe(nosendID);
+});
+
+it("sends a shared walk that skipped the organisation's name back to it before anything is saved", async () => {
+  const onTenantSet = vi.fn(
+    async (): Promise<AppChange> => ({ kind: "refused", code: "host_busy" }),
+  );
+  const { calls } = setup(none, undefined, { onTenantSet });
+  fireEvent.click(screen.getByTestId("si-setup-microsoft"));
+  fireEvent.click(
+    within(d().getByTestId("ml-kind")).getByTestId("segment-shared"),
+  );
+  fireEvent.click(d().getByTestId("ml-begin"));
+  // Minulla on jo sovellus passes the name and publisher sub-item by.
+  fireEvent.click(d().getByTestId("ml-have-app"));
+  type("ml-field-client-full", fullID);
+  fireEvent.click(d().getByTestId("ml-next"));
+  type("ml-field-tenant", tenant);
+  fireEvent.click(d().getByTestId("ml-save"));
+  await waitFor(() =>
+    expect(d().getByTestId("ml-panel").dataset.part).toBe(
+      "register.full.publisher",
+    ),
+  );
+  expect(screen.getByTestId("ml-field-org").getAttribute("aria-invalid")).toBe(
+    "true",
+  );
+  expect(calls.onSave).not.toHaveBeenCalled();
+  expect(onTenantSet).not.toHaveBeenCalled();
 });

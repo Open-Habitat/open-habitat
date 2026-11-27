@@ -7,13 +7,17 @@ import {
 } from "react";
 import { Dialog, Heading, Modal, ModalOverlay } from "react-aria-components";
 import type { Level } from "../app/integrations";
+import { validLabel } from "../app/microsoftOrganisations";
 import {
+  type AnySection,
   type AppChange,
   type AppFields,
   type AppSection,
   appErrors,
   appRefusal,
   type IntegrationApp,
+  type IntegrationTenant,
+  type MicrosoftSharedSection,
 } from "../app/serverIntegrations";
 import authImg from "../assets/entra/auth.avif";
 import { entraCrops } from "../assets/entra/crops";
@@ -23,10 +27,10 @@ import permsImg from "../assets/entra/perms.avif";
 import registerImg from "../assets/entra/register.avif";
 import { liveText } from "../i18n";
 import { microsoftLevelsText } from "../text/microsoftLevels";
-import { ControlButton, ExternalLink } from "./ControlElements";
+import { ControlButton, ExternalLink, Segmented } from "./ControlElements";
 import { Icon, type IconName } from "./Icon";
 import { levelName } from "./Integrations";
-import { Checkbox, TextField } from "./Primitives";
+import { Checkbox, RadioGroup, TextField } from "./Primitives";
 import { ShotBand, useNarrow } from "./ShotBand";
 import "./MicrosoftLevels.css";
 
@@ -42,6 +46,15 @@ const txt = liveText(microsoftLevelsText);
 // interrupted setup resumes from what the file holds. One forward button
 // walks the sub-items (proto-m365-setup-flow A1b5); the sub-item row only
 // shows the position.
+//
+// The start page's first choice is whose accounts the applications serve
+// (design passably-subdued-sticks, section 4): Vain oma organisaatio is the
+// single-tenant walk, Useita organisaatioita the same walk for the shared
+// (multi-tenant) sections, differing in the account type, a name and
+// publisher sub-item, and a save that also puts the own organisation on the
+// allowed list. A level whose single-tenant application exists can instead
+// be converted in Entra and saved with the same ids, so its connections go
+// on without a sign-in; the guide cannot see Entra and says so.
 
 /* ---------- what each level allows ---------- */
 
@@ -285,13 +298,35 @@ export function LevelsDisclosure({
 /* ---------- Microsoft's four applications ---------- */
 
 export type MsLevel = "full" | "nosend" | "drafts" | "read";
-/** The four levels, broadest first, with their sections of root's file. */
-export const msLevels: { id: MsLevel; section: AppSection }[] = [
-  { id: "full", section: "microsoft" },
-  { id: "nosend", section: "microsoft_nosend" },
-  { id: "drafts", section: "microsoft_drafts" },
-  { id: "read", section: "microsoft_read" },
+/** The four levels, broadest first, with their sections of root's file:
+ * the own organisation's single-tenant application and the shared one. */
+export const msLevels: {
+  id: MsLevel;
+  section: AppSection;
+  shared: MicrosoftSharedSection;
+}[] = [
+  { id: "full", section: "microsoft", shared: "microsoft_shared" },
+  {
+    id: "nosend",
+    section: "microsoft_nosend",
+    shared: "microsoft_shared_nosend",
+  },
+  {
+    id: "drafts",
+    section: "microsoft_drafts",
+    shared: "microsoft_shared_drafts",
+  },
+  { id: "read", section: "microsoft_read", shared: "microsoft_shared_read" },
 ];
+/** Whose accounts the applications serve: the own organisation's alone, or
+ * every organisation on the allowed list. */
+export type MsKind = "own" | "shared";
+const sectionFor = (kind: MsKind, l: MsLevel): AnySection => {
+  const m = msLevels.find((x) => x.id === l) ?? msLevels[0];
+  return kind === "shared" ? m.shared : m.section;
+};
+const appOf = (apps: IntegrationApp[], section: AnySection) =>
+  apps.find((a) => a.provider === section);
 const identity = ["openid", "profile", "User.Read", "offline_access"];
 // Each level's delegated Graph permissions, the set its administrator
 // consents to (microsoftLevelScopes in the daemon). The no-send level is the
@@ -535,6 +570,7 @@ function PermGrid({ level }: { level: MsLevel }) {
 
 type Errors = Partial<Record<string, string>>;
 type Ctx = {
+  kind: MsKind;
   /** The first application of this walk: it carries the one-time notes. */
   first: MsLevel;
   client: Partial<Record<MsLevel, string>>;
@@ -543,6 +579,15 @@ type Ctx = {
   setTenant: (v: string) => void;
   /** The level whose saved section has the tenant; undefined asks it. */
   tenantFrom?: MsLevel;
+  /** The operator's organisation's name for the shared applications' names
+   * and the allowed list: the list's label of the own organisation, or
+   * typed on the name and publisher sub-item. */
+  org: string;
+  /** Undefined when the allowed list already names the own organisation. */
+  setOrg?: (v: string) => void;
+  /** The level's existing single-tenant application, when this walk
+   * converts it instead of creating a new one. */
+  converts: (l: MsLevel) => IntegrationApp | undefined;
   errors: Errors;
 };
 type Part = {
@@ -551,14 +596,74 @@ type Part = {
   at: [CropName, string];
   missing?: string;
   fields?: string[];
+  /** Field errors that keep the walk on this sub-item. */
+  check?: () => Errors;
   body: ReactNode;
 };
-type Group = { step: number; level: MsLevel; parts: Part[] };
+type Group = {
+  /** The step's id, its title, and its place among the level's steps. */
+  step: string;
+  title: string;
+  n: number;
+  of: number;
+  level: MsLevel;
+  parts: Part[];
+};
 
 const em = (s: string) => <em>{s}</em>;
 
+/** The name a level's application gets in Entra. A shared application says
+ * who runs it: the client's administrator sees the name when approving. */
+const appName = (ctx: Ctx, l: MsLevel) =>
+  ctx.kind === "shared"
+    ? txt.sharedApp(txt.app[l], ctx.org.trim() || txt.orgUnknown)
+    : txt.app[l];
+
+/** Design section 4, item 2: what a client's administrator sees, once per
+ * walk, and where the organisation's name is asked when the list lacks it. */
+function publisher(ctx: Ctx, l: MsLevel, rename: boolean): Part {
+  return {
+    id: "publisher",
+    name: txt.publisherItem,
+    at: rename ? ["overview", "menu"] : ["register", "name"],
+    missing: rename ? txt.missingBranding : txt.missingPublisher,
+    fields: ["org"],
+    check: () =>
+      ctx.setOrg && !validLabel(ctx.org.trim()) ? { org: txt.errOrg } : {},
+    body: (
+      <>
+        <Act>{txt.publisherAct}</Act>
+        {ctx.setOrg ? (
+          <div className="ml-idfield">
+            <TextField
+              data-testid="ml-field-org"
+              label={txt.orgField}
+              value={ctx.org}
+              onChange={ctx.setOrg}
+              hint={txt.orgHint}
+              error={ctx.errors.org}
+            />
+          </div>
+        ) : (
+          <p className="ml-value" data-testid="ml-org-known">
+            <code>{ctx.org}</code>
+          </p>
+        )}
+        {rename && (
+          <>
+            <Act>{txt.renameAct(em("Branding & properties"), em("Name"))}</Act>
+            <Value value={appName(ctx, l)} label="Name" />
+          </>
+        )}
+        <Note icon="info">{txt.unverified}</Note>
+      </>
+    ),
+  };
+}
+
 function register(ctx: Ctx, l: MsLevel): Part[] {
   const first = ctx.first === l;
+  const shared = ctx.kind === "shared";
   return [
     {
       id: "new",
@@ -582,6 +687,7 @@ function register(ctx: Ctx, l: MsLevel): Part[] {
         </>
       ),
     },
+    ...(shared && first ? [publisher(ctx, l, false)] : []),
     {
       id: "name",
       name: "Name",
@@ -589,7 +695,7 @@ function register(ctx: Ctx, l: MsLevel): Part[] {
       body: (
         <>
           <Act>{txt.typeName}</Act>
-          <Value value={txt.app[l]} label="Name" />
+          <Value value={appName(ctx, l)} label="Name" />
           {first && <p className="ml-quiet">{txt.ownApp}</p>}
         </>
       ),
@@ -598,7 +704,18 @@ function register(ctx: Ctx, l: MsLevel): Part[] {
       id: "accounts",
       name: "Supported account types",
       at: ["register", "accounts"],
-      body: (
+      missing: shared ? txt.missingMulti : undefined,
+      body: shared ? (
+        <>
+          <Act>{txt.chooseMulti}</Act>
+          <Value
+            value={txt.multiTenant}
+            label="Supported account types"
+            copy={false}
+          />
+          {first && <Note>{txt.multiNote}</Note>}
+        </>
+      ) : (
         <>
           <Act>{txt.chooseIfNot}</Act>
           <Value
@@ -626,7 +743,84 @@ function register(ctx: Ctx, l: MsLevel): Part[] {
       id: "done",
       name: txt.doneItem,
       at: ["overview", "menu"],
-      body: <Done>{txt.appOpens(em(txt.app[l]))}</Done>,
+      body: <Done>{txt.appOpens(em(appName(ctx, l)))}</Done>,
+    },
+  ];
+}
+
+/** An existing single-tenant application switched to multi-tenant in
+ * Entra: the guide shows where, and cannot see whether it was done. */
+function convertInEntra(ctx: Ctx, l: MsLevel, app: IntegrationApp): Part[] {
+  const first = ctx.first === l;
+  return [
+    {
+      id: "find",
+      name: "App registrations",
+      at: ["list", "search"],
+      body: (
+        <>
+          <Where
+            crumbs={["App registrations", "All applications"]}
+            link={first}
+          />
+          <Act>{txt.findApp}</Act>
+          <Value value={app.client_id ?? ""} label="Application (client) ID" />
+          {first && <Note icon="user">{txt.roleDeveloper}</Note>}
+        </>
+      ),
+    },
+    {
+      id: "accounts",
+      name: "Supported accounts",
+      at: ["auth", "tabs"],
+      missing: txt.missingSupported,
+      body: (
+        <>
+          <Where crumbs={[authMenu, "Supported accounts"]} />
+          <Act>
+            {txt.convertAccounts(
+              em(authMenu),
+              em("Supported accounts"),
+              em(txt.multiTenant),
+              em("Save"),
+            )}
+          </Act>
+          <Note icon="info">{txt.cannotSee}</Note>
+          {first && <Note>{txt.uriConflict}</Note>}
+        </>
+      ),
+    },
+    ...(first ? [publisher(ctx, l, true)] : []),
+    {
+      id: "done",
+      name: txt.doneItem,
+      at: ["auth", "tabs"],
+      body: (
+        <Done>
+          {txt.convertDone(em("Supported accounts"), em(txt.multiTenant))}
+        </Done>
+      ),
+    },
+  ];
+}
+function convertSave(app: IntegrationApp): Part[] {
+  return [
+    {
+      id: "ids",
+      name: txt.idsItem,
+      at: ["overview", "essentials"],
+      body: (
+        <>
+          <Act>{txt.sameIds}</Act>
+          <p className="ml-value" data-testid="ml-convert-client">
+            <code>{app.client_id}</code>
+          </p>
+          <p className="ml-value" data-testid="ml-convert-tenant">
+            <code>{app.tenant_id}</code>
+          </p>
+          <Note icon="warning">{txt.widens}</Note>
+        </>
+      ),
     },
   ];
 }
@@ -851,14 +1045,26 @@ function consent(ctx: Ctx, l: MsLevel): Part[] {
 }
 
 const stepIds = ["register", "public", "permissions", "consent"];
-/** The chosen levels, broadest first, each in full. */
+const convertIds = ["convert", "save"];
+/** The chosen levels, broadest first, each in full: created in four steps,
+ * or an existing application converted in two. */
 function groups(ctx: Ctx, order: MsLevel[]): Group[] {
-  return order.flatMap((l) => [
-    { step: 0, level: l, parts: register(ctx, l) },
-    { step: 1, level: l, parts: publicClient() },
-    { step: 2, level: l, parts: permissions(l) },
-    { step: 3, level: l, parts: consent(ctx, l) },
-  ]);
+  return order.flatMap((l) => {
+    const app = ctx.converts(l);
+    const parts = app
+      ? [convertInEntra(ctx, l, app), convertSave(app)]
+      : [register(ctx, l), publicClient(), permissions(l), consent(ctx, l)];
+    const ids = app ? convertIds : stepIds;
+    const titles = app ? txt.convertSteps : txt.steps;
+    return parts.map((p, n) => ({
+      step: ids[n],
+      title: titles[n],
+      n,
+      of: parts.length,
+      level: l,
+      parts: p,
+    }));
+  });
 }
 
 const guid =
@@ -869,18 +1075,18 @@ const otherA = "00000000-0000-4000-8000-00000000000a";
 const otherB = "00000000-0000-4000-8000-00000000000b";
 
 /** The broker's checks for one application, each field on its own, and
- * the same client id as another level's, saved or typed, refused: four
- * applications, four ids, and the same one pasted twice is the likeliest
- * slip. */
+ * the same client id as another application's, saved or typed, refused:
+ * every level and kind is its own application with its own id, and the
+ * same one pasted twice is the likeliest slip. */
 function idErrors(
   l: MsLevel,
+  section: AnySection,
   client: string,
   tenant: string,
   asksTenant: boolean,
-  others: { level: MsLevel; id: string }[],
+  others: { section: AnySection; name: string; id: string }[],
 ): Errors {
   const e: Errors = {};
-  const section = msLevels.find((m) => m.id === l)?.section ?? "microsoft";
   if (asksTenant) {
     const t = appErrors(section, {
       client_id: otherA,
@@ -897,11 +1103,11 @@ function idErrors(
   else {
     const same = others.find(
       (o) =>
-        o.level !== l &&
+        o.section !== section &&
         guid.test(o.id) &&
         o.id.toLowerCase() === client.toLowerCase(),
     );
-    if (same) e[`client-${l}`] = txt.sameClient(txt.app[same.level]);
+    if (same) e[`client-${l}`] = txt.sameClient(same.name);
   }
   return e;
 }
@@ -913,12 +1119,14 @@ function AppRail({
   current,
   saved,
   counts,
+  name,
   onPick,
 }: {
   order: MsLevel[];
   current: MsLevel;
   saved: (l: MsLevel) => boolean;
   counts: string[];
+  name: (l: MsLevel) => string;
   onPick: (l: MsLevel) => void;
 }) {
   return (
@@ -934,7 +1142,7 @@ function AppRail({
             type="button"
             className="ml-rail-btn"
             onClick={() => onPick(l)}
-            aria-label={txt.railItem(i + 1, txt.app[l], saved(l))}
+            aria-label={txt.railItem(i + 1, name(l), saved(l))}
           >
             <span className="ml-rail-n">
               {saved(l) ? <Icon name="check" /> : i + 1}
@@ -979,10 +1187,14 @@ function Stepper({
 }
 
 function Walk({
+  kind,
+  convert,
   order,
   apps,
+  tenants,
   saving,
   onSave,
+  onTenant,
   onStart,
   onDone,
   onClose,
@@ -990,9 +1202,15 @@ function Walk({
   setClientState,
   typedTenant,
   setTypedTenant,
+  typedOrg,
+  setTypedOrg,
 }: {
+  kind: MsKind;
+  /** Levels whose single-tenant application exists are converted. */
+  convert: boolean;
   order: MsLevel[];
   apps: IntegrationApp[];
+  tenants: IntegrationTenant[];
   saving: boolean;
   /** Typed ids live in the dialog, so stepping back to the start page and
    * beginning again keeps what was typed for an unsaved application. */
@@ -1000,8 +1218,16 @@ function Walk({
   setClientState: Dispatch<SetStateAction<Partial<Record<MsLevel, string>>>>;
   typedTenant: string;
   setTypedTenant: (v: string) => void;
+  typedOrg: string;
+  setTypedOrg: (v: string) => void;
   /** Saves one level's section; resolves false when the walk must stop. */
-  onSave: (l: MsLevel, fields: AppFields) => Promise<"saved" | string | false>;
+  onSave: (
+    section: AnySection,
+    l: MsLevel,
+    fields: AppFields,
+  ) => Promise<"saved" | string | false>;
+  /** Puts the own organisation on the allowed list. */
+  onTenant: (tenant: string, label: string) => Promise<"saved" | string>;
   onStart: () => void;
   onDone: () => void;
   onClose: () => void;
@@ -1010,20 +1236,33 @@ function Walk({
   const [errors, setErrors] = useState<Errors>({});
   const [refusal, setRefusal] = useState("");
   const [saved, setSaved] = useState<MsLevel[]>([]);
-  const sectionOf = (l: MsLevel) => msLevels.find((m) => m.id === l)?.section;
-  const app = (l: MsLevel) => apps.find((a) => a.provider === sectionOf(l));
+  const app = (l: MsLevel) => appOf(apps, sectionFor(kind, l));
   const isSaved = (l: MsLevel) => saved.includes(l) || Boolean(app(l)?.usable);
-  // All four live in one tenant: a saved section's is reused, and only a
-  // walk with nothing saved asks it, in its first application.
-  const known = msLevels.find(
-    (m) =>
-      app(m.id)?.usable &&
-      app(m.id)?.tenant_id &&
-      guid.test(app(m.id)?.tenant_id ?? ""),
-  );
-  const tenantFrom = known?.id;
-  const tenant = known ? (app(known.id)?.tenant_id ?? "") : typedTenant;
+  // Every application lives in the operator's one tenant: a saved
+  // section's is reused, and only a walk with nothing saved asks it, in its
+  // first application.
+  const known = msLevels
+    .flatMap((m) => [
+      { level: m.id, a: appOf(apps, m.section) },
+      { level: m.id, a: appOf(apps, m.shared) },
+    ])
+    .find(({ a }) => a?.usable && guid.test(a.tenant_id ?? ""));
+  const tenantFrom = known?.level;
+  const tenant = known?.a?.tenant_id ?? typedTenant;
+  const single = (l: MsLevel) => {
+    const a = appOf(apps, sectionFor("own", l));
+    return a?.usable && guid.test(a.tenant_id ?? "") ? a : undefined;
+  };
+  const converts = (l: MsLevel) =>
+    kind === "shared" && convert ? single(l) : undefined;
+  // The own organisation's place on the allowed list: its label names the
+  // shared applications, and the save adds it when it is missing.
+  const listed = (t: string) =>
+    tenants.find((x) => x.tenant_id.toLowerCase() === t.trim().toLowerCase());
+  const ownLabel = guid.test(tenant) ? listed(tenant)?.label : undefined;
+  const org = ownLabel ?? typedOrg;
   const ctx: Ctx = {
+    kind,
     first: order[0],
     client,
     setClient: (l, v) => {
@@ -1038,16 +1277,25 @@ function Walk({
       setRefusal("");
     },
     tenantFrom,
+    org,
+    setOrg:
+      ownLabel === undefined
+        ? (v) => {
+            setTypedOrg(v);
+            setErrors((e) => ({ ...e, org: undefined }));
+          }
+        : undefined,
+    converts,
     errors,
   };
   const list = groups(ctx, order);
   const [at, setAt] = useState(0);
   const [sub, setSub] = useState(0);
-  const g = list[at];
+  const g = list[Math.min(at, list.length - 1)];
   const s = Math.min(sub, g.parts.length - 1);
   const part = g.parts[s];
   const lastPart = s === g.parts.length - 1;
-  const appEnd = g.step === 3 && lastPart;
+  const appEnd = g.n === g.of - 1 && lastPart;
   const go = (n: number, toSub = 0) => {
     setAt(n);
     setSub(toSub);
@@ -1055,35 +1303,74 @@ function Walk({
   };
   const pick = (l: MsLevel) => go(list.findIndex((x) => x.level === l));
   const nextApp = order.find((l) => l !== g.level && !isSaved(l));
+  /** Opens the sub-item of the first field with an error, the current
+   * application's first: the shared walk asks the organisation's name in
+   * its first application only. */
+  const reveal = (e: Errors) => {
+    const has = (p: Part) => p.fields?.some((f) => e[f]);
+    const j = g.parts.findIndex(has);
+    if (j >= 0) return setSub(j);
+    const i = list.findIndex((x) => x.parts.some(has));
+    if (i >= 0) go(i, list[i].parts.findIndex(has));
+  };
   const save = async () => {
-    const value = (client[g.level] ?? "").trim();
-    const others = msLevels.flatMap((m) => {
-      const id = app(m.id)?.client_id ?? client[m.id]?.trim();
-      return id ? [{ level: m.id, id }] : [];
-    });
-    const e = idErrors(g.level, value, tenant.trim(), !tenantFrom, others);
+    const l = g.level;
+    const section = sectionFor(kind, l);
+    const conv = converts(l);
+    const value = conv?.client_id ?? (client[l] ?? "").trim();
+    const owner = conv?.tenant_id ?? tenant.trim();
+    const needsList = kind === "shared" && !listed(owner);
+    const e: Errors = conv
+      ? {}
+      : idErrors(
+          l,
+          section,
+          value,
+          tenant.trim(),
+          !tenantFrom,
+          msLevels.flatMap((m) =>
+            (["own", "shared"] as const).flatMap((k) => {
+              const sec = sectionFor(k, m.id);
+              const id =
+                appOf(apps, sec)?.client_id ??
+                (k === kind ? client[m.id]?.trim() : undefined);
+              return id
+                ? [
+                    {
+                      section: sec,
+                      name: k === "shared" ? appName(ctx, m.id) : txt.app[m.id],
+                      id,
+                    },
+                  ]
+                : [];
+            }),
+          ),
+        );
+    if (needsList && !validLabel(org.trim())) e.org = txt.errOrg;
     setErrors(e);
-    if (Object.keys(e).length) {
-      // The field with the error may be on another sub-item: open it.
-      const j = g.parts.findIndex((p) => p.fields?.some((f) => e[f]));
-      if (j >= 0) setSub(j);
-      return;
+    if (Object.keys(e).length) return reveal(e);
+    // A retry after the list refused finds the section saved already.
+    if (!isSaved(l)) {
+      const result = await onSave(section, l, {
+        client_id: value,
+        tenant_id: owner,
+      });
+      if (result === false) return;
+      if (result !== "saved") return setRefusal(result);
+      setSaved((x) => [...x, l]);
     }
-    const result = await onSave(g.level, {
-      client_id: value,
-      tenant_id: tenant.trim(),
-    });
-    if (result === false) return;
-    if (result !== "saved") {
-      setRefusal(result);
-      return;
+    if (needsList) {
+      const listedNow = await onTenant(owner.toLowerCase(), org.trim());
+      if (listedNow !== "saved") return setRefusal(txt.notListed(listedNow));
     }
-    setSaved((x) => [...x, g.level]);
     if (nextApp) pick(nextApp);
     else onDone();
   };
-  const next = () =>
+  const next = () => {
+    const e = part.check?.() ?? {};
+    if (Object.keys(e).length) return setErrors((x) => ({ ...x, ...e }));
     appEnd ? void save() : lastPart ? go(at + 1) : setSub(s + 1);
+  };
   // Back from the very first sub-item is back to the start page.
   const back = () =>
     s > 0
@@ -1102,7 +1389,7 @@ function Walk({
       : lastPart
         ? narrow
           ? txt.nextStep
-          : txt.nextStepTo(txt.steps[list[at + 1].step])
+          : txt.nextStepTo(list[at + 1].title)
         : // A phone has the stepper's next number right above.
           narrow
           ? txt.next
@@ -1114,7 +1401,6 @@ function Walk({
     .filter((m) => !order.includes(m.id))
     .map((m) => txt.short[m.id]);
   const fill = (s + 1) / g.parts.length;
-  const title = txt.steps[g.step];
   return (
     <>
       <div className="ml-stephead">
@@ -1124,6 +1410,7 @@ function Walk({
             current={g.level}
             saved={isSaved}
             counts={counts.map((c) => (narrow ? `${c}` : txt.items(c)))}
+            name={(l) => appName(ctx, l)}
             onPick={pick}
           />
           {skipped.length > 0 && (
@@ -1149,40 +1436,46 @@ function Walk({
           className="si-progress ml-progress"
           data-testid="ml-progress"
           role="img"
-          aria-label={txt.stepOf(g.step + 1)}
+          aria-label={txt.stepOf(g.n + 1, g.of)}
         >
-          {[0, 1, 2, 3].map((j) => (
-            <span key={j} data-done={j < g.step || undefined}>
-              {j === g.step && (
-                <i
-                  className="ml-progress-fill"
-                  style={{ width: `${fill * 100}%` }}
-                />
-              )}
-            </span>
-          ))}
+          {list
+            .filter((x) => x.level === g.level)
+            .map((x, j) => (
+              <span key={x.step} data-done={j < g.n || undefined}>
+                {j === g.n && (
+                  <i
+                    className="ml-progress-fill"
+                    style={{ width: `${fill * 100}%` }}
+                  />
+                )}
+              </span>
+            ))}
         </div>
         <p
           className="si-stepname"
           data-testid="ml-stepname"
-          data-step={stepIds[g.step]}
+          data-step={g.step}
           data-level={g.level}
+          data-kind={kind}
         >
-          <span className="si-muted">{g.step + 1}/4</span> {title}
+          <span className="si-muted">
+            {g.n + 1}/{g.of}
+          </span>{" "}
+          {g.title}
         </p>
       </div>
-      <div className="ml-stepbody" data-testid={`ml-step-${stepIds[g.step]}`}>
+      <div className="ml-stepbody" data-testid={`ml-step-${g.step}`}>
         <Band
           crop={part.at[0]}
           t={part.at[1]}
           narrow={narrow}
           missing={part.missing}
         />
-        <Stepper parts={g.parts} sub={s} label={txt.stepperLabel(title)} />
+        <Stepper parts={g.parts} sub={s} label={txt.stepperLabel(g.title)} />
         <fieldset
           className="ml-panel"
           data-testid="ml-panel"
-          data-part={`${stepIds[g.step]}.${g.level}.${part.id}`}
+          data-part={`${g.step}.${g.level}.${part.id}`}
           aria-label={part.name}
         >
           {part.body}
@@ -1204,7 +1497,7 @@ function Walk({
         >
           {txt.close}
         </ControlButton>
-        {g.step === 0 && s === 0 && (
+        {g.step === "register" && s === 0 && (
           // An application made earlier, in Entra or by hand: straight to
           // its ids.
           <ControlButton
@@ -1243,6 +1536,10 @@ function Walk({
 /* ---------- the start page: the table with a checkbox per missing level ---------- */
 
 function Start({
+  kind,
+  setKind,
+  convert,
+  setConvert,
   apps,
   locked,
   justSaved,
@@ -1254,6 +1551,10 @@ function Start({
   onRemove,
   onClose,
 }: {
+  kind: MsKind;
+  setKind: (k: MsKind) => void;
+  convert: boolean;
+  setConvert: (on: boolean) => void;
   apps: IntegrationApp[];
   locked: boolean;
   justSaved: MsLevel[];
@@ -1262,16 +1563,21 @@ function Start({
   line: (app: IntegrationApp) => ReactNode;
   invalid: (app: IntegrationApp) => string;
   onBegin: (order: MsLevel[]) => void;
-  onRemove: (section: AppSection) => void;
+  onRemove: (section: AnySection) => void;
   onClose: () => void;
 }) {
-  const app = (l: MsLevel) =>
-    apps.find((a) => a.provider === msLevels.find((m) => m.id === l)?.section);
+  const app = (l: MsLevel) => appOf(apps, sectionFor(kind, l));
   const isSet = (l: MsLevel) => Boolean(app(l)?.usable);
   const order = msLevels
     .map((m) => m.id)
     .filter((l) => chosen.has(l) && !isSet(l));
   const left = msLevels.filter((m) => !isSet(m.id)).length;
+  // Levels whose own-organisation application could serve every
+  // organisation once switched in Entra.
+  const convertible =
+    kind === "shared"
+      ? msLevels.filter((m) => !isSet(m.id) && appOf(apps, m.section)?.usable)
+      : [];
   const toggle = (l: MsLevel, on: boolean) => {
     const n = new Set(chosen);
     if (on) n.add(l);
@@ -1279,8 +1585,9 @@ function Start({
     setChosen(n);
   };
   const lines = msLevels.flatMap((m) => {
-    const a = app(m.id);
-    return a ? [{ level: m.id, section: m.section, app: a }] : [];
+    const section = sectionFor(kind, m.id);
+    const a = appOf(apps, section);
+    return a ? [{ level: m.id, section, app: a }] : [];
   });
   return (
     <>
@@ -1295,6 +1602,21 @@ function Start({
               </span>
             </p>
           )}
+          <div className="ml-kind">
+            <Segmented
+              data-testid="ml-kind"
+              label={txt.kindLabel}
+              options={[
+                { id: "own", label: txt.kindOwn },
+                { id: "shared", label: txt.kindShared },
+              ]}
+              value={kind}
+              onChange={setKind}
+            />
+            <p className="ml-quiet" data-testid="ml-kind-note">
+              {kind === "shared" ? txt.kindSharedNote : txt.kindOwnNote}
+            </p>
+          </div>
           <p className="ml-act">{left ? txt.tick : txt.allSet}</p>
           <p className="ml-quiet ml-how">
             <Icon name="server" />
@@ -1307,6 +1629,29 @@ function Start({
             </p>
           )}
         </div>
+        {convertible.length > 0 && (
+          <div className="ml-convert" data-testid="ml-convert">
+            <RadioGroup
+              label={txt.convertLabel(
+                convertible.map((m) => txt.short[m.id]).join(", "),
+              )}
+              value={convert ? "convert" : "new"}
+              onChange={(v) => setConvert(v === "convert")}
+              options={[
+                {
+                  value: "convert",
+                  label: txt.convertYes,
+                  description: txt.convertYesNote,
+                },
+                {
+                  value: "new",
+                  label: txt.convertNo,
+                  description: txt.convertNoNote,
+                },
+              ]}
+            />
+          </div>
+        )}
         {lines.length > 0 && (
           <ul className="ml-known" data-testid="ml-known">
             {lines.map(({ level, section, app: a }) => (
@@ -1402,50 +1747,74 @@ function Start({
   );
 }
 
+const missingLevels = (apps: IntegrationApp[], kind: MsKind) =>
+  new Set(
+    msLevels
+      .filter((m) => !appOf(apps, sectionFor(kind, m.id))?.usable)
+      .map((m) => m.id),
+  );
+
 /** Microsoft 365: tasojen sovellukset. The start page, then the chosen
  * levels walked in full; each application is saved at its end, so an
  * interruption loses nothing that was saved. The dialog stays open while
  * the broker answers, so a refusal keeps what was typed. */
 export function MicrosoftLevelsDialog({
   apps,
+  tenants,
   locked,
   line,
   invalid,
   onSave,
+  onTenantSet,
   onRemove,
   onClose,
 }: {
   /** Root's sections, as the broker lists them. */
   apps: IntegrationApp[];
+  /** Root's allowed organisations, as the broker lists them. */
+  tenants: IntegrationTenant[];
   /** Root's browser setup is off, or the session cannot write. */
   locked: boolean;
   /** Who set a section and when. */
   line: (app: IntegrationApp) => ReactNode;
   /** Why a section in root's file is not used. */
   invalid: (app: IntegrationApp) => string;
-  onSave: (section: AppSection, fields: AppFields) => Promise<AppChange>;
-  onRemove: (section: AppSection) => void;
+  onSave: (section: AnySection, fields: AppFields) => Promise<AppChange>;
+  /** Adds an organisation to the allowed list. */
+  onTenantSet: (tenant: string, label: string) => Promise<AppChange>;
+  onRemove: (section: AnySection) => void;
   onClose: () => void;
 }) {
+  // An installation with a shared application opens on its kind; one
+  // without opens exactly as before.
+  const [kind, setKind] = useState<MsKind>(() =>
+    msLevels.some((m) => appOf(apps, m.shared)) ? "shared" : "own",
+  );
+  const [convert, setConvert] = useState(true);
   const [order, setOrder] = useState<MsLevel[] | null>(null);
   const [run, setRun] = useState(0);
   const [saving, setSaving] = useState(false);
-  const [client, setClientState] = useState<Partial<Record<MsLevel, string>>>(
-    {},
-  );
+  // Typed client ids, each kind its own: they are different applications.
+  const [clients, setClients] = useState<
+    Record<MsKind, Partial<Record<MsLevel, string>>>
+  >({ own: {}, shared: {} });
+  const setClientState: Dispatch<
+    SetStateAction<Partial<Record<MsLevel, string>>>
+  > = (u) =>
+    setClients((x) => ({
+      ...x,
+      [kind]: typeof u === "function" ? u(x[kind]) : u,
+    }));
   const [typedTenant, setTypedTenant] = useState("");
+  const [typedOrg, setTypedOrg] = useState("");
   const [justSaved, setJustSaved] = useState<MsLevel[]>([]);
-  // Every missing level is ticked at first; the administrator unticks what waits.
-  const [chosen, setChosen] = useState<Set<MsLevel>>(
-    () =>
-      new Set(
-        msLevels
-          .filter((m) => !apps.find((a) => a.provider === m.section)?.usable)
-          .map((m) => m.id),
-      ),
-  );
-  const save = async (l: MsLevel, fields: AppFields) => {
-    const section = msLevels.find((m) => m.id === l)?.section ?? "microsoft";
+  // Every missing level is ticked at first; the administrator unticks what
+  // waits. Each kind keeps its own ticks.
+  const [chosen, setChosen] = useState<Record<MsKind, Set<MsLevel>>>(() => ({
+    own: missingLevels(apps, "own"),
+    shared: missingLevels(apps, "shared"),
+  }));
+  const save = async (section: AnySection, l: MsLevel, fields: AppFields) => {
     setSaving(true);
     const result = await onSave(section, fields);
     setSaving(false);
@@ -1457,6 +1826,15 @@ export function MicrosoftLevelsDialog({
     // Uncertain: the page's row says so and offers a refresh.
     onClose();
     return false as const;
+  };
+  const list = async (tenant: string, label: string) => {
+    setSaving(true);
+    const result = await onTenantSet(tenant, label);
+    setSaving(false);
+    if (result.kind === "changed") return "saved" as const;
+    if (result.kind === "refused") return appRefusal(result.code);
+    // The section is saved; the walk stays so the list can be tried again.
+    return result.kind === "login" ? appRefusal("login") : txt.listUncertain;
   };
   return (
     <ModalOverlay
@@ -1470,34 +1848,48 @@ export function MicrosoftLevelsDialog({
           className="ah-dialog si-dialog ml-dialog"
           data-testid="ml-dialog"
           data-page={order ? "walk" : "start"}
+          data-kind={kind}
           aria-label={txt.title}
         >
           <Heading slot="title">{txt.title}</Heading>
           {order ? (
             <Walk
               key={run}
+              kind={kind}
+              convert={convert}
               order={order}
               apps={apps}
+              tenants={tenants}
               saving={saving}
               onSave={save}
+              onTenant={list}
               onStart={() => {
                 setJustSaved([]);
                 setOrder(null);
               }}
               onDone={() => setOrder(null)}
               onClose={onClose}
-              client={client}
+              client={clients[kind]}
               setClientState={setClientState}
               typedTenant={typedTenant}
               setTypedTenant={setTypedTenant}
+              typedOrg={typedOrg}
+              setTypedOrg={setTypedOrg}
             />
           ) : (
             <Start
+              kind={kind}
+              setKind={(k) => {
+                setJustSaved([]);
+                setKind(k);
+              }}
+              convert={convert}
+              setConvert={setConvert}
               apps={apps}
               locked={locked}
               justSaved={justSaved}
-              chosen={chosen}
-              setChosen={setChosen}
+              chosen={chosen[kind]}
+              setChosen={(c) => setChosen((x) => ({ ...x, [kind]: c }))}
               line={line}
               invalid={invalid}
               onBegin={(o) => {

@@ -3,6 +3,7 @@ import type { Provider, ProviderId } from "../app/integrations";
 import { adminOrganisations } from "../app/microsoftOrganisations";
 import { providerOrder } from "../app/onboardingConfig";
 import {
+  type AnySection,
   type AppChange,
   type AppFields,
   type AppProvider,
@@ -188,7 +189,7 @@ function statusOf(
   return { kind: "tool_missing", tools: catalog.missing_tools ?? [] };
 }
 
-function Mark({ p, s }: { p: ProviderId | AppSection; s: Status }) {
+function Mark({ p, s }: { p: ProviderId | AnySection; s: Status }) {
   const id = `si-status-${p}`;
   switch (s.kind) {
     case "ready":
@@ -500,8 +501,11 @@ function guide(
     : dropboxSteps(section === "dropbox_app_folder");
 }
 /** The section's name as the administrator reads it. */
-const sectionName = (section: AppSection) => {
+const sectionName = (section: AnySection) => {
   const provider = sectionProvider(section);
+  const shared = msLevels.find((m) => m.shared === section);
+  if (shared)
+    return txt.sharedLevelOf(name(provider), levelName(provider, shared.id));
   const level = levelSections[provider]?.find(
     (l) => l.section === section,
   )?.level;
@@ -813,7 +817,7 @@ function RemoveDialog({
   onConfirm,
   onClose,
 }: {
-  provider: AppSection;
+  provider: AnySection;
   step: boolean;
   /** Another of the provider's levels stays usable, so removing this one
    * removes a level, not the provider. */
@@ -832,6 +836,9 @@ function RemoveDialog({
         <ul className="si-consequences">
           <li>{txt.levelGone}</li>
           <li>{txt.levelRelogin}</li>
+          {msLevels.some((m) => m.shared === section) && (
+            <li data-testid="si-remove-shared">{txt.sharedGone}</li>
+          )}
         </ul>
         <div className="si-foot">
           <span className="si-grow" />
@@ -1018,7 +1025,7 @@ type Open =
   | { kind: "organisations" }
   | { kind: "setup"; provider: AppSection; replace?: IntegrationApp }
   | { kind: "audience"; clientID: string }
-  | { kind: "remove"; provider: AppSection }
+  | { kind: "remove"; provider: AnySection }
   | { kind: "fix"; provider: ProviderId; tools: string[] };
 
 export function ServerIntegrations({
@@ -1044,16 +1051,16 @@ export function ServerIntegrations({
   apps: IntegrationApps;
   /** Providers the site's onboarding has an integration step for. */
   steps?: ProviderId[];
-  pending?: Partial<Record<ProviderId | AppSection, PendingApp>>;
+  pending?: Partial<Record<ProviderId | AnySection, PendingApp>>;
   /** A definite refusal of the last removal, shown on its row. */
-  problem?: { provider: ProviderId | AppSection; text: string };
+  problem?: { provider: ProviderId | AnySection; text: string };
   /** GitHub logins of known actors, by id. */
   names?: Record<string, string>;
   canWrite?: boolean;
   onboardingHref: string;
   onOpenOnboarding?: () => void;
-  onSave: (provider: AppSection, fields: AppFields) => Promise<AppChange>;
-  onRemove: (provider: AppSection) => void;
+  onSave: (provider: AnySection, fields: AppFields) => Promise<AppChange>;
+  onRemove: (provider: AnySection) => void;
   /** Adds an organisation to Microsoft's allowed list or takes it off;
    * without them the organisations can only be read. */
   onTenantSet?: (tenant: string, label: string) => Promise<AppChange>;
@@ -1091,16 +1098,27 @@ export function ServerIntegrations({
             // Microsoft's four levels are one row with one guided setup;
             // a change to any of them is the row's.
             const ms = p === "microsoft";
+            // A level is offered when its own-organisation or its shared
+            // (multi-tenant) application is set; each section's own
+            // problem is shown under its level.
             const msApps = ms
-              ? msLevels.flatMap((m) => {
-                  const a = apps.apps.find((x) => x.provider === m.section);
-                  return a ? [{ level: m.id, app: a }] : [];
-                })
+              ? msLevels.flatMap((m) =>
+                  [m.section, m.shared].flatMap((section) => {
+                    const a = apps.apps.find((x) => x.provider === section);
+                    return a ? [{ level: m.id, app: a }] : [];
+                  }),
+                )
               : [];
-            const msSet = msApps.filter((x) => x.app.usable);
+            const msSet = msLevels
+              .filter((m) =>
+                msApps.some((x) => x.level === m.id && x.app.usable),
+              )
+              .map((m) => ({ level: m.id }));
             const msPending = ms
               ? (["uncertain", "set", "clear"] as const).find((k) =>
-                  msLevels.some((m) => pending[m.section] === k),
+                  msLevels.some(
+                    (m) => pending[m.section] === k || pending[m.shared] === k,
+                  ),
                 )
               : undefined;
             const s = statusOf(p, catalog, ms ? msPending : pending[p]);
@@ -1178,10 +1196,10 @@ export function ServerIntegrations({
                         )}
                         {msApps.map(
                           ({ level, app: a }) =>
-                            !pending[a.provider as AppSection] &&
+                            !pending[a.provider] &&
                             invalidApp(a) && (
                               <span
-                                key={level}
+                                key={a.provider}
                                 className="si-bad"
                                 data-testid={`si-invalid-${a.provider}`}
                               >
@@ -1192,7 +1210,7 @@ export function ServerIntegrations({
                             ),
                         )}
                         {problem &&
-                          sectionProvider(problem.provider as AppSection) ===
+                          sectionProvider(problem.provider as AnySection) ===
                             "microsoft" &&
                           !msPending && (
                             <span className="si-bad" role="alert">
@@ -1509,10 +1527,16 @@ export function ServerIntegrations({
       {open?.kind === "levels" && (
         <MicrosoftLevelsDialog
           apps={apps.apps}
+          tenants={apps.tenants}
           locked={locked}
           line={(a) => <AppLine app={a} names={names} />}
           invalid={invalidText}
           onSave={(section, fields) => onSave(section, fields)}
+          onTenantSet={(tenant, label) =>
+            onTenantSet
+              ? onTenantSet(tenant, label)
+              : Promise.resolve({ kind: "refused", code: "admin_required" })
+          }
           onRemove={(section) => setOpen({ kind: "remove", provider: section })}
           onClose={() => setOpen(undefined)}
         />
@@ -1555,10 +1579,12 @@ export function ServerIntegrations({
           step={(steps as string[]).includes(open.provider)}
           others={
             sectionProvider(open.provider) === "microsoft" &&
-            msLevels.some(
-              (m) =>
-                m.section !== open.provider &&
-                apps.apps.find((a) => a.provider === m.section)?.usable,
+            msLevels.some((m) =>
+              [m.section, m.shared].some(
+                (section) =>
+                  section !== open.provider &&
+                  apps.apps.find((a) => a.provider === section)?.usable,
+              ),
             )
           }
           onConfirm={() => onRemove(open.provider)}

@@ -83,6 +83,26 @@ export function microsoftConsentURL(
   return `https://login.microsoftonline.com/${encodeURIComponent(tenant)}/v2.0/adminconsent?${query}`;
 }
 
+/** The broker's label rule (integrationapps): 1 to 64 characters (code
+ * points), none a control or line-separator character. Trimmed by the
+ * caller. */
+export const validLabel = (s: string) => {
+  const chars = [...s];
+  return (
+    chars.length >= 1 &&
+    chars.length <= 64 &&
+    chars.every((c) => {
+      const n = c.codePointAt(0) ?? 0;
+      return !(
+        n < 0x20 ||
+        (n >= 0x7f && n <= 0x9f) ||
+        n === 0x2028 ||
+        n === 0x2029
+      );
+    })
+  );
+};
+
 export const guid =
   /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 

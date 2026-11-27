@@ -16,9 +16,9 @@ import {
 import { readServerOnboarding } from "./onboardingConfig";
 import { readAccess } from "./serverAccess";
 import {
+  type AnySection,
   type AppChange,
   type AppFields,
-  type AppSection,
   appRefusal,
   changeIntegrationApp,
   changeIntegrationTenant,
@@ -43,10 +43,10 @@ export function ServerIntegrationsSettings({ csrf }: { csrf?: string }) {
   const [names, setNames] = useState<Record<string, string>>({});
   const [failed, setFailed] = useState(false);
   const [pending, setPending] = useState<
-    Partial<Record<ProviderId | AppSection, PendingApp>>
+    Partial<Record<ProviderId | AnySection, PendingApp>>
   >({});
   const [problem, setProblem] = useState<{
-    provider: ProviderId | AppSection;
+    provider: ProviderId | AnySection;
     text: string;
   }>();
   // Bumped when a change is sent and when its reply arrives: a read that a
@@ -114,7 +114,7 @@ export function ServerIntegrationsSettings({ csrf }: { csrf?: string }) {
     return () => controller.abort();
   }, [reload]);
   const change = async (
-    provider: AppSection,
+    provider: AnySection,
     fields?: AppFields,
   ): Promise<AppChange> => {
     if (!csrf) return { kind: "refused", code: "admin_required" };

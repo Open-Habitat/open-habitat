@@ -660,6 +660,23 @@
   display: grid;
   gap: var(--ah-s1);
 }
+/* The first choice: whose accounts the applications serve, with one line
+   under it saying what the chosen kind means. */
+.ml-kind {
+  display: grid;
+  gap: var(--ah-s1);
+  justify-items: start;
+  margin-bottom: var(--ah-s1);
+}
+.ml-kind > p {
+  margin: 0;
+}
+/* Convert the own organisation's applications, or create new ones. */
+.ml-convert {
+  padding: var(--ah-s2) var(--ah-s3);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+}
 .ml-how {
   display: flex;
   gap: 6px;

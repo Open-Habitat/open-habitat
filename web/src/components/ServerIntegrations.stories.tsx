@@ -262,10 +262,12 @@ function Levels(props: { apps?: IntegrationApps }) {
   return (
     <MicrosoftLevelsDialog
       apps={(props.apps ?? googleAndMicrosoft).apps}
+      tenants={(props.apps ?? googleAndMicrosoft).tenants}
       locked={false}
       line={(a) => a.client_id ?? ""}
       invalid={() => ""}
       onSave={save}
+      onTenantSet={save}
       onRemove={() => {}}
       onClose={() => {}}
     />

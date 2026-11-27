@@ -1536,9 +1536,10 @@ is not offered.
 One server can serve its operator's own organisation and client
 organisations with **shared (multi-tenant) applications** registered once in
 the operator's own Entra. Each level is again its own application, registered
-as above except *Supported account types: Accounts in any organizational
-directory* (multi-tenant), not personal accounts. Its sections have the same
-two fields; `tenant_id` is the tenant that owns the registration:
+as above except *Supported account types: Multiple Entra ID tenants*
+(*Accounts in any organizational directory* in Entra's older view), not
+personal accounts. Its sections have the same two fields; `tenant_id` is the
+tenant that owns the registration:
 
 ```json
 "microsoft_shared":      {"client_id": "<Application (client) ID>", "tenant_id": "<owning Directory (tenant) ID>"},
@@ -1568,7 +1569,17 @@ admin-consent link for that organisation's administrator and changes
 nothing. While `integrations.browser_setup` is on, a browser administrator
 manages the same list from Palvelinintegraatiot › Microsoft 365 ›
 Organisaatiot, which also shows each organisation's message and links for
-its administrator; the shared sections themselves are set from this CLI.
+its administrator, and creates the shared applications from Microsoft 365 ›
+Tasot › *Useita organisaatioita*: the same guided walk as the single-tenant
+one, which saves each level's `microsoft_shared*` section and adds the own
+tenant to the list under the name the administrator gives. An operator whose
+single-tenant applications are its own may instead switch them to
+multi-tenant in Entra (Authentication › Supported accounts) and save the
+same client ids in the shared sections, which the guide offers; existing
+connections keep their client id and go on without a sign-in, the
+single-tenant sections stay, and the switch widens who can approve and use
+those applications. Neither the guide nor the broker can see Entra, so a
+switch not made there shows only when a client's first person signs in.
 The server cannot see whether a client approved: the first person's
 sign-in is the test. Approving creates an enterprise application in the
 client's Entra, which its administrator can restrict (*Assignment required*)

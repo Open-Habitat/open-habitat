@@ -6,6 +6,7 @@ import {
   guid,
   hasShared,
   type MsLevelId,
+  validLabel,
 } from "../app/microsoftOrganisations";
 import type { AppChange, IntegrationApps } from "../app/serverIntegrations";
 import { appRefusal } from "../app/serverIntegrations";
@@ -31,18 +32,6 @@ const levelsTxt = liveText(microsoftLevelsText);
 /** An organisation's name as the dialog shows it. */
 export const organisationName = (o: AdminOrganisation) =>
   o.label ?? (o.own ? txt.ownUnnamed : o.tenant_id);
-
-/** No control or line-separator character, as the broker's label rule. */
-const printable = (s: string) =>
-  [...s].every((c) => {
-    const n = c.codePointAt(0) ?? 0;
-    return !(
-      n < 0x20 ||
-      (n >= 0x7f && n <= 0x9f) ||
-      n === 0x2028 ||
-      n === 0x2029
-    );
-  });
 
 type Step =
   | { k: "list" }
@@ -261,8 +250,7 @@ function AddStep({
   const l = label.trim();
   const t = tenant.trim().toLowerCase();
   const dup = orgs.find((o) => o.listed && o.tenant_id === t);
-  // The broker's own bounds (integrationapps): 1 to 64 printable characters.
-  const badLabel = l.length < 1 || l.length > 64 || !printable(l);
+  const badLabel = !validLabel(l);
   const labelErr = tried && badLabel ? txt.errLabel : undefined;
   const tenantErr = tried
     ? !guid.test(t)

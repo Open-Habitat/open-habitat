@@ -36,12 +36,15 @@ export type AppSection =
   | "microsoft_read"
   | "dropbox_app_folder";
 /** The operator's multi-tenant Microsoft applications, one per level,
- * serving the allowed organisations (managed from root's CLI). */
+ * serving the allowed organisations (set from the Levels guide or root's
+ * CLI). */
 export type MicrosoftSharedSection =
   | "microsoft_shared"
   | "microsoft_shared_nosend"
   | "microsoft_shared_drafts"
   | "microsoft_shared_read";
+/** Any section the browser may ask the broker to set or clear. */
+export type AnySection = AppSection | MicrosoftSharedSection;
 /** The narrower levels' sections of each provider, broadest first. */
 export const levelSections: Partial<
   Record<AppProvider, { section: AppSection; level: Level }[]>
@@ -113,7 +116,7 @@ export async function readIntegrationApps(
  * retried: a lost reply is reported as uncertain. */
 export async function changeIntegrationApp(
   csrf: string,
-  provider: AppSection,
+  provider: AnySection,
   fields?: AppFields,
 ): Promise<AppChange> {
   let response: Response | undefined;
@@ -217,7 +220,7 @@ export function invalidApp(app: IntegrationApp): InvalidApp | undefined {
 /** Field errors for a section, keyed by field; empty when the broker would
  * accept it. Values are trimmed by the caller. */
 export function appErrors(
-  section: AppSection,
+  section: AnySection,
   f: AppFields,
 ): Partial<Record<string, string>> {
   const provider = sectionProvider(section);
@@ -232,8 +235,8 @@ export function appErrors(
     if (!dropboxValue.test(a)) e[first] = txt.errors.dropboxKey;
     if (!dropboxValue.test(b)) e[second] = txt.errors.dropboxSecret;
   } else {
-    // A single-tenant app: the tenant is the organisation's GUID, never an
-    // audience such as common.
+    // The tenant is the organisation's GUID, never an audience such as
+    // common: a single-tenant app's own, or the tenant that owns a shared one.
     if (!guid.test(a)) e[first] = txt.errors.microsoftClient;
     if (!guid.test(b)) e[second] = txt.errors.microsoftTenant;
   }

@@ -95,7 +95,7 @@ const fi = {
   items: (n: number) => `${n} kohtaa`,
   skipped: (names: string) => `Ei tässä asetuksessa: ${names}`,
   skippedShort: (n: number) => `+${n} ohitetaan`,
-  stepOf: (n: number) => `Vaihe ${n}/4`,
+  stepOf: (n: number, of: number) => `Vaihe ${n}/${of}`,
   steps: [
     "Rekisteröi sovellus",
     "Julkinen asiakas",
@@ -238,6 +238,78 @@ const fi = {
   consentLink: "hyväksyntälinkki",
   sameClient: (app: string) =>
     `Sama tunnus kuin sovelluksella ${app}. Jokaisella tasolla on oma sovelluksensa ja oma tunnuksensa.`,
+
+  // Useita organisaatioita: the shared (multi-tenant) applications.
+  kindLabel: "Kenen tilit voivat yhdistää",
+  kindOwn: "Vain oma organisaatio",
+  kindShared: "Useita organisaatioita",
+  kindOwnNote: "Sovellukset palvelevat vain oman organisaatiosi tilejä.",
+  kindSharedNote:
+    "Sovellukset palvelevat myös Organisaatiot-listan organisaatioita, kun niiden pääkäyttäjä on hyväksynyt ne. Ne luodaan omaan Entraasi kuten oman organisaation sovellukset.",
+  convertLabel: (names: string) => `Oman organisaation sovellukset (${names})`,
+  convertYes: "Muunna usean organisaation sovelluksiksi",
+  convertYesNote:
+    "Sama sovellus ja sama tunnus, joten nykyiset yhteydet jatkuvat ilman uutta kirjautumista. Laajentaa sitä, kuka voi hyväksyä ja käyttää sovellusta.",
+  convertNo: "Luo uudet sovellukset",
+  convertNoNote: "Nykyiset jäävät palvelemaan vain omaa organisaatiota.",
+  convertSteps: ["Muunna sovellus", "Tallenna"],
+  /** A shared application's name in Entra: it says who runs it. */
+  sharedApp: (app: string, org: string) => `${app} (${org})`,
+  orgUnknown: "<organisaationne nimi>",
+  publisherItem: "Nimi ja julkaisija",
+  publisherAct:
+    "Toisen organisaation pääkäyttäjä näkee hyväksyessään sovelluksen nimen ja julkaisijan. Nimen on hyvä kertoa, kuka palvelua ylläpitää.",
+  orgField: "Organisaationne nimi",
+  orgHint:
+    "Tulee sovellusten nimiin ja organisaatiolistalle oman organisaation nimeksi. Näkyy palvelimen käyttäjille.",
+  errOrg: "Anna organisaation nimi (enintään 64 merkkiä).",
+  renameAct: (branding: ReactNode, name: ReactNode) => (
+    <>
+      Nimen voi vaihtaa sovelluksen valikosta {branding}, kohdassa {name}:
+    </>
+  ),
+  unverified:
+    "Julkaisijan vahvistus (Publisher verification) on vapaaehtoinen. Ilman sitä hyväksyntäsivu näyttää julkaisijan vahvistamattomana (unverified).",
+  missingPublisher:
+    "hyväksyntäsivu, jonka toisen organisaation pääkäyttäjä näkee",
+  missingBranding: "Branding & properties -sivu",
+  chooseMulti: "Avaa valikko ja valitse",
+  multiTenant: "Multiple Entra ID tenants",
+  multiNote:
+    "Ei vaihtoehtoa, jossa ovat mukana henkilökohtaiset Microsoft-tilit. Vanhemmassa näkymässä sama vaihtoehto on Accounts in any organizational directory.",
+  missingMulti:
+    "Supported account types -valikon vaihtoehto Multiple Entra ID tenants",
+  findApp: "Hae listasta sovelluksen tunnuksella ja avaa sovellus.",
+  missingSupported: "Authentication (Preview) › Supported accounts -välilehti",
+  convertAccounts: (
+    auth: ReactNode,
+    tab: ReactNode,
+    multi: ReactNode,
+    save: ReactNode,
+  ) => (
+    <>
+      Valitse sovelluksen vasemmasta valikosta {auth} ja välilehti {tab}.
+      Valitse {multi} ja {save}.
+    </>
+  ),
+  cannotSee:
+    "Tämä sivu ei näe Entraa eikä tiedä, onko muutos tehty. Sen kertoo ensimmäinen kirjautuminen toisesta organisaatiosta.",
+  uriConflict:
+    "Jos Entra ei tallenna muutosta, syy on yleensä sovelluksen Application ID URI, jonka pitää olla yksilöllinen kaikissa organisaatioissa. Luo silloin uusi sovellus tämän sijaan.",
+  convertDone: (tab: ReactNode, multi: ReactNode) => (
+    <>
+      {tab}-välilehdellä on valittuna {multi}.
+    </>
+  ),
+  idsItem: "Tunnukset",
+  sameIds:
+    "Usean organisaation sovellus tallennetaan samoilla tunnuksilla. Oman organisaation yhteydet jatkuvat ilman uutta kirjautumista.",
+  widens:
+    "Muutos laajentaa sitä, kuka voi hyväksyä ja käyttää sovellusta: minkä tahansa organisaation pääkäyttäjä voi hyväksyä sen, ja sen jälkeen organisaation ihmiset voivat kirjautua sillä. Habitat palvelee vain organisaatiolistan organisaatioita, mutta lista ei ole tietoturvaraja.",
+  notListed: (reason: string) =>
+    `Sovellus on tallennettu, mutta omaa organisaatiota ei lisätty organisaatiolistalle. ${reason} Tallenna yrittää uudelleen.`,
+  listUncertain:
+    "Vastaus katosi matkalla, joten ei tiedetä, lisättiinkö oma organisaatio listalle.",
 };
 
 export const microsoftLevelsText = catalog(
@@ -322,7 +394,7 @@ export const microsoftLevelsText = catalog(
     items: (n) => `${n} items`,
     skipped: (names) => `Not in this setup: ${names}`,
     skippedShort: (n) => `+${n} skipped`,
-    stepOf: (n) => `Step ${n}/4`,
+    stepOf: (n, of) => `Step ${n}/${of}`,
     steps: [
       "Register the app",
       "Public client",
@@ -456,6 +528,70 @@ export const microsoftLevelsText = catalog(
     consentLink: "consent link",
     sameClient: (app) =>
       `The same id as the app ${app}. Each level has its own app and its own id.`,
+    kindLabel: "Whose accounts can connect",
+    kindOwn: "Own organization only",
+    kindShared: "Several organizations",
+    kindOwnNote: "The apps serve only your own organization's accounts.",
+    kindSharedNote:
+      "The apps also serve the organizations on the Organizations list once their administrator has approved them. They are created in your own Entra like your own organization's apps.",
+    convertLabel: (names) => `Your own organization's apps (${names})`,
+    convertYes: "Convert them to multi-organization apps",
+    convertYesNote:
+      "The same app and the same id, so current connections go on without a new sign-in. Widens who can approve and use the app.",
+    convertNo: "Create new apps",
+    convertNoNote: "The current ones keep serving your own organization only.",
+    convertSteps: ["Convert the app", "Save"],
+    sharedApp: (app, org) => `${app} (${org})`,
+    orgUnknown: "<your organization's name>",
+    publisherItem: "Name and publisher",
+    publisherAct:
+      "When another organization's administrator approves the app, they see its name and publisher. The name should say who runs the service.",
+    orgField: "Your organization's name",
+    orgHint:
+      "Goes into the apps' names and onto the organization list as your own organization's name. Visible to this server's users.",
+    errOrg: "Enter the organization's name (at most 64 characters).",
+    renameAct: (branding, name) => (
+      <>
+        You can change the name in the app's menu under {branding}, in {name}:
+      </>
+    ),
+    unverified:
+      "Publisher verification is optional. Without it the consent page shows the publisher as unverified.",
+    missingPublisher:
+      "the consent page another organization's administrator sees",
+    missingBranding: "the Branding & properties page",
+    chooseMulti: "Open the menu and choose",
+    multiTenant: "Multiple Entra ID tenants",
+    multiNote:
+      "Not the option that includes personal Microsoft accounts. In the older view the same option is Accounts in any organizational directory.",
+    missingMulti:
+      "the Multiple Entra ID tenants option of Supported account types",
+    findApp: "Search the list by the app's id and open the app.",
+    missingSupported: "the Authentication (Preview) › Supported accounts tab",
+    convertAccounts: (auth, tab, multi, save) => (
+      <>
+        Choose {auth} in the app's left menu and the {tab} tab. Choose {multi}
+        and {save}.
+      </>
+    ),
+    cannotSee:
+      "This page cannot see Entra and does not know whether the change was made. The first sign-in from another organization shows it.",
+    uriConflict:
+      "If Entra does not save the change, the usual cause is the app's Application ID URI, which must be unique across all organizations. Then create a new app instead.",
+    convertDone: (tab, multi) => (
+      <>
+        the {tab} tab has {multi} chosen.
+      </>
+    ),
+    idsItem: "Credentials",
+    sameIds:
+      "The multi-organization app is saved with the same ids. Your own organization's connections go on without a new sign-in.",
+    widens:
+      "The change widens who can approve and use the app: any organization's administrator can approve it, and after that the organization's people can sign in with it. Habitat serves only the organizations on the list, but the list is not a security boundary.",
+    notListed: (reason) =>
+      `The app is saved, but your own organization was not added to the organization list. ${reason} Save tries again.`,
+    listUncertain:
+      "The reply was lost on the way, so it is not known whether your organization was added to the list.",
   },
   {
     organises: "Organises and drafts",
@@ -465,5 +601,34 @@ export const microsoftLevelsText = catalog(
       "<organisation> is your organisation's name; it is masked in the pictures.",
     grantFor: "Grant admin consent for <organisation>",
     grantedFor: "Granted for <organisation>",
+    kindOwn: "Own organisation only",
+    kindShared: "Several organisations",
+    kindOwnNote: "The apps serve only your own organisation's accounts.",
+    kindSharedNote:
+      "The apps also serve the organisations on the Organisations list once their administrator has approved them. They are created in your own Entra like your own organisation's apps.",
+    convertLabel: (names) => `Your own organisation's apps (${names})`,
+    convertYes: "Convert them to multi-organisation apps",
+    convertNoNote: "The current ones keep serving your own organisation only.",
+    orgUnknown: "<your organisation's name>",
+    publisherAct:
+      "When another organisation's administrator approves the app, they see its name and publisher. The name should say who runs the service.",
+    orgField: "Your organisation's name",
+    orgHint:
+      "Goes into the apps' names and onto the organisation list as your own organisation's name. Visible to this server's users.",
+    errOrg: "Enter the organisation's name (at most 64 characters).",
+    missingPublisher:
+      "the consent page another organisation's administrator sees",
+    cannotSee:
+      "This page cannot see Entra and does not know whether the change was made. The first sign-in from another organisation shows it.",
+    uriConflict:
+      "If Entra does not save the change, the usual cause is the app's Application ID URI, which must be unique across all organisations. Then create a new app instead.",
+    sameIds:
+      "The multi-organisation app is saved with the same ids. Your own organisation's connections go on without a new sign-in.",
+    widens:
+      "The change widens who can approve and use the app: any organisation's administrator can approve it, and after that the organisation's people can sign in with it. Habitat serves only the organisations on the list, but the list is not a security boundary.",
+    notListed: (reason) =>
+      `The app is saved, but your own organisation was not added to the organisation list. ${reason} Save tries again.`,
+    listUncertain:
+      "The reply was lost on the way, so it is not known whether your organisation was added to the list.",
   },
 );
