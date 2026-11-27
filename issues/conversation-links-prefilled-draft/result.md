@@ -83,3 +83,13 @@ Lähetä painetaan. C jää A:n osaksi tilanteeseen, jossa kentässä on jo jota
 3. Riittääkö lähteeksi linkin väite, vai tarvitaanko myöhemmin hostin
    allekirjoittamia linkkejä omille automaatioille, jolloin lähde voitaisiin
    näyttää varmistettuna?
+
+### Jarin vastaukset kierrokseen 1 (27.11.2026)
+
+- **A** valittiin.
+- Keskustelun pysyvä nimi linkissä tuntuu oudolta eikä ehkä tarpeelliselta.
+- Lähdettä (*linkin mukaan x*) ei tarvita; käyttäjä ymmärtää, mistä on kyse.
+- Uusi: ominaisuus kytketään päälle asetusten osiossa vaarallisille
+  toiminnoille (`risky-features-settings`), varoituksen kanssa; linkit ovat
+  sen ensimmäinen jäsen. Kierros 2 näyttää molemmat.
+
