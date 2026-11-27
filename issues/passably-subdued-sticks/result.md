@@ -1,5 +1,88 @@
 # Microsoft 365 usealle organisaatiolle: prototyyppikierrokset
 
+## Kierros 4
+
+Kierros: `design-system/prototypes/rounds/2026-11-27-entra-organisaatiot-4/`
+(`NOTES.md` kertoo URL-parametrit ja komennot). Sivu:
+`design-system/prototypes/dist/2026-11-27-entra-organisaatiot-4/offline.html`,
+tehdään uudelleen komennolla
+`node design-system/prototypes/rounds/2026-11-27-entra-organisaatiot-4/build.mjs`.
+
+### Jarin päätökset kierroksesta 3 (27.11.2026)
+
+- A2a valittiin. A2b poistuu valitsimesta, Nyt jää vertailuun.
+- Rivin tasorivi (*4/4 tasoa asetettu: Täysi · …*) siirtyy Tasot-painikkeeseen
+  lukuna samalla tavalla kuin *Organisaatiot 3*. Rivillä on vain kaksi
+  painiketta.
+- Viimeistelyveto: kaikki välit tarkistetaan tokeneita vasten.
+
+### Mitä muuttui
+
+- Valitsimessa ovat **Nyt** ja **A2a**.
+- Microsoft-rivillä on nimi, *Käyttöönotossa*, tila ja kaksi painiketta:
+  *Organisaatiot 3* ja *Tasot 4/4*. Luku on molemmissa sama pilleri.
+  Organisaatioiden ikoni poistui, jotta painikkeet ovat samanlaiset.
+- Tasorivi on poissa rivistä. Asetettujen tasojen nimet ovat Tasot-ikkunassa
+  kuten ennenkin sekä painikkeen saavutettavassa nimessä ja vihjeessä
+  (*Tasot, 4/4 tasoa asetettu: Täysi, Ei lähetystä, Luonnokset, Vain luku*).
+  Organisaatiot-painikkeen nimi ja vihje luettelevat organisaatiot samoin.
+- Uusi tilanne **Näytä › Tasot 2/4**: tilasarake näyttää tuotannon
+  *2/4 tasoa tarjolla* (varoitus), painike on *Tasot 2/4* toissijaisena
+  (huomiota vaativa), ja sen nimi päättyy *Aseta puuttuvat*. Rivillä luku
+  ja tila kertovat saman asian kahdesti, mutta tila on sarake, jota luetaan
+  ylhäältä alas, ja painike kertoo, mistä puuttuvat asetetaan.
+- Tila *Hyväksyntä ei näy palvelimelle* jäi ennalleen: lyhyempi muoto
+  (*Hyväksyntä ei tiedossa*) ei kerro, että juuri palvelin ei sitä näe.
+  Hyväksyntäviesti ja rajoituksen lause ovat kierroksen 3.
+
+### Välien korjaukset
+
+`check.mjs` mittaa nyt jokaisessa tilassa (rivi, molemmat ikkunat, jokainen
+vaihe, Lisätietoja auki, lisäyksen virheet, henkilön näkymät; 1440 ja 390,
+vaalea ja tumma, englanti), ettei kahden näkyvän kontrollin laatikoiden väli
+ole alle `--ah-control-gap` (6 px) ja että poisto on vähintään `--ah-s4`
+(12 px) edellisestä kontrollista. Kierroksen 3 rakennelmassa tarkistus löysi
+nämä, ja ne on korjattu:
+
+- **Hyväksyntävaiheen tasolinkit** (*Vain luku*, *Luonnokset*, …) olivat
+  4 px toisistaan, puhelimessa rivittyessään 2 px. Nyt `--ah-control-gap`.
+  Tämä on todennäköisin kohta, jonka Jari näki.
+- **Tasot-ikkunan Poista-painikkeet** (tuotanto, `.ml-known`) olivat
+  päällekkäin 2 px:n välein. Nyt `--ah-control-gap`.
+- **Google-rivin *Käyttöönotossa*-linkki ja *Mitä tasot sallivat*** (tuotanto,
+  `.ah-people-person`) olivat 2 px toisistaan. Nyt `--ah-control-gap`.
+- **Rivin painikkeet rivittyessään** (tuotanto, `.ah-people-end`) saivat
+  pystyväliksi 4 px. Nyt `--ah-control-gap`.
+- **Poiston vahvistus** on vähintään `--ah-s4` Peruuta-painikkeesta (oli 6 px).
+- **Organisaatioiden rivit** ovat yhtä korkeat (Oma-merkki teki ensimmäisestä
+  korkeamman), toiminnot tasattu rivin loppuun.
+- **Puhelimessa** rivin toiminnot ovat nimen ja tilan alla, joten nimi ei
+  enää rivity kahden painikkeen vieressä.
+- **Lisäysvaiheen kentät** ovat ikkunan levyiset, joten GUID mahtuu riville.
+
+Tuotannon osien korjaukset ovat kierroksessa vain A2a:lle; Nyt näyttää
+tuotannon sellaisenaan. Toteutus vie ne tuotannon CSS:ään.
+
+### Päätökset myöhempään tarkasteluun
+
+- Luku on pilleri (*Tasot 4/4*), ei tekstiä (*Tasot (4/4)*): sama kuin
+  kierroksen 3 *Organisaatiot 3*, ja numerot pysyvät tasalevyisinä.
+- Kun yhtään tasoa ei ole asetettu, painike on tuotannon *Luo sovellukset…*
+  ilman lukua; *0/4* ei kertoisi, mitä tehdä. Tätä tilaa ei ole kierroksessa.
+- Ikkunoiden otsikon yläväli (otsikon oma marginaali ja ikkunan reunus) on
+  tuotannon kaikille ikkunoille yhteinen, joten sitä ei muutettu.
+- Tasot-ikkunan Poista on tuotannossa hiljainen vihreä painike eikä punainen
+  ikoni toissijaisella pinnalla, kuten pienten painikkeiden säännöt sanovat.
+  Se jätettiin, koska kierros koskee välejä.
+
+### Kysymykset Jarille
+
+1. Riittääkö *Tasot 2/4* ja tilan *2/4 tasoa tarjolla* yhdistelmä
+   osittaisessa tilassa, vai pitäisikö painikkeen sanoa tuotannon tapaan
+   *Aseta puuttuvat…* luvun sijaan?
+
+---
+
 ## Kierros 3
 
 Kierros: `design-system/prototypes/rounds/2026-11-27-entra-organisaatiot-3/`

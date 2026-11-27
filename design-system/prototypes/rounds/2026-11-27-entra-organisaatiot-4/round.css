@@ -1,0 +1,119 @@
+/* Review chrome above the page, clear of the floating picker. */
+html, body { margin: 0; background: var(--ah-bg); }
+.rq-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.rq-title { font-weight: 600; }
+.rq-bar select, .rq-bar > button { font: inherit; max-width: 100%; }
+.rq-line { flex-basis: 100%; margin: 0; color: var(--ah-ink-2); font-size: 12px; }
+
+/* The view switch is the round's most visible control: Jari did not find the person side in round 1. */
+.rq-views { display: inline-flex; padding: 2px; gap: 2px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-bg); }
+.rq-views button {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border: 0; border-radius: calc(var(--ah-r-md) - 2px);
+  background: none; color: var(--ah-ink-2); font: inherit; font-weight: 600; cursor: pointer;
+}
+.rq-views button svg { width: 14px; height: 14px; }
+.rq-views button[aria-pressed="true"] { background: var(--ah-surface); color: var(--ah-ink); box-shadow: var(--ah-shadow-menu); }
+.rq-views button:focus-visible { outline: 2px solid var(--ah-focus, var(--ah-accent)); outline-offset: 1px; }
+@media (max-width: 600px) {
+  .rq-bar { padding: 6px 10px; gap: 4px 10px; }
+  .rq-title { display: none; }
+  .rq-bar label { font-size: 11px; }
+  .rq-bar select { max-width: 40vw; }
+  .rq-views { flex-basis: 100%; }
+  .rq-views button { flex: 1; justify-content: center; }
+  .rq-line { font-size: 11px; line-height: 1.3; }
+}
+
+.rq-stage { padding-top: var(--review-h, 0px); padding-bottom: 96px; color: var(--ah-ink); }
+.rq-page { max-width: 960px; margin: 0 auto; padding: var(--ah-s5, 24px) var(--ah-s4, 16px); }
+.rq-h { font-size: 20px; margin: 0 0 var(--ah-s3, 12px); }
+.rq-h3 { font-size: 14px; margin: 0; }
+.rq-kicker { margin: 0; color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.rq-toast {
+  position: fixed; z-index: 200; left: 50%; top: calc(var(--review-h, 0px) + 8px); transform: translateX(-50%);
+  max-width: min(92vw, 560px); margin: 0; padding: 8px 14px; border-radius: var(--ah-r-md);
+  background: var(--ah-ink); color: var(--ah-bg); font: 12.5px/1.4 var(--ah-font, system-ui); overflow-wrap: anywhere;
+}
+.rq-slot { display: contents; }
+.rq-note { display: flex; gap: 6px; align-items: flex-start; margin: 0; }
+.rq-note svg { flex: none; width: 14px; height: 14px; margin-top: 3px; }
+.rq-acts { display: flex; flex-wrap: wrap; gap: var(--ah-s2); }
+
+/* Lisätietoja */
+.rq-more { display: grid; gap: 6px; }
+.rq-morebody { display: grid; gap: 6px; padding-left: 20px; color: var(--ah-ink-2); font-size: var(--ah-size-meta); line-height: 1.5; }
+.rq-morebody p { margin: 0; }
+
+/* The row: Levels already explains the levels, so the row's own disclosure
+   goes, and the line of set levels moves into the Levels button. Production's
+   Levels button stays in the DOM, hidden, and the round's button opens it. */
+.rq-a2 :is([data-testid="si-levels-microsoft"], [data-testid="si-levels-note"], [data-testid="si-setup-microsoft"]) { display: none; }
+/* One count treatment for both buttons. */
+.rq-count { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 var(--ah-s1); border-radius: var(--ah-r-pill); background: var(--ah-bg); border: 1px solid var(--ah-line); font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* Spacing fixes to production's pieces, A2a only (dialogs render outside the
+   stage, so they are scoped by the direction on the root). Adjacent controls
+   are at least --ah-control-gap apart, so focus rings never cover each other. */
+/* Wrapped row actions: production's row gap is s1. */
+html[data-rq-direction="1"] .ah-people-end { gap: var(--ah-control-gap) var(--ah-s2); }
+/* A badge link above the row's disclosure: production's 2 px. */
+html[data-rq-direction="1"] .ah-people-person { gap: var(--ah-control-gap); }
+/* Levels dialog: the set levels' Remove buttons stacked 2 px apart. */
+html[data-rq-direction="1"] .ml-known { gap: var(--ah-control-gap); }
+/* A destructive action stands at least s4 from the control before it. */
+html[data-rq-direction="1"] .si-foot > .rq-destructive { margin-left: calc(var(--ah-s4) - var(--ah-s2)); }
+
+/* The dialog: production's modal and overlay, as Levels uses them; narrower than
+   Levels' 920 px, which is sized for its comparison table. */
+.ah-modal.rq-modal { display: flex; flex-direction: column; }
+.rq-dialog { box-sizing: border-box; gap: var(--ah-s4); }
+.rq-stephead { outline: none; }
+.rq-orglist { gap: var(--ah-s3); justify-items: stretch; }
+
+/* Rows. Remove is last and at least s4 from the approval button (small-button rules). */
+/* Every row as tall as the tallest (Own's badge would make the first taller). */
+.rq-orgs { list-style: none; margin: 0; padding: 0; display: grid; grid-auto-rows: 1fr; border-block: 1px solid var(--ah-line-soft, var(--ah-line)); }
+.rq-orgs li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--ah-s2) var(--ah-s4); padding: var(--ah-s3) 0; border-bottom: 1px solid var(--ah-line-soft, var(--ah-line)); }
+.rq-orgs li:last-child { border-bottom: 0; }
+.rq-orgmain { display: grid; gap: 2px; min-width: 0; }
+.rq-orgname { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; overflow-wrap: anywhere; }
+.rq-orgname strong { font-weight: 600; }
+.rq-orgstate { display: inline-flex; align-items: center; gap: 6px; color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
+.rq-orgstate svg { flex: none; width: 14px; height: 14px; color: var(--ah-muted); }
+.rq-orgstate[data-known] svg { color: var(--ah-ok); }
+.rq-rowacts { display: inline-flex; align-items: center; gap: var(--ah-s4); flex: none; justify-self: end; }
+/* On a phone the actions go under the name, as production's lists do, so the
+   name keeps the width and does not wrap beside two buttons. */
+@media (max-width: 640px) {
+  .rq-orgs { grid-auto-rows: auto; }
+  .rq-orgs li { grid-template-columns: minmax(0, 1fr); }
+  .rq-rowacts { justify-self: start; }
+}
+
+/* Consent. */
+.rq-consent { display: grid; gap: var(--ah-s3); min-width: 0; }
+.rq-consent > p { margin: 0; }
+.rq-message { margin: 0; padding: var(--ah-s3); white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font: 13px/1.5 var(--ah-font, system-ui); background: var(--ah-surface-2, var(--ah-bg)); border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); max-height: 300px; overflow: auto; }
+.rq-links { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-control-gap); }
+.rq-linkstitle { color: var(--ah-ink-2); font-size: var(--ah-size-meta); margin-right: var(--ah-s1); }
+/* The fields take the dialog's width, so a GUID fits on one line and the step does not look ragged. */
+.rq-add { display: grid; gap: var(--ah-s3); justify-items: stretch; }
+
+/* Person. */
+.rq-orgtop { display: grid; gap: 6px; margin-bottom: var(--ah-s2); }
+.rq-orgchosen { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; margin: 0; }
+.rq-orgchosen svg { width: 14px; height: 14px; }
+.rq-cardorg { display: block; }
+.rq-offnote { margin: 0; padding: 4px 14px 12px; }
+.rq-sim { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s2); margin-top: var(--ah-s3); padding: var(--ah-s2); border: 1px dashed var(--ah-line-strong, var(--ah-line)); border-radius: var(--ah-r-md); }
+.rq-person [data-testid="integration-tile-microsoft"] { display: none; }
+.rq-cardwrap { display: contents; }
+.rq-refusal { display: grid; gap: var(--ah-s2); }
+.rq-refusal p { margin: 0; }
+.rq-ms { display: grid; gap: var(--ah-s2); }
+@media (prefers-reduced-motion: reduce) { .rq-review *, .ah-overlay, .ah-overlay * { animation: none !important; transition: none !important; } }
