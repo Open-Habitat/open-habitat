@@ -3,7 +3,7 @@
 ### Jarin vastaukset kierrokseen 1 (27.11.2026)
 
 - **Paneeli** on paras.
-- Etänäytön koko pysyy kuten nyt (kapellimestarin tulkinta lauseesta "tila,
+- Etänäytön koko pysyy kuten nyt; Jari: "En usko, että sitä tarvitaan" (ei koon seurantaa). Alkuperäinen lause: "tila,
   jossa tämä aina on, on se ikkuna joka on jo nyt": ei koon seurantaa).
 - Kun välilehdet ovat Habitatin palkissa, ne eivät saa näkyä myös etäkuvassa
   (Chromen oma välilehtirivi pois kuvasta).
