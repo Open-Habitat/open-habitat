@@ -119,6 +119,14 @@ it("marks only providers with an onboarding step, hidden while not ready", () =>
   expect(screen.getByTestId("si-step-microsoft").dataset.hidden).toBe("true");
   expect(screen.getByTestId("si-step-apple").dataset.hidden).toBeUndefined();
   expect(screen.queryByTestId("si-step-imap")).toBeNull();
+  // The pill says the service is on offer, not that setup is unfinished.
+  expect(screen.getByTestId("si-step-google").textContent).toBe("Tarjolla");
+  expect(
+    screen.getByTestId("si-step-google").getAttribute("aria-label"),
+  ).toContain("Asetukset › Tiedot agenteille");
+  expect(screen.getByTestId("si-step-microsoft").textContent).toBe(
+    "Ei tarjolla · vaihe piilossa",
+  );
   fireEvent.click(screen.getByTestId("si-step-microsoft"));
   expect(calls.onOpenOnboarding).toHaveBeenCalledOnce();
 });

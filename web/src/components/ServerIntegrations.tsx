@@ -1033,6 +1033,7 @@ export function ServerIntegrations({
                           data-hidden={hidden || undefined}
                           href={onboardingHref}
                           aria-label={txt.onboardingStep(name(p), hidden)}
+                          title={txt.onboardingStep(name(p), hidden)}
                           onClick={(e) => {
                             if (
                               !onOpenOnboarding ||

@@ -136,10 +136,15 @@ const fi = {
     "Tarjolla olevat palvelut jokainen yhdistää itse kohdassa Asetukset › Tiedot agenteille.",
   setupOff:
     "Tunnusten asetus selaimesta on poissa käytöstä palvelimen asetuksissa.",
+  // The pill sits on a provider that is a step on the new person's route; it
+  // opens Settings › Käyttöönotto. A step is hidden while its service is not
+  // ready, so the hidden variant means the service is not yet on offer.
   onboardingStep: (provider: string, hidden: boolean) =>
-    `Käyttöönotto: ${provider}-vaihe${hidden ? ", piilossa" : ""}`,
-  inOnboardingHidden: "Käyttöönotossa · piilossa",
-  inOnboarding: "Käyttöönotossa",
+    hidden
+      ? `Ei vielä tarjolla: ${provider}-vaihe on henkilöiden käyttöönotossa piilossa, kunnes palvelu on valmis. Avaa käyttöönotto.`
+      : `Tarjolla: henkilöt yhdistävät palvelun ${provider} itse kohdassa Asetukset › Tiedot agenteille, ja se näkyy vaiheena heidän käyttöönotossaan. Avaa käyttöönotto.`,
+  inOnboardingHidden: "Ei tarjolla · vaihe piilossa",
+  inOnboarding: "Tarjolla",
   invalid: "Tunnukset eivät kelpaa:",
   refresh: "Päivitä",
   fix: "Korjaa…",
@@ -300,9 +305,11 @@ export const serverIntegrationsText = catalog(
     setupOff:
       "Setting credentials from the browser is turned off in the server's settings.",
     onboardingStep: (provider, hidden) =>
-      `Onboarding: ${provider} step${hidden ? ", hidden" : ""}`,
-    inOnboardingHidden: "In onboarding · hidden",
-    inOnboarding: "In onboarding",
+      hidden
+        ? `Not available yet: the ${provider} step is hidden in people's onboarding until the service is ready. Open onboarding.`
+        : `Available: people connect ${provider} themselves under Settings › Data for agents, and it shows as a step in their onboarding. Open onboarding.`,
+    inOnboardingHidden: "Not available · step hidden",
+    inOnboarding: "Available",
     invalid: "The credentials are not valid:",
     refresh: "Refresh",
     fix: "Fix…",
