@@ -44,9 +44,12 @@ type integrationControl struct {
 	// are counted while the person chooses, once "count" says so.
 	bigDrive map[integrations.Provider]bool
 	count    chan struct{}
+	// guests lists the Microsoft organisations where the person has no
+	// mailbox: a connection there has its files alone.
+	guests map[string]bool
 }
 
-var integrationFixture = &integrationControl{approve: make(chan struct{}, 1), count: make(chan struct{}), expired: map[integrations.Provider]bool{}, narrowed: map[integrations.Provider]bool{}, bigDrive: map[integrations.Provider]bool{}}
+var integrationFixture = &integrationControl{approve: make(chan struct{}, 1), count: make(chan struct{}), expired: map[integrations.Provider]bool{}, narrowed: map[integrations.Provider]bool{}, bigDrive: map[integrations.Provider]bool{}, guests: map[string]bool{}}
 
 // The big drive's folders as the stand-in counts them: the whole 60 GiB
 // against the fixture home's 34.7 GB of room, photos alone too large.
@@ -69,11 +72,13 @@ func (c *integrationControl) set(q url.Values) bool {
 		c.narrowed[integrations.Provider(q.Get("provider"))] = true
 	case "bigdrive":
 		c.bigDrive[integrations.Provider(q.Get("provider"))] = true
+	case "guest":
+		c.guests[strings.ToLower(q.Get("tenant"))] = true
 	case "count":
 		close(c.count)
 		c.count = make(chan struct{})
 	case "reset":
-		c.outcome, c.expired, c.narrowed, c.bigDrive = "", map[integrations.Provider]bool{}, map[integrations.Provider]bool{}, map[integrations.Provider]bool{}
+		c.outcome, c.expired, c.narrowed, c.bigDrive, c.guests = "", map[integrations.Provider]bool{}, map[integrations.Provider]bool{}, map[integrations.Provider]bool{}, map[string]bool{}
 	default:
 		return false
 	}
@@ -113,10 +118,10 @@ func fixtureIntegrations(home, repoRoot, self string, gitea *giteafake.Server, g
 			addresses: []string{"person.home@example.test", "person.second@example.test"},
 			folders:   []integrations.Folder{{ID: "own", Name: "Oma Drive", Bytes: 4617089843, Suggested: true}, {ID: "shared", Name: "Jaettu kanssani", Bytes: 1932735283, Suggested: true}, {ID: "photos", Name: "Kuvat", Bytes: 33500744908}}},
 			googleLevels},
-		&levelFixture{&fixtureEntry{provider: integrations.Microsoft, login: integrations.DeviceCode, services: []string{"mail", "calendar", "contacts", "onedrive"}, files: "onedrive", dir: "onedrive",
+		&orgFixture{&levelFixture{&fixtureEntry{provider: integrations.Microsoft, login: integrations.DeviceCode, services: []string{"mail", "calendar", "contacts", "onedrive"}, files: "onedrive", dir: "onedrive",
 			addresses: []string{"person@work.example.test", "person.second@work.example.test"},
 			folders:   []integrations.Folder{{ID: "me", Name: "OneDrive – Esimerkki Oy", Bytes: 4509715660, Suggested: true}, {ID: "sales", Name: "SharePoint · Myynti › Asiakirjat", Bytes: 1932735283, Suggested: true}, {ID: "admin", Name: "SharePoint · Hallinto › Sopimukset", Bytes: 644245094}}},
-			microsoftLevels},
+			microsoftLevels}},
 	)
 	// The prototype's home: 50 GB quota with 15.3 GB of other files.
 	room := func() integrations.Room {
@@ -183,8 +188,14 @@ func (f *fixtureEntry) Check(ctx context.Context, env integrations.Env, address 
 	expired := integrationFixture.expired[f.provider]
 	integrationFixture.mu.Unlock()
 	_, chosen := f.SyncCommand(env, address)
+	_, tenant, named := strings.Cut(address, "~")
+	guest := named && integrationFixture.guestOf(tenant)
 	var out []integrations.Service
 	for _, s := range f.services {
+		if guest && s != f.files {
+			// A guest without a mailbox: its files alone.
+			continue
+		}
 		state, failure := integrations.StateOK, ""
 		if expired {
 			state = integrations.StateLoginExpired
@@ -355,6 +366,8 @@ func (l *fixtureLogin) Prompt(context.Context) (integrations.Prompt, error) {
 			return integrations.Prompt{}, integrations.ConsentRequired{URL: "https://login.microsoftonline.com/esimerkki.onmicrosoft.com/v2.0/adminconsent?client_id=00000000-0000-0000-0000-00000000feed"}
 		case "blocked":
 			return integrations.Prompt{}, integrations.DeviceCodeBlocked
+		case "not_in_organisation":
+			return integrations.Prompt{}, integrations.NotInOrganisation
 		}
 		return integrations.Prompt{VerificationURI: "https://login.microsoft.com/device", UserCode: "K7QM2PXDW", ExpiresAt: time.Now().Add(15 * time.Minute)}, nil
 	}
@@ -585,4 +598,160 @@ func seedAgentFiles(home string) error {
 		return err
 	}
 	return nil
+}
+
+func (c *integrationControl) guestOf(tenant string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.guests[tenant]
+}
+
+// orgFixture is the Microsoft stand-in with organisations, as the native
+// entry has them: the organisations come from the broker's file the way
+// every daemon builds its table (the single-tenant sections' own tenants,
+// then the allowed list served by the shared sections), and a connection in
+// a chosen organisation is named address~tenant, as the native one is. A
+// sign-in without a chosen organisation keeps the stand-in's bare address,
+// so the specs written before organisations see what they saw.
+type orgFixture struct {
+	*levelFixture
+}
+
+var _ integrations.OrganisationEntry = (*orgFixture)(nil)
+
+var fixtureLevelSections = []struct {
+	level          integrations.Level
+	single, shared string
+}{
+	{integrations.LevelFull, "microsoft", "microsoft_shared"},
+	{integrations.LevelNoSend, "microsoft_nosend", "microsoft_shared_nosend"},
+	{integrations.LevelDrafts, "microsoft_drafts", "microsoft_shared_drafts"},
+	{integrations.LevelRead, "microsoft_read", "microsoft_shared_read"},
+}
+
+func (f *orgFixture) Organisations(integrations.Env) []integrations.MicrosoftOrganisation {
+	appFixture.mu.Lock()
+	defer appFixture.mu.Unlock()
+	cells := map[string]map[integrations.Level]bool{}
+	put := func(tenant string, l integrations.Level) {
+		if cells[tenant] == nil {
+			cells[tenant] = map[integrations.Level]bool{}
+		}
+		cells[tenant][l] = true
+	}
+	var singles []string
+	owners := map[string]bool{}
+	for _, s := range fixtureLevelSections {
+		if a, ok := appFixture.apps[s.single]; ok && a.Usable {
+			t := strings.ToLower(a.TenantID)
+			put(t, s.level)
+			singles = append(singles, t)
+		}
+		if a, ok := appFixture.apps[s.shared]; ok && a.Usable {
+			owners[strings.ToLower(a.TenantID)] = true
+		}
+	}
+	own := owners
+	if len(own) == 0 {
+		own = map[string]bool{}
+		for _, t := range singles {
+			own[t] = true
+		}
+	}
+	labels := map[string]string{}
+	for _, t := range appFixture.tenants {
+		labels[t.TenantID] = t.Label
+		for _, s := range fixtureLevelSections {
+			if a, ok := appFixture.apps[s.shared]; ok && a.Usable {
+				put(t.TenantID, s.level)
+			}
+		}
+	}
+	var order []string
+	add := func(t string) {
+		if cells[t] != nil && !slices.Contains(order, t) {
+			order = append(order, t)
+		}
+	}
+	for _, t := range appFixture.tenants {
+		if own[t.TenantID] {
+			add(t.TenantID)
+		}
+	}
+	for _, t := range singles {
+		if own[t] {
+			add(t)
+		}
+	}
+	for _, t := range appFixture.tenants {
+		add(t.TenantID)
+	}
+	for _, t := range singles {
+		add(t)
+	}
+	var out []integrations.MicrosoftOrganisation
+	for _, t := range order {
+		org := integrations.MicrosoftOrganisation{TenantID: t, Label: labels[t], Own: own[t]}
+		for _, s := range fixtureLevelSections {
+			if cells[t][s.level] {
+				org.Levels = append(org.Levels, integrations.LevelOption{ID: s.level, Available: true})
+			} else {
+				org.Levels = append(org.Levels, integrations.LevelOption{ID: s.level, Reason: integrations.LevelApplicationMissing})
+			}
+		}
+		out = append(out, org)
+	}
+	return out
+}
+
+func (f *orgFixture) OrganisationAvailable(env integrations.Env, tenant string, level integrations.Level) bool {
+	for _, org := range f.Organisations(env) {
+		if org.TenantID != tenant {
+			continue
+		}
+		for _, l := range org.Levels {
+			if l.Available && (level == "" || l.ID == level) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (f *orgFixture) StartOrganisationLogin(ctx context.Context, env integrations.Env, key, tenant string, level integrations.Level) (integrations.Login, error) {
+	if key != "" {
+		return f.StartLevelLogin(ctx, env, key, level)
+	}
+	existing, _ := f.Accounts(env)
+	for _, a := range f.addresses {
+		if name := a + "~" + tenant; !slices.Contains(existing, name) {
+			return f.StartLevelLogin(ctx, env, name, level)
+		}
+	}
+	return nil, integrations.ToolFailed
+}
+
+// Levels are those any organisation has an application for, as the native
+// entry's table says: a shared level serves the listed organisations even
+// where no single-tenant section has it.
+func (f *orgFixture) Levels(env integrations.Env) []integrations.LevelOption {
+	out := f.levelFixture.Levels(env)
+	for _, org := range f.Organisations(env) {
+		for i, l := range org.Levels {
+			if l.Available && i < len(out) {
+				out[i] = integrations.LevelOption{ID: l.ID, Available: true}
+			}
+		}
+	}
+	return out
+}
+
+func (f *orgFixture) Available(env integrations.Env) bool { return f.AppConfigured(env) }
+func (f *orgFixture) AppConfigured(env integrations.Env) bool {
+	for _, o := range f.Levels(env) {
+		if o.Available {
+			return true
+		}
+	}
+	return false
 }

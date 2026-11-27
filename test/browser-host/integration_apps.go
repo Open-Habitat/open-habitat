@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -78,6 +79,22 @@ func (f *fixtureApps) fixture(q url.Values) error {
 			f.rclone = true
 		case key == "clear" && slices.Contains(integrationapps.Providers, v):
 			delete(f.apps, v)
+		case key == "tenant":
+			// root's allowed list: tenant=<guid>:<label>, in the order given.
+			id, label, ok := strings.Cut(v, ":")
+			if !ok || label == "" {
+				return errors.New("bad tenant")
+			}
+			id = strings.ToLower(id)
+			i := slices.IndexFunc(f.tenants, func(t gateway.IntegrationTenant) bool { return t.TenantID == id })
+			entry := gateway.IntegrationTenant{TenantID: id, Label: label, Source: "operator"}
+			if i >= 0 {
+				f.tenants[i] = entry
+			} else {
+				f.tenants = append(f.tenants, entry)
+			}
+		case key == "untenant":
+			f.tenants = slices.DeleteFunc(f.tenants, func(t gateway.IntegrationTenant) bool { return t.TenantID == strings.ToLower(v) })
 		case key == "set" && integrationapps.ProviderOf(v) == "microsoft" && slices.Contains(integrationapps.Providers, v):
 			// root's own section for one of Microsoft's level applications.
 			f.apps[v] = gateway.IntegrationApp{Provider: v, ClientID: "7c2e5b1a-0d94-4f3b-8a61-3e9f2c7d" + fmt.Sprintf("%04d", slices.Index(integrationapps.Providers, v)), TenantID: "e04c61f9-3b8d-4a27-9f5e-7d1a2c48b903", Usable: true, Source: "operator"}
@@ -116,6 +133,19 @@ func (f *fixtureApps) config(tools map[string]string, rclone string) integration
 	}
 	if a, ok := f.apps["dropbox_app_folder"]; ok {
 		c.DropboxAppFolder = &integrations.DropboxApp{ClientID: a.ClientID, ClientSecret: f.secret["dropbox_app_folder"]}
+	}
+	// Microsoft's sections and allowed list, as root's file holds them, so
+	// the catalog names a connection's organisation by its label.
+	ms := func(section string) *integrations.MicrosoftApp {
+		if a, ok := f.apps[section]; ok {
+			return &integrations.MicrosoftApp{ClientID: a.ClientID, TenantID: a.TenantID}
+		}
+		return nil
+	}
+	c.Microsoft, c.MicrosoftNoSend, c.MicrosoftDrafts, c.MicrosoftRead = ms("microsoft"), ms("microsoft_nosend"), ms("microsoft_drafts"), ms("microsoft_read")
+	c.MicrosoftShared, c.MicrosoftSharedNoSend, c.MicrosoftSharedDrafts, c.MicrosoftSharedRead = ms("microsoft_shared"), ms("microsoft_shared_nosend"), ms("microsoft_shared_drafts"), ms("microsoft_shared_read")
+	for _, t := range f.tenants {
+		c.MicrosoftTenants = append(c.MicrosoftTenants, integrationapps.Tenant{ID: t.TenantID, Label: t.Label})
 	}
 	return c
 }
