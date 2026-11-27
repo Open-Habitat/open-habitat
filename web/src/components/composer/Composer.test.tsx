@@ -1078,6 +1078,30 @@ describe("composer speech input", () => {
     }
   });
 
+  it("an exhausted Soniox balance says so and links the Soniox console", async () => {
+    const { deps, sockets } = fakeSpeech();
+    const view = render(<Stateful deps={deps} onSendNow={noop} />);
+    fireEvent.click(view.getByTestId("dictation-mic"));
+    await waitFor(() => expect(sockets).toHaveLength(1));
+    await act(async () => sockets[0]?.onopen?.());
+    await act(async () =>
+      sockets[0]?.onmessage?.({
+        data: JSON.stringify({
+          error_code: 402,
+          error_type: "organization_balance_exhausted",
+          error_message: "synthetic detail",
+        }),
+      }),
+    );
+    const notice = await view.findByTestId("dictation-notice");
+    expect(notice.getAttribute("data-notice")).toBe("speech_out_of_credit");
+    expect(notice.textContent).not.toContain("synthetic detail");
+    const link = view.getByTestId("dictation-console");
+    expect(link.getAttribute("href")).toBe("https://console.soniox.com");
+    expect(link.getAttribute("rel")).toContain("noopener");
+    expect(view.getByTestId("dictation-retry")).toBeTruthy();
+  });
+
   it("a cancel that heard nothing leaves no notice", async () => {
     const { deps, sockets } = fakeSpeech();
     const view = render(<Stateful deps={deps} onSendNow={noop} />);

@@ -446,6 +446,48 @@ describe("Dictation", () => {
     });
   });
 
+  it("names an exhausted Soniox balance (402) at the start and mid-dictation, and only that", async () => {
+    const refused = harness([session(1)]);
+    await refused.d.start();
+    refused.sockets[0]?.open();
+    refused.sockets[0]?.reply({
+      error_code: 402,
+      error_type: "organization_balance_exhausted",
+      error_message: "x",
+    });
+    expect(refused.d.view).toMatchObject({
+      ended: "failed",
+      failure: "speech_out_of_credit",
+    });
+
+    const spent = harness([session(1)]);
+    await spent.d.start();
+    spent.sockets[0]?.open();
+    spent.sockets[0]?.reply({ tokens: [{ text: "Sana", is_final: true }] });
+    spent.sockets[0]?.reply({
+      error_code: 402,
+      error_type: "project_monthly_budget_exhausted",
+      error_message: "x",
+    });
+    expect(spent.d.view).toMatchObject({
+      ended: "dropped",
+      failure: "speech_out_of_credit",
+      final: "Sana",
+    });
+
+    // An error Soniox may recover from is still "not responding".
+    for (const code of [408, 500, 503]) {
+      const other = harness([session(1)]);
+      await other.d.start();
+      other.sockets[0]?.open();
+      other.sockets[0]?.reply({ error_code: code, error_message: "x" });
+      expect(other.d.view).toMatchObject({
+        ended: "failed",
+        failure: "speech_unavailable",
+      });
+    }
+  });
+
   it("stop resolves with the confirmed text even when Soniox does not answer", async () => {
     const h = harness([session(1)]);
     await h.d.start();

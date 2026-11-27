@@ -66,6 +66,10 @@ export type SpeechFailure =
   | "speech_key_rejected"
   | "speech_limit_reached"
   | "speech_unavailable"
+  /** Soniox's stream answered 402: the account's balance or a monthly
+   * budget is spent. Only the browser sees it, since Soniox still mints a
+   * temporary key and lists models for such an account. */
+  | "speech_out_of_credit"
   | "microphone_denied"
   | "unsupported"
   | "login";

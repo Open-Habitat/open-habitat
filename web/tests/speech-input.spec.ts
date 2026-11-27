@@ -493,7 +493,7 @@ test("@speech the administrator's key reaches the person; a dropped stream recon
   await expect(page.getByTestId("dictation-resume")).toBeVisible();
 });
 
-test("@speech a refused key, a reached limit and a refused microphone reach the person as fixed notices", async ({
+test("@speech a refused key, a reached limit, a spent balance and a refused microphone reach the person as fixed notices", async ({
   page,
 }) => {
   test.setTimeout(90_000);
@@ -530,6 +530,19 @@ test("@speech a refused key, a reached limit and a refused microphone reach the 
   await expect(notice(page)).toHaveAttribute(
     "data-notice",
     "speech_key_rejected",
+  );
+
+  // An exhausted balance still mints a key; only the stream says 402.
+  await control(page, "refuse&value=credit");
+  await mic(page).click();
+  await expect(notice(page)).toHaveAttribute(
+    "data-notice",
+    "speech_out_of_credit",
+  );
+  await expect(notice(page)).not.toContainText("synthetic detail");
+  await expect(page.getByTestId("dictation-console")).toHaveAttribute(
+    "href",
+    "https://console.soniox.com",
   );
 
   await page.evaluate(() => {

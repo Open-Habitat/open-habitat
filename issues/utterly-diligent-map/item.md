@@ -2,13 +2,14 @@
 created: 2026-11-27
 updated: 2026-11-27
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: 'GitHub issue #1'
 source_ref: https://github.com/Open-Habitat/open-habitat/issues/1
 lane: unlaned
 preparation: ready
+closed: 2026-11-27
 ---
 
 # Dictation: out-of-credit Soniox account shows as "Soniox is not responding"
@@ -33,3 +34,9 @@ Observed 24.11.2026 on Open Habitat 0.1.3 with a personal Soniox key (US region)
 ### 2026-11-27T07:52:39Z · @jari
 
 Jari 27.11.2026: fix it.
+
+## Resolution
+
+### 2026-11-27T07:58:39Z · @issuectl
+
+402 from the Soniox stream now says the account is out of credit, with a console link; 'not responding' also suggests checking credit. See result.md.

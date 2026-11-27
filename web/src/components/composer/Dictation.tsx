@@ -154,8 +154,11 @@ export type DictationNotice = {
   failure?: SpeechFailure;
   /** How far a dropped dictation got. */
   elapsedMs?: number;
-  actions: ("settings" | "retry" | "resume")[];
+  actions: ("settings" | "retry" | "resume" | "console")[];
 };
+
+/** Where a Soniox account's balance and budgets are managed. */
+const sonioxConsole = "https://console.soniox.com";
 
 /** A notice's title and its text, which is omitted when the title and the
  * action already say it all. */
@@ -173,7 +176,9 @@ function noticeWords(
             ? t.droppedKey
             : n.failure === "speech_limit_reached"
               ? t.droppedLimit
-              : t.droppedConnection,
+              : n.failure === "speech_out_of_credit"
+                ? t.droppedCredit
+                : t.droppedConnection,
         text: t.droppedText(mmss(n.elapsedMs ?? 0)),
       };
     case "speech_key_missing":
@@ -184,6 +189,8 @@ function noticeWords(
       return { title: t.keyRejected, text: t.keyRejectedText };
     case "speech_limit_reached":
       return { title: t.limitReached, text: t.limitReachedText };
+    case "speech_out_of_credit":
+      return { title: t.outOfCredit, text: t.outOfCreditText };
     case "unsupported":
       return { title: t.unsupported, text: t.unsupportedText };
     default:
@@ -211,7 +218,10 @@ function noticeFor(view: DictationView): DictationNotice | null {
       tone: "danger",
       failure: view.failure,
       elapsedMs: view.elapsedMs,
-      actions: ["resume"],
+      actions:
+        view.failure === "speech_out_of_credit"
+          ? ["console", "resume"]
+          : ["resume"],
     };
   switch (view.failure) {
     case "speech_key_missing":
@@ -238,6 +248,12 @@ function noticeFor(view: DictationView): DictationNotice | null {
         tone: "danger",
         actions: ["retry", "settings"],
       };
+    case "speech_out_of_credit":
+      return {
+        id: view.failure,
+        tone: "danger",
+        actions: ["console", "retry"],
+      };
     case "unsupported":
       return {
         id: view.failure,
@@ -245,10 +261,12 @@ function noticeFor(view: DictationView): DictationNotice | null {
         actions: [],
       };
     default:
+      // An account without credit can look like this too: Soniox still
+      // mints its keys, and not every refusal says why.
       return {
         id: "speech_unavailable",
         tone: "danger",
-        actions: ["retry"],
+        actions: ["retry", "console"],
       };
   }
 }
@@ -882,22 +900,36 @@ export function DictationNoticeView({
         {words.text ? <p>{words.text}</p> : null}
         {n.actions.length ? (
           <div className="ah-dictation-notice-acts">
-            {n.actions.map((action, i) => (
-              <button
-                key={action}
-                type="button"
-                data-testid={`dictation-${action}`}
-                className={`ah-dictation-act${i === 0 ? " primary" : ""}`}
-                onClick={() => {
-                  if (action === "settings") {
-                    dictation.dismiss();
-                    onOpenSettings();
-                  } else dictation.start(text, caret());
-                }}
-              >
-                {labels[action]}
-              </button>
-            ))}
+            {n.actions.map((action, i) =>
+              action === "console" ? (
+                <a
+                  key={action}
+                  data-testid="dictation-console"
+                  className={`ah-dictation-act${i === 0 ? " primary" : ""}`}
+                  href={sonioxConsole}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  referrerPolicy="no-referrer"
+                >
+                  {labels[action]}
+                </a>
+              ) : (
+                <button
+                  key={action}
+                  type="button"
+                  data-testid={`dictation-${action}`}
+                  className={`ah-dictation-act${i === 0 ? " primary" : ""}`}
+                  onClick={() => {
+                    if (action === "settings") {
+                      dictation.dismiss();
+                      onOpenSettings();
+                    } else dictation.start(text, caret());
+                  }}
+                >
+                  {labels[action]}
+                </button>
+              ),
+            )}
           </div>
         ) : null}
       </div>

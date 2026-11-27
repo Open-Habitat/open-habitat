@@ -1249,6 +1249,7 @@
   color: var(--ah-ink);
   font: 500 12.5px var(--ah-font);
   cursor: pointer;
+  text-decoration: none;
 }
 .ah-dictation-act:hover {
   background: var(--ah-surface-hover);

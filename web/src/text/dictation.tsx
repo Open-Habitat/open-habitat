@@ -17,6 +17,7 @@ const fi = {
   remaining: (time: string) => `${time} jäljellä`,
   droppedKey: "Sanelu katkesi: Soniox ei enää hyväksy avainta",
   droppedLimit: "Sanelu katkesi: Soniox-avaimen käyttöraja täyttyi",
+  droppedCredit: "Sanelu katkesi: Soniox-tililtä loppui saldo",
   droppedConnection: "Sanelu katkesi: yhteys Sonioxiin ei palannut",
   droppedText: (time: string) =>
     `Teksti ${time} asti on kentässä. Viimeiset sanat voivat olla epätarkkoja.`,
@@ -30,10 +31,14 @@ const fi = {
   limitReached: "Soniox-avaimen käyttöraja on täynnä",
   limitReachedText:
     "Yritä hetken päästä uudelleen tai lisää oma avain asetuksissa.",
+  outOfCredit: "Soniox-tililtä on loppunut saldo",
+  outOfCreditText:
+    "Lisää tilille saldoa tai nosta sen kuukausibudjettia Soniox-konsolissa ja yritä uudelleen.",
   unsupported: "Tämä selain ei pysty saneluun",
   unsupportedText: "Kokeile toista selainta.",
   unavailable: "Soniox ei vastaa",
-  unavailableText: "Sanelu ei alkanut. Yritä hetken päästä uudelleen.",
+  unavailableText:
+    "Sanelu ei alkanut. Yritä hetken päästä uudelleen ja tarkista Soniox-konsolista, että tilillä on saldoa.",
   dictate: "Sanele",
   micTip: (keys: ReactNode) => (
     <>{keys} · napauta aloittaaksesi, pidä pohjassa puhuaksesi</>
@@ -63,6 +68,7 @@ const fi = {
     settings: "Avaa asetukset",
     retry: "Yritä uudelleen",
     resume: "Jatka sanelua",
+    console: "Avaa Soniox-konsoli",
   },
   closeNotice: "Sulje ilmoitus",
 };
@@ -80,6 +86,7 @@ export const dictationText = catalog(fi, {
   remaining: (time) => `${time} left`,
   droppedKey: "Dictation cut off: Soniox no longer accepts the key",
   droppedLimit: "Dictation cut off: the Soniox key reached its usage limit",
+  droppedCredit: "Dictation cut off: the Soniox account ran out of credit",
   droppedConnection:
     "Dictation cut off: the connection to Soniox did not return",
   droppedText: (time) =>
@@ -93,10 +100,14 @@ export const dictationText = catalog(fi, {
     "The key is wrong or has been revoked. Save a new key in Settings.",
   limitReached: "The Soniox key has reached its usage limit",
   limitReachedText: "Try again in a moment, or add your own key in Settings.",
+  outOfCredit: "The Soniox account is out of credit",
+  outOfCreditText:
+    "Add credit to the account or raise its monthly budget in the Soniox console, then try again.",
   unsupported: "This browser cannot dictate",
   unsupportedText: "Try another browser.",
   unavailable: "Soniox is not responding",
-  unavailableText: "Dictation did not start. Try again in a moment.",
+  unavailableText:
+    "Dictation did not start. Try again in a moment, and check in the Soniox console that the account has credit.",
   dictate: "Dictate",
   micTip: (keys) => <>{keys} · tap to start, hold to talk</>,
   opening: "opening the microphone…",
@@ -124,6 +135,7 @@ export const dictationText = catalog(fi, {
     settings: "Open Settings",
     retry: "Try again",
     resume: "Continue dictating",
+    console: "Open Soniox console",
   },
   closeNotice: "Close notice",
 });

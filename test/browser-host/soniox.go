@@ -31,8 +31,9 @@ type sonioxFake struct {
 	// in order.
 	keyRegions map[string]string
 	asked      []string
-	// refuse makes the next stream answer its start with error 401.
-	refuse bool
+	// refuse makes the next stream answer its start with an error: key
+	// (401, a refused key) or credit (402, an exhausted balance).
+	refuse string
 	// mintDelay holds every temporary key that long, as a slow Soniox.
 	mintDelay time.Duration
 	issued    map[string]bool
@@ -169,14 +170,24 @@ func (f *sonioxFake) stream(w http.ResponseWriter, r *http.Request) {
 	f.mu.Lock()
 	used, known := f.issued[key]
 	f.issued[key] = true
-	refuse := f.refuse || !known || used
-	f.refuse = false
+	refuse := f.refuse
+	if !known || used {
+		refuse = "key"
+	}
+	f.refuse = ""
 	f.configs = append(f.configs, json.RawMessage(first.Payload))
-	if !refuse {
+	if refuse == "" {
 		f.conns[c] = true
 	}
 	f.mu.Unlock()
-	if refuse {
+	if refuse == "credit" {
+		// Soniox still mints a temporary key for an account with no
+		// balance; only the stream refuses it.
+		c.json(map[string]any{"error_code": 402, "error_type": "organization_balance_exhausted", "error_message": "synthetic detail"})
+		c.send(wsframe.OpClose, wsframe.ClosePayload(1000, ""))
+		return
+	}
+	if refuse != "" {
 		// A single-use key works once; Soniox answers with an error frame.
 		c.json(map[string]any{"error_code": 401, "error_message": "Invalid or expired temporary API key"})
 		c.send(wsframe.OpClose, wsframe.ClosePayload(1000, ""))
@@ -225,7 +236,8 @@ func (f *sonioxFake) stream(w http.ResponseWriter, r *http.Request) {
 }
 
 // control serves /fixture/soniox?action=…: mint=<answer>, mint-delay=<ms>,
-// key-region=<us, eu or none> for the key in the body, refuse, say
+// key-region=<us, eu or none> for the key in the body, refuse
+// (value=credit for an exhausted balance, a refused key otherwise), say
 // (a JSON body of tokens sent to every open stream), drop (close every
 // open stream at once) and state.
 func (f *sonioxFake) control(w http.ResponseWriter, r *http.Request) {
@@ -255,7 +267,10 @@ func (f *sonioxFake) control(w http.ResponseWriter, r *http.Request) {
 		f.mu.Unlock()
 	case "refuse":
 		f.mu.Lock()
-		f.refuse = true
+		f.refuse = "key"
+		if q.Get("value") == "credit" {
+			f.refuse = "credit"
+		}
 		f.mu.Unlock()
 	case "say":
 		var tokens []map[string]any

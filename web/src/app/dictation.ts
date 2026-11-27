@@ -321,12 +321,16 @@ export class Dictation {
       return;
     }
     if (typeof reply.error_code === "number") {
+      // Soniox's documented stream errors that a retry will not cure; the
+      // rest (timeouts, its own outages) may pass and say "not responding".
       const definite =
         reply.error_code === 401 || reply.error_code === 403
           ? "speech_key_rejected"
-          : reply.error_code === 429
-            ? "speech_limit_reached"
-            : null;
+          : reply.error_code === 402
+            ? "speech_out_of_credit"
+            : reply.error_code === 429
+              ? "speech_limit_reached"
+              : null;
       if (
         !this.accepted &&
         !this.reconnected &&
