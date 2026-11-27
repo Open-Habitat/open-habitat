@@ -9,7 +9,7 @@ provenance: chat
 source_ref: chat:conductor-2711/conversation-links
 lane: conversation-links
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Links that open a new or named conversation with a prepared draft

@@ -1,0 +1,104 @@
+/* Conversation links, round 1. Review chrome first (as in the sibling
+   rounds), then the link mark, card, sheet and dialog. Production tokens only. */
+html, body { margin: 0; background: var(--ah-bg); }
+.rq-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 60;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.rq-bar strong { font-weight: 600; }
+.rq-bar select, .rq-bar button { font: inherit; max-width: 100%; }
+.rq-lines { flex-basis: 100%; margin: 0; padding-left: 0; list-style: none; color: var(--ah-ink-2); font-size: 12px; }
+.rq-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.rq-recommend { flex-basis: 100%; margin: 0; font-size: 12px; color: var(--ah-accent-ink); }
+@media (max-width: 600px) {
+  .rq-bar { padding: 6px 10px; gap: 2px 10px; }
+  .rq-lines, .rq-recommend { font-size: 11px; line-height: 1.3; }
+  .rq-recommend { display: none; }
+  .rq-lines li:not([aria-current]) { display: none; }
+}
+.rq-stage .ah-app-shell { top: var(--review-h, 0px); height: calc(100dvh - var(--review-h, 0px) - 60px); }
+.rq-stage .ah-rail { top: var(--review-h, 0px); }
+@media (max-width: 800px) {
+  .rq-stage .ah-shell-body.ah-mobile-open > .ah-rail-slot { top: var(--review-h, 0px); bottom: 60px; }
+}
+.rq-toast {
+  position: fixed; z-index: 60; left: 50%; bottom: 72px; transform: translateX(-50%);
+  max-width: min(92vw, 560px); margin: 0; padding: 8px 14px; border-radius: var(--ah-r-md);
+  background: var(--ah-ink); color: var(--ah-bg); font: 12.5px/1.4 var(--ah-font, system-ui);
+}
+.rq-link { flex-basis: 100%; margin: 0; display: flex; gap: 6px; min-width: 0; font-size: 12px; color: var(--ah-ink-2); }
+.rq-link span { flex: none; }
+.rq-link code { font: 11.5px/1.4 var(--ah-mono); color: var(--ah-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+@media (max-width: 600px) { .rq-link span { display: none; } }
+
+/* ---- The conversation ---- */
+.cl-frame { display: contents; }
+.cl-empty { color: var(--ah-ink-2); }
+.cl-model { font-family: var(--ah-mono); font-size: var(--ah-size-meta); }
+.cl-before { display: grid; gap: var(--ah-s2); margin-bottom: var(--ah-s2); }
+
+/* The link's message: the mark (field's first row) and the card. */
+.cl-mark { border-style: dashed; border-color: var(--ah-accent); }
+.cl-mark code, .cl-card code, .cl-facts code { font: 12px/1.4 var(--ah-mono); }
+.cl-mark-note { margin: 0; color: var(--ah-ink-2); font-size: var(--ah-size-meta); line-height: 1.45; }
+.cl-card { margin: 0; gap: var(--ah-s2); border-style: dashed; border-color: var(--ah-accent); background: var(--ah-surface); }
+.cl-card-text {
+  margin: 0; padding: var(--ah-s2) var(--ah-s3); border-radius: var(--ah-r-md);
+  background: var(--ah-sunken, var(--ah-bg)); color: var(--ah-ink); max-height: 9em; overflow: auto;
+}
+.cl-card-text p { margin: 0; }
+.cl-card-actions { display: flex; flex-wrap: wrap; gap: var(--ah-control-gap, 6px); }
+
+/* ---- Sheet and dialog ---- */
+.cl-overlay {
+  position: fixed; inset: 0; z-index: 80; display: grid; place-items: center;
+  background: var(--ah-scrim); padding: var(--ah-s4);
+}
+.cl-modal {
+  width: min(560px, 100%); max-height: calc(100dvh - 2 * var(--ah-s4)); overflow: auto;
+  background: var(--ah-surface); color: var(--ah-ink); border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg, 12px); box-shadow: var(--ah-shadow-dialog);
+}
+.cl-dialog { display: grid; gap: var(--ah-s3); padding: var(--ah-s5); outline: none; }
+.cl-dialog h2 { margin: 0; font-size: var(--ah-size-title, 18px); }
+.cl-facts { display: grid; grid-template-columns: auto 1fr; gap: var(--ah-s1) var(--ah-s3); margin: 0; }
+.cl-facts dt { color: var(--ah-ink-2); }
+.cl-facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.cl-sheet-label { margin: 0; font-weight: 600; font-size: var(--ah-size-meta); color: var(--ah-ink-2); }
+.cl-dialog-actions { display: flex; flex-wrap: wrap; gap: var(--ah-control-gap, 6px); justify-content: flex-end; }
+.cl-kind { display: grid; gap: var(--ah-s1); margin: 0; padding: 0; border: 0; }
+.cl-kind legend { font-weight: 600; margin-bottom: var(--ah-s1); }
+.cl-kind label { display: flex; align-items: center; gap: var(--ah-s2); }
+.cl-field { display: grid; gap: var(--ah-s1); font-weight: 600; font-size: var(--ah-size-meta); }
+.cl-field textarea, .cl-field input {
+  font: 14px/1.45 var(--ah-font, system-ui); color: var(--ah-ink); background: var(--ah-bg);
+  border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); padding: var(--ah-s2); resize: vertical;
+}
+.cl-field textarea:focus-visible, .cl-field input:focus-visible { outline: 2px solid var(--ah-focus, var(--ah-accent)); outline-offset: 1px; }
+.cl-count { margin: calc(-1 * var(--ah-s2)) 0 0; font-size: var(--ah-size-meta); color: var(--ah-ink-2); }
+.cl-count[data-over] { color: var(--ah-err); font-weight: 600; }
+.cl-url {
+  display: block; padding: var(--ah-s2); border-radius: var(--ah-r-md); background: var(--ah-sunken, var(--ah-bg));
+  font: 11.5px/1.45 var(--ah-mono); overflow-wrap: anywhere; max-height: 6.5em; overflow: auto;
+}
+@media (max-width: 600px) {
+  .cl-overlay { place-items: end stretch; padding: 0; }
+  .cl-modal { width: 100%; border-radius: var(--ah-r-lg, 12px) var(--ah-r-lg, 12px) 0 0; max-height: 88dvh; }
+  .cl-dialog { padding: var(--ah-s4) var(--ah-s4) 72px; } /* clear of the review picker */
+  .cl-dialog-actions { justify-content: stretch; }
+  .cl-dialog-actions > * { flex: 1 1 100%; }
+}
+
+/* ---- Missing workspace page ---- */
+.cl-missing { display: grid; gap: var(--ah-s3); align-content: start; max-width: 680px; padding: var(--ah-s6, 32px) var(--ah-s5); }
+.cl-missing h1 { margin: 0; font-size: var(--ah-size-title, 22px); }
+.cl-missing h2 { margin: var(--ah-s3) 0 0; font-size: var(--ah-size-body, 15px); }
+.cl-missing p { margin: 0; }
+.cl-missing code { font: 12.5px/1.4 var(--ah-mono); }
+.cl-ws-list { display: flex; flex-wrap: wrap; gap: var(--ah-control-gap, 6px); margin: 0; padding: 0; list-style: none; }
+.cl-signin { min-height: calc(100dvh - var(--review-h, 0px)); padding-top: var(--review-h, 0px); }
+/* The ⋯ menu stays visible on a desktop too, because it carries the link item. */
+.ah-agent-topline .ah-header-more.cl-more { display: inline-flex; flex: none; }
+.cl-mark .ah-reply-quote-head code, .cl-card .ah-reply-quote-head code { font-weight: 500; }
