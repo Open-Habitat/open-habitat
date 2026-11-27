@@ -9,8 +9,8 @@ provenance_detail: 'GitHub issue #2'
 source_ref: https://github.com/Open-Habitat/open-habitat/issues/2
 lane: m365-tenants
 preparation: pending
-lane_seq: 4
-blocked_by: ['@m365-tenants-ui']
+lane_seq: 6
+blocked_by: ['@m365-tenants-ui', '@m365-tenants-setup-guide-shared-apps']
 ---
 
 # Microsoft 365: allow integrations with several Entra tenants on one server
