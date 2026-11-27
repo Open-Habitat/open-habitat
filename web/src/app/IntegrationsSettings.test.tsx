@@ -583,3 +583,91 @@ it("lists a Google grant's services only from a read after the sign-in completed
     [...summary.querySelectorAll("li")].map((li) => li.dataset.access),
   ).toEqual(["full", "full"]);
 });
+
+// A list read that a removal overtakes may have left the host before the
+// removal; its answer must not bring the removed connection back. Here the
+// read the Tarkista press starts is held until the removal has answered.
+it("does not let a list read older than a removal bring the removed connection back", async () => {
+  const tenant = "9a4e7b21-5c3d-4f60-8e1a-7b2c9d0e4f35";
+  const own = "e04c61f9-3b8d-4a27-9f5e-7d1a2c48b903";
+  const account = (t: string) => ({
+    provider: "microsoft",
+    address: "person@work.example.test",
+    tenant_id: t,
+    checked_at: "2026-11-27T08:00:00Z",
+    services: [{ id: "onedrive", state: "ok" }],
+  });
+  let removed = false;
+  let release: () => void = () => {};
+  let hold = false;
+  const removals: unknown[] = [];
+  const page = () => ({
+    schema_version: 1,
+    providers: [
+      {
+        id: "microsoft",
+        available: true,
+        login: "device_code",
+        services: ["onedrive"],
+      },
+    ],
+    skill: "current",
+    accounts: removed ? [account(own)] : [account(own), account(tenant)],
+  });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === "/api/v1/integrations") {
+        // Answered as the host was when the read arrived.
+        const body = page();
+        if (hold) {
+          hold = false;
+          await new Promise<void>((r) => {
+            release = r;
+          });
+        }
+        return json(body);
+      }
+      if (url === "/api/v1/integrations/accounts") {
+        removals.push(JSON.parse(String(init?.body)));
+        removed = true;
+        return json({
+          schema_version: 1,
+          removed: {
+            provider: "microsoft",
+            address: "person@work.example.test",
+            tenant_id: tenant,
+          },
+          skill: "current",
+        });
+      }
+      if (url.startsWith("/api/v1/integrations/login"))
+        return json({ schema_version: 1, state: "none" });
+      return new Response("", { status: 404 });
+    }),
+  );
+  render(<IntegrationsSettings csrf="session-a" />);
+  const cards = async () =>
+    (await screen.findAllByTestId("integration-account-microsoft")).filter(
+      (c) => c.dataset.tenant === tenant,
+    );
+  const [guest] = await cards();
+  hold = true;
+  await userEvent.click(within(guest).getByTestId("integration-recheck"));
+  await userEvent.click(within(guest).getByTestId("integration-remove-open"));
+  await userEvent.click(
+    await screen.findByTestId("integration-remove-confirm"),
+  );
+  await waitFor(() => expect(removals).toHaveLength(1));
+  expect(removals[0]).toMatchObject({ tenant_id: tenant });
+  await act(async () => release());
+  await waitFor(() =>
+    expect(screen.getAllByTestId("integration-account-microsoft")).toHaveLength(
+      1,
+    ),
+  );
+  expect(
+    screen.getByTestId("integration-account-microsoft").dataset.tenant,
+  ).toBe(own);
+});

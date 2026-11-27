@@ -224,10 +224,18 @@ export function IntegrationsSettings({
     shownFor.current = csrf;
   }, [csrf]);
 
+  // Bumped around a removal: a list read that the removal overtook may
+  // predate it and would bring the removed card back, so it reads again.
+  const writes = useRef(0);
   const load = useCallback(async (one?: Account): Promise<boolean> => {
     setChecking(one ? new Set([accountKey(one)]) : "all");
     try {
-      const next = await readIntegrations();
+      let next: IntegrationList;
+      let at: number;
+      do {
+        at = writes.current;
+        next = await readIntegrations();
+      } while (at !== writes.current && alive.current);
       if (!alive.current) return false;
       setList(next);
       setFailed(false);
@@ -740,6 +748,7 @@ export function IntegrationsSettings({
     if (!csrf || !removing) return;
     const { account } = removing;
     setRemoving({ account, busy: true });
+    writes.current++;
     try {
       const change = await removeAccount(
         csrf,
@@ -748,6 +757,7 @@ export function IntegrationsSettings({
         deleteDirectories,
         account.tenant_id,
       );
+      writes.current++;
       setList((l) =>
         l
           ? {
