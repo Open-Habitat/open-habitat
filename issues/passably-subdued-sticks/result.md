@@ -1,5 +1,86 @@
 # Microsoft 365 usealle organisaatiolle: prototyyppikierrokset
 
+## Kierros 3
+
+Kierros: `design-system/prototypes/rounds/2026-11-27-entra-organisaatiot-3/`
+(`NOTES.md` kertoo URL-parametrit ja komennot). Sivu:
+`design-system/prototypes/dist/2026-11-27-entra-organisaatiot-3/offline.html`,
+tehdään uudelleen komennolla
+`node design-system/prototypes/rounds/2026-11-27-entra-organisaatiot-3/build.mjs`.
+
+### Jarin päätös kierroksesta 2 (27.11.2026)
+
+A2 valittiin: *Organisaatiot*-painike Tasojen vieressä. Rivin oma *Mitä
+tasot sallivat* poistetaan, koska tasot selitetään jo Tasot-painikkeen
+takana. Organisaatiot avautuu samalla tavalla kuin Tasot, ja ikkunassa on
+selkeät rivit: yksi organisaatio riviä kohti, nimi, *Oma*, hyväksynnän tila
+ja sen toiminto, poisto, ja alimpana *Lisää organisaatio*. Tämä on A2:n
+iterointi eikä uusi suuntien valinta.
+
+### Mitä muuttui
+
+- Valitsimessa ovat **Nyt**, **A2a** ja **A2b**; A1 ja A3 poistuivat.
+- Microsoft-rivillä on Tasot ja sen vieressä *Organisaatiot 3* samalla
+  roolilla ja tyylillä. *Mitä tasot sallivat* on poissa Microsoftin
+  riviltä (Nyt-suunnassa se on yhä vertailun vuoksi).
+- Tuotannon Tasot ei avaudu ponnahdusikkunaan vaan keskitettyyn ikkunaan
+  (`MicrosoftLevelsDialog`), joten Organisaatiot avautuu nyt samoin: sama
+  overlay ja ikkuna, pysyvä otsikko *Microsoft 365: organisaatiot*, ja
+  puhelimessa sama ikkuna kuin Tasoilla. Kierroksen 2 alhaalta nouseva arkki
+  jäi pois.
+- Rivillä: nimi, *Oma*, tila ja ryhmä *Hyväksyntä* ja punainen roskakori
+  (pienten painikkeiden säännöt: poisto viimeisenä ja erillään, ryhmä
+  nimetty organisaatiolla).
+- **Ikkuna ei enää sulkeudu toiminnon ajaksi.** Hyväksyntä, lisäys ja
+  poiston vahvistus ovat saman ikkunan vaiheita: ikkunan sisältö vaihtuu
+  vaiheeksi ja palaa Valmis-, Takaisin- tai Peruuta-painikkeella listaan,
+  ja fokus palaa riville, jolta vaihe avattiin. Valitsin tämän enkä Tasojen
+  tapaa, koska tuotannon Tasotkin sulkee ikkunansa avatessaan poiston eikä
+  avaa sitä uudelleen, joten siitä ei saa mallia. Vaiheet ovat Tasojen
+  ohjatun asetuksen muoto, ja rivin avaaminen paikalleen olisi tehnyt
+  listasta pitkän ja hyväksyntäviestin kanssa vieritettävän.
+- Henkilön näkymä on sama kuin kierroksella 2.
+
+### Vaihtoehdot ja suositus
+
+- **A2a:** rivillä ylhäällä nimi ja *Oma*, alla tila pienellä; toiminnot
+  rivin lopussa.
+- **A2b:** nimi ja *Oma*, tila ja toiminnot sarakkeina yhdellä rivillä;
+  puhelimessa sama kuin A2a.
+
+Suositus **A2a**: pitkä nimi saa koko leveyden, tila luetaan nimen osana
+eikä omana sarakkeenaan, ja rivi näyttää samalta työpöydällä ja
+puhelimessa. A2b on taulukkomaisempi, mutta kolmella tai neljällä rivillä
+sarakkeista ei ole hyötyä, ja ikkuna on leveämpi, jotta sarakkeet mahtuvat.
+
+### Päätökset myöhempään tarkasteluun
+
+- Hyväksynnän tila kertoo vain sen, minkä palvelin tietää: omalla
+  organisaatiolla *Hyväksytty, kun loit sovellukset*, asiakkailla
+  *Hyväksyntä ei näy palvelimelle*. Toiminto on kaikilla *Hyväksyntä*
+  (asiakkailla toissijainen painike, omalla hiljainen).
+- Ikkuna on 720 px leveä (tuotannon ikkunan oletus). Tasojen 920 px
+  on mitoitettu sen vertailutaulukolle, eikä sitä tarvita kolmen rivin
+  listalle.
+- Kierroksen 2 kysymykset 2 ja 3 jäivät avoimiksi, joten niiden valinnat
+  pysyvät: rajoituksen lause näkyy vain lisäysvaiheessa (*Asiakkaan tietoja
+  rajaa asiakkaan oma Entra, ei tämä lista.*), ja listan Lisätietoja kertoo,
+  miksi lista ei ole tietoturvaraja; hyväksyntäviesti on kierroksen 2
+  lyhennetty viesti sellaisenaan.
+- Kierroksen 2 muut päätökset ovat edelleen voimassa.
+
+### Kysymykset Jarille
+
+1. A2a vai A2b?
+2. Riittääkö hyväksynnän tilaksi rehellinen *Hyväksyntä ei näy
+   palvelimelle*? Varmempi tila vaatisi palvelimelle uuden tiedon (kuka on
+   yhdistänyt mihinkin organisaatioon), ja se jätettiin v1:stä pois.
+3. Kierroksen 2 avoimet: riittääkö rajoitukseksi lisäysvaiheen yksi lause
+   ja listan Lisätietoja, ja voiko hyväksyntäviestin lähettää
+   sellaisenaan?
+
+---
+
 ## Kierros 2
 
 Kierros: `design-system/prototypes/rounds/2026-11-27-entra-organisaatiot-2/`
