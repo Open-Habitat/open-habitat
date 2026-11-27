@@ -3,7 +3,7 @@ created: 2026-11-27
 updated: 2026-11-27
 type: task
 reporter: conductor
-status: open
+status: testing
 priority: normal
 provenance: chat
 source_ref: chat:conductor-2711/m365-tenants-ui
