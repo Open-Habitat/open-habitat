@@ -81,6 +81,14 @@ tuotannon sellaisenaan. Toteutus vie ne tuotannon CSS:ään.
    osittaisessa tilassa, vai pitäisikö painikkeen sanoa tuotannon tapaan
    *Aseta puuttuvat…* luvun sijaan?
 
+### Jarin vastaukset kierrokseen 4 (27.11.2026)
+
+- Hyväksyntäviesti kelpaa sellaisenaan.
+- Vajaa tila *Tasot 2/4* + *2/4 tasoa tarjolla* riittää.
+- Tilapilleri *Käyttöönotossa* on harhaanjohtava (kuulostaa keskeneräiseltä
+  asetukselta); se muutetaan erikseen issuessa
+  `integration-state-in-onboarding-label` (*Tarjolla*).
+
 ---
 
 ## Kierros 3
