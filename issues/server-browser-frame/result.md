@@ -1,5 +1,19 @@
 # Tulokset
 
+### Jarin vastaukset kierrokseen 1 (27.11.2026)
+
+- **Paneeli** on paras.
+- Etänäytön koko pysyy kuten nyt (kapellimestarin tulkinta lauseesta "tila,
+  jossa tämä aina on, on se ikkuna joka on jo nyt": ei koon seurantaa).
+- Kun välilehdet ovat Habitatin palkissa, ne eivät saa näkyä myös etäkuvassa
+  (Chromen oma välilehtirivi pois kuvasta).
+- `<` / `>` -painikkeet pois.
+- ⋯ on hyvä, mutta *Liitä pitkä teksti…*, *Kirjoita sivulle…* ja *Kopioi
+  valinta* pois. Valikossa voi olla *Leikkaa* ja *Liitä* pikanäppäimineen.
+  Pitkän tekstin liittäminen hoituu ⌘V:llä.
+- *Sulje tämä välilehti* → *Sulje välilehti*.
+- **Valmis**-painike on erityisen hyvä: juuri tällaista suoraviivaisuutta.
+
 ## Kierros 1
 
 Prototyyppi: `design-system/prototypes/rounds/2026-11-27-palvelinselain-kehys-1/`
