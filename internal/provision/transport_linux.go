@@ -194,7 +194,7 @@ func (s Server) exchange(parent, admission context.Context, conn *net.UnixConn, 
 	if err != nil || uid != s.GatewayUID {
 		return
 	}
-	b, err := readFrame(conn)
+	b, err := readFrame(conn, MaxMessage)
 	if err != nil {
 		return
 	}
@@ -241,7 +241,7 @@ func (s Server) exchange(parent, admission context.Context, conn *net.UnixConn, 
 	if err != nil {
 		return
 	}
-	_ = writeFrame(conn, b)
+	_ = writeFrame(conn, b, MaxReply)
 	_ = conn.CloseWrite()
 }
 
@@ -283,10 +283,10 @@ func (c Client) Exchange(ctx context.Context, r Request) (Reply, error) {
 	if conn.SetDeadline(deadline) != nil {
 		return Reply{}, ErrTransport
 	}
-	if writeFrame(conn, b) != nil || conn.CloseWrite() != nil {
+	if writeFrame(conn, b, MaxMessage) != nil || conn.CloseWrite() != nil {
 		return Reply{}, ErrTransport
 	}
-	b, err = readFrame(conn)
+	b, err = readFrame(conn, MaxReply)
 	if err != nil {
 		return Reply{}, ErrTransport
 	}
@@ -300,16 +300,17 @@ func (c Client) Exchange(ctx context.Context, r Request) (Reply, error) {
 	return reply, nil
 }
 
-// A frame is uint32 big-endian length plus <= MaxMessage bytes, followed by
-// EOF (half-close). Reading the EOF rejects duplicates and extra bytes before
-// any handler or reply is used; short headers and payloads are denied.
-func readFrame(r io.Reader) ([]byte, error) {
+// A frame is uint32 big-endian length plus at most limit bytes (MaxMessage
+// for a request, MaxReply for a reply), followed by EOF (half-close).
+// Reading the EOF rejects duplicates and extra bytes before any handler or
+// reply is used; short headers and payloads are denied.
+func readFrame(r io.Reader, limit int) ([]byte, error) {
 	var header [4]byte
 	if _, err := io.ReadFull(r, header[:]); err != nil {
 		return nil, ErrTransport
 	}
 	n := binary.BigEndian.Uint32(header[:])
-	if n == 0 || n > MaxMessage {
+	if n == 0 || n > uint32(limit) {
 		return nil, ErrTransport
 	}
 	b := make([]byte, n)
@@ -323,8 +324,8 @@ func readFrame(r io.Reader) ([]byte, error) {
 	}
 	return b, nil
 }
-func writeFrame(w io.Writer, b []byte) error {
-	if len(b) == 0 || len(b) > MaxMessage {
+func writeFrame(w io.Writer, b []byte, limit int) error {
+	if len(b) == 0 || len(b) > limit {
 		return ErrTransport
 	}
 	var header [4]byte

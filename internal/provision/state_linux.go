@@ -173,13 +173,19 @@ func (a allowFile) team(teamID string) *teamSource {
 	return nil
 }
 
-// maxAllowlist bounds the admission file, which holds every source; every
-// other broker file stays within one protocol message.
+// maxAllowlist bounds the admission file, which holds every source; the
+// integrations record holds a record per allowed organisation beside the
+// sections' (maxIntegrationState); every other broker file stays within one
+// protocol message.
 const maxAllowlist = 1 << 17
+const maxIntegrationState = 16384
 
 func fileLimit(name string) int64 {
 	if strings.HasPrefix(name, "allowlist.json") {
 		return maxAllowlist
+	}
+	if strings.HasPrefix(name, integrationState) {
+		return maxIntegrationState
 	}
 	return MaxMessage
 }

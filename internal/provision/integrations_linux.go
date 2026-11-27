@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"io"
 	"os"
@@ -42,10 +43,20 @@ type integrationRecord struct {
 	At       string `json:"at"`
 	SHA256   string `json:"sha256"`
 }
+
+// tenantRecord is who set an allowed organisation's label; SHA256 is the
+// label's, so a label root later edits by hand is reported as root's.
+type tenantRecord struct {
+	TenantID string `json:"tenant_id"`
+	Actor    string `json:"actor"`
+	At       string `json:"at"`
+	SHA256   string `json:"sha256"`
+}
 type integrationFile struct {
 	Version      int                 `json:"version"`
 	BrowserSetup bool                `json:"browser_setup"`
 	Apps         []integrationRecord `json:"apps"`
+	Tenants      []tenantRecord      `json:"tenants,omitempty"`
 }
 
 var errIntegrationFile = errors.New("integrations file unavailable")
@@ -81,10 +92,10 @@ func readIntegrationState(fd int, owner uint32) (integrationFile, error) {
 		return integrationFile{}, e
 	}
 	var f integrationFile
-	if decode(b, &f, "version", "browser_setup", "apps") != nil || f.Version != 1 {
+	raw, err := objectSized(b, maxIntegrationState, "version", "browser_setup", "apps", "tenants")
+	if err != nil || json.Unmarshal(b, &f) != nil || f.Version != 1 {
 		return integrationFile{}, ErrInvalid
 	}
-	raw, _ := object(b, "version", "browser_setup", "apps")
 	apps, err := checkArray(raw["apps"], "apps")
 	if err != nil || len(apps) > len(integrationapps.Providers) {
 		return integrationFile{}, ErrInvalid
@@ -97,7 +108,31 @@ func readIntegrationState(fd int, owner uint32) (integrationFile, error) {
 		}
 		seen[x.Provider] = true
 	}
+	if len(raw["tenants"]) != 0 {
+		tenants, err := checkArray(raw["tenants"], "tenants")
+		if err != nil || len(tenants) > integrationapps.MaxTenants {
+			return integrationFile{}, ErrInvalid
+		}
+		for _, t := range tenants {
+			var x tenantRecord
+			if objectDecode(t, &x, "tenant_id", "actor", "at", "sha256") != nil || !integrationapps.ValidTenantID(x.TenantID) || seen["tenant:"+x.TenantID] || !validActor(x.Actor) || !validStamp(x.At) || !digestHex(x.SHA256) {
+				return integrationFile{}, ErrInvalid
+			}
+			seen["tenant:"+x.TenantID] = true
+		}
+	}
 	return f, nil
+}
+
+// objectDecode is decode for a member of a file larger than one message.
+func objectDecode(b []byte, dst any, fields ...string) error {
+	if _, err := objectSized(b, maxIntegrationState, fields...); err != nil {
+		return err
+	}
+	if json.Unmarshal(b, dst) != nil {
+		return ErrInvalid
+	}
+	return nil
 }
 func digestHex(s string) bool {
 	b, e := hex.DecodeString(s)
@@ -112,6 +147,7 @@ func writeIntegrationState(fd int, f integrationFile) error {
 		return e
 	}
 	slices.SortFunc(f.Apps, func(a, b integrationRecord) int { return strings.Compare(a.Provider, b.Provider) })
+	slices.SortFunc(f.Tenants, func(a, b tenantRecord) int { return strings.Compare(a.TenantID, b.TenantID) })
 	return replace(fd, integrationState, marshal(f))
 }
 
@@ -260,6 +296,53 @@ func hostLock(ctx context.Context, path string, owner uint32) (int, error) {
 	}
 }
 
+// integrationTenants lists the allowed organisations in the file's order
+// with their source. invalid is a list the daemons refuse whole.
+func integrationTenants(file []byte, state integrationFile) (list []IntegrationTenant, invalid bool, err error) {
+	list = []IntegrationTenant{}
+	if file == nil {
+		return list, false, nil
+	}
+	members, err := integrationapps.Members(file)
+	if err != nil {
+		return nil, false, err
+	}
+	for _, m := range members {
+		if m.Key != integrationapps.TenantsKey {
+			continue
+		}
+		tenants, ok := integrationapps.ReadTenants(m.Value)
+		if !ok {
+			return list, true, nil
+		}
+		for _, t := range tenants {
+			x := IntegrationTenant{TenantID: t.ID, Label: t.Label, Source: AppSourceOperator}
+			for _, r := range state.Tenants {
+				if r.TenantID == t.ID && r.SHA256 == sectionDigest([]byte(t.Label)) {
+					x.Source, x.Actor, x.At = AppSourceSiteAdmin, r.Actor, r.At
+				}
+			}
+			list = append(list, x)
+		}
+	}
+	return list, false, nil
+}
+
+// currentTenants is the file's list for a change, nil when there is none;
+// false when root's list is one the daemons refuse, which only root repairs.
+func currentTenants(file []byte) ([]integrationapps.Tenant, bool) {
+	members, err := integrationapps.Members(file)
+	if err != nil {
+		return nil, false
+	}
+	for _, m := range members {
+		if m.Key == integrationapps.TenantsKey {
+			return integrationapps.ReadTenants(m.Value)
+		}
+	}
+	return nil, true
+}
+
 // integrationApps lists the file's application sections with their source.
 func integrationApps(file []byte, state integrationFile) ([]IntegrationApp, error) {
 	apps := []IntegrationApp{}
@@ -342,7 +425,11 @@ func (w Writer) handleIntegrations(ctx context.Context, r Request) Reply {
 		if err != nil {
 			return failure(IntegrationsFile)
 		}
-		reply := Reply{Version: 1, Integrations: &IntegrationPage{BrowserSetup: state.BrowserSetup, Apps: apps}}
+		tenants, invalid, err := integrationTenants(file, state)
+		if err != nil {
+			return failure(IntegrationsFile)
+		}
+		reply := Reply{Version: 1, Integrations: &IntegrationPage{BrowserSetup: state.BrowserSetup, Apps: apps, Tenants: tenants, TenantsInvalid: invalid}}
 		if _, err = EncodeReply(reply); err != nil {
 			return failure(StateUnavailable)
 		}
@@ -359,21 +446,55 @@ func (w Writer) handleIntegrations(ctx context.Context, r Request) Reply {
 	if file == nil {
 		return failure(IntegrationsFile)
 	}
-	var section []byte
-	if r.Operation == OpIntegrationSet {
-		section = integrationapps.Section(r.Provider, r.Fields)
-	}
-	next, e := integrationapps.Replace(file, r.Provider, section)
-	if e != nil {
-		return failure(IntegrationsFile)
-	}
 	now := time.Now
 	if w.Now != nil {
 		now = w.Now
 	}
-	recorded := slices.DeleteFunc(append([]integrationRecord{}, state.Apps...), func(x integrationRecord) bool { return x.Provider == r.Provider })
-	if section != nil {
-		recorded = append(recorded, integrationRecord{Provider: r.Provider, Actor: r.Actor, At: now().UTC().Truncate(time.Second).Format(time.RFC3339), SHA256: sectionDigest(section)})
+	stamp := now().UTC().Truncate(time.Second).Format(time.RFC3339)
+	var next []byte
+	switch r.Operation {
+	case OpIntegrationTenantSet, OpIntegrationTenantRemove:
+		// One organisation of the list changes; every other entry, its
+		// order and every other member keep their bytes' meaning.
+		tenants, ok := currentTenants(file)
+		if !ok {
+			return failure(IntegrationsFile)
+		}
+		id := r.Fields["tenant_id"]
+		if r.Operation == OpIntegrationTenantSet {
+			if tenants, ok = integrationapps.SetTenant(tenants, integrationapps.Tenant{ID: id, Label: r.Fields["label"]}); !ok {
+				return failure(TenantsFull)
+			}
+		} else {
+			tenants = integrationapps.RemoveTenant(tenants, id)
+		}
+		var value []byte
+		if len(tenants) > 0 {
+			value = integrationapps.TenantsValue(tenants)
+		}
+		if next, e = integrationapps.Replace(file, integrationapps.TenantsKey, value); e != nil {
+			return failure(IntegrationsFile)
+		}
+		recorded := slices.DeleteFunc(append([]tenantRecord{}, state.Tenants...), func(x tenantRecord) bool {
+			return x.TenantID == id || !slices.ContainsFunc(tenants, func(t integrationapps.Tenant) bool { return t.ID == x.TenantID })
+		})
+		if r.Operation == OpIntegrationTenantSet {
+			recorded = append(recorded, tenantRecord{TenantID: id, Actor: r.Actor, At: stamp, SHA256: sectionDigest([]byte(r.Fields["label"]))})
+		}
+		state.Tenants = recorded
+	default:
+		var section []byte
+		if r.Operation == OpIntegrationSet {
+			section = integrationapps.Section(r.Provider, r.Fields)
+		}
+		if next, e = integrationapps.Replace(file, r.Provider, section); e != nil {
+			return failure(IntegrationsFile)
+		}
+		recorded := slices.DeleteFunc(append([]integrationRecord{}, state.Apps...), func(x integrationRecord) bool { return x.Provider == r.Provider })
+		if section != nil {
+			recorded = append(recorded, integrationRecord{Provider: r.Provider, Actor: r.Actor, At: stamp, SHA256: sectionDigest(section)})
+		}
+		state.Apps = recorded
 	}
 	if ctx.Err() != nil {
 		return failure(StateUnavailable)
@@ -383,7 +504,6 @@ func (w Writer) handleIntegrations(ctx context.Context, r Request) Reply {
 			return failure(StateUnavailable)
 		}
 	}
-	state.Apps = recorded
 	if writeIntegrationState(fd, state) != nil {
 		return failure(StateUnavailable)
 	}
@@ -396,8 +516,10 @@ func (w Writer) handleIntegrations(ctx context.Context, r Request) Reply {
 // IntegrationState is what host plan reports: the published switch and each
 // section's source, actor and time. It never carries a secret.
 type IntegrationState struct {
-	BrowserSetup bool             `json:"browser_setup"`
-	Apps         []IntegrationApp `json:"apps"`
+	BrowserSetup   bool                `json:"browser_setup"`
+	Apps           []IntegrationApp    `json:"apps"`
+	Tenants        []IntegrationTenant `json:"tenants"`
+	TenantsInvalid bool                `json:"tenants_invalid,omitempty"`
 }
 
 // InspectIntegrations is root-local and read-only.
@@ -433,7 +555,11 @@ func (w Writer) inspectIntegrations(ctx context.Context) (IntegrationState, erro
 	if e != nil {
 		return IntegrationState{}, e
 	}
-	return IntegrationState{BrowserSetup: state.BrowserSetup, Apps: apps}, nil
+	tenants, invalid, e := integrationTenants(file, state)
+	if e != nil {
+		return IntegrationState{}, e
+	}
+	return IntegrationState{BrowserSetup: state.BrowserSetup, Apps: apps, Tenants: tenants, TenantsInvalid: invalid}, nil
 }
 
 // PublishIntegrationSetup records root's integrations.browser_setup switch.

@@ -13,6 +13,8 @@ import (
 	"io"
 	"regexp"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 )
 
 // Path is the installation-wide file. It names application identifiers and
@@ -31,7 +33,25 @@ const MaxFile = 16384
 // folder or Full Dropbox) is fixed when it is created, so a narrower level
 // that the provider itself enforces is another registration. The section
 // name is the provider, an underscore and the level.
-var Providers = []string{"google", "microsoft", "microsoft_nosend", "microsoft_drafts", "microsoft_read", "dropbox", "dropbox_app_folder"}
+//
+// The microsoft_shared sections are the operator's multi-tenant Entra
+// applications, one per level like the single-tenant ones: each serves every
+// organisation on the allowed list (TenantsKey) whose cell of that level no
+// single-tenant section fills. Their tenant_id is the tenant that owns the
+// registration, never a sign-in authority on its own account.
+var Providers = []string{"google", "microsoft", "microsoft_nosend", "microsoft_drafts", "microsoft_read", "microsoft_shared", "microsoft_shared_nosend", "microsoft_shared_drafts", "microsoft_shared_read", "dropbox", "dropbox_app_folder"}
+
+// MicrosoftShared is the shared section of a level's single-tenant section
+// name ("microsoft_read" → "microsoft_shared_read"), "" for anything else.
+func MicrosoftShared(section string) string {
+	switch section {
+	case "microsoft":
+		return "microsoft_shared"
+	case "microsoft_nosend", "microsoft_drafts", "microsoft_read":
+		return "microsoft_shared_" + strings.TrimPrefix(section, "microsoft_")
+	}
+	return ""
+}
 
 // ProviderOf is the provider a section registers an application for.
 func ProviderOf(section string) string {
@@ -44,7 +64,7 @@ func Fields(provider string) []string {
 	switch provider {
 	case "google", "dropbox", "dropbox_app_folder":
 		return []string{"client_id", "client_secret"}
-	case "microsoft", "microsoft_nosend", "microsoft_drafts", "microsoft_read":
+	case "microsoft", "microsoft_nosend", "microsoft_drafts", "microsoft_read", "microsoft_shared", "microsoft_shared_nosend", "microsoft_shared_drafts", "microsoft_shared_read":
 		return []string{"client_id", "tenant_id"}
 	}
 	return nil
@@ -70,10 +90,11 @@ var (
 
 // Usable is the daemon's rule: whether the person's daemon uses a section.
 // An operator may hand-edit the file, so it is no stricter than the tools
-// themselves need. The Microsoft application is single tenant: personal
-// Microsoft accounts are out, and a single-tenant app cannot sign in through
-// common or organizations (AADSTS50194), so the tenant is always the
-// organisation's Directory (tenant) ID.
+// themselves need. Every Microsoft tenant is a Directory (tenant) ID, never
+// common, organizations or consumers: a single-tenant app cannot sign in
+// through them (AADSTS50194), and a multi-tenant one through organizations
+// would sign a guest in at their home tenant instead of the organisation
+// they chose. Personal Microsoft accounts are out either way.
 func Usable(provider string, f map[string]string) bool {
 	if Fields(provider) == nil {
 		return false
@@ -257,4 +278,124 @@ func concat(parts ...[]byte) []byte {
 		b.Write(p)
 	}
 	return b.Bytes()
+}
+
+// TenantsKey is the allowed list of organisations the shared Microsoft
+// applications serve: a member whose keys are tenant GUIDs and whose values
+// are the labels people see. It is not a security boundary: a refresh token
+// of a multi-tenant application is bound to the person and the application,
+// not to one organisation, so the list governs what Habitat's own connect,
+// refresh and tool paths do, never what a program running as the person can
+// reach. The labels are in a file every mapped user can read.
+const TenantsKey = "microsoft_tenants"
+
+// MaxTenants and MaxLabel bound the list and a label (in characters).
+const (
+	MaxTenants = 32
+	MaxLabel   = 64
+)
+
+// Tenant is one allowed organisation.
+type Tenant struct {
+	ID    string `json:"tenant_id"`
+	Label string `json:"label"`
+}
+
+var lowerGUID = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+
+// CanonicalTenant is a tenant GUID in the list's form, lowercase, or false
+// when s is not a GUID. A domain name or an audience keyword is not one.
+func CanonicalTenant(s string) (string, bool) {
+	if !microsoftGUID.MatchString(s) {
+		return "", false
+	}
+	return strings.ToLower(s), true
+}
+
+// ValidTenantID is the broker's rule for a list key: a lowercase GUID.
+func ValidTenantID(s string) bool { return lowerGUID.MatchString(s) }
+
+// ValidLabel admits 1 to MaxLabel printable characters with no space at
+// either end. Nothing in it can break a line or a terminal's display.
+func ValidLabel(s string) bool {
+	if !utf8.ValidString(s) || s != strings.TrimSpace(s) {
+		return false
+	}
+	n := 0
+	for _, r := range s {
+		if !unicode.IsPrint(r) {
+			return false
+		}
+		n++
+	}
+	return n >= 1 && n <= MaxLabel
+}
+
+// ReadTenants decodes the list in the file's order. A list with a key that
+// is not a GUID, a label the broker would refuse, two keys naming the same
+// tenant in different case, or more than MaxTenants entries is refused
+// whole: the daemon then serves no organisation through the shared
+// applications rather than guessing which entries were meant.
+func ReadTenants(raw []byte) ([]Tenant, bool) {
+	members, err := Members(raw)
+	if err != nil || len(members) > MaxTenants {
+		return nil, false
+	}
+	out := make([]Tenant, 0, len(members))
+	seen := map[string]bool{}
+	for _, m := range members {
+		id, ok := CanonicalTenant(m.Key)
+		var label string
+		if !ok || seen[id] || json.Unmarshal(m.Value, &label) != nil || !ValidLabel(label) {
+			return nil, false
+		}
+		seen[id] = true
+		out = append(out, Tenant{ID: id, Label: label})
+	}
+	return out, true
+}
+
+// TenantsValue is the canonical member value for a list.
+func TenantsValue(list []Tenant) []byte {
+	var b bytes.Buffer
+	b.WriteByte('{')
+	for i, t := range list {
+		if i > 0 {
+			b.WriteByte(',')
+		}
+		key, _ := json.Marshal(t.ID)
+		value, _ := json.Marshal(t.Label)
+		b.Write(key)
+		b.WriteByte(':')
+		b.Write(value)
+	}
+	b.WriteByte('}')
+	return b.Bytes()
+}
+
+// SetTenant relabels the tenant where it is, or appends it, so an
+// organisation keeps its place; false when the list is full.
+func SetTenant(list []Tenant, t Tenant) ([]Tenant, bool) {
+	out := append([]Tenant{}, list...)
+	for i := range out {
+		if out[i].ID == t.ID {
+			out[i].Label = t.Label
+			return out, true
+		}
+	}
+	if len(out) >= MaxTenants {
+		return nil, false
+	}
+	return append(out, t), true
+}
+
+// RemoveTenant drops the tenant; the list is unchanged when it is absent.
+func RemoveTenant(list []Tenant, id string) []Tenant {
+	out := make([]Tenant, 0, len(list))
+	for _, t := range list {
+		if t.ID != id {
+			out = append(out, t)
+		}
+	}
+	return out
 }

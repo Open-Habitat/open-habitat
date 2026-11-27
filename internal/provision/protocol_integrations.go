@@ -16,6 +16,12 @@ const (
 	OpIntegrationList  = "integration_list"
 	OpIntegrationSet   = "set_integration_app"
 	OpIntegrationClear = "clear_integration_app"
+	// The allowed organisations of the shared Microsoft applications
+	// (integrationapps.TenantsKey): add or relabel one, remove one. Each is
+	// a read-modify-write of that one member under the same locks, switch
+	// and actor record as a section. Provider is the member's key.
+	OpIntegrationTenantSet    = "set_integration_tenant"
+	OpIntegrationTenantRemove = "remove_integration_tenant"
 )
 
 // Definite integration refusals: nothing was written.
@@ -30,6 +36,9 @@ const (
 	// section the current rules call unusable is not a broken file: the
 	// broker replaces or removes it like any other.
 	IntegrationsFile Failure = "integrations_file_invalid"
+	// TenantsFull refuses a new organisation when the allowed list already
+	// has integrationapps.MaxTenants.
+	TenantsFull Failure = "integration_tenants_full"
 )
 
 // Sources of a section: site_admin when the broker wrote exactly these bytes
@@ -53,17 +62,45 @@ type IntegrationApp struct {
 	At     string `json:"at,omitempty"`
 }
 
+// IntegrationTenant is one allowed organisation as the list shows it, in
+// the file's order. Its source is site_admin when the broker set exactly
+// this label on a recorded request.
+type IntegrationTenant struct {
+	TenantID string `json:"tenant_id"`
+	Label    string `json:"label"`
+	Source   string `json:"source"`
+	Actor    string `json:"actor,omitempty"`
+	At       string `json:"at,omitempty"`
+}
+
 // IntegrationPage answers every integration operation. BrowserSetup is root's
-// switch as host apply last published it.
+// switch as host apply last published it. TenantsInvalid is a list root
+// wrote that the daemons refuse whole; Tenants is then empty and only root
+// can repair it.
 type IntegrationPage struct {
-	BrowserSetup bool             `json:"browser_setup"`
-	Apps         []IntegrationApp `json:"apps"`
+	BrowserSetup   bool                `json:"browser_setup"`
+	Apps           []IntegrationApp    `json:"apps"`
+	Tenants        []IntegrationTenant `json:"tenants"`
+	TenantsInvalid bool                `json:"tenants_invalid,omitempty"`
 }
 
 var publicID = regexp.MustCompile(`^[A-Za-z0-9._-]{1,256}$`)
 
 func integrationOperation(op string) bool {
-	return op == OpIntegrationList || op == OpIntegrationSet || op == OpIntegrationClear
+	return op == OpIntegrationList || op == OpIntegrationSet || op == OpIntegrationClear || op == OpIntegrationTenantSet || op == OpIntegrationTenantRemove
+}
+
+// tenantFields is a tenant request's fields: a lowercase GUID, and for a
+// set the label.
+func tenantFields(f map[string]string, set bool) bool {
+	want := 1
+	if set {
+		want = 2
+		if !integrationapps.ValidLabel(f["label"]) {
+			return false
+		}
+	}
+	return len(f) == want && integrationapps.ValidTenantID(f["tenant_id"])
 }
 
 func integrationProvider(p string) bool { return slices.Contains(integrationapps.Providers, p) }
@@ -91,6 +128,10 @@ func parseIntegrationRequest(raw map[string]json.RawMessage, r Request) (Request
 		if !integrationProvider(r.Provider) || !validActor(r.Actor) || present("fields") {
 			return Request{}, ErrInvalid
 		}
+	case OpIntegrationTenantSet, OpIntegrationTenantRemove:
+		if r.Provider != integrationapps.TenantsKey || !validActor(r.Actor) || !tenantFields(r.Fields, r.Operation == OpIntegrationTenantSet) {
+			return Request{}, ErrInvalid
+		}
 	}
 	return r, nil
 }
@@ -99,9 +140,22 @@ func parseIntegrationReply(raw map[string]json.RawMessage, r Reply) (Reply, erro
 	if r.Integrations == nil || r.Route != nil || r.Users != nil || r.Quota != nil || r.Quotas != nil || r.Access != nil || r.Generation != 0 || r.Epoch != 0 || r.Next != "" {
 		return Reply{}, ErrInvalid
 	}
-	page, err := object(raw["integrations"], "browser_setup", "apps")
+	page, err := objectSized(raw["integrations"], MaxReply, "browser_setup", "apps", "tenants", "tenants_invalid")
 	if err != nil || len(page["browser_setup"]) == 0 || string(page["browser_setup"]) == "null" {
 		return Reply{}, ErrInvalid
+	}
+	tenants, err := checkArray(page["tenants"], "tenants")
+	if err != nil || len(tenants) > integrationapps.MaxTenants || r.Integrations.TenantsInvalid && len(tenants) != 0 {
+		return Reply{}, ErrInvalid
+	}
+	seenTenant := map[string]bool{}
+	for _, t := range tenants {
+		var x IntegrationTenant
+		fields, err := object(t, "tenant_id", "label", "source", "actor", "at")
+		if err != nil || json.Unmarshal(t, &x) != nil || !validIntegrationTenant(x, fields) || seenTenant[x.TenantID] {
+			return Reply{}, ErrInvalid
+		}
+		seenTenant[x.TenantID] = true
 	}
 	apps, err := checkArray(page["apps"], "apps")
 	if err != nil || len(apps) > len(integrationapps.Providers) {
@@ -127,6 +181,24 @@ func validIntegrationApp(x IntegrationApp, fields map[string]json.RawMessage) bo
 	}
 	// An operator's hand-written id is shown only when it is token-shaped.
 	if !integrationProvider(x.Provider) || x.ClientID != "" && !publicID.MatchString(x.ClientID) || x.TenantID != "" && (!publicID.MatchString(x.TenantID) || integrationapps.ProviderOf(x.Provider) != "microsoft") {
+		return false
+	}
+	switch x.Source {
+	case AppSourceSiteAdmin:
+		return validActor(x.Actor) && validStamp(x.At)
+	case AppSourceOperator:
+		return x.Actor == "" && x.At == ""
+	}
+	return false
+}
+
+func validIntegrationTenant(x IntegrationTenant, fields map[string]json.RawMessage) bool {
+	for _, k := range []string{"tenant_id", "label", "source"} {
+		if len(fields[k]) == 0 || string(fields[k]) == "null" {
+			return false
+		}
+	}
+	if !integrationapps.ValidTenantID(x.TenantID) || !integrationapps.ValidLabel(x.Label) {
 		return false
 	}
 	switch x.Source {

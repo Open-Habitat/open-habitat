@@ -253,7 +253,7 @@ func TestTimeoutCancelReconnectAndBadReply(t *testing.T) {
 		t.Fatal("extra reply accepted")
 	}
 }
-func readFrameFromBytes(b []byte) ([]byte, error) { return readFrame(&byteReader{b: b}) }
+func readFrameFromBytes(b []byte) ([]byte, error) { return readFrame(&byteReader{b: b}, MaxMessage) }
 
 type byteReader struct{ b []byte }
 
@@ -310,7 +310,7 @@ func TestServerCapsAcceptedClientsAndDrains(t *testing.T) {
 		}
 		clients = append(clients, conn)
 		conn.SetDeadline(time.Now().Add(time.Second))
-		if err := writeFrame(conn, payload); err != nil {
+		if err := writeFrame(conn, payload, MaxMessage); err != nil {
 			t.Fatal(err)
 		}
 		if err := conn.CloseWrite(); err != nil {
@@ -328,7 +328,7 @@ func TestServerCapsAcceptedClientsAndDrains(t *testing.T) {
 	}
 	defer extra.Close()
 	extra.SetDeadline(time.Now().Add(time.Second))
-	_ = writeFrame(extra, payload)
+	_ = writeFrame(extra, payload, MaxMessage)
 	_ = extra.CloseWrite()
 	var b [1]byte
 	n, err := extra.Read(b[:])
@@ -341,7 +341,7 @@ func TestServerCapsAcceptedClientsAndDrains(t *testing.T) {
 	close(release)
 	released = true
 	for _, conn := range clients {
-		if _, err := readFrame(conn); err != nil {
+		if _, err := readFrame(conn, MaxMessage); err != nil {
 			t.Fatal(err)
 		}
 	}

@@ -11,7 +11,15 @@ import (
 	"strconv"
 )
 
+// MaxMessage bounds a request and every broker file but the admission list.
 const MaxMessage = 4096
+
+// MaxReply bounds a reply. Only the integrations page needs more than a
+// request may carry: eleven application sections beside the allowed list of
+// MaxTenants organisations, each with its label and who set it. A request
+// stays within MaxMessage, so what a compromised gateway can make the root
+// broker parse does not grow.
+const MaxReply = 32768
 
 var ErrInvalid = errors.New("invalid broker data")
 
@@ -285,13 +293,20 @@ func ParseRequest(b []byte) (Request, error) {
 }
 func ParseReply(b []byte) (Reply, error) {
 	var r Reply
-	if err := decode(b, &r, "version", "failure", "route", "generation", "epoch", "users", "next", "quota", "quotas", "access", "created", "integrations", "live_limits"); err != nil {
+	raw, err := objectSized(b, MaxReply, "version", "failure", "route", "generation", "epoch", "users", "next", "quota", "quotas", "access", "created", "integrations", "live_limits")
+	if err != nil {
 		return Reply{}, err
+	}
+	if json.Unmarshal(b, &r) != nil {
+		return Reply{}, ErrInvalid
 	}
 	if r.Version != 1 {
 		return Reply{}, ErrInvalid
 	}
-	raw, _ := object(b, "version", "failure", "route", "generation", "epoch", "users", "next", "quota", "quotas", "access", "created", "integrations", "live_limits")
+	// Every page but the integrations page fits a request's bound.
+	if len(raw["integrations"]) == 0 && len(b) > MaxMessage {
+		return Reply{}, ErrInvalid
+	}
 	// created exists only as true on a route reply; false is never written.
 	if _, present := raw["created"]; present && (!r.Created || len(raw["route"]) == 0 || string(raw["route"]) == "null") {
 		return Reply{}, ErrInvalid
@@ -304,7 +319,7 @@ func ParseReply(b []byte) (Reply, error) {
 	}
 	if r.Failure != "" {
 		switch r.Failure {
-		case Denied, Invalid, StateUnavailable, NameCollision, Drift, RuntimeDisabled, RuntimeFull, AdmissionOpen, OperatorOwned, BrowserSetupOff, HostBusy, IntegrationsFile, QuotaNotInUse, RemovalPending, RemovalStarted:
+		case Denied, Invalid, StateUnavailable, NameCollision, Drift, RuntimeDisabled, RuntimeFull, AdmissionOpen, OperatorOwned, BrowserSetupOff, HostBusy, IntegrationsFile, TenantsFull, QuotaNotInUse, RemovalPending, RemovalStarted:
 		default:
 			return Reply{}, ErrInvalid
 		}
