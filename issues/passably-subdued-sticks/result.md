@@ -1,4 +1,116 @@
-# Microsoft 365 usealle organisaatiolle: prototyyppikierros 1
+# Microsoft 365 usealle organisaatiolle: prototyyppikierrokset
+
+## Kierros 2
+
+Kierros: `design-system/prototypes/rounds/2026-11-27-entra-organisaatiot-2/`
+(`NOTES.md` kertoo URL-parametrit ja komennot). Sivu:
+`design-system/prototypes/dist/2026-11-27-entra-organisaatiot-2/offline.html`,
+tehdään uudelleen komennolla
+`node design-system/prototypes/rounds/2026-11-27-entra-organisaatiot-2/build.mjs`.
+
+Yläpalkissa on nyt kaksi isoa painiketta, **Ylläpitäjä** ja **Henkilö**.
+Henkilö avautuu sivulle Asetukset › Tiedot agenteille: Microsoft on
+yhdistetty omaan organisaatioon ja vieraana Asiakas Yksi Oy:hyn, ja Asiakas
+Kaksi Oy on rivi *Ei yhdistetty · Yhdistä*. Yhdistä vie tuotannon taso- ja
+laitekoodivaiheen läpi kortiksi, jossa on vain tiedostot; laitekoodivaiheen
+ohjauspalkista saa kieltäytymisen (*Asiakas Kaksi Oy ei ole hyväksynyt
+tasoa Vain luku.* ja Kopioi pyyntö). Henkilön näkymä on sama kaikissa
+suunnissa. Sivu avautuu Ylläpitäjän puolelle, koska valitsimen suunnat
+eroavat vain siellä; Näytä-valikko hyppää suoraan mihin tahansa tilanteeseen.
+Näkymä ja tilanne säilyvät, kun suuntaa vaihtaa valitsimesta.
+
+### Suunnat
+
+Akseli: **miten Microsoft-rivin kiinni oleva organisaatiolista avautuu.**
+Avattu lista on kaikissa sama: nimi, *Oma*-merkki, Hyväksyntä ja
+roskakori, alla Lisää organisaatio ja Lisätietoja.
+
+0. **Nyt**: tuotanto tänään, yksi organisaatio.
+1. **A1 Yhteenveto.** Rivillä *3 organisaatiota · Näytä*, kuten tuotannon
+   *Mitä tasot sallivat*. Näytä avaa listan rivin alle sisennettynä ja
+   työntää muut rivit alemmas. Päättää: lista on osa sivua, ja auki
+   jätetty lista pysyy auki toimintojen ajan.
+2. **A2 Painike.** Rivin loppuun Tasot-painikkeen viereen tulee
+   *Organisaatiot 3*, joka avaa listan ponnahdusikkunaan painikkeen alle
+   (puhelimessa alhaalta nouseva arkki, kuten tuotannon Git-tila). Rivillä
+   ei ole muuta. Päättää: rivi ei kasva lainkaan, ja organisaatiot ovat
+   Tasojen rinnalla Microsoftin toinen asetus.
+3. **A3 Sirut.** Rivillä nimet pieninä siruina ja *Hallitse…*, joka avaa
+   ikkunan. Päättää: nimet näkyvät aina, mutta toiminnot vain ikkunassa.
+
+### Suositus
+
+**A1.** Se on tuotannossa jo käytetty muoto samalla rivillä (*Mitä tasot
+sallivat*), joten uutta mallia ei tule, ja kiinni oleva rivi kasvaa vain
+yhden lyhyen rivin. Lista aukeaa paikalleen eikä peitä mitään, joten
+hyväksyntäikkunasta palataan samaan näkymään. A2 on siistein kiinni, mutta
+ponnahdusikkuna sulkeutuu aina, kun sieltä avaa hyväksynnän tai poiston, ja
+puhelimessa se on erillinen arkki. A3:n sirut kasvavat kahdeksi riviksi
+jo neljällä pitkällä nimellä, ja ne toistavat listan, jota ylläpitäjä ei
+tarvitse joka käynnillä.
+
+### Tekstit ennen ja jälkeen
+
+Sanat suomeksi (`wordcount.mjs`, joka laskee ne molempien kierrosten
+`text.ts`:stä; URL on yksi sana). *Näkyvissä* on se, minkä näkee
+avaamatta mitään; *avattavissa* on kierroksen 1 *Mitä lista rajoittaa?*;
+*Lisätietoja* on se, minkä kierros 2 siirsi yhden Lisätietoja-avauksen
+taakse.
+
+| Teksti | Kierros 1 näkyvissä | Kierros 1 avattavissa | Kierros 2 näkyvissä | Kierros 2 Lisätietoja |
+| --- | ---: | ---: | ---: | ---: |
+| Microsoft-rivi ja organisaatiolista | 20 | 0 | 9 | 12 |
+| Lisäysikkuna | 43 | 0 | 11 | 10 |
+| Hyväksyntäpaneeli (ilman viestiä) | 120 | 0 | 20 | 22 |
+| Rajoitus | 14 | 87 | 9 | 47 |
+| Poiston vahvistus | 78 | 0 | 16 | 22 |
+| Viesti asiakkaan pääkäyttäjälle | 199 | 0 | 79 | 0 |
+| Henkilö: rivit, yhdistäminen, vierastilin kortti | 70 | 0 | 23 | 0 |
+| Kieltäytyminen: ei hyväksyntää | 46 | 0 | 18 | 0 |
+| Kieltäytyminen: pyyntö pääkäyttäjälle | 37 | 0 | 14 | 0 |
+| Kieltäytyminen: not_in_organisation | 29 | 0 | 11 | 0 |
+| Kieltäytyminen: device_code_blocked | 19 | 0 | 10 | 0 |
+| Kieltäytyminen: organisation_unavailable | 14 | 0 | 11 | 0 |
+| Kieltäytyminen: expired (asiakas) | 27 | 0 | 13 | 0 |
+| **Yhteensä** | **716** | **87** | **244** | **113** |
+
+Tekstit näkyvät sivulla sellaisinaan, ja `text.ts` sisältää myös
+englanninkieliset.
+
+### Päätökset myöhempään tarkasteluun
+
+- Rajoituksen lause näkyy vain lisäysikkunassa (*Asiakkaan tietoja rajaa
+  asiakkaan oma Entra, ei tämä lista.*), koska siellä päätös tehdään.
+  Listan Lisätietoja kertoo, miksi lista ei ole tietoturvaraja.
+- Ylläpitäjän listassa ei ole organisaation tilaa: palvelin ei näe
+  hyväksyntää, ja kuka-yhdisti-lista jätettiin v1:stä pois. Ainoa merkki
+  on *Oma*. Tenant ID ei näy listassa; se näkyy lisättäessä.
+- Hyväksyntäikkuna näyttää valmiin viestin ja Kopioi viesti -painikkeen;
+  pelkät linkit ovat neljä kopiopainiketta ilman näkyvää URLia. Viesti
+  luettelee tasot kapeimmasta alkaen, ilman tasojen kuvauksia.
+- Viestissä mainitaan yksi rooli (Cloud Application Administrator) ja
+  tyhjä sivu yhdellä lauseella; kierroksen 1 kysymys 1 ratkaistiin näin
+  lyhentämällä.
+- Vierastilin kortissa puuttuvat palvelut ovat yhdellä rivillä (*Posti,
+  kalenteri ja yhteystiedot: ei vierastilillä.*) kolmen himmeän rivin ja
+  selityksen sijaan.
+- Kortin myöhemmät kieltäytymiset (hyväksyntä peruttu, vierastili
+  poistettu, organisaatio poistettu) eivät ole tällä kierroksella;
+  toteutuksessa ne lyhennetään samalla tavalla.
+- Kierroksen 1 havainnot tuotannon teksteistä (`outside_tenant`,
+  `integration-account-alignment`), korttien avaimesta ja v2-muotoisesta
+  hyväksyntälinkistä ovat edelleen voimassa.
+
+### Kysymykset Jarille
+
+1. A1, A2 vai A3?
+2. Riittääkö rajoitukseksi lisäysikkunan yksi lause ja listan
+   Lisätietoja, vai pitääkö lauseen näkyä myös avatussa listassa?
+3. Onko hyväksyntäviesti nyt sopivan lyhyt lähetettäväksi sellaisenaan?
+
+---
+
+## Kierros 1
 
 Kierros: `design-system/prototypes/rounds/2026-11-27-entra-organisaatiot/`
 (`NOTES.md` kertoo rakenteen, URL-parametrit, rakennuskomennon ja
@@ -17,7 +129,7 @@ Yksi Oy ja Asiakas Kaksi Oy, henkilö on `henna@konsultit.example`, joka on
 asiakkaissa vieraana. Yläpalkista valitaan tilanne, kieli (fi/en) ja teema
 (Päivä/Yö); 390 px ja vähennetty liike toimivat kaikissa suunnissa.
 
-## Sama kaikissa suunnissa
+### Sama kaikissa suunnissa
 
 Kaikki suomenkieliset tekstit ovat kirjoitettuina tiedostossa
 `text.ts`, ja ne näkyvät sivulla sellaisinaan:
@@ -69,7 +181,7 @@ Kaikki suomenkieliset tekstit ovat kirjoitettuina tiedostossa
   myöhemmin: hyväksyntä peruttu, vierastili poistettu, organisaatio
   poistettu palvelimelta.
 
-## Suunnat
+### Suunnat
 
 Akseli: **missä organisaatiot näkyvät**.
 
@@ -95,7 +207,7 @@ Akseli: **missä organisaatiot näkyvät**.
    rivin *Ei yhdistetty · Yhdistä…*. Päättää: henkilö näkee heti, mitkä
    organisaatiot ovat tarjolla, eikä organisaatiota tarvitse kysyä.
 
-## Suositus
+### Suositus
 
 **Ylläpitäjälle A, henkilölle C.** Ylläpitäjän lista on lyhyt (design
 rajaa 32:een, käytännössä muutama), ja se kuuluu Microsoft-riville, koska se
@@ -110,7 +222,7 @@ välilehdet piilottavat muiden organisaatioiden kortit ja ongelmat.
 Suosituksen kanssa yhteensopivasti A:n organisaatiovaihe jää tarpeettomaksi;
 yhden organisaation palvelimella mikään ei muutu kummassakaan.
 
-## Päätökset myöhempään tarkasteluun
+### Päätökset myöhempään tarkasteluun
 
 - Kortin organisaatio on osoitteen alla omalla rivillään
   (*Asiakas Yksi Oy · vieraana*); kortin otsikko pysyy *Microsoft 365*.
@@ -133,7 +245,7 @@ yhden organisaation palvelimella mikään ei muutu kummassakaan.
   `scope=.default`, `redirect_uri` nativeclient); tuotannon nykyinen
   ohje käyttää lyhyempää v1-muotoa.
 
-## Kysymykset Jarille
+### Kysymykset Jarille
 
 1. Käykö rajoituksen sanamuoto (lyhyt ja kolmen kappaleen muoto) ja
    asiakkaan pääkäyttäjälle lähtevä viesti sellaisenaan? Erityisesti:

@@ -1,0 +1,103 @@
+/* Review chrome above the page, clear of the floating picker. */
+html, body { margin: 0; background: var(--ah-bg); }
+.rq-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.rq-title { font-weight: 600; }
+.rq-bar select, .rq-bar > button { font: inherit; max-width: 100%; }
+.rq-line { flex-basis: 100%; margin: 0; color: var(--ah-ink-2); font-size: 12px; }
+
+/* The view switch is the round's most visible control: Jari did not find the person side in round 1. */
+.rq-views { display: inline-flex; padding: 2px; gap: 2px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-bg); }
+.rq-views button {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border: 0; border-radius: calc(var(--ah-r-md) - 2px);
+  background: none; color: var(--ah-ink-2); font: inherit; font-weight: 600; cursor: pointer;
+}
+.rq-views button svg { width: 14px; height: 14px; }
+.rq-views button[aria-pressed="true"] { background: var(--ah-surface); color: var(--ah-ink); box-shadow: var(--ah-shadow-menu); }
+.rq-views button:focus-visible { outline: 2px solid var(--ah-focus, var(--ah-accent)); outline-offset: 1px; }
+@media (max-width: 600px) {
+  .rq-bar { padding: 6px 10px; gap: 4px 10px; }
+  .rq-title { display: none; }
+  .rq-bar label { font-size: 11px; }
+  .rq-bar select { max-width: 40vw; }
+  .rq-views { flex-basis: 100%; }
+  .rq-views button { flex: 1; justify-content: center; }
+  .rq-line { font-size: 11px; line-height: 1.3; }
+}
+
+.rq-stage { padding-top: var(--review-h, 0px); padding-bottom: 96px; color: var(--ah-ink); }
+.rq-page { max-width: 960px; margin: 0 auto; padding: var(--ah-s5, 24px) var(--ah-s4, 16px); }
+.rq-h { font-size: 20px; margin: 0 0 var(--ah-s3, 12px); }
+.rq-h3 { font-size: 14px; margin: 0; }
+.rq-kicker { margin: 0; color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.rq-toast {
+  position: fixed; z-index: 200; left: 50%; top: calc(var(--review-h, 0px) + 8px); transform: translateX(-50%);
+  max-width: min(92vw, 560px); margin: 0; padding: 8px 14px; border-radius: var(--ah-r-md);
+  background: var(--ah-ink); color: var(--ah-bg); font: 12.5px/1.4 var(--ah-font, system-ui); overflow-wrap: anywhere;
+}
+.rq-slot { display: contents; }
+.rq-note { display: flex; gap: 6px; align-items: flex-start; margin: 0; }
+.rq-note svg { flex: none; width: 14px; height: 14px; margin-top: 3px; }
+.rq-acts { display: flex; flex-wrap: wrap; gap: var(--ah-s2); }
+
+/* Lisätietoja */
+.rq-more { display: grid; gap: 6px; }
+.rq-morebody { display: grid; gap: 6px; padding-left: 20px; color: var(--ah-ink-2); font-size: var(--ah-size-meta); line-height: 1.5; }
+.rq-morebody p { margin: 0; }
+
+/* The row's collapsed line. */
+.rq-sum { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 4px; font-size: var(--ah-size-meta); color: var(--ah-ink-2); }
+.rq-sum[hidden] { display: none; }
+.rq-sumtext { display: inline-flex; align-items: center; gap: 6px; }
+.rq-sumtext svg { width: 14px; height: 14px; }
+.rq-count { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--ah-bg); border: 1px solid var(--ah-line); font-size: 11px; font-weight: 600; }
+.rq-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 6px; }
+.rq-chip { display: inline-flex; align-items: center; gap: 6px; padding: 1px 8px; border: 1px solid var(--ah-line); border-radius: 999px; background: var(--ah-bg); color: var(--ah-ink); font-size: var(--ah-size-meta); line-height: 1.6; white-space: nowrap; }
+.rq-chipown { color: var(--ah-ink-2); font-size: 11px; }
+.rq-chips .ml-disclose { margin-left: 4px; }
+
+/* The opened list. */
+.rq-under { padding-bottom: var(--ah-s3); }
+.rq-under > div { margin-left: 44px; padding: var(--ah-s2) var(--ah-s3); border-left: 2px solid var(--ah-line); }
+@media (max-width: 600px) { .rq-under > div { margin-left: 0; } }
+.rq-orglist { display: grid; gap: var(--ah-s2); min-width: 0; width: 100%; align-self: stretch; justify-self: stretch; }
+.rq-orgs { list-style: none; margin: 0; padding: 0; display: grid; }
+.rq-orgs li { display: flex; align-items: center; gap: 8px; min-height: 36px; border-bottom: 1px solid var(--ah-line-soft, var(--ah-line)); }
+.rq-orgs li:last-child { border-bottom: 0; }
+.rq-orgname { flex: 1; min-width: 0; display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.rq-rowacts { display: inline-flex; gap: 2px; flex: none; }
+.rq-listfoot { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--ah-s2) var(--ah-s4); }
+.rq-listfoot .rq-more { flex: 1 1 16rem; padding-top: 4px; }
+
+/* A2: the popover and the phone sheet. */
+.rq-pop { width: min(440px, 92vw); padding: var(--ah-s3); }
+.rq-popdialog { outline: 0; display: grid; gap: var(--ah-s2); }
+.rq-popdialog:focus, .rq-popdialog:focus-visible { outline: none; box-shadow: none; }
+.rq-pophead { display: flex; align-items: center; justify-content: space-between; }
+.rq-sheet .ah-modal { position: fixed; left: 0; right: 0; bottom: 0; max-height: 85vh; overflow: auto; padding: var(--ah-s4) var(--ah-s4) 80px; border-radius: var(--ah-r-xl) var(--ah-r-xl) 0 0; background: var(--ah-surface); }
+
+/* Consent. */
+.rq-consent { display: grid; gap: var(--ah-s3); min-width: 0; }
+.rq-consent > p { margin: 0; }
+.rq-message { margin: 0; padding: var(--ah-s3); white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font: 13px/1.5 var(--ah-font, system-ui); background: var(--ah-surface-2, var(--ah-bg)); border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); max-height: 300px; overflow: auto; }
+.rq-links { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 4px; }
+.rq-linkstitle { color: var(--ah-ink-2); font-size: var(--ah-size-meta); margin-right: 4px; }
+.rq-add { display: grid; gap: var(--ah-s3); }
+
+/* Person. */
+.rq-orgtop { display: grid; gap: 6px; margin-bottom: var(--ah-s2); }
+.rq-orgchosen { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; margin: 0; }
+.rq-orgchosen svg { width: 14px; height: 14px; }
+.rq-cardorg { display: block; }
+.rq-offnote { margin: 0; padding: 4px 14px 12px; }
+.rq-sim { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s2); margin-top: var(--ah-s3); padding: var(--ah-s2); border: 1px dashed var(--ah-line-strong, var(--ah-line)); border-radius: var(--ah-r-md); }
+.rq-person [data-testid="integration-tile-microsoft"] { display: none; }
+.rq-cardwrap { display: contents; }
+.rq-refusal { display: grid; gap: var(--ah-s2); }
+.rq-refusal p { margin: 0; }
+.rq-ms { display: grid; gap: var(--ah-s2); }
+@media (prefers-reduced-motion: reduce) { .rq-review *, .rq-pop, .rq-sheet * { animation: none !important; transition: none !important; } }
