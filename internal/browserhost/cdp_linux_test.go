@@ -286,16 +286,18 @@ func TestPersonsControlHoldsTheAgentUntilGivenBack(t *testing.T) {
 	}
 }
 
+// A clipboard permission would let a page read what the person pasted.
+// Permissions are refused whole: a check of their names would have to read
+// the parameters exactly as Chrome does, and the CLI grants none.
 func TestTheAgentCannotGrantItselfTheClipboard(t *testing.T) {
 	c := newFakeChrome(t)
 	ag := connectAgent(t, c)
 	refused := []map[string]any{
 		{"id": 1, "method": "Browser.grantPermissions", "params": map[string]any{"permissions": []string{"geolocation", "clipboardReadWrite"}}},
-		{"id": 2, "method": "Browser.grantPermissions", "params": map[string]any{"permissions": []string{"clipboardSanitizedWrite"}, "origin": "https://a.example"}},
-		{"id": 3, "method": "Browser.setPermission", "params": map[string]any{"permission": map[string]any{"name": "clipboard-read"}, "setting": "granted"}},
-		{"id": 4, "method": "Browser.setPermission", "sessionId": "S9", "params": map[string]any{"permission": map[string]any{"name": " Clipboard-Write"}, "setting": "granted"}},
-		{"id": 5, "method": "Browser.grantPermissions"},
-		{"id": 8, "method": "Target.sendMessageToTarget", "params": map[string]any{"sessionId": "S1", "message": `{"id":1,"method":"Browser.grantPermissions","params":{"permissions":["clipboardReadWrite"]}}`}},
+		{"id": 2, "method": "Browser.grantPermissions", "params": map[string]any{"permissions": []string{"clipboardReadWrite"}, "Permissions": []string{}}},
+		{"id": 3, "method": "Browser.setPermission", "params": map[string]any{"permission": map[string]any{"name": "clipboard-read", "NAME": "geolocation"}, "setting": "granted"}},
+		{"id": 4, "method": "Browser.setPermission", "sessionId": "S9", "params": map[string]any{"permission": map[string]any{"name": "notifications"}, "setting": "denied"}},
+		{"id": 5, "method": "Target.sendMessageToTarget", "params": map[string]any{"sessionId": "S1", "message": `{"id":1,"method":"Browser.grantPermissions","params":{"permissions":["clipboardReadWrite"]}}`}},
 	}
 	for _, cmd := range refused {
 		ag.send(cmd)
@@ -304,15 +306,10 @@ func TestTheAgentCannotGrantItselfTheClipboard(t *testing.T) {
 			t.Fatalf("%v answered %v", cmd, m)
 		}
 	}
-	// Other permissions pass, so the agent can still answer a site's
-	// ordinary prompt the person asked it to.
-	ag.send(map[string]any{"id": 6, "method": "Browser.grantPermissions", "params": map[string]any{"permissions": []string{"geolocation"}}})
-	if m := c.next(); m["method"] != "Browser.grantPermissions" {
+	select {
+	case m := <-c.got:
 		t.Fatalf("Chrome got %v", m)
-	}
-	ag.send(map[string]any{"id": 7, "method": "Browser.setPermission", "params": map[string]any{"permission": map[string]any{"name": "notifications"}, "setting": "denied"}})
-	if m := c.next(); m["method"] != "Browser.setPermission" {
-		t.Fatalf("Chrome got %v", m)
+	case <-time.After(100 * time.Millisecond):
 	}
 }
 
@@ -350,6 +347,8 @@ func TestPointerIsObservedOnlyInPages(t *testing.T) {
 	ag.recv()
 	ag.recv()
 	ag.send(map[string]any{"id": 1, "sessionId": "P", "method": "Input.dispatchMouseEvent", "params": map[string]any{"type": "mousePressed", "button": "left", "x": 320, "y": 200}})
+	record := c.expect("Runtime.evaluate")
+	c.send(map[string]any{"id": record["id"], "result": map[string]any{"result": map[string]any{"type": "boolean", "value": true}}})
 	c.expect("Input.dispatchMouseEvent")
 	ag.send(map[string]any{"id": 2, "sessionId": "F", "method": PageActionMethod, "params": map[string]any{"action": PageMetadata}})
 	c.expect("Runtime.evaluate")

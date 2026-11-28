@@ -152,3 +152,71 @@ func TestScreenshotWaitsForTheRevealCheck(t *testing.T) {
 		})
 	}
 }
+
+func boolResult(id any, v bool) map[string]any {
+	return map[string]any{"id": id, "result": map[string]any{"result": map[string]any{"type": "boolean", "value": v}}}
+}
+
+// Before a press the host notes which fields are passwords, so a field the
+// press unmasks is still known as one when a screenshot is asked for. A
+// page that cannot be checked is not pressed.
+func TestAPressFollowsTheRecordOfPasswordFields(t *testing.T) {
+	c := newFakeChrome(t)
+	ag := connectAgent(t, c)
+	ag.send(map[string]any{"id": 1, "sessionId": "S1", "method": "Input.dispatchMouseEvent", "params": map[string]any{"type": "mouseMoved", "button": "none", "x": 5, "y": 5}})
+	if m := c.next(); m["method"] != "Input.dispatchMouseEvent" {
+		t.Fatalf("a move waited for %v", m)
+	}
+	ag.send(map[string]any{"id": 2, "sessionId": "S1", "method": "Input.dispatchMouseEvent", "params": map[string]any{"type": "mousePressed", "button": "left", "x": 5, "y": 5}})
+	record := c.next()
+	if record["method"] != "Runtime.evaluate" || record["sessionId"] != "S1" || record["params"].(map[string]any)["expression"] != recordPasswordsScript {
+		t.Fatalf("before the press: %v", record)
+	}
+	c.send(map[string]any{"id": record["id"], "error": map[string]any{"code": -32000, "message": "dialog"}})
+	if m := ag.recv(); m["id"] != float64(2) || m["error"].(map[string]any)["message"] != RecordFailed {
+		t.Fatalf("agent got %v", m)
+	}
+	select {
+	case m := <-c.got:
+		t.Fatalf("pressed anyway: %v", m)
+	case <-time.After(100 * time.Millisecond):
+	}
+}
+
+// A screenshot sent right after a press, without waiting for its answer, is
+// checked only once the press has been handled; and a check made while
+// control went to the person and back is not trusted.
+func TestAScreenshotIsCheckedOnTheCurrentPage(t *testing.T) {
+	c := newFakeChrome(t)
+	ag := connectAgent(t, c)
+	ag.send(map[string]any{"id": 1, "sessionId": "S1", "method": "Input.dispatchMouseEvent", "params": map[string]any{"type": "mousePressed", "button": "left", "x": 5, "y": 5}})
+	record := c.next()
+	c.send(boolResult(record["id"], true))
+	press := c.expect("Input.dispatchMouseEvent")
+	ag.send(map[string]any{"id": 2, "sessionId": "S1", "method": "Page.captureScreenshot", "params": map[string]any{"format": "png"}})
+	select {
+	case m := <-c.got:
+		t.Fatalf("checked before the press was handled: %v", m)
+	case <-time.After(150 * time.Millisecond):
+	}
+	c.send(map[string]any{"id": press["id"], "result": map[string]any{}})
+	if m := ag.recv(); m["id"] != float64(1) {
+		t.Fatalf("press answer %v", m)
+	}
+	check := c.expect("Runtime.evaluate")
+	if check["params"].(map[string]any)["expression"] != revealedPasswordScript {
+		t.Fatalf("check %v", check)
+	}
+	// The person takes control and gives it back while the check runs.
+	c.mux.setControl(true)
+	c.mux.setControl(false)
+	c.send(boolResult(check["id"], false))
+	if m := ag.recv(); m["id"] != float64(2) || m["error"].(map[string]any)["message"] != PersonTookControl {
+		t.Fatalf("stale check let through: %v", m)
+	}
+	select {
+	case m := <-c.got:
+		t.Fatalf("Chrome got %v", m)
+	case <-time.After(100 * time.Millisecond):
+	}
+}

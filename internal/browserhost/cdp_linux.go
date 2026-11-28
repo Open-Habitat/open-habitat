@@ -37,18 +37,15 @@ import (
 // The agent reaches Chrome only through a fixed set of commands and the
 // host's own page scripts (agentpolicy_linux.go): with its own script, DOM
 // or network access it could read what the person typed while they had
-// control. Nor may it grant itself clipboard permissions, with which a page
-// could read what the person pasted. The agent runs as the same Unix user,
-// so this closes the browser's routes, not that user's files and sockets.
+// control, and with a clipboard permission a page could read what they
+// pasted. The agent runs as the same Unix user, so this closes the
+// browser's routes, not that user's files and sockets.
 
 var errAgentBusy = errors.New("another agent is using the browser")
 
 // PersonTookControl is the error message of an agent command that waited
 // while the person had control. The CLI recognises it.
 const PersonTookControl = "the person took control of the browser; inspect the page before continuing"
-
-// clipboardRefused is the error message of a refused clipboard permission.
-const clipboardRefused = "clipboard permissions are not available to the agent"
 
 // heldLimit bounds what an agent may send while the person has control.
 const (
@@ -129,6 +126,9 @@ type cdpMux struct {
 	cleaning   chan struct{}
 	agent      *agentConn
 	person     bool
+	// controlEpoch counts changes of control, so a check made before one
+	// is known to be stale.
+	controlEpoch uint64
 	held       [][]byte
 	heldSize   int
 	pointer    pointer
@@ -526,18 +526,29 @@ func (m *cdpMux) fromAgent(a *agentConn, msg []byte) error {
 	}
 	cmd, refusal := agentCommand(fields)
 	m.mu.Lock()
-	own, person := m.agent == a, m.person
+	own, person, epoch := m.agent == a, m.person, m.controlEpoch
 	m.mu.Unlock()
 	if !own {
 		return io.EOF
 	}
-	if refusal == "" && !person && string(cmd["method"]) == `"Page.captureScreenshot"` {
-		// Checked before the picture, outside dispatch: the check is one of
-		// the host's own commands. A screenshot held while the person drives
-		// is never taken.
-		var session string
-		_ = json.Unmarshal(cmd["sessionId"], &session)
-		refusal = m.screenshotGuard(session)
+	var method, session string
+	_ = json.Unmarshal(cmd["method"], &method)
+	_ = json.Unmarshal(cmd["sessionId"], &session)
+	shot := refusal == "" && method == "Page.captureScreenshot"
+	// The host's own checks run outside dispatch, as its own commands. What
+	// is held while the person drives is never sent, so it needs none.
+	if refusal == "" && !person {
+		switch {
+		case shot:
+			refusal = GuardFailed
+			if m.agentIdle(a, 10*time.Second) {
+				refusal = m.screenshotGuard(session)
+			}
+		case method == "Input.dispatchMouseEvent" && strings.Contains(string(cmd["params"]), `"type":"mousePressed"`):
+			if _, ok := m.hostEvaluate(session, recordPasswordsScript); !ok {
+				refusal = RecordFailed
+			}
+		}
 	}
 	if refusal != "" {
 		a.deliver(errorReply(fields, refusal))
@@ -546,13 +557,22 @@ func (m *cdpMux) fromAgent(a *agentConn, msg []byte) error {
 	msg, _ = json.Marshal(cmd)
 	fields = cmd
 	m.dispatchMu.Lock()
-	defer m.dispatchMu.Unlock()
 	m.mu.Lock()
 	if m.agent != a {
 		m.mu.Unlock()
+		m.dispatchMu.Unlock()
 		return io.EOF
 	}
+	if shot && !m.person && m.controlEpoch != epoch {
+		// The person had control while it was checked or skipped: the page
+		// may now show what they unmasked.
+		m.mu.Unlock()
+		m.dispatchMu.Unlock()
+		a.deliver(errorReply(fields, PersonTookControl))
+		return nil
+	}
 	if m.person {
+		defer m.dispatchMu.Unlock()
 		if len(m.held) >= heldMessages || m.heldSize+len(msg) > heldBytes {
 			m.mu.Unlock()
 			return errors.New("too much held")
@@ -564,7 +584,14 @@ func (m *cdpMux) fromAgent(a *agentConn, msg []byte) error {
 	}
 	out := m.forwardLocked(a, fields)
 	m.mu.Unlock()
-	return m.writeChrome(out)
+	err := m.writeChrome(out)
+	m.dispatchMu.Unlock()
+	if shot && err == nil {
+		// Nothing the agent sends next reaches the page before the picture
+		// is taken.
+		m.agentIdle(a, 30*time.Second)
+	}
+	return err
 }
 
 func (m *cdpMux) forwardLocked(a *agentConn, fields map[string]json.RawMessage) []byte {
@@ -683,6 +710,7 @@ func (m *cdpMux) setControl(person bool) {
 		return
 	}
 	m.person = person
+	m.controlEpoch++
 	m.activity = m.now()
 	var out [][]byte
 	a := m.agent
@@ -713,45 +741,6 @@ func errorReply(fields map[string]json.RawMessage, message string) []byte {
 	}
 	b, _ := json.Marshal(reply)
 	return b
-}
-
-// grantsClipboard is a command that would give a page clipboard access, or
-// could carry one unseen.
-func grantsClipboard(fields map[string]json.RawMessage) bool {
-	var method string
-	_ = json.Unmarshal(fields["method"], &method)
-	clip := func(name string) bool {
-		return strings.HasPrefix(strings.ToLower(strings.TrimSpace(name)), "clipboard")
-	}
-	switch method {
-	case "Target.sendMessageToTarget":
-		// Nested (non-flat) transport would carry a grant past this check
-		// inside a string; agents use flat sessions.
-		return true
-	case "Browser.grantPermissions":
-		var p struct {
-			Permissions []string `json:"permissions"`
-		}
-		if json.Unmarshal(fields["params"], &p) != nil {
-			return true
-		}
-		for _, name := range p.Permissions {
-			if clip(name) {
-				return true
-			}
-		}
-	case "Browser.setPermission":
-		var p struct {
-			Permission struct {
-				Name string `json:"name"`
-			} `json:"permission"`
-		}
-		if json.Unmarshal(fields["params"], &p) != nil {
-			return true
-		}
-		return clip(p.Permission.Name)
-	}
-	return false
 }
 
 func (m *cdpMux) touch() {

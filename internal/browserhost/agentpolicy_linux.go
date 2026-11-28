@@ -38,6 +38,10 @@ const RevealedRefused = "a password field on this page shows its value in clear;
 // GuardFailed answers a screenshot when the page could not be checked.
 const GuardFailed = "the page could not be checked for a password shown in clear; the screenshot was not taken"
 
+// RecordFailed answers a press when the page's password fields could not be
+// noted first.
+const RecordFailed = "the page could not be prepared for the press; nothing was pressed"
+
 // agentCommand returns the command to send to Chrome in place of fields, or
 // the reason it is refused. Only id, sessionId, method and the parameters
 // read here survive.
@@ -50,30 +54,35 @@ func agentCommand(fields map[string]json.RawMessage) (map[string]json.RawMessage
 	if len(raw) == 0 || string(raw) == "null" {
 		raw = json.RawMessage("{}")
 	}
+	// Permissions are not among them: a clipboard grant would let a page
+	// read what the person pasted.
 	var p map[string]json.RawMessage
 	if json.Unmarshal(raw, &p) != nil {
 		return nil, agentRefused
 	}
+	// Keys are matched exactly, as Chrome matches them; only what is read
+	// here is sent on.
 	str := func(key string) (string, bool) {
 		var s string
-		if v, ok := p[key]; ok {
-			return s, json.Unmarshal(v, &s) == nil
+		v, ok := p[key]
+		if !ok {
+			return "", false
 		}
-		return "", false
+		err := json.Unmarshal(v, &s)
+		return s, err == nil
 	}
 	num := func(key string) (float64, bool) {
 		var f float64
 		v, ok := p[key]
-		return f, ok && json.Unmarshal(v, &f) == nil
+		if !ok {
+			return 0, false
+		}
+		err := json.Unmarshal(v, &f)
+		return f, err == nil
 	}
 	params := map[string]any{}
 	switch method {
 	case "Browser.getVersion", "Target.getTargets", "Page.enable", "Page.getFrameTree":
-	case "Browser.grantPermissions", "Browser.setPermission":
-		if grantsClipboard(fields) {
-			return nil, clipboardRefused
-		}
-		params = nil
 	case "Target.createTarget":
 		u, ok := str("url")
 		if !ok || !pageURL(u, true) {
@@ -184,11 +193,7 @@ func agentCommand(fields map[string]json.RawMessage) (map[string]json.RawMessage
 		out["sessionId"] = s
 	}
 	out["method"], _ = json.Marshal(method)
-	if params == nil {
-		out["params"] = raw
-	} else {
-		out["params"], _ = json.Marshal(params)
-	}
+	out["params"], _ = json.Marshal(params)
 	return out, ""
 }
 
@@ -202,28 +207,93 @@ func pageURL(s string, blank bool) bool {
 	return err == nil && (u.Scheme == "http" || u.Scheme == "https") && u.Host != "" && utf8.ValidString(s) && !strings.ContainsAny(s, "\r\n\x00")
 }
 
-// screenshotGuard refuses a screenshot of a page where a password field
-// shows its value in clear. The agent can click a site's own "show
-// password" control without running script; the picture would then carry
-// what the person typed. Sites that flip the field's type keep its
-// autocomplete token, which is what this looks for.
-func (m *cdpMux) screenshotGuard(session string) string {
+// hostEvaluate runs one of the host's own scripts in a session and returns
+// its value, or false when it failed.
+func (m *cdpMux) hostEvaluate(session, script string) (json.RawMessage, bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	res, err := m.call(ctx, "Runtime.evaluate", map[string]any{"expression": revealedPasswordScript, "returnByValue": true}, session)
+	res, err := m.call(ctx, "Runtime.evaluate", map[string]any{"expression": script, "returnByValue": true}, session)
 	if err != nil {
-		return GuardFailed
+		return nil, false
 	}
 	var out struct {
 		Result struct {
-			Value *bool `json:"value"`
+			Value json.RawMessage `json:"value"`
 		} `json:"result"`
 		Exception json.RawMessage `json:"exceptionDetails"`
 	}
-	if json.Unmarshal(res, &out) != nil || len(out.Exception) != 0 || out.Result.Value == nil {
+	if json.Unmarshal(res, &out) != nil || len(out.Exception) != 0 || len(out.Result.Value) == 0 {
+		return nil, false
+	}
+	return out.Result.Value, true
+}
+
+// agentIdle waits until every command the agent sent has been answered, so
+// what the host checks next is the page those commands left. A client that
+// sends a press and a screenshot without waiting would otherwise have the
+// check run before the press unmasks a field.
+func (m *cdpMux) agentIdle(a *agentConn, limit time.Duration) bool {
+	for deadline := m.now().Add(limit); ; time.Sleep(5 * time.Millisecond) {
+		m.mu.Lock()
+		busy := false
+		for _, r := range m.pending {
+			if r.owner == a && !r.dropped {
+				busy = true
+				break
+			}
+		}
+		gone := m.agent != a
+		m.mu.Unlock()
+		if !busy || gone {
+			return !busy
+		}
+		if m.now().After(deadline) {
+			return false
+		}
+	}
+}
+
+// recordPasswords notes the fields that are passwords now in every page,
+// through the host's own sessions. It runs when the person takes control,
+// so a field they unmask themselves before giving control back stays known.
+func (m *cdpMux) recordPasswords() {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	res, err := m.call(ctx, "Target.getTargets", map[string]any{}, "")
+	if err != nil {
+		return
+	}
+	var out struct {
+		Targets []struct {
+			ID   string `json:"targetId"`
+			Type string `json:"type"`
+		} `json:"targetInfos"`
+	}
+	if json.Unmarshal(res, &out) != nil {
+		return
+	}
+	for _, t := range out.Targets {
+		if t.Type != "page" || !TargetPattern.MatchString(t.ID) {
+			continue
+		}
+		if s, err := m.hostSessionFor(ctx, t.ID); err == nil {
+			m.hostEvaluate(s, recordPasswordsScript)
+		}
+	}
+}
+
+// screenshotGuard refuses a screenshot of a page where a password field
+// shows its value in clear. The agent can click a site's own "show
+// password" control without running script; the picture would then carry
+// what the person typed. A field counts as a password when the host saw it
+// as one (recordPasswordsScript) or its autocomplete token says so.
+func (m *cdpMux) screenshotGuard(session string) string {
+	v, ok := m.hostEvaluate(session, revealedPasswordScript)
+	var revealed bool
+	if !ok || json.Unmarshal(v, &revealed) != nil {
 		return GuardFailed
 	}
-	if *out.Result.Value {
+	if revealed {
 		return RevealedRefused
 	}
 	return ""
