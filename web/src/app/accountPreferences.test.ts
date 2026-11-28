@@ -45,6 +45,7 @@ const reply = (
         workspaces: {},
       },
       experimental,
+      risky: {},
     }),
     { headers: { "Content-Type": "application/json" } },
   );
@@ -329,6 +330,7 @@ const soundReply = (identity: string, workspaces: Record<string, string>) =>
         workspaces,
       },
       experimental: {},
+      risky: {},
     }),
     { headers: { "Content-Type": "application/json" } },
   );

@@ -57,6 +57,17 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
       },
     },
   },
+  vaaralliset: {
+    label: "Risky features",
+    intro:
+      "Off by default. Each one lets something outside Habitat influence what your agent does.",
+    rows: {
+      "conversation-links": {
+        label: "Conversation links",
+        desc: "A link opens a new conversation in your workspace and writes a prepared message in the field.",
+      },
+    },
+  },
   tekoaly: {
     label: "AI",
     intro:

@@ -12,6 +12,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/open-habitat/open-habitat/internal/transport"
 )
@@ -495,5 +496,98 @@ func TestAccountPreferencesGitHubWorkflow(t *testing.T) {
 	var reply map[string]any
 	if err := json.Unmarshal(w.Body.Bytes(), &reply); err != nil || reply["github_workflow"] != false {
 		t.Fatalf("reply: %s %v", w.Body.String(), err)
+	}
+}
+
+// A risky feature (Settings › Vaaralliset toiminnot) is off until the person
+// allows it through the browser's route, keeps the time it was first allowed,
+// is stored only while on, and a stored id that is no longer a member reads
+// as off without making the rest of the document unreadable.
+func TestAccountPreferencesRiskyFeatures(t *testing.T) {
+	home := t.TempDir()
+	file := filepath.Join(home, ".config/open-habitat/preferences.json")
+	cfg := transport.Config{Home: home, Provider: "github", Subject: "42"}
+	handler := AccountPreferencesHandler(cfg, func(*http.Request) bool { return true })
+	call := func(method, body string, want int) map[string]any {
+		t.Helper()
+		r := httptest.NewRequest(method, "http://unix"+AccountPreferencesPath, strings.NewReader(body))
+		if body != "" {
+			r.Header.Set("Content-Type", "application/json")
+		}
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+		if w.Code != want {
+			t.Fatalf("%s %s: %d %s", method, body, w.Code, w.Body.String())
+		}
+		var reply map[string]any
+		if want == 200 {
+			matchesSchema(t, "account-preferences.schema.json", w.Body.String())
+			if err := json.Unmarshal(w.Body.Bytes(), &reply); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return reply
+	}
+	if reply := call("GET", "", 200); !reflect.DeepEqual(reply["risky"], map[string]any{}) {
+		t.Fatalf("default is not off: %v", reply["risky"])
+	}
+	for _, bad := range []string{
+		`{"risky":{"unknown-feature":true}}`, `{"risky":{"conversation-links":null}}`,
+		`{"risky":{"conversation-links":"true"}}`, `{"risky":{}}`, `{"risky":null}`,
+		`{"risky":{"conversation-links":true,"other":true}}`, `{"Risky":{"conversation-links":true}}`,
+		`{"risky":{"conversation-links":true},"engine":"vscode"}`,
+		`{"risky":{"conversation-links":{"allowed_at":"2026-01-02T07:43:00Z"}}}`,
+	} {
+		call("PUT", bad, 400)
+	}
+	if _, err := os.Stat(file); !os.IsNotExist(err) {
+		t.Fatal("a refused write stored something")
+	}
+	before := time.Now().UTC().Truncate(time.Second)
+	reply := call("PUT", `{"risky":{"conversation-links":true}}`, 200)
+	links, _ := reply["risky"].(map[string]any)["conversation-links"].(map[string]any)
+	at, err := time.Parse(time.RFC3339, fmt.Sprint(links["allowed_at"]))
+	if err != nil || at.Before(before) || at.After(time.Now().Add(time.Second)) {
+		t.Fatalf("allowed at: %v %v", links, err)
+	}
+	// Allowing again, as a second device might, keeps the first time.
+	stored, _ := readPreferences(home)
+	stored.Risky["conversation-links"] = "2026-01-02T07:43:00Z"
+	if err := savePreferences(home, stored); err != nil {
+		t.Fatal(err)
+	}
+	reply = call("PUT", `{"risky":{"conversation-links":true}}`, 200)
+	if !reflect.DeepEqual(reply["risky"], map[string]any{"conversation-links": map[string]any{"allowed_at": "2026-01-02T07:43:00Z"}}) {
+		t.Fatalf("allowing again moved the time: %v", reply["risky"])
+	}
+	// Other writes keep it; off removes it from the file at once.
+	call("PUT", `{"engine":"vscode"}`, 200)
+	if reply = call("GET", "", 200); reply["risky"].(map[string]any)["conversation-links"] == nil {
+		t.Fatalf("another write dropped it: %v", reply)
+	}
+	if reply = call("PUT", `{"risky":{"conversation-links":false}}`, 200); !reflect.DeepEqual(reply["risky"], map[string]any{}) || reply["engine"] != "vscode" {
+		t.Fatalf("off: %v", reply)
+	}
+	if raw, _ := os.ReadFile(file); strings.Contains(string(raw), "risky") {
+		t.Fatalf("off stored a key: %s", raw)
+	}
+	// A retired member reads as off and does not hide the other choices.
+	if err := os.WriteFile(file, []byte(`{"engine":"vscode","experimental":{},"risky":{"retired-route":"2026-01-02T07:43:00Z"}}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if reply = call("GET", "", 200); !reflect.DeepEqual(reply["risky"], map[string]any{}) || reply["engine"] != "vscode" {
+		t.Fatalf("retired member: %v", reply)
+	}
+	for _, invalid := range []string{
+		`{"engine":"vscode","risky":{"conversation-links":"yesterday"}}`,
+		`{"engine":"vscode","risky":{"conversation-links":true}}`,
+		`{"engine":"vscode","risky":{"Bad_ID":"2026-01-02T07:43:00Z"}}`,
+	} {
+		if err := os.WriteFile(file, []byte(invalid), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := readPreferences(home); err == nil {
+			t.Fatalf("accepted %s", invalid)
+		}
 	}
 }

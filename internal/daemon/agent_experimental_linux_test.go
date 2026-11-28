@@ -149,3 +149,51 @@ func TestAgentExperimentalPreferences(t *testing.T) {
 	call("GET", AgentExperimentalPath, "", 503)
 	call("PUT", AgentExperimentalPath, `{"id":"rewind-conversation","enabled":true}`, 503)
 }
+
+// Settings › Vaaralliset toiminnot is the person's to allow in the browser:
+// the agent listener reads nothing of it and has no route that writes it,
+// neither the browser's preferences path nor the experimental switch.
+func TestAgentListenerCannotAllowRiskyFeature(t *testing.T) {
+	home := t.TempDir()
+	cfg := transport.Config{UID: os.Geteuid(), Home: home, Socket: filepath.Join(home, "daemon.sock"), Provider: "github", Subject: "42"}
+	path := filepath.Join(home, "agent.sock")
+	ln, err := net.ListenUnix("unix", &net.UnixAddr{Name: path, Net: "unix"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- transport.ServeAgent(ctx, ln, cfg, agentHandler(cfg, nil, "test", "", nil)) }()
+	defer func() {
+		cancel()
+		if err := <-done; err != nil {
+			t.Error(err)
+		}
+	}()
+	tr := &http.Transport{DialContext: func(context.Context, string, string) (net.Conn, error) { return net.Dial("unix", path) }}
+	defer tr.CloseIdleConnections()
+	client := &http.Client{Transport: tr, Timeout: 5 * time.Second}
+	for _, tc := range []struct{ method, target, body string }{
+		{"PUT", AccountPreferencesPath, `{"risky":{"conversation-links":true}}`},
+		{"GET", AccountPreferencesPath, ""},
+		{"PUT", AgentExperimentalPath, `{"id":"conversation-links","enabled":true}`},
+		{"PUT", "/agent/v1/risky", `{"id":"conversation-links","enabled":true}`},
+		{"PUT", "/agent/v1/preferences", `{"risky":{"conversation-links":true}}`},
+	} {
+		req, _ := http.NewRequest(tc.method, "http://unix"+tc.target, strings.NewReader(tc.body))
+		req.Header.Set("Content-Type", "application/json")
+		res, err := client.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, _ := io.ReadAll(res.Body)
+		res.Body.Close()
+		if res.StatusCode < 400 {
+			t.Fatalf("%s %s: %d %s", tc.method, tc.target, res.StatusCode, data)
+		}
+	}
+	stored, err := readPreferences(home)
+	if err != nil || len(stored.Risky) != 0 {
+		t.Fatalf("the agent allowed a risky feature: %+v %v", stored, err)
+	}
+}

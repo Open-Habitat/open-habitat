@@ -1817,6 +1817,31 @@ const fi = {
       lead: "Huomioääni: soiko se, millä äänellä ja pituudella, milloin se on hiljaa, työtilojen omat äänet ja tämän laitteen mykistys ja voimakkuus.",
       know: "Kokeellinen. Ääni soi kerran, kun keskustelu siirtyy Sinun vuorosi -osioon. Laatan painallus soittaa äänen ja valitsee sen; kuuntelu soi myös, kun äänet ovat pois.",
     },
+    M30: {
+      name: "Vaaralliset toiminnot",
+      lead: "Toiminnot, jotka avaavat agenttiisi reitin Habitatin ulkopuolelta ja jotka sallit itse.",
+      know: "Oletuksena pois. Vain sinä voit sallia ne tässä; agentti ei voi. Käytöstä poisto tapahtuu heti kaikilla laitteillasi.",
+    },
+    RK01: {
+      name: "Salli…",
+      lead: "Avaa varoituksen, joka kertoo, mitä toiminto sallii ja kenelle.",
+      know: "Toiminto tulee päälle vasta, kun vahvistat sen ikkunassa.",
+    },
+    RK02: {
+      name: "Poista käytöstä",
+      lead: "Poistaa toiminnon käytöstä heti kaikilla laitteillasi.",
+      know: "Ei kysy vahvistusta. Voit sallia sen myöhemmin uudelleen varoituksen kautta.",
+    },
+    RK03: {
+      name: "Salli",
+      lead: "Sallii toiminnon tilillesi kaikilla laitteilla.",
+      know: "Rivi näyttää sen jälkeen, milloin sallit sen. Voit poistaa sen käytöstä milloin tahansa.",
+    },
+    RK04: {
+      name: "Peru",
+      lead: "Sulkee varoituksen, ja toiminto pysyy pois.",
+      try: "Sulje varoitus",
+    },
     AS07: {
       name: "Äänten hiljaisuus",
       lead: "Näyttää kaikki syyt, joiden takia tämä laite on hiljaa.",
@@ -3947,6 +3972,31 @@ export const explainModeText = catalog(
         name: "Sounds",
         lead: "The attention sound: whether it plays, which sound and length, when it stays quiet, workspaces' own sounds and this device's mute and volume.",
         know: "Experimental. The sound plays once when a conversation moves to Your turn. Pressing a tile plays the sound and chooses it; listening plays even when sounds are off.",
+      },
+      M30: {
+        name: "Risky features",
+        lead: "Features that open a route to your agent from outside Habitat, which you allow yourself.",
+        know: "Off by default. Only you can allow them here; your agent cannot. Turning one off takes effect at once on all your devices.",
+      },
+      RK01: {
+        name: "Allow…",
+        lead: "Opens a warning that says what the feature allows and to whom.",
+        know: "The feature turns on only when you confirm it in the window.",
+      },
+      RK02: {
+        name: "Turn off",
+        lead: "Turns the feature off at once on all your devices.",
+        know: "It does not ask for confirmation. You can allow it again later through the warning.",
+      },
+      RK03: {
+        name: "Allow",
+        lead: "Allows the feature for your account on all your devices.",
+        know: "The row then shows when you allowed it. You can turn it off at any time.",
+      },
+      RK04: {
+        name: "Cancel",
+        lead: "Closes the warning; the feature stays off.",
+        try: "Close the warning",
       },
       AS07: {
         name: "Silent sounds",

@@ -63,6 +63,14 @@ export const experimentalFeatureIds = experimentalCatalog.features.map(
   ({ id }) => id as ExperimentalFeatureId,
 );
 
+/** The members of Settings › Vaaralliset toiminnot, in the section's order
+ * (the contract's risky_feature_id). Each is off until the person allows it
+ * in this browser; the agent has no command that allows one. */
+export const riskyFeatureIds = ["conversation-links"] as const;
+export type RiskyFeatureId = (typeof riskyFeatureIds)[number];
+/** An allowed risky feature: when the person allowed it (ISO time, UTC). */
+export type RiskyAllowance = { readonly allowed_at: string };
+
 type Reply = {
   schema_version: 1;
   web_identity_id: string;
@@ -75,6 +83,7 @@ type Reply = {
   github_workflow: boolean;
   sound: SoundPreferences;
   experimental: Record<string, true>;
+  risky: Partial<Record<RiskyFeatureId, RiskyAllowance>>;
 };
 const ajv = new LazyAjv({ strict: false });
 ajv.addSchema(common);
@@ -88,7 +97,7 @@ const url = "/api/v1/account/preferences";
  * says the first read has finished, either way. `busy` and `error` name what
  * they concern: "engine", "language", "quiet_sort", "quiet_workspace",
  * "yours_workspace", "running_workspace", "github_workflow", "sound.<choice>",
- * "workspace_sound:<workspace>", a feature id, or "read". */
+ * "workspace_sound:<workspace>", a feature id, "risky:<id>", or "read". */
 export type Preferences = {
   engine: EditorEngine;
   language: LanguageChoice;
@@ -104,6 +113,8 @@ export type Preferences = {
   github_workflow: boolean;
   sound: SoundPreferences;
   experimental: Readonly<Record<string, true>>;
+  /** The risky features the person allowed; one that is off is absent. */
+  risky: Readonly<Partial<Record<RiskyFeatureId, RiskyAllowance>>>;
   loaded: boolean;
   busy?: string;
   error?: string;
@@ -118,6 +129,7 @@ const initial: Preferences = {
   github_workflow: false,
   sound: defaultSoundPreferences,
   experimental: {},
+  risky: {},
   loaded: false,
 };
 // Ephemeral observations, scoped to the validated identity AND session binding.
@@ -183,6 +195,7 @@ async function readReply(response: Response, identity: string) {
     github_workflow: result.github_workflow,
     sound: { ...defaultSoundPreferences, ...result.sound },
     experimental: result.experimental,
+    risky: result.risky,
   };
 }
 
@@ -390,6 +403,19 @@ export function setExperimentalFeature(
   return write(identity, csrf, id, { experimental: { [id]: enabled } });
 }
 
+/** Allows a risky feature (after the person confirmed its warning) or turns
+ * it off. Resolves to whether the daemon confirmed the value. */
+export function setRiskyFeature(
+  identity: string,
+  id: RiskyFeatureId,
+  allowed: boolean,
+  csrf: string,
+) {
+  return write(identity, csrf, `risky:${id}`, {
+    risky: { [id]: allowed },
+  }).then(() => !!states.get(key(identity, csrf))?.risky[id] === allowed);
+}
+
 /** The confirmed preferences, read now and again whenever the window
  * regains focus, so a change made on another device shows up here. */
 export function useAccountPreferences(
@@ -504,6 +530,22 @@ export function useExperimentalFeature(
   return useSyncExternalStore(
     subscribe,
     () => !!(k && states.get(k)?.experimental[id]),
+  );
+}
+
+/** Whether the person allowed the risky feature. Off until the daemon has
+ * confirmed otherwise, and off without a signed-in session, so a route the
+ * feature opens stays closed while the choice is unknown. */
+export function useRiskyFeature(
+  id: RiskyFeatureId,
+  session?: { identity?: string; csrf?: string },
+): boolean {
+  const named = useContext(Session);
+  const { identity, csrf } = session ?? named;
+  const k = identity && csrf ? key(identity, csrf) : undefined;
+  return useSyncExternalStore(
+    subscribe,
+    () => !!(k && states.get(k)?.risky[id]),
   );
 }
 

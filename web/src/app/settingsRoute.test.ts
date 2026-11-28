@@ -20,6 +20,7 @@ describe("settings URL contract", () => {
       "machines",
       "onboarding",
       "recap",
+      "risky-features",
       "server",
       "server-integrations",
       "sounds",

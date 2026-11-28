@@ -15,6 +15,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/open-habitat/open-habitat/internal/transport"
 	"golang.org/x/sys/unix"
@@ -42,6 +43,11 @@ type accountPreferences struct {
 	YoursWorkspace   string          `json:"yours_workspace,omitempty"`
 	RunningWorkspace string          `json:"running_workspace,omitempty"`
 	Experimental     map[string]bool `json:"experimental"`
+	// Risky is what the person allowed in Settings › Vaaralliset toiminnot:
+	// each allowed feature with the time it was allowed, absent while off.
+	// Only the browser's preferences route writes it; the agent listener has
+	// no operation that sets it (riskyFeatureIDs).
+	Risky map[string]string `json:"risky,omitempty"`
 	// GitHubWorkflow is the person's opt-in to the GitHub sign-in's
 	// workflow scope: what they want, beside what gh's token holds, so a
 	// later sign-in that drops the scope shows as a missing permission.
@@ -123,6 +129,8 @@ type preferencesWrite struct {
 	Language       *string
 	GitHubWorkflow *bool
 	Experimental   map[string]bool
+	// Risky names one risky feature: allowed (true) or off (false).
+	Risky map[string]bool
 	// Sound names one attention-sound choice; WorkspaceSound one workspace's
 	// sound, "" for the default.
 	Sound          *soundChange
@@ -157,6 +165,25 @@ func (p *accountPreferences) sectionWorkspace(key string) *string {
 }
 
 const maxExperimentalFeatures = 32
+
+// riskyFeatureIDs are the members of Settings › Vaaralliset toiminnot: a
+// capability that opens a standing route by which something other than the
+// person's own considered act (a link someone sends them) can reach their
+// agent. Each is off until the person allows it in the browser. The agent
+// may read the state through its own files, but no `open-habitat agent`
+// command or agent-listener route writes it, so an instruction that reached
+// the agent is not offered a way to open the route for itself. A stored id
+// no longer listed reads as off and is dropped by the next save. The
+// contract's risky_feature_id lists the same ids.
+var riskyFeatureIDs = []string{"conversation-links"}
+
+// maxRiskyFeatures bounds stale ids in a stored file.
+const maxRiskyFeatures = 8
+
+func knownRiskyFeature(id string) bool { return slices.Contains(riskyFeatureIDs, id) }
+
+// riskyAllowedAt is the stored time format: UTC to the second.
+const riskyAllowedAt = time.RFC3339
 
 // preferencesLock serializes the read-merge-replace of the person's file in
 // their daemon, so two devices switching different features at once both
@@ -219,6 +246,14 @@ func (p accountPreferences) valid() bool {
 			return false
 		}
 	}
+	if len(p.Risky) > maxRiskyFeatures {
+		return false
+	}
+	for id, at := range p.Risky {
+		if _, err := time.Parse(riskyAllowedAt, at); !validFeatureID(id) || err != nil {
+			return false
+		}
+	}
 	return p.Sound.valid() && p.SSHConfigMachines.valid()
 }
 
@@ -226,8 +261,9 @@ func (p accountPreferences) valid() bool {
 // one object with exactly one key: "engine", "language", "quiet_sort",
 // "quiet_workspace", "yours_workspace" or "running_workspace" (a workspace
 // or null), "github_workflow" (a boolean), "sound" naming one sound choice,
-// "workspace_sound" naming one workspace with a sound or null, or
-// "experimental" naming one feature with a boolean. encoding/json alone would match keys without
+// "workspace_sound" naming one workspace with a sound or null,
+// "experimental" naming one feature with a boolean, or "risky" naming one
+// known risky feature with a boolean. encoding/json alone would match keys without
 // regard to case and read null as false, so each part is decoded on its own.
 func decodePreferencesWrite(body io.Reader) (preferencesWrite, bool) {
 	var change preferencesWrite
@@ -314,6 +350,19 @@ func decodePreferencesWrite(body io.Reader) (preferencesWrite, bool) {
 			if sound != nil {
 				change.WorkspaceSound.sound = *sound
 			}
+		}
+		return change, true
+	}
+	if raw, ok := outer["risky"]; ok {
+		var one map[string]*bool
+		if json.Unmarshal(raw, &one) != nil || len(one) != 1 {
+			return change, false
+		}
+		for id, on := range one {
+			if on == nil || !knownRiskyFeature(id) {
+				return change, false
+			}
+			change.Risky = map[string]bool{id: *on}
 		}
 		return change, true
 	}
@@ -462,6 +511,14 @@ func readPreferences(home string) (accountPreferences, error) {
 	if !result.valid() || dec.Decode(new(any)) != io.EOF {
 		return result, errors.New("invalid preferences")
 	}
+	for id := range result.Risky {
+		if !knownRiskyFeature(id) {
+			delete(result.Risky, id)
+		}
+	}
+	if len(result.Risky) == 0 {
+		result.Risky = nil
+	}
 	return result, nil
 }
 
@@ -546,6 +603,22 @@ func applyPreferences(home string, change preferencesWrite) (accountPreferences,
 		} else {
 			delete(value.Experimental, id)
 		}
+	}
+	for id, on := range change.Risky {
+		// Allowing again keeps the first time: the row says since when it
+		// has been open.
+		if on && value.Risky[id] == "" {
+			value.Risky = maps.Clone(value.Risky)
+			if value.Risky == nil {
+				value.Risky = map[string]string{}
+			}
+			value.Risky[id] = time.Now().UTC().Format(riskyAllowedAt)
+		} else if !on {
+			delete(value.Risky, id)
+		}
+	}
+	if len(value.Risky) == 0 {
+		value.Risky = nil
 	}
 	if change.Sound != nil || change.WorkspaceSound != nil {
 		sound := soundPreferences{}
@@ -697,6 +770,11 @@ func AccountPreferencesHandler(cfg transport.Config, trusted func(*http.Request)
 			}
 		}
 		reply["sound"] = soundReply(value.Sound)
+		risky := map[string]any{}
+		for id, at := range value.Risky {
+			risky[id] = map[string]string{"allowed_at": at}
+		}
+		reply["risky"] = risky
 		historyJSON(w, reply)
 	})
 }

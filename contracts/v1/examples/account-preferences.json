@@ -20,5 +20,10 @@
   },
   "experimental": {
     "worker-row-sentence": true
+  },
+  "risky": {
+    "conversation-links": {
+      "allowed_at": "2026-01-02T07:43:00Z"
+    }
   }
 }

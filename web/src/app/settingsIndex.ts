@@ -147,6 +147,42 @@ export const settingsSections = [
     ],
   },
   {
+    // With the account's security sections, far from Kokeelliset: one says
+    // whether a feature is risky, the other whether it is finished.
+    id: "vaaralliset",
+    label: "Vaaralliset toiminnot",
+    icon: "shield",
+    kw: [
+      "risky",
+      "dangerous",
+      "vaarallinen",
+      "riski",
+      "salli",
+      "allow",
+      "turvallisuus",
+      "security",
+    ],
+    intro:
+      "Oletuksena pois. Jokainen antaa jonkin Habitatin ulkopuolisen vaikuttaa siihen, mitä agenttisi tekee.",
+    rows: [
+      {
+        id: "conversation-links",
+        label: "Keskustelulinkit",
+        kw: [
+          "linkki",
+          "link",
+          "valmis viesti",
+          "prepared message",
+          "luonnos",
+          "draft",
+          "uusi keskustelu",
+          "new conversation",
+        ],
+        desc: "Linkki avaa uuden keskustelun työtilaasi ja kirjoittaa kenttään valmiin viestin.",
+      },
+    ],
+  },
+  {
     id: "tekoaly",
     label: "Tekoäly",
     icon: "agent",

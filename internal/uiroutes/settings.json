@@ -2,6 +2,7 @@
   "tili": "account",
   "laitteet": "devices",
   "avaimet": "keys",
+  "vaaralliset": "risky-features",
   "tekoaly": "ai",
   "tilannekatsaus": "recap",
   "koodipalvelut": "code-hosts",

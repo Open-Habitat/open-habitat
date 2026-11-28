@@ -40,6 +40,9 @@ func TestAgentExperimentalInvalidBeforeConnection(t *testing.T) {
 		{"update", "explain-mode", "--on", "--on"}, {"update", "explain-mode", "--on=true"},
 		{"update", " explain-mode", "--on"}, {"update", "explain-mode", "--uid", "99"},
 		{"update", "explain-mode", "--dry-run"},
+		// A risky feature is the person's to allow in the browser, never an
+		// experiment the agent can switch on.
+		{"update", "conversation-links", "--on"},
 	} {
 		argv := append([]string{"agent", "experimental"}, args...)
 		argv = append(argv, "--json")

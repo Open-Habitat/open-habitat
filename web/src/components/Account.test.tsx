@@ -379,6 +379,7 @@ describe("account presentation", () => {
             workspaces: {},
           },
           experimental: {},
+          risky: {},
         }),
         { headers: { "Content-Type": "application/json" } },
       );

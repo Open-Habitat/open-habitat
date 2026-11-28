@@ -205,6 +205,7 @@ A label alone does not establish that a control is available to this person.
 - [text/restartNotice.ts](text--restartNotice.ts.md)
 - [text/returnView.ts](text--returnView.ts.md)
 - [text/rewind.ts](text--rewind.ts.md)
+- [text/riskyFeatures.ts](text--riskyFeatures.ts.md)
 - [text/scheduledWake.ts](text--scheduledWake.ts.md)
 - [text/sectionFilter.ts](text--sectionFilter.ts.md)
 - [text/serverAccess.tsx](text--serverAccess.tsx.md)

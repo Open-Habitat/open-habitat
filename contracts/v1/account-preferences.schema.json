@@ -71,13 +71,17 @@
     },
     "night_start": {"type": "integer", "enum": [18, 19, 20, 21, 22, 23, 0, 1, 2], "description": "Start hour in the device's local time, inclusive. Defaults to 22."},
     "night_end": {"type": "integer", "enum": [4, 5, 6, 7, 8, 9, 10, 11], "description": "End hour in the device's local time, exclusive. Defaults to 7."},
+    "risky_feature_id": {
+      "description": "A member of Settings › Vaaralliset toiminnot: a capability that lets something other than the person's own considered act (a link someone sends them) reach their agent. Off until the person allows it in the browser; the agent listener has no operation that writes it.",
+      "enum": ["conversation-links"]
+    },
     "feature_id": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
       "maxLength": 48
     },
     "write": {
-      "description": "One change: the editor, the language, the Hiljaiset order or workspace, the Sinun vuorosi or Käynnissä workspace, the GitHub workflow opt-in, one attention-sound choice, one workspace's sound (null for the default), or one experimental feature's switch. The daemon merges it into the stored document.",
+      "description": "One change: the editor, the language, the Hiljaiset order or workspace, the Sinun vuorosi or Käynnissä workspace, the GitHub workflow opt-in, one attention-sound choice, one workspace's sound (null for the default), one experimental feature's switch, or one risky feature allowed (true) or off (false). The daemon merges it into the stored document.",
       "oneOf": [
         {
           "type": "object",
@@ -174,6 +178,20 @@
         {
           "type": "object",
           "additionalProperties": false,
+          "required": ["risky"],
+          "properties": {
+            "risky": {
+              "type": "object",
+              "minProperties": 1,
+              "maxProperties": 1,
+              "propertyNames": {"$ref": "#/$defs/risky_feature_id"},
+              "additionalProperties": {"type": "boolean"}
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
           "required": [
             "experimental"
           ],
@@ -207,11 +225,25 @@
         "running_workspace",
         "github_workflow",
         "sound",
-        "experimental"
+        "experimental",
+        "risky"
       ],
       "properties": {
         "github_workflow": {"$ref": "#/$defs/github_workflow"},
         "sound": {"$ref": "#/$defs/sound"},
+        "risky": {
+          "description": "The risky features the person allowed, each with when it was allowed (the daemon's clock, UTC). A feature that is off is absent.",
+          "type": "object",
+          "propertyNames": {"$ref": "#/$defs/risky_feature_id"},
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["allowed_at"],
+            "properties": {
+              "allowed_at": {"type": "string", "format": "date-time", "maxLength": 32}
+            }
+          }
+        },
         "quiet_sort": {"$ref": "#/$defs/quiet_sort"},
         "quiet_workspace": {"$ref": "#/$defs/quiet_workspace"},
         "yours_workspace": {"$ref": "#/$defs/section_workspace"},

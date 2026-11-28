@@ -53,6 +53,7 @@ import {
 import { usePiModels } from "../app/PiModels";
 import type { AccountProfile } from "../app/pi";
 import { RecapSettingsSection } from "../app/RecapSettings";
+import { RiskyFeatures } from "../app/RiskyFeatures";
 import { ServerAdministration } from "../app/ServerAdministration";
 import { ServerConversations } from "../app/ServerConversations";
 import { ServerIntegrationsSettings } from "../app/ServerIntegrationsSettings";
@@ -1044,6 +1045,9 @@ export function AccountSettings({
         )}
         {section === "laitteet" && <Devices csrf={csrf} onLogout={onLogout} />}
         {section === "avaimet" && <AccountKeys csrf={csrf} />}
+        {section === "vaaralliset" && (
+          <RiskyFeatures identity={editorIdentity} csrf={csrf} />
+        )}
         {section === "omatkoneet" && <OwnMachines csrf={csrf} />}
         {section === "tekoaly" && (
           <div className="s-stack">

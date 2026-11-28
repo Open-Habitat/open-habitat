@@ -658,6 +658,18 @@ export const parts: Record<CardId, Part> = {
   M27: { kind: "nav", sel: '[data-testid="settings-list-back"]' },
   M28: { kind: "nav", sel: '[data-testid="settings-own-back"]' },
   M29: { kind: "page", sel: page("aanet") },
+  M30: { kind: "page", sel: page("vaaralliset") },
+  RK01: {
+    kind: "panel",
+    sel: '[data-testid^="risky-"][data-testid$="-allow"]',
+    opens: true,
+  },
+  RK02: {
+    kind: "once",
+    sel: '[data-testid^="risky-"][data-testid$="-disable"]',
+  },
+  RK03: { kind: "once", sel: '[data-testid="risky-allow-confirm"]' },
+  RK04: { kind: "once", sel: '[data-testid="risky-allow-cancel"]' },
   AS01: { kind: "menu", sel: '[data-testid="sound-menu-row"]' },
   AS02: { kind: "info", sel: '[data-testid="sound-muted-badge"]' },
   AS07: { kind: "info", sel: '[data-testid="sound-status"]' },
@@ -793,6 +805,8 @@ export const parts: Record<CardId, Part> = {
  * workspace, send a wish to a model). In the mode they wait,
  * so that nothing happens by accident while the person explores. */
 export const waiting: ReadonlySet<CardId> = new Set<CardId>([
+  "RK02",
+  "RK03",
   "AS08",
   "AS10",
   "AS11",

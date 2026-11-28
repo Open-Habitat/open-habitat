@@ -1,0 +1,122 @@
+/* Settings › Vaaralliset toiminnot (keskustelulinkit round 3): deliberately
+   not Kokeelliset's look. One card of rows, the state in words, a button
+   that names the act, and what the capability allows always in view. The
+   warning colour is the danger tone's soft surface: the tokens have no
+   separate warning tone. */
+.rk-member {
+  outline: none;
+}
+.s-card > .rk-member {
+  padding: 0;
+}
+.rk-member:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--ah-focus, var(--ah-accent));
+}
+.rk-member > .s-row {
+  padding-bottom: var(--ah-s2);
+}
+.rk-state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ah-s1);
+  font-size: var(--ah-size-meta);
+  color: var(--ah-muted);
+}
+.rk-state[data-on] {
+  color: var(--ah-err);
+  font-weight: 600;
+}
+.rk-state svg {
+  width: 14px;
+  height: 14px;
+}
+.rk-allows,
+.rk-since {
+  margin: 0;
+  padding: 0 var(--ah-s5) var(--ah-s4);
+  font-size: var(--ah-size-meta);
+  line-height: 1.45;
+  color: var(--ah-ink-2);
+}
+.rk-allows span {
+  font-weight: 600;
+  color: var(--ah-ink);
+}
+.rk-member[data-on] .rk-allows {
+  margin: 0 var(--ah-s5) var(--ah-s3);
+  padding: var(--ah-s2) var(--ah-s3);
+  border-left: 3px solid var(--ah-err-line);
+  background: var(--ah-err-soft);
+  border-radius: 0 var(--ah-r-md) var(--ah-r-md) 0;
+}
+.rk-since {
+  margin-top: calc(-1 * var(--ah-s1));
+}
+.rk-alert p {
+  margin: 0;
+}
+
+/* The warning window. */
+.ah-modal.rk-modal {
+  width: min(560px, 100%);
+}
+.rk-dialog {
+  display: grid;
+  gap: var(--ah-s3);
+}
+.rk-dialog h2 {
+  margin: 0;
+}
+.rk-warn {
+  display: flex;
+  gap: var(--ah-s3);
+  align-items: flex-start;
+  padding: var(--ah-s3);
+  border: 1px solid var(--ah-err-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-err-soft);
+  color: var(--ah-ink);
+}
+.rk-warn > svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  color: var(--ah-err);
+}
+.rk-warn p {
+  margin: 0;
+  line-height: 1.45;
+}
+.rk-warn p + p {
+  margin-top: var(--ah-s2);
+}
+.rk-note {
+  margin: 0;
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+  line-height: 1.45;
+}
+.rk-dialog .ah-dialog-actions {
+  margin-top: var(--ah-s2);
+  flex-wrap: wrap;
+}
+@media (max-width: 600px) {
+  .rk-member > .s-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rk-member .s-val {
+    justify-content: space-between;
+  }
+}
+@media (max-width: 800px) {
+  /* On a phone the window rises from the bottom, its buttons full width. */
+  .ah-overlay.rk-overlay {
+    place-items: end center;
+    padding: var(--ah-s2);
+  }
+  .rk-dialog .ah-dialog-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
