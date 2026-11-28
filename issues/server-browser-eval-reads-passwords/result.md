@@ -146,3 +146,15 @@ The threat model is accidental reading, not an attack: it is enough that the
 agent really does not read a person-typed password by accident. The eval
 changes are to be reconsidered later: `server-browser-eval-reconsider`.
 
+
+## Reverted 28.11.2026
+
+The three product commits of the implementation run (`055c6cee7`,
+`2bcfdba90`, `53b71d8a8`) were reverted: the fixed host command set, the
+removal of `eval`, the cut-off of external DevTools clients, the
+revealed-password screenshot refusal and the person's-turn rule. The browser
+host, CLI, the `internal/AGENTS.md` rule and the agent skill/help are back to
+their state before the run. The change went further than asked: the threat
+model is accidental reading, not an attack, and the fix removed capabilities
+agents use. How to keep the agent from reading a person-typed password by
+accident is reconsidered in `server-browser-eval-reconsider`.

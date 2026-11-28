@@ -3,12 +3,12 @@ created: 2026-11-28
 updated: 2026-11-28
 type: bug
 reporter: jari
-status: testing
+status: open
 priority: high
 provenance: chat
 source_ref: chat:conductor-2711/eval-passwords
 lane: unlaned
-preparation: ready
+preparation: pending
 ---
 
 # Server browser: agent eval can read password field values
