@@ -355,7 +355,8 @@ func microsoftMCPArgs(allowed string) []string {
 }
 
 // microsoftOutlookTools are what the pinned server's mail, calendar and
-// contacts presets enable. A version bump that changes the presets fails
+// contacts presets enable, less the tools the test reviewed and left out
+// (microsoftExcludedOutlookTools). A version bump that changes the presets fails
 // TestMicrosoftMCPToolsPinnedServer, so the list is reviewed rather than
 // widened silently.
 var microsoftOutlookTools = []string{

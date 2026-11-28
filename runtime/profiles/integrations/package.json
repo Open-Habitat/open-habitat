@@ -5,7 +5,7 @@
   "type": "module",
   "license": "MIT",
   "dependencies": {
-    "@azure/msal-node": "5.6.0",
-    "@softeria/ms-365-mcp-server": "0.170.1"
+    "@azure/msal-node": "7.2.3",
+    "@softeria/ms-365-mcp-server": "0.191.0"
   }
 }

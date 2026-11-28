@@ -3,7 +3,7 @@ created: 2026-11-24
 updated: 2026-11-28
 type: chore
 reporter: runtime-pin-watch
-status: open
+status: testing
 priority: normal
 labels: [runtime-pin]
 provenance: other

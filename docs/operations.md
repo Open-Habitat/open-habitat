@@ -1001,8 +1001,8 @@ Every installation ships the integration tools in the required `integrations`
 profile, so a site's `profiles` always lists `core` and `integrations`. The
 profile carries **himalaya 2.2.1** (IMAP), **rclone 1.76.0**, **gog
 0.48.0**, **tea 0.16.0** (Gitea), **glab 1.130.0** (GitLab), **sops 3.13.3**
-(the person's own SOPS, at `/opt/open-habitat/profiles/integrations/bin/sops`), **tailscale/tailscaled 1.104.4** (each person's own Tailscale node, below), **@softeria/ms-365-mcp-server 0.170.1** with the `microsoft-native`
-adapter, **MSAL 5.6.0** and their own **Node 22.23.5**, and a Pi wrapper that
+(the person's own SOPS, at `/opt/open-habitat/profiles/integrations/bin/sops`), **tailscale/tailscaled 1.104.4** (each person's own Tailscale node, below), **@softeria/ms-365-mcp-server 0.191.0** with the `microsoft-native`
+adapter, **MSAL 7.2.3** and their own **Node 22.23.5**, and a Pi wrapper that
 runs the same release's core **Pi 1.5.2** for native `pi mcp add/remove`. Each
 upstream executable is pinned by archive and file SHA-256 with its upstream
 licence texts as a component of the manifest's closure. CalDAV and CardDAV use

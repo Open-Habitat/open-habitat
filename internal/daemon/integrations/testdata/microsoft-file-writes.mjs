@@ -8,7 +8,8 @@ const { registerGraphTools } = await import(pathToFileURL(join(runtime, 'node_mo
 const calls = [];
 const tools = new Map();
 registerGraphTools({
-  server: { _requestHandlers: new Map() },
+  // The server wraps tools/call to refuse the tools the configuration leaves out.
+  server: { _requestHandlers: new Map([['tools/call', async () => ({})]]), setRequestHandler() {} },
   registerTool(name, config, run) { tools.set(name, { config, run }); },
 }, {
   serialize: JSON.stringify,

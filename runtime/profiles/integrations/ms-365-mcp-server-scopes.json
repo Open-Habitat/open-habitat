@@ -1,6 +1,6 @@
 {
   "package": "node_modules/@softeria/ms-365-mcp-server",
-  "version": "0.170.1",
+  "version": "0.191.0",
   "file": "dist/endpoints.json",
   "tools": {
     "upload-file-content": {

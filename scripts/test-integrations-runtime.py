@@ -52,8 +52,11 @@ with tempfile.TemporaryDirectory(prefix='oh-ms-package-', dir=os.environ.get('TM
     applicable = {k: p['version'] for k, p in lock['packages'].items() if k and all(matches(p.get(key), value) for key, value in [('os', 'linux'), ('cpu', {'x86_64': 'x64', 'aarch64': 'arm64'}[platform.machine()]), ('libc', 'glibc')])}
     actual = {c['name'].removeprefix('npm:'): c['version'] for c in components.values() if c['kind'] == 'npm'}
     assert actual == applicable, 'complete npm closure required'
-    assert actual['node_modules/@azure/msal-node'] == '5.6.0'
-    assert actual['node_modules/@softeria/ms-365-mcp-server'] == '0.170.1'
+    assert actual['node_modules/@azure/msal-node'] == '7.2.3'
+    # One MSAL: the adapter classifies the server's errors with instanceof
+    # AuthError, which a nested copy under the server would never satisfy.
+    assert not any(k.endswith('/node_modules/@azure/msal-node') and k.startswith('node_modules/@softeria/') for k in actual)
+    assert actual['node_modules/@softeria/ms-365-mcp-server'] == '0.191.0'
     # The agent's file tools carry the scope patch the build applied.
     patch = json.loads((root / 'runtime/ms-365-mcp-server-scopes.json').read_text())
     endpoints = {e['toolName']: e for e in json.loads((root / 'runtime' / patch['package'] / patch['file']).read_text())}

@@ -26,6 +26,14 @@ var microsoftExcludedFileTools = []string{
 	"delete-drive-item-permission", "create-drive-item-preview", "graph-batch",
 }
 
+// The pinned server's mail, calendar and contacts presets name these too, but
+// they stay outside the Outlook surface: the sign-in tools belong to Settings,
+// skipping Deleted Items is a permanent deletion no agent is offered, and
+// list-rooms is a new read not yet placed in an area.
+var microsoftExcludedOutlookTools = slices.Concat(msmcp.SignIn, []string{
+	"delete-mail-message-skip-deleted-items", "list-rooms",
+})
+
 // The level's files grant is the one the server may request: write levels
 // name the ReadWrite.All permissions they consented to, read levels the
 // Read.All ones, never the narrow Files.Read the upstream metadata names.
@@ -242,12 +250,13 @@ func TestMicrosoftMCPToolsPinnedServer(t *testing.T) {
 	var names []string
 	for _, group := range regexp.MustCompile(`\^\(\?:([^)]*)\)\$`).FindAllStringSubmatch(string(out), -1) {
 		for _, n := range strings.Split(group[1], "|") {
-			if !slices.Contains(names, n) {
+			if !slices.Contains(names, n) && !slices.Contains(microsoftExcludedOutlookTools, n) {
 				names = append(names, n)
 			}
 		}
 	}
-	if !slices.Equal(names, microsoftOutlookTools) {
+	slices.Sort(names)
+	if want := slices.Sorted(slices.Values(microsoftOutlookTools)); !slices.Equal(names, want) {
 		t.Fatalf("the pinned presets changed; review microsoftOutlookTools:\n%q", names)
 	}
 
@@ -299,7 +308,7 @@ func TestMicrosoftMCPToolsPinnedServer(t *testing.T) {
 							break
 						}
 					}
-					if denied.ID != 3 || !denied.Result.IsError || len(denied.Result.Content) != 1 || !strings.Contains(denied.Result.Content[0].Text, "Tool "+name+" not found") {
+					if denied.ID != 3 || !denied.Result.IsError || len(denied.Result.Content) != 1 || !strings.Contains(denied.Result.Content[0].Text, "Tool "+name+" is not available in this server configuration") {
 						t.Fatalf("%s: unavailable tool did not refuse dispatch: %s", name, lines.Text())
 					}
 				}
@@ -361,6 +370,7 @@ func TestMicrosoftMCPToolsPinnedServer(t *testing.T) {
 		// scope-free get-download-url fails without a files grant.
 		outlook := microsoftAllowed(microsoftGranted(slices.DeleteFunc(slices.Clone(consented), func(s string) bool { return strings.HasPrefix(s, "Files.") || strings.HasPrefix(s, "Sites.") })))
 		before := append(tools([]string{"--preset", "mail,calendar,contacts", "--allowed-scopes", outlook}), "get-download-url", "get-schedule")
+		before = slices.DeleteFunc(before, func(n string) bool { return slices.Contains(microsoftExcludedOutlookTools, n) })
 		slices.Sort(before)
 		if now := tools(microsoftMCPArgs(outlook)); !slices.Equal(before, now) {
 			t.Errorf("%s: Outlook tools changed:\n%q\n%q", level, before, now)

@@ -66,9 +66,10 @@ var Areas = []Area{
 	}},
 }
 
-// SignIn are the tools the pinned server adds to every process whatever
-// --enabled-tools says. Sign-in belongs to Settings → Integrations, so no
-// area offers them; Pi's entries also hide them.
+// SignIn are the pinned server's account tools. It offers them only when
+// --enabled-tools names them, which the daemon's never does; sign-in belongs
+// to Settings → Integrations, so no area offers them even if a later release
+// lists them again, and Pi's entries also hide them.
 var SignIn = []string{"login", "logout", "verify-login", "list-accounts", "select-account", "remove-account"}
 
 // AreaTools is the set of an area's tool names, nil for an unknown area.

@@ -187,4 +187,6 @@ test('every guarded call reads as plain words, with lookups or without', async (
   assert.equal((await describe('cancel-calendar-event', inputs['cancel-calendar-event'], async (_a, n) => reads[n])).consequence, 'Peruutus lähtee heti 3 osallistujalle, ja tapahtuma poistuu kalenterista.');
   assert.equal((await describe('create-my-calendar-permission', inputs['create-my-calendar-permission'], async () => null)).action, 'Jaa kalenterisi henkilölle Ville');
   assert.equal((await describe('forward-mail-message', inputs['forward-mail-message'], async (_a, n) => reads[n])).consequence, 'Viesti lähtee heti 2 vastaanottajalle: a@b.test, Bea.');
+  // The pinned server moves a deleted message to Deleted Items, even one already there.
+  assert.equal((await describe('delete-mail-message', inputs['delete-mail-message'], async (_a, n) => reads[n])).consequence, 'Viesti lähettäjältä Ville siirtyy Poistetut-kansioon, josta sen voi palauttaa.');
 });

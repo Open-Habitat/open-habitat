@@ -147,7 +147,7 @@ export async function describe(tool, input, read) {
     case 'delete-mail-message': {
       const m = await read('mail', 'get-mail-message', { messageId: a.messageId, select: 'subject,from' });
       const subject = str(m?.subject), from = people([m?.from])[0];
-      return { action: subject ? `Poista viesti ${q(subject)}` : `Poista viesti (tunniste ${idOf(a.messageId)})`, consequence: `Viesti${from ? ` lähettäjältä ${from}` : ''} poistetaan postilaatikosta.` };
+      return { action: subject ? `Poista viesti ${q(subject)}` : `Poista viesti (tunniste ${idOf(a.messageId)})`, consequence: `Viesti${from ? ` lähettäjältä ${from}` : ''} siirtyy Poistetut-kansioon, josta sen voi palauttaa.` };
     }
     case 'delete-mail-attachment': {
       const att = await find(read, 'mail', 'list-mail-attachments', { messageId: a.messageId }, a.attachmentId);
