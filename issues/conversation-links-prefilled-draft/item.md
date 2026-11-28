@@ -1,6 +1,6 @@
 ---
 created: 2026-11-27
-updated: 2026-11-27
+updated: 2026-11-28
 type: feature
 reporter: jari
 status: open
@@ -9,7 +9,8 @@ provenance: chat
 source_ref: chat:conductor-2711/conversation-links
 lane: conversation-links
 lane_seq: 1
-preparation: pending
+preparation: ready
+blocked_by: ['@risky-features-settings']
 ---
 
 # Links that open a new or named conversation with a prepared draft

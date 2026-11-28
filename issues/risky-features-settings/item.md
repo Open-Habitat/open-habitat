@@ -1,6 +1,6 @@
 ---
 created: 2026-11-27
-updated: 2026-11-27
+updated: 2026-11-28
 type: feature
 reporter: jari
 status: open
@@ -9,7 +9,7 @@ provenance: chat
 source_ref: chat:conductor-2711/risky-features
 lane: conversation-links
 lane_seq: 0
-preparation: pending
+preparation: ready
 ---
 
 # Settings section for risky features the person switches on with a warning

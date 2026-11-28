@@ -264,3 +264,8 @@ Lähetä painetaan. C jää A:n osaksi tilanteeseen, jossa kentässä on jo jota
   toiminnoille (`risky-features-settings`), varoituksen kanssa; linkit ovat
   sen ensimmäinen jäsen. Kierros 2 näyttää molemmat.
 
+## Jari 28.11.2026: approved for implementation
+
+Link form: `<origin>/new/<workspace>#n=<length>&draft=<message>` (round 3).
+Built after `risky-features-settings` (the switch). No link button in the UI;
+the agent guide documents the form.
