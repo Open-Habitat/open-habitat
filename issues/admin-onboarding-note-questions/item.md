@@ -11,7 +11,7 @@ originating_run: 01m7zbxs4sc2a2kmjkfb4dpxeh
 originating_run_kind: spinoff
 lane: onboarding-note
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Administrator-defined questions for the person's agent note in onboarding

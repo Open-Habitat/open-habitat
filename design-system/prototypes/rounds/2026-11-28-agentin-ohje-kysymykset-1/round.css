@@ -1,0 +1,124 @@
+/* Review chrome above the page, clear of the floating picker. */
+html, body { margin: 0; background: var(--ah-bg); }
+.rq-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.rq-title { font-weight: 600; }
+.rq-bar select, .rq-bar > button { font: inherit; max-width: 100%; }
+.rq-line { flex-basis: 100%; margin: 0; color: var(--ah-ink-2); font-size: 12px; }
+
+/* The view switch is the round's most visible control: Jari did not find the person side in round 1. */
+.rq-views { display: inline-flex; padding: 2px; gap: 2px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-bg); }
+.rq-views button {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border: 0; border-radius: calc(var(--ah-r-md) - 2px);
+  background: none; color: var(--ah-ink-2); font: inherit; font-weight: 600; cursor: pointer;
+}
+.rq-views button svg { width: 14px; height: 14px; }
+.rq-views button[aria-pressed="true"] { background: var(--ah-surface); color: var(--ah-ink); box-shadow: var(--ah-shadow-menu); }
+.rq-views button:focus-visible { outline: 2px solid var(--ah-focus, var(--ah-accent)); outline-offset: 1px; }
+@media (max-width: 600px) {
+  .rq-bar { padding: 6px 10px; gap: 4px 10px; }
+  .rq-title { display: none; }
+  .rq-bar label { font-size: 11px; }
+  .rq-bar select { max-width: 40vw; }
+  .rq-views { flex-basis: 100%; }
+  .rq-views button { flex: 1; justify-content: center; }
+  .rq-line { font-size: 11px; line-height: 1.3; }
+}
+
+.rq-stage { padding-top: var(--review-h, 0px); padding-bottom: 96px; color: var(--ah-ink); }
+.rq-page { max-width: 960px; margin: 0 auto; padding: var(--ah-s5, 24px) var(--ah-s4, 16px); }
+.rq-h { font-size: 20px; margin: 0 0 var(--ah-s3, 12px); }
+.rq-h3 { font-size: 14px; margin: 0; }
+.rq-kicker { margin: 0; color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.rq-toast {
+  position: fixed; z-index: 200; left: 50%; top: calc(var(--review-h, 0px) + 8px); transform: translateX(-50%);
+  max-width: min(92vw, 560px); margin: 0; padding: 8px 14px; border-radius: var(--ah-r-md);
+  background: var(--ah-ink); color: var(--ah-bg); font: 12.5px/1.4 var(--ah-font, system-ui); overflow-wrap: anywhere;
+}
+.rq-slot { display: contents; }
+
+/* The round's route row joins production's list. */
+.rq-admin .ob-steplist li.rq-row { list-style: none; }
+/* While the round's step is selected, production's own panel (for no step) stays hidden. */
+.rq-admin[data-rq-note] .ob-cfg-card > .ob-config:not(.rq-cfg) { display: none; }
+
+.rq-cfg { min-width: 0; }
+.rq-cfg .ob-lbl svg { flex: none; }
+.rq-after { display: flex; gap: var(--ah-s2); align-items: flex-start; margin: var(--ah-s2) 0 0; padding: var(--ah-s3);
+  border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-bg); color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
+.rq-after svg { flex: none; margin-top: 3px; }
+
+/* 1 Lisäkysymykset: the ordered list */
+.rq-qlist { list-style: none; margin: 0; padding: 0; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-bg); }
+.rq-q { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; gap: var(--ah-s3); padding: var(--ah-s2) var(--ah-s3); min-height: 44px; }
+.rq-q + .rq-q { border-top: 1px solid var(--ah-line); }
+.rq-q-fixed { color: var(--ah-ink-2); }
+.rq-q-edit { display: block; padding: var(--ah-s3); background: var(--ah-surface); }
+.rq-qnum { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: var(--ah-r-pill); border: 1px solid var(--ah-line);
+  font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ah-muted); }
+.rq-q:not(.rq-q-fixed) .rq-qnum { border-color: var(--ah-accent-line); color: var(--ah-ink); background: var(--ah-accent-soft); }
+.rq-qtext { display: grid; gap: 2px; min-width: 0; }
+.rq-qtext strong { font-weight: 500; font-size: var(--ah-size-ui); overflow-wrap: anywhere; }
+.rq-q-fixed .rq-qtext strong { font-weight: 400; }
+.rq-qtext small { display: inline-flex; align-items: center; gap: 4px; color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.rq-qacts { display: flex; align-items: center; gap: var(--ah-control-gap); }
+.rq-addrow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s3); }
+
+/* The question form, the same in both directions */
+.rq-form { display: grid; gap: var(--ah-s3); min-width: 0; }
+.rq-form .ah-field, .rq-form input, .rq-form textarea { min-width: 0; width: 100%; box-sizing: border-box; }
+.rq-choices { display: grid; gap: var(--ah-s3); margin: 0; padding: 0; border: 0; min-width: 0; }
+.rq-choices legend { padding: 0; margin-bottom: var(--ah-s2); }
+.rq-choice { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) auto; align-items: end; gap: var(--ah-s4); }
+.rq-form-acts { display: flex; justify-content: space-between; gap: var(--ah-s4); margin-top: var(--ah-s2); padding-top: var(--ah-s3); border-top: 1px solid var(--ah-line); }
+.rq-preview { display: grid; gap: var(--ah-s2); min-width: 0; }
+.rq-preview .ob-lbl { margin: 0; }
+.rq-mini { background: var(--ah-bg); }
+.rq-lands { margin: 0; padding: var(--ah-s2) var(--ah-s3); border-radius: var(--ah-r-md); background: var(--ah-accent-soft); border: 1px solid var(--ah-accent-line);
+  font-size: var(--ah-size-meta); overflow-wrap: anywhere; }
+.rq-lands code { font-family: var(--ah-mono); }
+
+/* Who asks: the administrator's questions carry it in the person's conversation. */
+.rq-asker { display: flex; align-items: center; gap: 6px; margin: 0 0 4px; color: var(--ah-muted); font-size: var(--ah-size-label); font-weight: 600; }
+.rq-asker svg { width: 12px; height: 12px; flex: none; }
+.rq-asker-habitat { font-weight: 400; }
+
+/* 2 Koko keskustelu: the conversation is the editor */
+.rq-convo { gap: var(--ah-s3); }
+.rq-turn { display: grid; gap: var(--ah-s2); min-width: 0; padding: var(--ah-s2) var(--ah-s3) var(--ah-s3); border-radius: var(--ah-r-md); border: 1px dashed transparent; }
+.rq-turn[data-kind="site"] { border-color: var(--ah-accent-line); background: var(--ah-surface); }
+.rq-turn[data-off] .rq-turn-body { opacity: .45; }
+.rq-turn-edit { border: 1px solid var(--ah-accent-line); background: var(--ah-surface); }
+.rq-turn-body { display: grid; gap: var(--ah-s2); min-width: 0; }
+.rq-turn-acts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-control-gap); }
+.rq-pills { display: flex; flex-wrap: wrap; gap: var(--ah-s2); }
+.rq-pill { display: inline-flex; align-items: center; min-height: 28px; padding: 0 var(--ah-s3); border: 1px solid var(--ah-line); border-radius: var(--ah-r-md);
+  background: var(--ah-surface); color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
+.rq-pill-field { min-width: 12rem; border-style: dashed; color: var(--ah-muted); }
+.rq-addrow-convo { margin-top: var(--ah-s3); padding-top: var(--ah-s3); border-top: 1px solid var(--ah-line); }
+
+/* The person's onboarding step fills the stage like the route does. */
+.rq-person-onb { min-height: calc(100vh - var(--review-h, 0px)); }
+[data-side="person"] .rq-page, .rq-page[data-side="person"] { max-width: 820px; }
+[data-testid="rq-waiting"] { margin-bottom: var(--ah-s3); }
+
+@media (max-width: 600px) {
+  .rq-page { padding: var(--ah-s4) var(--ah-s3); }
+  .rq-q { grid-template-columns: 22px minmax(0, 1fr); }
+  .rq-qacts { grid-column: 2; }
+  .rq-choice { grid-template-columns: minmax(0, 1fr) auto; }
+  .rq-choice > :nth-child(2) { grid-column: 1; grid-row: 2; }
+  .rq-choice > :nth-child(3) { grid-row: 1 / span 2; grid-column: 2; align-self: center; }
+  .rq-pill-field { min-width: 8rem; }
+}
+.rq-mode .ob-lbl { margin: 0 0 var(--ah-s1); }
+
+/* Production button rules let the picker labels wrap at phone width. */
+.proto-picker-item { white-space: nowrap; }
+
+/* In the administrator's editor the bubbles are samples: no reply state or copy. */
+.rq-cfg .ah-message > header { display: none; }
