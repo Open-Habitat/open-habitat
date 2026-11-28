@@ -34,3 +34,12 @@ from the view's non-entry HTML, since an opaque sandboxed ancestor matches no
 host-source). That is a security decision, an addition to ADR 0032, and it
 needs Firefox and Safari checks first. The research suggests building it
 only if srcdoc frames turn out to be insufficient in practice.
+
+## Jari 28.11.2026
+
+Recommendation 2 approved: allow `src` frames to the view's own files (exact
+own host in `frame-src`/`child-src`; non-entry HTML files without
+`frame-ancestors`), same policy for private and published views. Habitat's
+app, the editor, external pages, `data:`/`blob:` frames and other people's
+views stay blocked.
+

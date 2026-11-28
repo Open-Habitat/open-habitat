@@ -8,7 +8,7 @@ priority: normal
 provenance: chat
 source_ref: chat:conductor-2711/view-iframe
 lane: unlaned
-preparation: pending
+preparation: ready
 ---
 
 # Why offered views may not embed iframes, and whether that should change
