@@ -1,0 +1,27 @@
+// zh-CN for web/src/text/gitIdentity.ts (agent draft, not reviewed).
+export default {
+  gitIdentityText: {
+    readError: '无法检查 Git 身份。请重试。',
+    uncertain: '无法确认保存结果。已重新读取 Git 设置。',
+    retry: '重试',
+    label: 'Git 身份',
+    descBefore: '提交的作者。保存在全局',
+    descAfter: '文件中。',
+    nameMissing: '缺少姓名',
+    emailMissing: '缺少邮箱',
+    edit: '编辑 Git 身份',
+    checking: '正在检查 Git 设置…',
+    nameField: 'Git 中显示的姓名',
+    emailField: 'Git 中显示的邮箱',
+    cancel: '取消',
+    save: '保存 Git 身份',
+    noSuggestions: '没有收到来自 GitHub 的建议。请重试。',
+    source: '来源：',
+    continue: '继续选择仓库',
+    saving: '正在保存…',
+    confirm: '确认 Git 身份',
+    globalSetting: 'Git 全局设置',
+    nameInGit: 'Git 中显示的姓名',
+    emailInGit: 'Git 中显示的邮箱',
+  },
+};

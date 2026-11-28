@@ -9,7 +9,7 @@ provenance: chat
 source_ref: chat:2026-11-24/chinese-interface
 lane: i18n
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Chinese interface (zh-CN, zh-TW), after opening the text catalogs to more languages
