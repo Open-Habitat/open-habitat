@@ -3,7 +3,7 @@ created: 2026-11-27
 updated: 2026-11-28
 type: feature
 reporter: jari
-status: open
+status: testing
 priority: normal
 provenance: chat
 source_ref: chat:conductor-2711/conversation-links

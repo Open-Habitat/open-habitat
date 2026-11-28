@@ -1,5 +1,70 @@
 # Tulokset
 
+## Toteutus (28.11.2026)
+
+Rakennettu kierroksen 3 ja Jarin vastausten mukaan, ei muuta. Linkki
+`<origin>/new/<työtila>#n=<pituus>&draft=<viesti>` avaa uuden keskustelun
+työtilassa kuten sen +. Selain lukee fragmentin ennen kuin sovellus
+käynnistyy ja poistaa sen heti osoiteriviltä (`history.replaceState`); linkin
+osoite korvataan, joten Takaisin ei avaa linkkiä uudelleen. Työtila etsitään
+sivupalkin nimellä, sitten hakemiston nimellä.
+
+- **Linkit sallittu:** viesti on uuden keskustelun kentässä
+  (`prepareField`), merkki *Viesti linkistä. Mitään ei ole lähetetty.* ja ×.
+  Merkki pysyy, kunnes kenttä lähetetään tai tyhjennetään.
+- **Ei sallittu:** tyhjä kenttä ja ilmoitus *Linkin viestiä ei kirjoitettu
+  kenttään* · *Avaa asetus* (asetukset kerroksena, fokus rivillä
+  `#conversation-links`). Kun asetukset suljetaan linkit sallittuina, viesti
+  tulee kenttään merkin kanssa; ilman sallimista mikään ei muutu. Viesti on
+  vain välilehden muistissa.
+- **Oma luonnos ensin:** jos uuden keskustelun kentässä on jo tekstiä, viesti
+  odottaa kortissa *Lisää viestisi perään / Korvaa / Hylkää*. Käytännössä
+  tämä tapahtuu, kun henkilö ehti kirjoittaa kenttään ennen sallimista, tai
+  kun työtilan uuden keskustelun luonnos odottaa (esim. mallin valinta).
+- **Virheet:** puuttuva työtila → sivu, jossa viesti (vain sallittuna) ja
+  *Kopioi viesti* sekä muut työtilat, joista sama linkki aloitetaan siellä.
+  Piilotettu työtila → keskustelu aloitetaan, ilmoitus ja *Palauta työtila
+  näkyviin*. Yli 4 000 merkkiä tai `n` ei täsmää → viesti jätetään kokonaan
+  pois ja siitä kerrotaan (kuten prototyypissä, vain kun linkit on sallittu).
+- **Ei kirjautunut:** kirjautumissivulla *Kirjautumisen jälkeen jatkat linkin
+  kohteeseen*. Linkki pidetään välilehden `sessionStorage`ssa kirjautumisen
+  ajan (enintään 15 min, otetaan ja poistetaan ensimmäisellä latauksella);
+  kirjautumispalvelu näkee vain paluuosoitteen `/workspaces`.
+- Linkin tekemiselle ei ole painiketta. Agentin opas
+  (`internal/daemon/host-context.md`) ja agentin skilli
+  (`open-habitat skill print agent`) kertovat muodon, URL-koodauksen ja
+  `n`:n (merkkimäärä Unicode-koodipisteinä). Selitystilaan tulivat kortit
+  CL01–CL09.
+
+Gatewaylle tuli vain `/new/`-polun sovelluskuoren tarjoilu; uutta
+valtuutta ei ole.
+
+### Näin kokeilet testikoneella
+
+1. Kirjaudu testikoneen Habitatiin. Valitse työtila, esimerkiksi sivupalkin
+   `kotisivu` (vaihda alla oleva nimi omaksesi).
+2. Avaa linkki (vaihda `<origin>` testikoneen osoitteeseen):
+
+   ```
+   <origin>/new/kotisivu#n=91&draft=Katso%20viimeisimm%C3%A4n%20y%C3%B6ajon%20tulos%20ja%20kerro%2C%20voiko%20julkaisun%20tehd%C3%A4%20t%C3%A4n%C3%A4%C3%A4n.%20%C3%84l%C3%A4%20viel%C3%A4%20commitoi.
+   ```
+
+   Linkit eivät ole vielä sallittuja: kenttä on tyhjä ja ilmoitus tarjoaa
+   *Avaa asetus*. Salli keskustelulinkit, sulje asetukset: viesti tulee
+   kenttään merkin kanssa. Mitään ei lähde ennen kuin painat Lähetä.
+3. Kokeile myös: poista linkit käytöstä, avaa linkki, kirjoita kenttään oma
+   teksti ja salli linkit *Avaa asetus* -kautta (kortti), vaihda työtilan nimeksi jokin olematon (puuttuvan työtilan
+   sivu), poista linkin lopusta merkkejä (`n` ei täsmää), piilota työtila
+   ja avaa linkki, ja avaa linkki uloskirjautuneena.
+4. Agentti tekee linkin itse: pyydä keskustelussa "tee minulle linkki, joka
+   avaa uuden keskustelun tässä työtilassa viestillä …".
+
+Todisteet: `web/tests/conversation-links.spec.ts` (Playwright, synteettinen
+host: sallittu, ei sallittu → salli → sulje, kortin kolme valintaa, puuttuva
+ja piilotettu työtila, liian pitkä ja katkennut viesti, kirjautumisen yli,
+fragmentti poissa historiasta, puhelin) ja `web/src/app/conversationLink.test.ts`
+(jäsennys: `n`, pituus, koodaus, kirjautumisen yli säilytys).
+
 ### Jarin vastaukset kierrokseen 3 (27.11.2026)
 
 - Tekstin kaltainen *Uusi keskustelu työtilassa kotisivu. Malli on oletusmalli.*
