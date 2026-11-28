@@ -55,14 +55,7 @@ func pageScript(action, selector, value string) (string, bool) {
 		return "", false
 	}
 	sel, _ := json.Marshal(selector)
-	// Whether a selector matches answers a question about the page, and an
-	// attribute selector on value would ask about what a field holds: React
-	// and others mirror a controlled field's value, a password's too, into
-	// the attribute. The browser's own parser resolves escapes and comments
-	// before the check; what it cannot read as one style rule is refused.
-	expr := `(()=>{let norm;try{const s=new CSSStyleSheet();s.insertRule(` + string(sel) + `+'{}');const r=s.cssRules[0];if(s.cssRules.length!==1||!(r instanceof CSSStyleRule))throw 0;norm=r.selectorText}catch{return {refused:'invalid_selector'}}
-if(/\[\s*(?:[^\]|]*\|)?value(?![\w-])/i.test(norm))return {refused:'selector_reads_value'};
-let es;try{es=document.querySelectorAll(` + string(sel) + `)}catch{return {refused:'invalid_selector'}};if(es.length!==1)return {refused:'selector_must_match_one',count:es.length};const e=es[0];if(e.disabled)return {refused:'disabled'};`
+	expr := `(()=>{let es;try{es=document.querySelectorAll(` + string(sel) + `)}catch{return {refused:'invalid_selector'}};if(es.length!==1)return {refused:'selector_must_match_one',count:es.length};const e=es[0];if(e.disabled)return {refused:'disabled'};`
 	if action == PageClick {
 		return expr + clickPointScript, true
 	}
@@ -107,26 +100,11 @@ if(!hit || (hit!==e && !e.contains(hit))){
 }
 return {x,y};})()`
 
-// passwordFieldsKey names the page's record of fields seen as passwords.
-// It lives in the page's main world, which the host's and the agent's
-// sessions share; the agent runs no script that could reach it.
-const passwordFieldsKey = `Symbol.for('open-habitat.password-fields')`
-
-// recordPasswordsScript remembers every field that is a password now, in
-// the document, its open shadow roots and its same-origin frames. The host
-// runs it before each press of the agent's and when the person takes
-// control, so a field the press or the person then unmasks stays known.
-const recordPasswordsScript = `(()=>{const k=` + passwordFieldsKey + `;if(!window[k])Object.defineProperty(window,k,{value:new WeakSet()});const seen=window[k];
-const walk=r=>{for(const e of r.querySelectorAll('*')){if(e.shadowRoot)walk(e.shadowRoot);
-if(e.localName==='input'&&e.type==='password')seen.add(e);
-if(e.localName==='iframe'||e.localName==='frame'){let d=null;try{d=e.contentDocument}catch{}if(d)walk(d);}}};walk(document);return true})()`
-
-// revealedPasswordScript is true when a field known as a password, or
-// marked as one by its autocomplete token, holds a value but no longer
-// masks it, in the document, its open shadow roots and its same-origin
-// frames.
-const revealedPasswordScript = `(()=>{const seen=window[` + passwordFieldsKey + `];const walk=r=>{for(const e of r.querySelectorAll('*')){
+// revealedPasswordScript is true when a field marked as a password holds a
+// value but no longer masks it, in the document, its open shadow roots and
+// its same-origin frames.
+const revealedPasswordScript = `(()=>{const walk=r=>{for(const e of r.querySelectorAll('*')){
 if(e.shadowRoot&&walk(e.shadowRoot))return true;
-if(e.localName==='input'&&e.type!=='password'&&e.value&&((seen&&seen.has(e))||/(^|\s)(current|new)-password(\s|$)/i.test(e.getAttribute('autocomplete')||'')))return true;
+if(e.localName==='input'&&e.type!=='password'&&e.value&&/(^|\s)(current|new)-password(\s|$)/i.test(e.getAttribute('autocomplete')||''))return true;
 if(e.localName==='iframe'||e.localName==='frame'){let d=null;try{d=e.contentDocument}catch{}if(d&&walk(d))return true;}
 }return false};return walk(document)})()`

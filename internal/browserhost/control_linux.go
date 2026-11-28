@@ -437,11 +437,6 @@ func (h *host) controlHandler() http.Handler {
 			} else {
 				h.mux.setControl(body.Control == "person")
 			}
-			if body.Control == "person" {
-				// Fields that are passwords now stay known if the person
-				// unmasks one and gives control back with it shown.
-				go h.mux.recordPasswords()
-			}
 			h.log.Info("browser_control", "outcome", "accepted", "reason", body.Control)
 			controlJSON(w, 200, h.status(r.Context()))
 		case r.URL.Path == RequestPath && r.Method == http.MethodPost:

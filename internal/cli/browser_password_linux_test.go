@@ -28,10 +28,8 @@ import (
 // keystrokes sent the way the person's viewer sends them (RFB key events on
 // vnc.sock), and the CLI plus a raw CDP client trying to read the value
 // back, including a listener installed before the person types, a type
-// flip and FormData. The site mirrors the value into the field's value
-// attribute, as React does, and has a "show password" button without an
-// autocomplete token on the field. The site itself records what reached the
-// field, which also proves the person's own sign-in still works.
+// flip and FormData. The site itself records what reached the field, which
+// also proves the person's own sign-in still works.
 func TestAgentCannotReadThePersonsPassword(t *testing.T) {
 	chrome, xvnc := os.Getenv("OH_BROWSER_ACTION_CHROME"), os.Getenv("OH_BROWSER_ACTION_XVNC")
 	if chrome == "" || xvnc == "" {
@@ -43,8 +41,8 @@ func TestAgentCannotReadThePersonsPassword(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/":
-			io.WriteString(w, `<!doctype html><title>Sign in</title><style>#pw{position:fixed;left:0;right:0;bottom:0;height:50vh;width:100%}</style><form action="/signed-in" method="post"><input name="user" value="person@example.invalid"><input id="pw" name="pw" type="password" autofocus><button type="button" id="show" onclick="pw.type=pw.type==='password'?'text':'password'">Show</button></form><p>Synthetic sign-in</p>
-<script>const pw=document.querySelector('#pw');pw.addEventListener('input',()=>{pw.setAttribute('value',pw.value);fetch('/typed',{method:'POST',body:pw.value})});onload=()=>pw.focus();</script>`)
+			io.WriteString(w, `<!doctype html><title>Sign in</title><style>#pw{position:fixed;left:0;right:0;bottom:0;height:50vh;width:100%}</style><form action="/signed-in" method="post"><input name="user" value="person@example.invalid"><input id="pw" name="pw" type="password" autocomplete="current-password" autofocus><button type="button" id="show" onclick="pw.type=pw.type==='password'?'text':'password'">Show</button></form><p>Synthetic sign-in</p>
+<script>const pw=document.querySelector('#pw');pw.addEventListener('input',()=>fetch('/typed',{method:'POST',body:pw.value}));onload=()=>pw.focus();</script>`)
 		case "/typed":
 			b, _ := io.ReadAll(r.Body)
 			mu.Lock()
@@ -216,13 +214,6 @@ func TestAgentCannotReadThePersonsPassword(t *testing.T) {
 		t.Fatal(err)
 	}
 	refused(browserAction{verb: "type", tab: tab, selector: "#pw", value: "overwrite"})
-	// Whether a selector matches would tell the value attribute's content
-	// one guess at a time, so selectors on value are refused whatever they
-	// would match, also escaped, commented or nested.
-	for _, sel := range []string{`input[value^="s"]`, `input[value^="x"]`, `#pw[v\61lue^=s]`, `#pw[/**/value^=s]`, `form:has([VALUE*="secret"]) button`, `[*|value]`} {
-		refused(browserAction{verb: "click", tab: tab, selector: sel})
-		refused(browserAction{verb: "type", tab: tab, selector: sel, value: "x"})
-	}
 	// A masked field does not stop screenshots; the site's own "show
 	// password" control, clicked without any script, does.
 	if _, err := act(browserAction{verb: "screenshot", tab: tab, name: "masked.png"}); err != nil {

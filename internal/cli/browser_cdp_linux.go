@@ -168,7 +168,7 @@ func (c *browserCDP) call(method string, params any, out any) error {
 				// sent: the page may now be different.
 				return &cliError{code: "browser_person_took_control", message: "the person took control during this command and it was not carried out; inspect the page before continuing", exit: 1}
 			}
-			if e.Message == browserhost.RevealedRefused || e.Message == browserhost.GuardFailed || e.Message == browserhost.RecordFailed {
+			if e.Message == browserhost.RevealedRefused || e.Message == browserhost.GuardFailed {
 				return browserActionRefused(e.Message)
 			}
 			return &browserCDPRejected{method: method}
