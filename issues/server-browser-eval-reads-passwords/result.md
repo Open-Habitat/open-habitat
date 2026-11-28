@@ -139,3 +139,10 @@ OH_BROWSER_ACTION_CHROME=/usr/bin/google-chrome OH_BROWSER_ACTION_XVNC=/usr/bin/
 - **Same-UID routes** (`vnc.sock`, the X cookie, the profile) are left as
   stated. Closing them means running the browser or the agent as a
   separate Unix user.
+
+## Jari 28.11.2026
+
+The threat model is accidental reading, not an attack: it is enough that the
+agent really does not read a person-typed password by accident. The eval
+changes are to be reconsidered later: `server-browser-eval-reconsider`.
+
