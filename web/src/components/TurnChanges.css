@@ -16,6 +16,12 @@
   border-radius: var(--ah-r-lg);
   background: var(--ah-surface);
 }
+/* A card (Muutokset or the server browser) is a separate object below the
+   turn's rows, so it keeps the feed's gap from the reply above it rather
+   than the turn's tight row gap. */
+.ah-agent-turn > .ah-turn-changes:not(:first-child) {
+  margin-top: calc(var(--ah-feed-gap) - var(--ah-turn-gap));
+}
 /* A turn whose changes could not be read: one quiet line in the card's place. */
 .ah-tc-unread {
   grid-column: 2;

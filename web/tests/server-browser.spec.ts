@@ -737,6 +737,15 @@ test("@server-browser the agent's request: the Selain card, the conversation row
   await expect(card.getByTestId("browser-card-meta")).toContainText(
     "app.example.invalid",
   );
+  // The card keeps the feed's gap from the reply above it, not the turn's
+  // tight row gap.
+  expect(
+    await card.evaluate(
+      (el) =>
+        el.getBoundingClientRect().top -
+        (el.previousElementSibling?.getBoundingClientRect().bottom ?? NaN),
+    ),
+  ).toBeCloseTo(8, 0);
 
   // The host marks the request the turn made: the same card asks in place.
   const words = "Vahvista kirjautuminen";

@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { hostOrigin } from "../test-ports.mjs";
-import { expect, type Page, test } from "./worker-host";
+import { expect, type Locator, type Page, test } from "./worker-host";
 
 // Muutokset (turn-changes) against the synthetic host: the
 // daemon serves a seeded native session (test/browser-host's turn-changes
@@ -68,6 +68,17 @@ const turns = (page: Page) =>
 const card = (page: Page) =>
   page.getByRole("region").and(page.getByTestId("turn-changes"));
 
+/** Space between a turn card and the turn row above it, in CSS pixels. */
+function gapAbove(el: Locator): Promise<number> {
+  return el.evaluate((card) => {
+    const above = card.previousElementSibling;
+    if (!above) return Number.NaN;
+    return (
+      card.getBoundingClientRect().top - above.getBoundingClientRect().bottom
+    );
+  });
+}
+
 async function shot(page: Page, name: string) {
   if (!capture) return;
   await page.screenshot({ path: `${evidence}/${name}.png` });
@@ -102,6 +113,8 @@ test("@turn-changes a finished turn's changes open in place, file by file and on
       await reply.elementHandle(),
     ),
   ).toBe(true);
+  // A card keeps the feed's gap from the reply, not the turn's row gap.
+  expect(await gapAbove(changes)).toBeCloseTo(8, 0);
   const toggle = changes
     .getByRole("button")
     .and(page.getByTestId("turn-changes-toggle"));
