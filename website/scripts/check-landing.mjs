@@ -1,17 +1,16 @@
 // node scripts/check-landing.mjs <site-dir> <shots-dir> [<path>...]
-// Serves a built site (dist/, or the round's `node build.mjs <out>` for
-// comparison) on 127.0.0.1 and opens each path (default /) in
-// Chromium at 1440 and 390 px with reduced motion. It scrolls the whole page,
-// opens Show work in a few blocks (on the phone, where each step is a timeline
-// row, it opens the row first), plays a video, and fails on a console error,
-// an uncaught exception, a failed or 4xx/5xx request, any request to another
-// origin, or sideways scrolling. Screenshots: the top, Alice's day, a role,
-// the capability section, the install section and the page's end (those that
-// exist).
+// Serves a built site (dist/) on 127.0.0.1 and opens each path (default /)
+// in Chromium at 1440 and 390 px. It scrolls the whole page, opens Show work
+// in a screen, presses Copy on the install prompt and reads the clipboard,
+// pauses and resumes the browser row's live demo (play must continue from the
+// paused frame, in the same iframe), turns the wheel over the demo and over
+// every screen (the page must scroll, nothing scrolls on its own), and checks
+// that under reduced motion the demo starts on its poster and plays on
+// request. It fails on a console error or warning, an uncaught exception, a
+// failed or 4xx/5xx request, any request to another origin, a broken image or
+// sideways scrolling. Screenshots go down the page and of the demo.
 // Playwright comes from web/node_modules, or PROTO_WEB=<dir with
-// package.json and node_modules> as in the round's check.mjs. Exits 1 with
-// the list of failures. The round's check.mjs checks each block in depth;
-// this checks the page as the site serves it.
+// package.json and node_modules>. Exits 1 with the list of failures.
 import { createReadStream, existsSync, mkdirSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
@@ -35,17 +34,7 @@ const server = createServer((req, res) => {
   if (!p.startsWith(root)) return res.writeHead(403).end();
   if (existsSync(p) && statSync(p).isDirectory()) p = path.join(p, 'index.html');
   if (!existsSync(p)) return res.writeHead(404).end();
-  const size = statSync(p).size;
-  const type = TYPES[path.extname(p)] || 'application/octet-stream';
-  // Ranges, so a video plays as it would from Pages.
-  const m = /bytes=(\d*)-(\d*)/.exec(req.headers.range || '');
-  if (m) {
-    const start = m[1] ? Number(m[1]) : 0;
-    const end = m[2] ? Number(m[2]) : size - 1;
-    res.writeHead(206, { 'content-type': type, 'content-range': `bytes ${start}-${end}/${size}`, 'accept-ranges': 'bytes', 'content-length': end - start + 1 });
-    return createReadStream(p, { start, end }).pipe(res);
-  }
-  res.writeHead(200, { 'content-type': type, 'content-length': size, 'accept-ranges': 'bytes' });
+  res.writeHead(200, { 'content-type': TYPES[path.extname(p)] || 'application/octet-stream', 'content-length': statSync(p).size });
   createReadStream(p).pipe(res);
 });
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
@@ -56,31 +45,38 @@ const fail = (m) => {
   fails.push(m);
   console.log(`FAIL ${m}`);
 };
-const SECTIONS = [
-  ['top', 'body'],
-  ['alice', '#g-alice-video'],
-  ['role', '#role-carol'],
-  ['caps', '#can'],
-  ['install', '#install'],
-  ['end', 'footer.site-foot'],
-];
+const watch = (page, tag) => {
+  page.on('console', (m) => ['error', 'warning'].includes(m.type()) && fail(`${tag}: console ${m.type()}: ${m.text()}`));
+  page.on('pageerror', (e) => fail(`${tag}: exception: ${e.message}`));
+  page.on('request', (r) => !r.url().startsWith(origin) && !r.url().startsWith('data:') && fail(`${tag}: request to another origin: ${r.url()}`));
+  page.on('requestfailed', (r) => fail(`${tag}: request failed: ${r.url()} (${r.failure()?.errorText})`));
+  page.on('response', (r) => r.status() >= 400 && fail(`${tag}: ${r.status()} ${r.url()}`));
+};
+const scrollY = (page) => page.evaluate(() => window.scrollY);
+// The wheel over the element's middle must move the page, not something inside it.
+async function wheelScrolls(page, loc) {
+  await loc.scrollIntoViewIfNeeded();
+  await page.waitForTimeout(100);
+  const bb = await loc.boundingBox();
+  const vh = page.viewportSize().height;
+  await page.mouse.move(bb.x + bb.width / 3, Math.min(bb.y + bb.height / 2, vh - 40));
+  const y0 = await scrollY(page);
+  await page.mouse.wheel(0, 300);
+  await page.waitForTimeout(300);
+  return (await scrollY(page)) - y0 >= 200;
+}
 
 const browser = await chromium.launch();
 for (const p of paths.length ? paths : ['/']) {
   for (const width of [1440, 390]) {
     const tag = `${width}${p.replace(/\//g, '-').replace(/-$/, '')}`;
-    const page = await browser.newPage({ viewport: { width, height: width > 600 ? 900 : 844 }, reducedMotion: 'reduce' });
-    page.on('console', (m) => m.type() === 'error' && fail(`${tag}: console: ${m.text()}`));
-    page.on('pageerror', (e) => fail(`${tag}: exception: ${e.message}`));
-    page.on('request', (r) => !r.url().startsWith(origin) && !r.url().startsWith('data:') && fail(`${tag}: request to another origin: ${r.url()}`));
-    page.on('requestfailed', (r) => {
-      // A video's request is cancelled when it scrolls out of view.
-      if (r.failure()?.errorText !== 'net::ERR_ABORTED' || r.resourceType() !== 'media') fail(`${tag}: request failed: ${r.url()} (${r.failure()?.errorText})`);
-    });
-    page.on('response', (r) => r.status() >= 400 && fail(`${tag}: ${r.status()} ${r.url()}`));
+    const vh = width > 600 ? 900 : 844;
+    const ctx = await browser.newContext({ viewport: { width, height: vh }, permissions: ['clipboard-read', 'clipboard-write'] });
+    const page = await ctx.newPage();
+    watch(page, tag);
     await page.goto(origin + p, { waitUntil: 'load' });
 
-    // The whole page, step by step, so every lazy image and sticky screen loads.
+    // The whole page, step by step, so every lazy image loads.
     const height = await page.evaluate(() => document.documentElement.scrollHeight);
     for (let y = 0; y < height; y += 600) {
       await page.evaluate((v) => window.scrollTo(0, v), y);
@@ -88,73 +84,93 @@ for (const p of paths.length ? paths : ['/']) {
     }
     await page.waitForLoadState('networkidle');
     if (await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)) fail(`${tag}: the page scrolls sideways`);
+    const broken = await page.evaluate(() => [...document.images].filter((i) => i.complete && !i.naturalWidth).map((i) => i.getAttribute('src')));
+    if (broken.length) fail(`${tag}: broken images: ${broken.join(', ')}`);
+    const inner = await page.evaluate(() =>
+      [...document.querySelectorAll('.pg *')]
+        .filter((e) => /(auto|scroll)/.test(getComputedStyle(e).overflowY) && e.scrollHeight > e.clientHeight + 1)
+        .map((e) => e.className || e.tagName),
+    );
+    if (inner.length) fail(`${tag}: elements that scroll on their own: ${inner.slice(0, 6).join(' | ')}`);
 
-    // Show work in a few blocks: scrolled to the block, the summary row on screen
-    // (on the desktop the sticky screen's, on the phone the step's own).
-    // A screen may scroll inside itself (the sticky screen shows its end), so a
-    // row of the block's own counts too; the click scrolls it into view.
-    const onScreen = async (sel, block = '') =>
-      page.evaluate(([sel, block]) => {
-        document.querySelectorAll('[data-check-pick]').forEach((e) => e.removeAttribute('data-check-pick'));
-        const el = [...document.querySelectorAll(sel)].find((e) => {
-          const r = e.getBoundingClientRect();
-          return r.width > 0 && r.height > 0 && ((r.top < innerHeight && r.bottom > 0) || (block && e.closest(`[data-block="${block}"]`)));
-        });
-        if (el) el.setAttribute('data-check-pick', '');
-        return Boolean(el);
-      }, [sel, block]);
-    // On the phone a step's screen is behind its row: open it as a reader would.
-    const openRow = (loc) =>
-      loc.evaluate((e) => {
-        const step = e.matches('.s1-step') ? e : e.querySelector('.s1-step');
-        const b = step?.querySelector(':scope > .s1-row button');
-        if (b && b.offsetParent && b.getAttribute('aria-expanded') !== 'true') b.click();
-      });
-    let opened = 0;
-    for (const block of ['alice-01-whats-waiting', 'alice-08-returns-workers', 'role-frank', 'caps-pictures']) {
-      const anchor = page.locator(`[data-block="${block}"]`).first();
-      if (!(await anchor.count())) continue;
-      await openRow(anchor);
-      await anchor.evaluate((e) => e.scrollIntoView({ block: 'center' }));
-      await page.waitForTimeout(400);
-      if (!(await onScreen('.ah-stage-toggle', block))) {
-        fail(`${tag}: ${block}: no Show work on screen`);
-        continue;
-      }
-      const toggle = page.locator('[data-check-pick]').first();
-      await toggle.click();
-      if ((await toggle.getAttribute('aria-expanded')) !== 'true') fail(`${tag}: ${block}: Show work did not open`);
-      else opened++;
-      await toggle.click();
-    }
-    if (p === '/' && opened === 0) fail(`${tag}: no Show work found to open`);
+    // Show work opens in a screen.
+    const tog = page.locator('.ah-stage-toggle:visible').first();
+    if (await tog.count()) {
+      await tog.scrollIntoViewIfNeeded();
+      await tog.click();
+      if ((await tog.getAttribute('aria-expanded')) !== 'true') fail(`${tag}: Show work did not open`);
+      await tog.click();
+    } else fail(`${tag}: no Show work on the page`);
 
-    // A video plays from the site's origin.
-    const glimpse = page.locator('#g-alice-video');
-    if (await glimpse.count()) {
-      await openRow(glimpse);
-      await glimpse.evaluate((e) => e.scrollIntoView({ block: 'center' }));
-      await page.waitForTimeout(400);
-      if (await onScreen('video')) {
-        const t = await page.locator('[data-check-pick]').first().evaluate(async (v) => {
-          v.muted = true;
-          await v.play();
-          await new Promise((r) => setTimeout(r, 1200));
-          return v.currentTime;
-        });
-        if (!(t > 0)) fail(`${tag}: the video did not play`);
-      } else fail(`${tag}: no video on screen at Alice's market video`);
-    }
+    // Copy puts the install prompt on the clipboard.
+    const cp = page.locator('.ag-win [data-copy]').first();
+    await cp.scrollIntoViewIfNeeded();
+    await cp.click();
+    await page.waitForTimeout(200);
+    if ((await cp.textContent()) !== 'Copied') fail(`${tag}: Copy says "${await cp.textContent()}"`);
+    const clip = await page.evaluate(() => navigator.clipboard.readText());
+    if (!clip.startsWith('Please install Open Habitat') || !clip.includes('docs/operations.md')) fail(`${tag}: Copy put "${clip}" on the clipboard`);
 
-    for (const [name, sel] of SECTIONS) {
-      const el = page.locator(sel).first();
-      if (!(await el.count())) continue;
-      if (sel === 'body') await page.evaluate(() => window.scrollTo(0, 0));
-      else await el.evaluate((e) => e.scrollIntoView({ block: e.tagName === 'FOOTER' ? 'end' : 'start' }));
+    // The live demo: one iframe sandboxed to scripts, taking no pointer events.
+    const fr = page.locator('.demo-frame');
+    if ((await fr.count()) !== 1) fail(`${tag}: ${await fr.count()} demo iframes`);
+    else {
+      if ((await fr.getAttribute('sandbox')) !== 'allow-scripts') fail(`${tag}: the demo's sandbox is "${await fr.getAttribute('sandbox')}"`);
+      if ((await fr.evaluate((e) => getComputedStyle(e).pointerEvents)) !== 'none') fail(`${tag}: the demo iframe takes pointer events`);
+      await page.locator('.demo').scrollIntoViewIfNeeded();
+      await page.waitForTimeout(1500);
+      if (!(await wheelScrolls(page, page.locator('.demo-box')))) fail(`${tag}: the wheel over the demo did not scroll the page`);
+      await page.locator('.demo').scrollIntoViewIfNeeded();
       await page.waitForTimeout(300);
-      await page.screenshot({ path: path.join(shots, `${tag}-${name}.png`) });
+      await page.locator('.demo').screenshot({ path: path.join(shots, `${tag}-demo.png`) });
+      // Pause holds the frame; play continues from it, in the same iframe.
+      const ctl = page.locator('.demo-ctl');
+      if ((await ctl.getAttribute('data-paused')) !== 'false') fail(`${tag}: the demo is not playing`);
+      await ctl.click();
+      await page.waitForTimeout(400);
+      if ((await ctl.getAttribute('data-paused')) !== 'true') fail(`${tag}: the demo did not pause`);
+      const tp = Number(await page.locator('.demo').getAttribute('data-t'));
+      await page.waitForTimeout(800);
+      const handle = await fr.elementHandle();
+      await ctl.click();
+      await page.waitForTimeout(300);
+      const tq = Number(await page.locator('.demo').getAttribute('data-t'));
+      if ((await ctl.getAttribute('data-paused')) !== 'false') fail(`${tag}: the demo did not play again`);
+      if (!(tq >= tp && tq - tp < 0.6)) fail(`${tag}: play did not continue from the paused frame (${tp} → ${tq} s)`);
+      if (!(await handle.evaluate((e) => e.isConnected)) || (await fr.count()) !== 1) fail(`${tag}: the demo iframe was replaced`);
     }
-    await page.close();
+
+    // The wheel over every feature screen scrolls the page (desktop: screens sit beside the text).
+    if (width > 900)
+      for (let k = 0, n = await page.locator('.b-scr').count(); k < n; k++)
+        if (!(await wheelScrolls(page, page.locator('.b-scr').nth(k)))) fail(`${tag}: the wheel over feature screen ${k + 1} did not scroll the page`);
+
+    // Screenshots down the page.
+    const h = await page.evaluate(() => document.documentElement.scrollHeight);
+    const n = Math.min(14, Math.ceil(h / vh));
+    for (let i = 0; i < n; i++) {
+      await page.evaluate((y) => window.scrollTo(0, y), Math.round((i * (h - vh)) / Math.max(1, n - 1)));
+      await page.waitForTimeout(250);
+      await page.screenshot({ path: path.join(shots, `${tag}-${String(i).padStart(2, '0')}.png`) });
+    }
+    await ctx.close();
+
+    // Reduced motion: the demo starts on its poster, and play starts the scene.
+    const rctx = await browser.newContext({ viewport: { width, height: vh }, reducedMotion: 'reduce' });
+    const rp = await rctx.newPage();
+    watch(rp, `${tag} reduced`);
+    await rp.goto(origin + p, { waitUntil: 'load' });
+    const ctl = rp.locator('.demo-ctl');
+    if (await ctl.count()) {
+      await ctl.scrollIntoViewIfNeeded();
+      await rp.waitForTimeout(300);
+      if ((await rp.locator('.demo-frame').count()) !== 0 || !(await rp.locator('.demo-poster').isVisible())) fail(`${tag} reduced: the demo does not start on its poster`);
+      if ((await ctl.getAttribute('data-paused')) !== 'true') fail(`${tag} reduced: the control does not offer play`);
+      await ctl.click();
+      await rp.waitForTimeout(1500);
+      if ((await rp.locator('.demo-frame').count()) !== 1 || (await ctl.getAttribute('data-paused')) !== 'false') fail(`${tag} reduced: play did not start the scene`);
+    } else fail(`${tag} reduced: no demo control`);
+    await rctx.close();
   }
 }
 await browser.close();
