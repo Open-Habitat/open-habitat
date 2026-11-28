@@ -205,11 +205,11 @@ func TestHostsOwnSessionsNeverReachTheAgent(t *testing.T) {
 func TestAnAgentLeavingUndoesWhatItLeftInChrome(t *testing.T) {
 	c := newFakeChrome(t)
 	ag := connectAgent(t, c)
-	ag.send(map[string]any{"id": 1, "method": "Target.attachToTarget", "params": map[string]any{"targetId": strings.Repeat("B", 32), "flatten": true}})
-	set := c.expect("Target.attachToTarget")
-	c.send(map[string]any{"method": "Target.attachedToTarget", "params": map[string]any{"sessionId": "S1", "targetInfo": map[string]any{"targetId": strings.Repeat("B", 32), "type": "page"}}})
-	c.send(map[string]any{"id": set["id"], "result": map[string]any{"sessionId": "S1"}})
+	ag.send(map[string]any{"id": 1, "method": "Target.setAutoAttach", "params": map[string]any{"autoAttach": true, "waitForDebuggerOnStart": true, "flatten": true}})
+	set := c.expect("Target.setAutoAttach")
+	c.send(map[string]any{"id": set["id"], "result": map[string]any{}})
 	ag.recv()
+	c.send(map[string]any{"method": "Target.attachedToTarget", "params": map[string]any{"sessionId": "S1", "targetInfo": map[string]any{"targetId": strings.Repeat("B", 32), "type": "page"}}})
 	ag.recv()
 	// A second agent is refused while this one drives.
 	if _, err := c.mux.connect(&wsConn{}); err != errAgentBusy {
@@ -247,8 +247,8 @@ func TestPersonsControlHoldsTheAgentUntilGivenBack(t *testing.T) {
 	ag := connectAgent(t, c)
 	c.mux.setRequest(strings.Repeat("C", 32), "code please")
 	c.mux.setControl(true)
-	ag.send(map[string]any{"id": 1, "method": PageActionMethod, "params": map[string]any{"action": PageText}})
-	ag.send(map[string]any{"id": 2, "method": "Input.dispatchMouseEvent", "params": map[string]any{"type": "mousePressed", "button": "left", "x": 1, "y": 1}})
+	ag.send(map[string]any{"id": 1, "method": "Runtime.evaluate", "params": map[string]any{"expression": "1"}})
+	ag.send(map[string]any{"id": 2, "method": "Input.insertText", "params": map[string]any{"text": "x"}})
 	select {
 	case m := <-c.got:
 		t.Fatalf("Chrome got %v while the person drives", m)
@@ -275,8 +275,8 @@ func TestPersonsControlHoldsTheAgentUntilGivenBack(t *testing.T) {
 	case <-time.After(200 * time.Millisecond):
 	}
 	// The agent carries on afterwards.
-	ag.send(map[string]any{"id": 3, "method": "Page.getFrameTree"})
-	if m := c.next(); m["method"] != "Page.getFrameTree" {
+	ag.send(map[string]any{"id": 3, "method": "Runtime.evaluate", "params": map[string]any{"expression": "2"}})
+	if m := c.next(); m["method"] != "Runtime.evaluate" {
 		t.Fatalf("after control: %v", m)
 	}
 	c.mux.mu.Lock()
@@ -320,10 +320,9 @@ func TestTooMuchHeldDisconnectsTheAgent(t *testing.T) {
 	c := newFakeChrome(t)
 	ag := connectAgent(t, c)
 	c.mux.setControl(true)
-	// The agent reads its socket, so the host's closing frame is not held up.
-	go io.Copy(io.Discard, ag.conn)
-	for i := 0; i < heldMessages+2; i++ {
-		b, _ := json.Marshal(map[string]any{"id": i, "method": "Page.getFrameTree"})
+	big := strings.Repeat("x", 1<<20)
+	for i := 0; i < heldBytes/(1<<20)+2; i++ {
+		b, _ := json.Marshal(map[string]any{"id": i, "method": "Runtime.evaluate", "params": map[string]any{"expression": big}})
 		if _, err := ag.conn.Write(wsframe.AppendFrame(nil, wsframe.OpText, b, true)); err != nil {
 			break
 		}
@@ -349,9 +348,9 @@ func TestPointerIsObservedOnlyInPages(t *testing.T) {
 	c.send(map[string]any{"method": "Target.attachedToTarget", "params": map[string]any{"sessionId": "F", "targetInfo": map[string]any{"targetId": frame, "type": "iframe"}}})
 	ag.recv()
 	ag.recv()
-	ag.send(map[string]any{"id": 1, "sessionId": "P", "method": "Input.dispatchMouseEvent", "params": map[string]any{"type": "mousePressed", "button": "left", "x": 320, "y": 200}})
+	ag.send(map[string]any{"id": 1, "sessionId": "P", "method": "Input.dispatchMouseEvent", "params": map[string]any{"type": "mousePressed", "x": 320, "y": 200}})
 	c.expect("Input.dispatchMouseEvent")
-	ag.send(map[string]any{"id": 2, "sessionId": "F", "method": PageActionMethod, "params": map[string]any{"action": PageMetadata}})
+	ag.send(map[string]any{"id": 2, "sessionId": "F", "method": "Runtime.evaluate", "params": map[string]any{}})
 	c.expect("Runtime.evaluate")
 	h := &host{mux: c.mux, images: map[string]*image{}, metrics: map[string]viewport{page: {640, 400}}, failed: map[string]time.Time{}}
 	h.windows, h.listed = []window{{id: page, title: "Kirjaudu", url: "https://login.example.invalid/a?token=secret"}}, time.Now()
@@ -448,10 +447,15 @@ func TestTheNextAgentsCommandsComeAfterTheLastOnesCleanup(t *testing.T) {
 		}
 	}
 	second := connectAgent(t, c)
-	second.send(map[string]any{"id": 1, "method": "Target.getTargets"})
+	second.send(map[string]any{"id": 1, "method": "Target.setAutoAttach", "params": map[string]any{"autoAttach": true}})
 	var order []string
-	for len(order) == 0 || order[len(order)-1] != "Target.getTargets" {
-		order = append(order, c.next()["method"].(string))
+	for len(order) == 0 || order[len(order)-1] != "Target.setAutoAttach/agent" {
+		m := c.next()
+		name := m["method"].(string)
+		if p, ok := m["params"].(map[string]any); ok && name == "Target.setAutoAttach" && p["autoAttach"] == true {
+			name += "/agent"
+		}
+		order = append(order, name)
 	}
 	if len(order) < 4 {
 		t.Fatalf("the second agent's command came before the cleanup: %v", order)

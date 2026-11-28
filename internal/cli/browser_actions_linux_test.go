@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net"
@@ -35,7 +36,7 @@ func TestBrowserActionValidationBeforeConnection(t *testing.T) {
 			t.Errorf("accepted %v", args)
 		}
 	}
-	for _, args := range [][]string{{"goto", "file:///etc/passwd"}, {"download", "https://user:secret@example.invalid"}, {"eval", "document.title"}} {
+	for _, args := range [][]string{{"goto", "file:///etc/passwd"}, {"download", "https://user:secret@example.invalid"}, {"eval", " "}} {
 		if _, err := agentBrowserAction(args); err == nil {
 			t.Errorf("accepted %v", args)
 		}
@@ -153,13 +154,13 @@ func TestBrowserActionsNative(t *testing.T) {
 		switch r.URL.Path {
 		case "/":
 			http.SetCookie(w, &http.Cookie{Name: "signed", Value: "yes", Path: "/"})
-			io.WriteString(w, `<!doctype html><title>Fixture</title><a id="next" href="/redirect">Next</a><a id="receipt" href="/receipt.pdf">Receipt</a><svg><a href="/receipt.pdf"><text>SVG receipt</text></a></svg><input name="query"><input type="number" value="42"><button id="apply" onclick="document.querySelector('#result').textContent='applied '+document.querySelector('input').value+' / number '+document.querySelector('input[type=number]').value+' / '+(navigator.userActivation.isActive?'user-activated':'no-activation')">Apply</button><p id="result"></p><img src="/held">`)
+			io.WriteString(w, `<!doctype html><title>Fixture</title><a id="next" href="/redirect">Next</a><a id="receipt" href="/receipt.pdf">Receipt</a><svg><a href="/receipt.pdf"><text>SVG receipt</text></a></svg><input name="query"><input type="number" value="42"><button id="apply" onclick="document.querySelector('#result').textContent=document.querySelector('input').value;window.activated=navigator.userActivation.isActive">Apply</button><p id="result"></p><img src="/held">`)
 		case "/redirect":
 			io.WriteString(w, `<!doctype html><script>location.replace('/final')</script><img src="/never">`)
 		case "/never":
 			<-r.Context().Done()
 		case "/final":
-			io.WriteString(w, `<!doctype html><title>Redirected</title><p>Final page</p><button id="open-popup" onclick="window.popup=window.open('about:blank','flow','popup,width=400,height=300');popup.document.title='Popup fixture'">Open</button><button id="check-popup" onclick="document.querySelector('#popup-state').textContent=popup.closed&&document.title==='Redirected'?'popup closed, opener kept':'popup open'">Check</button><p id="popup-state"></p><img src="/click-held">`)
+			io.WriteString(w, `<!doctype html><title>Redirected</title><p>Final page</p><img src="/click-held">`)
 		case "/click-held":
 			clickRequested <- struct{}{}
 			select {
@@ -262,6 +263,14 @@ func TestBrowserActionsNative(t *testing.T) {
 		t.Fatalf("missing link %s", b)
 	}
 	run(browserAction{verb: "type", tab: tab, selector: "input[name=query]", value: "synthetic value"})
+	run(browserAction{verb: "click", tab: tab, selector: "#apply"})
+	v := run(browserAction{verb: "eval", tab: tab, value: "document.querySelector('#result').textContent"})
+	if v["value"] != "synthetic value" {
+		t.Fatal(v)
+	}
+	if got := run(browserAction{verb: "eval", tab: tab, value: "window.activated"}); got["value"] != true {
+		t.Fatalf("click lacked activation: %v", got)
+	}
 	for _, refused := range []browserAction{
 		{verb: "click", tab: tab, selector: "#missing"},
 		{verb: "click", tab: tab, selector: "input"},
@@ -274,10 +283,8 @@ func TestBrowserActionsNative(t *testing.T) {
 			t.Fatalf("expected definite guard refusal: %v", err)
 		}
 	}
-	// The page reports its own fields: the agent has no script to read them.
-	run(browserAction{verb: "click", tab: tab, selector: "#apply"})
-	if got := pageText(run(browserAction{verb: "text", tab: tab})); !strings.Contains(got, "applied synthetic value / number 42 / user-activated") {
-		t.Fatalf("typed value, rejected value or click activation wrong: %q", got)
+	if got := run(browserAction{verb: "eval", tab: tab, value: "document.querySelector('input[type=number]').value"}); got["value"] != "42" {
+		t.Fatalf("rejected value changed input: %v", got)
 	}
 	shot := run(browserAction{verb: "screenshot", tab: tab, name: "page.png"})
 	png, _ := os.ReadFile(shot["path"].(string))
@@ -348,12 +355,12 @@ func TestBrowserActionsNative(t *testing.T) {
 	if got := run(browserAction{verb: "goto", tab: tab, value: server.URL + "/redirect"}); got["url"] != server.URL+"/final" || got["title"] != "Redirected" {
 		t.Fatalf("goto metadata not settled: %v", got)
 	}
-	if got := run(browserAction{verb: "text", tab: tab}); got["title"] != "Redirected" {
+	if got := run(browserAction{verb: "eval", tab: tab, value: "document.title"}); got["value"] != "Redirected" {
 		t.Fatalf("did not follow redirect: %v", got)
 	}
 	// A feature popup is a page target too: existing agent commands must
 	// list and close it without closing or severing its opener.
-	run(browserAction{verb: "click", tab: tab, selector: "#open-popup"})
+	run(browserAction{verb: "eval", tab: tab, value: "window.popup = window.open('about:blank', 'flow', 'popup,width=400,height=300'); popup.document.title = 'Popup fixture'; 'opened'"})
 	popupID := ""
 	for _, raw := range run(browserAction{verb: "tabs"})["tabs"].([]any) {
 		page := raw.(map[string]any)
@@ -365,9 +372,8 @@ func TestBrowserActionsNative(t *testing.T) {
 		t.Fatal("popup absent from agent tabs")
 	}
 	run(browserAction{verb: "close", tab: popupID})
-	run(browserAction{verb: "click", tab: tab, selector: "#check-popup"})
-	if got := pageText(run(browserAction{verb: "text", tab: tab})); !strings.Contains(got, "popup closed, opener kept") {
-		t.Fatalf("opener after popup close: %q", got)
+	if got := run(browserAction{verb: "eval", tab: tab, value: "popup.closed && document.title === 'Redirected'"}); got["value"] != true {
+		t.Fatalf("opener after popup close: %v", got)
 	}
 	// A React-style listbox selects on pointerdown/mousedown and ignores a
 	// synthetic element.click(); the option starts below the fold.
@@ -377,8 +383,8 @@ func TestBrowserActionsNative(t *testing.T) {
 	if point, ok := picked["point"].(map[string]any); !ok || point["x"] == nil || point["y"] == nil {
 		t.Fatalf("click did not report its point: %v", picked)
 	}
-	if got := pageText(run(browserAction{verb: "text", tab: tab})); !strings.Contains(got, "chosen pear: pointerdown mousedown pointerup mouseup click") {
-		t.Fatalf("listbox option not selected by a real pointer click: %q", got)
+	if got := run(browserAction{verb: "eval", tab: tab, value: "[document.querySelector('#fruit').textContent, window.events.join(' ')]"}); fmt.Sprint(got["value"]) != "[pear pointerdown mousedown pointerup mouseup click]" {
+		t.Fatalf("listbox option not selected by a real pointer click: %v", got["value"])
 	}
 	for _, c := range []struct{ selector, want string }{
 		{"#covered", "covered by div#veil"},
@@ -391,13 +397,13 @@ func TestBrowserActionsNative(t *testing.T) {
 			t.Fatalf("click %s: want refusal naming %q, got %v", c.selector, c.want, err)
 		}
 	}
-	if got := pageText(run(browserAction{verb: "text", tab: tab})); !strings.Contains(got, "covered clicks 0") {
-		t.Fatalf("refused click reached the page: %q", got)
+	if got := run(browserAction{verb: "eval", tab: tab, value: "window.coveredClicks"}); got["value"] != float64(0) {
+		t.Fatalf("refused click reached the page: %v", got)
 	}
 	// Closing must remain a recovery path when the renderer cannot evaluate
 	// metadata (for example a modal dialog left by a page action).
-	if _, err := executeBrowserAction(browserAction{verb: "click", tab: tab, selector: "#dialog", timeout: time.Second}, st); err == nil {
-		t.Fatal("dialog unexpectedly allowed the click to settle")
+	if _, err := executeBrowserAction(browserAction{verb: "eval", tab: tab, value: "alert('synthetic dialog')", timeout: time.Second}, st); err == nil {
+		t.Fatal("dialog unexpectedly allowed eval to complete")
 	}
 	run(browserAction{verb: "close", tab: tab})
 	last := run(browserAction{verb: "tabs"})["tabs"].([]any)
@@ -447,16 +453,9 @@ func TestHeldCommandFailsAsPersonTookControl(t *testing.T) {
 	}
 }
 
-func pageText(result map[string]any) string {
-	v, _ := result["value"].(map[string]any)
-	s, _ := v["text"].(string)
-	return s
-}
-
 const listboxFixture = `<!doctype html><title>Listbox</title>
 <style>body{margin:0}#spacer{height:1600px}#veil{position:fixed;left:0;top:0;width:300px;height:60px;background:#eee}#covered{position:fixed;left:10px;top:10px}</style>
-<button id="covered" onclick="report(++window.coveredClicks)">Covered</button><div id="veil"></div>
-<p id="log"></p><button id="dialog" onclick="alert('synthetic dialog')">Dialog</button>
+<button id="covered" onclick="window.coveredClicks++">Covered</button><div id="veil"></div>
 <div id="hidden" style="display:none">Hidden</div><span id="empty"></span>
 <div id="spacer"></div>
 <button id="fruit" role="combobox" aria-expanded="false" aria-controls="fruits"></button>
@@ -464,14 +463,12 @@ const listboxFixture = `<!doctype html><title>Listbox</title>
 <script>
 window.coveredClicks = 0;
 window.events = [];
-const report = () => { document.querySelector('#log').textContent = 'covered clicks ' + window.coveredClicks + (window.events.length ? ' chosen ' + box.textContent + ': ' + window.events.join(' ') : ''); };
 const box = document.querySelector('#fruit'), list = document.querySelector('#fruits');
 box.addEventListener('click', () => { list.hidden = false; box.setAttribute('aria-expanded', 'true'); });
 for (const o of list.querySelectorAll('[role=option]')) {
-  for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) o.addEventListener(type, () => { window.events.push(type); report(); });
+  for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) o.addEventListener(type, () => window.events.push(type));
   // Like many React selects: choose on pointerdown, keep focus by cancelling mousedown.
   o.addEventListener('pointerdown', () => { box.textContent = o.dataset.value; });
   o.addEventListener('mousedown', e => e.preventDefault());
 }
-report();
 </script>`

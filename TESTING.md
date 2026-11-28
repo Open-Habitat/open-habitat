@@ -350,16 +350,6 @@ viewer, installed systemd socket, real-account or distinct-UID evidence. If the
 host cannot run Chrome's sandbox, run the compiled test on a qualified Linux
 host; do not disable the sandbox to claim native acceptance.
 
-Adding `OH_BROWSER_ACTION_XVNC=/usr/bin/Xtigervnc` also runs
-`TestAgentCannotReadThePersonsPassword`: headful Chrome on a real Xvnc display,
-a password typed as RFB key events on `vnc.sock` (what the viewer sends), and
-the CLI plus a raw DevTools client trying to read it back (listener installed
-beforehand, type flip, FormData, DOM snapshot, accessibility tree, keys,
-revealed screenshot). The site records what reached the field, so the person's
-own typing is proven too. It is the evidence for the host's agent command
-set; the fast fake-Chrome cases in `internal/browserhost` cover the refusals
-without a browser.
-
 ### Native server-browser keyboard
 
 `BROWSER_HOST_REAL_BROWSER=/usr/bin/Xtigervnc:/path/to/chrome

@@ -18,12 +18,14 @@ func TestBrowserPositionalArguments(t *testing.T) {
 	if err := os.WriteFile(textFile, []byte("query\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	for _, verb := range []string{"goto", "download", "click", "type"} {
+	for _, verb := range []string{"goto", "download", "eval", "click", "type"} {
 		value := "https://example.invalid/"
 		flags := []string{"--tab", id, "--timeout-seconds", "12"}
 		switch verb {
 		case "download":
 			flags = append(flags, "--name", "receipt.pdf")
+		case "eval":
+			value = "document.title"
 		case "click", "type":
 			value = `input[aria-label^="X"]`
 		}
@@ -66,7 +68,7 @@ func TestBrowserPositionalHelp(t *testing.T) {
 		verb, name string
 		required   bool
 	}{
-		{"goto", "url", true}, {"download", "url", true},
+		{"goto", "url", true}, {"download", "url", true}, {"eval", "javascript", true},
 		{"click", "selector", false}, {"type", "selector", false},
 	} {
 		t.Run(tc.verb, func(t *testing.T) {
@@ -106,8 +108,11 @@ func TestBrowserArgumentErrors(t *testing.T) {
 		expected string
 	}
 	var cases []testCase
-	for _, verb := range []string{"goto", "download"} {
+	for _, verb := range []string{"goto", "download", "eval"} {
 		expected := "URL"
+		if verb == "eval" {
+			expected = "JavaScript"
+		}
 		for _, values := range [][]string{nil, {""}, {" "}, {"one", "two"}} {
 			cases = append(cases, testCase{append([]string{verb, "--tab", id}, values...), expected})
 		}
@@ -121,8 +126,6 @@ func TestBrowserArgumentErrors(t *testing.T) {
 		cases = append(cases, testCase{[]string{verb, "extra"}, "no positional arguments"})
 	}
 	cases = append(cases, testCase{[]string{"request"}, "--text TEXT"})
-	// Agent JavaScript could read what the person typed into the page.
-	cases = append(cases, testCase{[]string{"eval", "document.title", "--tab", id}, "eval is not available"})
 	for _, tc := range cases {
 		t.Run(strings.Join(tc.args, " "), func(t *testing.T) {
 			var stdout, stderr bytes.Buffer
@@ -136,6 +139,9 @@ func TestBrowserArgumentErrors(t *testing.T) {
 			}
 			if code != 1 || stdout.Len() != 0 || result.Error.Code != "invalid_arguments" || !strings.Contains(result.Error.Message, tc.expected) {
 				t.Fatalf("code=%d stdout=%s stderr=%s; want %q", code, &stdout, &stderr, tc.expected)
+			}
+			if tc.args[0] == "eval" && strings.Contains(result.Error.Message, "URL") {
+				t.Fatal("eval error mentions URL")
 			}
 		})
 	}
