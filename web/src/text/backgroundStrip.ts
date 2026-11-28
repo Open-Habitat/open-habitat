@@ -5,8 +5,10 @@ import { catalog } from "../i18n";
 // and the requests ended workers send their conversation. Titles, process
 // names and commands come in as arguments.
 const fi = {
+  // A worker stopped at a prompt in its own terminal: the browser cannot
+  // answer it, so the notice says who can.
   waitingNotice:
-    "Worker odottaa vastaustasi. Avaa Workerit ja katso, mitä se tarvitsee.",
+    "Worker pysähtyi kehotteeseen päätteessään, eikä selaimesta voi vastata siihen. Pyydä agenttia hoitamaan se.",
   ended: (n: number) => `${n} ${n === 1 ? "päättynyt" : "päättynyttä"}`,
   leftOne: (title: string) =>
     `${title} poistui Workerit-listasta: haaraa ja worktreetä ei enää ole.`,
@@ -102,8 +104,10 @@ const fi = {
     failed: (kept: string) => `epäonnistui${kept}`,
     unmerged: (kept: string) => `ei mergetty${kept}`,
     waitingParent: "odottaa pääagenttia",
-    awaitingInput: "odottaa vastausta päätteessä",
-    idle: "odottaa sinua",
+    askParent: "kysyy pääagentilta",
+    askYou: "kysyy sinulta pääagentin kautta",
+    awaitingInput: "kehote päätteessä · odottaa pääagenttia",
+    idle: "pysähtyi · odottaa pääagenttia",
     unknown: "tila ei tiedossa",
     waitedWith: (state: string) => `agentti odottaa · ${state}`,
     waited: "agentti odottaa",
@@ -123,7 +127,7 @@ const fi = {
 
 export const backgroundStripText = catalog(fi, {
   waitingNotice:
-    "A worker is waiting for your answer. Open Workers to see what it needs.",
+    "A worker stopped at a prompt in its terminal, and the browser cannot answer it. Ask the agent to handle it.",
   ended: (n) => `${n} ended`,
   leftOne: (title) =>
     `${title} left the Workers list: its branch and worktree are gone.`,
@@ -214,8 +218,10 @@ export const backgroundStripText = catalog(fi, {
     failed: (kept) => `failed${kept}`,
     unmerged: (kept) => `not merged${kept}`,
     waitingParent: "waiting for the main agent",
-    awaitingInput: "waiting for an answer in its terminal",
-    idle: "waiting for you",
+    askParent: "asking the main agent",
+    askYou: "asking you through the main agent",
+    awaitingInput: "prompt in its terminal · waiting for the main agent",
+    idle: "stopped · waiting for the main agent",
     unknown: "state unknown",
     waitedWith: (state) => `agent waiting · ${state}`,
     waited: "agent waiting",

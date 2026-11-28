@@ -4,10 +4,16 @@ import { catalog } from "../i18n";
 // header, its details and its result card.
 const fi = {
   working: "Työskentelee",
-  // Pi's own word: its turn ended and it waits at its prompt.
-  awaitingInput: "Odottaa vastausta päätteessä",
-  idle: "Odottaa sinua",
+  // Neither is the person's to answer in the browser: a worker stopped at a
+  // prompt in its own terminal, or at its own prompt after its turn ended,
+  // waits for the conversation's agent to handle it.
+  awaitingInput: "Kehote päätteessä · odottaa pääagenttia",
+  idle: "Pysähtyi · odottaa pääagenttia",
   waiting_parent: "Odottaa pääagenttia",
+  // It asked its parent a question (taskfleet node ask); escalated, the
+  // main agent passed it on to the person.
+  askParent: "Kysyy pääagentilta",
+  askYou: "Kysyy sinulta pääagentin kautta",
   merged: "Mergetty",
   unmerged: "Ei mergetty",
   unmergedKept: "Ei mergetty · työ tallessa",
@@ -24,9 +30,11 @@ const fi = {
 
 export const spinoffStateText = catalog(fi, {
   working: "Working",
-  awaitingInput: "Waiting for an answer in its terminal",
-  idle: "Waiting for you",
+  awaitingInput: "Prompt in its terminal · waiting for the main agent",
+  idle: "Stopped · waiting for the main agent",
   waiting_parent: "Waiting for the main agent",
+  askParent: "Asking the main agent",
+  askYou: "Asking you through the main agent",
   merged: "Merged",
   unmerged: "Not merged",
   unmergedKept: "Not merged · work kept",

@@ -287,6 +287,39 @@ export function WorkerView({
         </div>
       ),
     });
+  // The worker asked its parent (taskfleet node ask): the main agent answers
+  // in the parent conversation, so the card leads there and offers nothing
+  // to answer here.
+  if (run?.parent_ask && run.state === "waiting_parent")
+    feed.push({
+      id: "worker-parent-ask",
+      kind: "marker",
+      content: (
+        <div
+          className="ah-worker-prompt"
+          role="status"
+          data-testid="worker-parent-ask"
+        >
+          <span>
+            <Icon name="message" />
+            <strong>
+              {run.parent_ask.escalated ? txt.askYouTitle : txt.askParentTitle}
+            </strong>
+          </span>
+          <p className="ah-worker-question">{run.parent_ask.question}</p>
+          <small>
+            {run.parent_ask.escalated ? txt.askYouHow : txt.askParentHow}
+          </small>
+          <Button
+            data-testid="worker-parent-ask-open"
+            size="inline"
+            variant="secondary"
+            label={txt.openParent}
+            onPress={onParent}
+          />
+        </div>
+      ),
+    });
   if (live && !readable && run)
     feed.push({
       id: "worker-terminal-card",

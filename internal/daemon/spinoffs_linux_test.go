@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/open-habitat/open-habitat/internal/transport"
 )
@@ -302,6 +303,61 @@ func TestSpinoffStateHonesty(t *testing.T) {
 		if got := spinoffState(c.r); got != c.want {
 			t.Fatalf("%+v -> %s", c.r, got)
 		}
+	}
+}
+
+// A worker that asked its parent (taskfleet node ask) waits for the
+// conversation's agent, never for the browser's person: its state says so,
+// its question travels with the row, and an expired or ended one is nobody's
+// to answer.
+func TestSpinoffAskingParentWaitsForParent(t *testing.T) {
+	run := func(raw string) nativeSpinoff {
+		var r nativeSpinoff
+		if err := json.Unmarshal([]byte(raw), &r); err != nil {
+			t.Fatal(err)
+		}
+		return r
+	}
+	open := run(`{"status":"running","open_ask":{"state":"open","question":"Drop the v1 API?"}}`)
+	if got := spinoffState(open); got != "waiting_parent" {
+		t.Fatalf("open ask -> %s", got)
+	}
+	if a := parentAskRow(open, spinoffState(open)); a == nil || a.Question != "Drop the v1 API?" || a.Escalated {
+		t.Fatalf("open ask row: %+v", a)
+	}
+	escalated := run(`{"status":"running","open_ask":{"state":"escalated","question":"q"}}`)
+	if a := parentAskRow(escalated, spinoffState(escalated)); a == nil || !a.Escalated {
+		t.Fatalf("escalated ask row: %+v", a)
+	}
+	for _, raw := range []string{
+		`{"status":"running","open_ask":{"state":"expired","question":"q"}}`,
+		`{"status":"done","open_ask":{"state":"open","question":"q"}}`,
+	} {
+		r := run(raw)
+		if state := spinoffState(r); state == "waiting_parent" || parentAskRow(r, state) != nil {
+			t.Fatalf("%s -> %s", raw, state)
+		}
+	}
+	// A dead supervisor's question is no longer waited on by anyone.
+	if got := spinoffState(run(`{"status":"running","supervisor":{"state":"dead"},"open_ask":{"state":"open","question":"q"}}`)); got != "unknown" {
+		t.Fatalf("dead supervisor -> %s", got)
+	}
+	long := run(`{"status":"running","open_ask":{"state":"open","question":"` + strings.Repeat("ä", 1500) + `"}}`)
+	if a := parentAskRow(long, "waiting_parent"); len(a.Question) > 2000 || !utf8.ValidString(a.Question) {
+		t.Fatalf("question not cut on a rune boundary: %d", len(a.Question))
+	}
+	// The conversation's work goes on while its agent owes the answer.
+	parent := nativeSession{id: spinoffParent}
+	open.ID, open.Kind, open.SourceRepo = spinoffFixtureID, "spinoff", "/repo"
+	open.Creator = &struct {
+		Harness   string `json:"harness"`
+		SessionID string `json:"session_id"`
+	}{"pi", parent.id}
+	if !belongsSpinoff(open, parent) {
+		t.Fatal("fixture run does not belong to its parent")
+	}
+	if working, idle := workingSpinoffs(nil, os.Getuid(), []nativeSpinoff{open}, parent, time.Now()); working != 1 || idle != 0 {
+		t.Fatalf("asking worker counted working=%d idle=%d", working, idle)
 	}
 }
 

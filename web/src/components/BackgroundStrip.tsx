@@ -1250,7 +1250,11 @@ export function stateWord(i: SpinoffItem): {
     };
   const state =
     r.state === "waiting_parent"
-      ? txt.waitingParent
+      ? r.parent_ask
+        ? r.parent_ask.escalated
+          ? txt.askYou
+          : txt.askParent
+        : txt.waitingParent
       : r.state === "idle"
         ? r.awaiting_input
           ? txt.awaitingInput
@@ -1263,9 +1267,12 @@ export function stateWord(i: SpinoffItem): {
       text: state ? txt.waitedWith(state) : txt.waited,
       tone: "wait",
     };
+  // Yellow for what the person can act on: a worker at rest at its prompt
+  // needs a word to the agent, and an escalated question is theirs. One the
+  // main agent is answering asks nothing of them.
   return {
     text: state || txt.notWaited,
-    tone: r.state === "idle" ? "wait" : "muted",
+    tone: r.state === "idle" || r.parent_ask?.escalated ? "wait" : "muted",
   };
 }
 

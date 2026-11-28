@@ -50,6 +50,10 @@ export interface Spinoff {
   summary: string;
   /** A named support worker (Taskfleet resident run): its rounds. */
   resident?: Resident;
+  /** The question a waiting_parent worker asked its parent conversation
+   * (taskfleet node ask). The parent agent answers it; escalated: it passed
+   * the question on to the person, in the parent conversation. */
+  parent_ask?: { question: string; escalated: boolean };
 }
 /** Taskfleet's round state of a named worker (avustaja). */
 export interface Resident {
@@ -181,7 +185,11 @@ export function spinoffStateLabel(run: Spinoff) {
   return {
     working: txt.working,
     idle: run.awaiting_input ? txt.awaitingInput : txt.idle,
-    waiting_parent: txt.waiting_parent,
+    waiting_parent: run.parent_ask
+      ? run.parent_ask.escalated
+        ? txt.askYou
+        : txt.askParent
+      : txt.waiting_parent,
     merged: txt.merged,
     unmerged: run.preserved ? txt.unmergedKept : txt.unmerged,
     failed: run.preserved ? txt.failedKept : txt.failed,

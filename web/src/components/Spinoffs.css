@@ -193,6 +193,11 @@
 .ah-worker-prompt small {
   color: var(--ah-muted);
 }
+.ah-worker-question {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 .ah-worker-closed {
   display: flex;
   gap: var(--ah-s3);

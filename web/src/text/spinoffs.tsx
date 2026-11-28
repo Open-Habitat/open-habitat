@@ -22,14 +22,23 @@ const fi = {
   replaces:
     "Workerin vastaukset ja työkalut korvaavat päätteen tässä, kun sen istunto löytyy.",
   truncated: "Näytetään workerin historian viimeisin osa.",
-  promptTitle: "Worker odottaa vastausta päätteessä",
+  promptTitle: "Worker pysähtyi kehotteeseen päätteessään",
   showTerminal: "Näytä pääte",
   promptHow: (attach: ReactNode) => (
     <>
-      Kehotteeseen vastataan workerin natiivissa päätteessä ({attach}). Selaimen
-      pääte on vain luku, eikä pääagentin viesti vastaa kehotteeseen.
+      Selaimen pääte on vain luku, joten kehotteeseen ei voi vastata täältä.
+      Siihen vastataan workerin natiivissa päätteessä ({attach}); pääagentti voi
+      myös perua workerin ja käynnistää sen uudelleen.
     </>
   ),
+  // A worker's question to its parent (taskfleet node ask): the main agent
+  // answers it, or passes it on to the person in the main conversation.
+  askParentTitle: "Worker kysyy pääagentilta",
+  askParentHow:
+    "Pääagentti vastaa kysymykseen pääkeskustelussa ja kysyy sinulta, jos päätös kuuluu sinulle.",
+  askYouTitle: "Pääagentti siirsi workerin kysymyksen sinulle",
+  askYouHow: "Vastaa pääagentille pääkeskustelussa; se välittää vastauksen.",
+  openParent: "Avaa pääkeskustelu",
   terminalLabel: "Workerin pääte",
   terminal: "Pääte",
   readOnly: "vain luku",
@@ -129,15 +138,22 @@ export const spinoffsText = catalog(fi, {
   replaces:
     "The worker's replies and tools replace the terminal here once its session is found.",
   truncated: "Showing the latest part of the worker's history.",
-  promptTitle: "The worker is waiting for an answer in its terminal",
+  promptTitle: "The worker stopped at a prompt in its terminal",
   showTerminal: "Show the terminal",
   promptHow: (attach) => (
     <>
-      The prompt is answered in the worker's native terminal ({attach}). The
-      browser's terminal is read only, and a message to the main agent does not
-      answer the prompt.
+      The browser's terminal is read only, so the prompt cannot be answered
+      here. It is answered in the worker's native terminal ({attach}); the main
+      agent can also cancel the worker and start it again.
     </>
   ),
+  askParentTitle: "The worker is asking the main agent",
+  askParentHow:
+    "The main agent answers the question in the main conversation and asks you if the decision is yours.",
+  askYouTitle: "The main agent passed the worker's question to you",
+  askYouHow:
+    "Answer the main agent in the main conversation; it passes your answer on.",
+  openParent: "Open the main conversation",
   terminalLabel: "Worker's terminal",
   terminal: "Terminal",
   readOnly: "read only",

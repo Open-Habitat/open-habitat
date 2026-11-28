@@ -74,7 +74,14 @@ type nativeSpinoff struct {
 	Harness       string             `json:"harness"`
 	AwaitingInput bool               `json:"awaiting_input"`
 	Resident      *taskfleetResident `json:"resident"`
-	Manifest      struct {
+	// The worker's open blocking question to the conversation that started
+	// it (taskfleet node ask): the parent agent answers it, or passes it on
+	// to the person (escalated).
+	OpenAsk *struct {
+		State    string `json:"state"`
+		Question string `json:"question"`
+	} `json:"open_ask"`
+	Manifest struct {
 		Selection struct {
 			Profile string `json:"profile"`
 		} `json:"selection"`
@@ -110,7 +117,28 @@ type spinoffRow struct {
 	Summary       string `json:"summary"`
 	// A named support worker's rounds (resident_linux.go).
 	Resident *spinoffResident `json:"resident,omitempty"`
+	// The question a waiting_parent worker asked its parent conversation.
+	ParentAsk *spinoffAsk `json:"parent_ask,omitempty"`
 }
+type spinoffAsk struct {
+	Question  string `json:"question"`
+	Escalated bool   `json:"escalated"`
+}
+
+// askingParent says whether the worker blocks on a question its parent can
+// still answer. An expired one is past its deadline: the worker takes its
+// default and Taskfleet accepts no answer, so nobody is waited for.
+func askingParent(r nativeSpinoff) bool {
+	return r.OpenAsk != nil && (r.OpenAsk.State == "open" || r.OpenAsk.State == "escalated") && (r.Status == "pending" || r.Status == "running")
+}
+
+func parentAskRow(r nativeSpinoff, state string) *spinoffAsk {
+	if state != "waiting_parent" || !askingParent(r) {
+		return nil
+	}
+	return &spinoffAsk{Question: prefixBytes(r.OpenAsk.Question, 2000), Escalated: r.OpenAsk.State == "escalated"}
+}
+
 type spinoffView struct {
 	NodeID       string         `json:"node_id"`
 	Harness      string         `json:"harness"`
@@ -159,7 +187,10 @@ func spinoffState(r nativeSpinoff) string {
 	if r.Stalled || (r.Status == "pending" || r.Status == "running") && (r.Supervisor.State == "dead" || r.Supervisor.State == "unknown") {
 		return "unknown"
 	}
-	if r.Attention && r.Lifecycle == "interactive" {
+	// A worker that asked its parent (taskfleet node ask) blocks on the
+	// answer whatever its Pi shows; Taskfleet does not call it awaiting
+	// input, because the browser's person is not who answers it.
+	if askingParent(r) || r.Attention && r.Lifecycle == "interactive" {
 		return "waiting_parent"
 	}
 	switch r.Status {
@@ -305,6 +336,7 @@ func serveSpinoffs(w http.ResponseWriter, req *http.Request, cfg transport.Confi
 			row := spinoffRow{ID: r.ID, Title: prefixBytes(r.Title, 200), CreatedAt: nativeTimestamp(r.CreatedAt), State: "unknown", Harness: workerHarness(r.Harness), AwaitingInput: r.AwaitingInput, OtherRepo: otherRepository(r.SourceRepo, parent.cwd), Resident: residentRow(r)}
 			if runID == "" && (r.Status == "pending" || r.Status == "running") {
 				row.State, row.AwaitingInput = liveWorkerState(home, cfg.UID, r, now)
+				row.ParentAsk = parentAskRow(r, row.State)
 				row.SourceBranch = prefixBytes(r.SourceBranch, 200)
 				live = append(live, len(rows))
 				rows = append(rows, row)
@@ -314,6 +346,7 @@ func serveSpinoffs(w http.ResponseWriter, req *http.Request, cfg transport.Confi
 			// verified landed flag and retained report/preserved work.
 			if detail, shown := showSpinoff(ctx, cfg.Home, r.ID, *parent); shown {
 				row.State, row.AwaitingInput = liveWorkerState(home, cfg.UID, detail, now)
+				row.ParentAsk = parentAskRow(detail, row.State)
 				row.Resident = residentRow(detail)
 				row.Harness = workerHarness(detail.Harness)
 				row.SourceBranch = prefixBytes(detail.SourceBranch, 200)
@@ -575,7 +608,13 @@ func workingSpinoffs(home *os.File, uid int, runs []nativeSpinoff, parent native
 		if !belongsSpinoff(r, parent) {
 			continue
 		}
-		switch state, _ := liveWorkerState(home, uid, r, now); state {
+		state, _ := liveWorkerState(home, uid, r, now)
+		// A worker asking its parent still has its work under way: the
+		// conversation's agent owes it an answer, so it is not at rest.
+		if state == "waiting_parent" && askingParent(r) {
+			state = "working"
+		}
+		switch state {
 		case "working":
 			working++
 		case "idle":

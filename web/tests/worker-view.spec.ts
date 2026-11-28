@@ -156,6 +156,30 @@ test("@worker-view @a11y a Claude worker's conversation replaces its terminal ca
     .click();
   await expect(page.getByTestId("worker-terminal-row")).toHaveCount(0);
   await page.unroute("**/api/v1/agents/pi:*/spinoffs**");
+  // A worker asking its parent (taskfleet node ask) is answered by the main
+  // agent: its view shows the question unchanged and leads to the parent
+  // conversation, with nothing to answer here.
+  await fixture(page, `${worker}&status=running&history=ready&ask=open`);
+  await page.goto(`${parentURL}&spinoff=${runID}`);
+  const asked = page
+    .getByRole("status")
+    .and(page.getByTestId("worker-parent-ask"));
+  await expect(asked).toBeVisible();
+  // The worker's own words, unchanged.
+  expect(
+    await asked.locator(".ah-worker-question").evaluate((e) => e.textContent),
+  ).toBe("Pudotetaanko v1-rajapinta?\nOhje sallii kumman tahansa.");
+  await expect(asked.getByRole("textbox")).toHaveCount(0);
+  await shot(page, "kysyy-paaagentilta");
+  await asked
+    .getByRole("button")
+    .and(page.getByTestId("worker-parent-ask-open"))
+    .click();
+  await expect(page).not.toHaveURL(/spinoff=/);
+  await expect(composer).toBeVisible();
+  await fixture(page, `${worker}&status=running&history=ready`);
+  await page.goto(`${parentURL}&spinoff=${runID}`);
+  await expect(asked).toHaveCount(0);
   // The history's first message is the brief, shown once.
   await expect(page.locator('[data-voice="brief"]')).toHaveCount(1);
   await expect(composer).toHaveCount(0);

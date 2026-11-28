@@ -57,7 +57,7 @@
             "maxLength": 64
           },
           "state": {
-            "description": "working: Taskfleet runs the worker and its agent is at work. idle: Taskfleet still runs it, but the worker's own Pi session says its turn ended and it waits at its prompt for a person (an interactive run waiting for review, or a worker that stopped without finishing). waiting_parent: it waits for the conversation that started it: an interactive run Taskfleet says needs attention, or a named worker between rounds (resident).",
+            "description": "working: Taskfleet runs the worker and its agent is at work. idle: Taskfleet still runs it, but the worker's own Pi session says its turn ended and it waits at its prompt for a person (an interactive run waiting for review, or a worker that stopped without finishing). waiting_parent: it waits for the conversation that started it: it asked its parent a question (parent_ask), an interactive run Taskfleet says needs attention, or a named worker between rounds (resident).",
             "enum": [
               "working",
               "idle",
@@ -172,6 +172,25 @@
               },
               "unlanded": {
                 "description": "Taskfleet's idle expiry found work not yet landed and kept it on the worker's branch.",
+                "type": "boolean"
+              }
+            }
+          },
+          "parent_ask": {
+            "description": "The blocking question the worker asked the conversation that started it (taskfleet node ask), present only while its state is waiting_parent because of it. The parent agent answers it; escalated says the parent passed it on to the person, who answers in the parent conversation. The browser does not answer it.",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "question",
+              "escalated"
+            ],
+            "properties": {
+              "question": {
+                "description": "The worker's question in its own words, cut to its first 2000 bytes.",
+                "type": "string",
+                "maxLength": 2000
+              },
+              "escalated": {
                 "type": "boolean"
               }
             }

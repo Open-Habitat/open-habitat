@@ -180,18 +180,38 @@ describe("background strip facts", () => {
     // A settled run's lingering wait is not the agent waiting.
     expect(tone(run({ state: "merged" }), [wait])).toBe("ok");
   });
-  it("says a worker waiting at its own prompt waits for the person, not works", () => {
+  it("tells a worker at rest at its prompt from one asking its parent, and only the person's own task is yellow", () => {
     const f = facts([run({ state: "idle" })], []);
     expect(f.spin.live).toHaveLength(1);
     expect(f.spin.working).toBe(0);
-    expect(stateWord(f.spin.items[0])).toEqual({
-      text: "odottaa sinua",
-      tone: "wait",
-    });
-    const asked = facts([run({ state: "idle", awaiting_input: true })], []);
-    expect(stateWord(asked.spin.items[0]).text).toBe(
-      "odottaa vastausta päätteessä",
+    const idle = stateWord(f.spin.items[0]);
+    // At rest at its prompt: someone has to tell the agent.
+    expect(idle.tone).toBe("wait");
+    const prompt = stateWord(
+      facts([run({ state: "idle", awaiting_input: true })], []).spin.items[0],
     );
+    expect(prompt.text).not.toBe(idle.text);
+    const word = (escalated: boolean) =>
+      stateWord(
+        facts(
+          [
+            run({
+              state: "waiting_parent",
+              parent_ask: { question: "Drop the v1 API?", escalated },
+            }),
+          ],
+          [],
+        ).spin.items[0],
+      );
+    const plain = stateWord(
+      facts([run({ state: "waiting_parent" })], []).spin.items[0],
+    );
+    // The main agent answers a question it was asked: nothing for the person.
+    expect(word(false).tone).toBe("muted");
+    expect(word(false).text).not.toBe(plain.text);
+    // Passed on to the person, it is theirs.
+    expect(word(true).tone).toBe("wait");
+    expect(word(true).text).not.toBe(word(false).text);
   });
   it("is silent about processes while Pi is stopped, unless a restart cut one off", () => {
     const stopped = (interrupted: number) =>

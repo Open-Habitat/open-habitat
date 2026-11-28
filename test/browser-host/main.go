@@ -1699,8 +1699,10 @@ esac
 			case "/fixture/taskfleet":
 				// One spinoff of a parent session, in a native-shaped run record
 				// whose manifest the snapshot's listing cache stamps.
+				// ask=open|escalated gives the running worker an open
+				// question to its parent (taskfleet node ask).
 				q := r.URL.Query()
-				if e := writeFakeTaskfleet(filepath.Join(tmp, "alice"), q.Get("parent"), q.Get("workspace"), q.Get("status")); e != nil {
+				if e := writeFakeTaskfleet(filepath.Join(tmp, "alice"), q.Get("parent"), q.Get("workspace"), q.Get("status"), q.Get("ask")); e != nil {
 					http.Error(w, "fixture failed", 400)
 					return
 				}
@@ -2030,7 +2032,7 @@ case "$1 $2" in
 esac
 `
 
-func writeFakeTaskfleet(home, parent, workspace, status string) error {
+func writeFakeTaskfleet(home, parent, workspace, status string, ask ...string) error {
 	root := filepath.Join(home, ".taskfleet")
 	if status == "none" {
 		for _, name := range []string{"fixture-list.json", "fixture-show.json"} {
@@ -2057,6 +2059,12 @@ func writeFakeTaskfleet(home, parent, workspace, status string) error {
 		"created_by_session": map[string]string{"harness": "pi", "session_id": parent},
 		"supervisor":         map[string]string{"state": "running"}, "node_transcripts": []any{},
 		"preserved_work": []any{}, "report": map[string]string{"summary": "Synteettinen spinoff."},
+	}
+	if len(ask) > 0 && ask[0] != "" {
+		if status != "running" || ask[0] != "open" && ask[0] != "escalated" {
+			return fmt.Errorf("invalid taskfleet ask fixture")
+		}
+		run["open_ask"] = map[string]any{"ask_id": 1, "node_id": "n-0001", "state": ask[0], "question": "Pudotetaanko v1-rajapinta?\nOhje sallii kumman tahansa.", "options": []string{"pidä", "pudota"}, "default": "pidä"}
 	}
 	if status == "done" {
 		// Taskfleet records no end time; an ended run's manifest was last

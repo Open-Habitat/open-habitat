@@ -782,10 +782,12 @@ func runOwner(r nativeSpinoff, o *worktreeObs) *worktreeOwner {
 	if v != nil {
 		w.Role, w.Name = "helper", v.Name
 	}
-	switch spinoffState(r) {
-	case "working":
+	switch state := spinoffState(r); {
+	// A worker asking its parent is still in the middle of its task: it is
+	// not ready to be landed or discarded.
+	case state == "working", state == "waiting_parent" && askingParent(r):
 		w.State = "working"
-	case "waiting_parent":
+	case state == "waiting_parent":
 		w.State = "waiting"
 	default:
 		w.State = "attention"

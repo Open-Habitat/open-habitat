@@ -819,7 +819,7 @@
           ]
         },
         "spinoffs_working": {
-          "description": "How many of this conversation's own Taskfleet spinoffs are working now, whether or not the conversation still waits for them. A run whose worker waits at its own prompt is counted in spinoffs_idle instead. Absent when none are known to work.",
+          "description": "How many of this conversation's own Taskfleet spinoffs are working now, whether or not the conversation still waits for them. A run whose worker waits at its own prompt is counted in spinoffs_idle instead. A run whose worker asked the conversation a question it can still answer counts here: its work is under way until the answer comes. Absent when none are known to work.",
           "type": "integer",
           "minimum": 1,
           "maximum": 10000
