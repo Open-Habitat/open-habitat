@@ -189,6 +189,22 @@ detector, so offer only what you mean to share.
 reply, as `src/main.ts:42`; the conversation turns it into a link that opens
 their editor there. You cannot drive the editor.
 
+**A link that starts a conversation.** For a notification or automation that
+hands the person a next step, build
+`<origin>/new/<workspace>#n=<length>&draft=<message>` from `site.origin` in
+`environment show --json`. The workspace is its sidebar or directory name; URL-encode it and the
+message (`+` as `%2B`), with `n` the message's length in Unicode code points:
+
+```sh
+python3 -c 'import sys, urllib.parse as u; o, w, m = sys.argv[1:]; q = lambda s: u.quote(s, safe=""); print(o + "/new/" + q(w) + "#n=" + str(len(m)) + "&draft=" + q(m))' "$ORIGIN" website "Check last night's run"
+```
+
+Opening it starts a new conversation there with the message in the field,
+unsent; the person sends it. The message is used only if the person has allowed
+conversation links in Settings (`/settings/risky-features`), which no command
+does for them. A message over 4,000 characters, or one whose length does not
+match `n` (a chat app cut the link), is left out whole.
+
 ## The person's other conversations
 
 You can read and steer the person's other conversations. Targets are

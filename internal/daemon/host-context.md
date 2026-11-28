@@ -60,6 +60,17 @@ level, rename or archive it and read its history. Archiving is not deletion.
 Pi sessions started in a terminal can be read in the browser but not written
 from it, and reading history starts no agent.
 
+A link can open a new conversation with a prepared message, for a
+notification or automation to hand the person a next step:
+`<origin>/new/<workspace>#n=<length>&draft=<message>`. The workspace is its
+sidebar name or its directory name; URL-encode it and the message
+(`encodeURIComponent`, so a `+` is `%2B`), and set `n` to the message's length
+in Unicode code points (Python `len()`, JavaScript `[...text].length`). The
+message goes into the field unsent, and only if the person has allowed
+conversation links (`<origin>/settings/risky-features#conversation-links`),
+which you cannot do for them. A message over 4,000 characters, or one whose
+length does not match `n` because a chat app cut the link, is left out whole.
+
 ### The rail
 
 The person's rail sorts conversations into *Sinun vuorosi* (their turn),
