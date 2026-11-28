@@ -47,6 +47,13 @@ Jari 23.11.2026: approved the recommended bounded trial (approach 1: existing Ma
 
 Jari 23.11.2026 answered the research questions: (1) working while the chosen Mac is awake and logged in is enough; (2) Notes: reading selected notes and creating new plain notes is enough to start; (3) the existing Omat koneet account-wide trust with per-app consent is acceptable.
 
+## Research
+
+[research.md](research.md) (28.11.2026) consolidates the desk research with the trial and
+attended-session results and recommends agent guidance over the existing SSH path
+(AppleScript for Notes and non-repeating Reminders), with an EventKit helper only behind
+an ADR if recurrence is needed. Three questions for Jari are at its end.
+
 ## Trial
 
 [trial.md](trial.md) (23.11.2026): over SSH, macOS holds the SSH server responsible for
