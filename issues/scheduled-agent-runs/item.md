@@ -9,7 +9,7 @@ provenance: chat
 source_ref: chat:2026-11-19/scheduled-agent-runs
 lane: scheduled-runs
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Scheduled agent runs: work an agent does on a recurring schedule
