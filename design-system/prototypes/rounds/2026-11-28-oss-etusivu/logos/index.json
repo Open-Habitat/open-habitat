@@ -1,0 +1,206 @@
+{
+ "atlassian": {
+  "title": "Atlassian",
+  "hex": "0052CC",
+  "source": "https://atlassian.design/resources/logo-library",
+  "license": "CC0-1.0 (Simple Icons)"
+ },
+ "audacity": {
+  "title": "Audacity",
+  "hex": "0000CC",
+  "source": "https://github.com/audacity/audacity/blob/c818449c69193f5311b430fbf600d8d6cbe49047/images/audacity.svg",
+  "license": "CC0-1.0 (Simple Icons)"
+ },
+ "blender": {
+  "title": "Blender",
+  "hex": "E87D0D",
+  "source": "https://www.blender.org/about/logo",
+  "license": "CC0-1.0 (Simple Icons)"
+ },
+ "dropbox": {
+  "title": "Dropbox",
+  "hex": "0061FF",
+  "source": "https://www.dropbox.com/branding",
+  "license": "CC0-1.0 (Simple Icons)"
+ },
+ "ffmpeg": {
+  "title": "FFmpeg",
+  "hex": "007808",
+  "source": "https://commons.wikimedia.org/wiki/File:FFmpeg_Logo_new.svg",
+  "license": "CC0-1.0 (Simple Icons)"
+ },
+ "gimp": {
+  "title": "GIMP",
+  "hex": "8C8073",
+  "source": "https://gitlab.gnome.org/GNOME/gimp-data/-/blob/e62f1905dcef7ec831ea6c052bb035eb37eaa69e/images/logo/gimp-logo-unicolor.svg",
+  "license": "CC-BY-SA-4.0"
+ },
+ "git": {
+  "title": "Git",
+  "hex": "F03C2E",
+  "source": "https://git-scm.com/community/logos",
+  "license": "CC-BY-3.0"
+ },
+ "gitea": {
+  "title": "Gitea",
+  "hex": "609926",
+  "source": "https://github.com/go-gitea/gitea/blob/e0c753e770a64cda5e3900aa1da3d7e1f3263c9a/assets/logo.svg",
+  "license": "CC0-1.0 (Simple Icons)"
+ },
+ "github": {
+  "title": "GitHub",
+  "hex": "181717",
+  "source": "https://github.com/logos",
+  "license": "CC0-1.0 (Simple Icons)"
+ },
+ "gitlab": {
+  "title": "GitLab",
+  "hex": "FC6D26",
+  "source": "https://about.gitlab.com/press/press-kit/",
+  "license": "CC0-1.0 (Simple Icons)"
+ },
+ "go": {
+  "title": "Go",
+  "hex": "00ADD8",
+  "source": "https://blog.golang.org/go-brand",
+  "license": "CC0-1.0 (Simple Icons)"
+ },
+ "google": {
+  "title": "Google",
+  "hex": "4285F4",
+  "source": "https://partnermarketinghub.withgoogle.com",
+  "license": "CC0-1.0 (Simple Icons)"
+ },
+ "hugo": {
+  "title": "Hugo",
+  "hex": "FF4088",
+  "source": "https://gohugo.io",
+  "license": "CC0-1.0 (Simple Icons)"
+ },
+ "icloud": {
+  "title": "iCloud",
+  "hex": "3693F3",
+  "source": "https://commons.wikimedia.org/wiki/File:ICloud_logo.svg",
+  "license": "CC0-1.0 (Simple Icons)"
+ },
+ "inkscape": {
+  "title": "Inkscape",
+  "hex": "000000",
+  "source": "https://inkscape.org/gallery/=inkscape-branding/inkscape-brand-assets/",
+  "license": "CC-BY-SA-3.0"
+ },
+ "jupyter": {
+  "title": "Jupyter",
+  "hex": "F37626",
+  "source": "https://github.com/jupyter/design/blob/80716ee75dd7b2a6ec6abcd89922d020483589b1/logos/Logo%20Mark/logomark-whitebody-whitemoons/logomark-whitebody-whitemoons.svg",
+  "license": "CC0-1.0 (Simple Icons)"
+ },
+ "kdenlive": {
+  "title": "Kdenlive",
+  "hex": "527EB2",
+  "source": "https://kdenlive.org/trademark-logo/",
+  "license": "CC0-1.0 (Simple Icons)"
+ },
+ "krita": {
+  "title": "Krita",
+  "hex": "3BABFF",
+  "source": "https://krita.org/en/about/press/",
+  "license": "CC0-1.0 (Simple Icons)"
+ },
+ "latex": {
+  "title": "LaTeX",
+  "hex": "008080",
+  "source": "https://github.com/latex3/branding/tree/9def6b5f6075567d62b67424e11dbe6d4d5245b4",
+  "license": "CC0-1.0 (Simple Icons)"
+ },
+ "libreoffice": {
+  "title": "LibreOffice",
+  "hex": "18A303",
+  "source": "https://wiki.documentfoundation.org/Marketing/Branding",
+  "license": "CC0-1.0 (Simple Icons)"
+ },
+ "modelcontextprotocol": {
+  "title": "Model Context Protocol",
+  "hex": "000000",
+  "source": "https://github.com/modelcontextprotocol/docs/blob/573dc60c2e7aab2605b29d0bf27194aa7b02e4fb/logo/light.svg",
+  "license": "CC0-1.0 (Simple Icons)"
+ },
+ "nginx": {
+  "title": "NGINX",
+  "hex": "009639",
+  "source": "https://www.nginx.com/press/",
+  "license": "CC0-1.0 (Simple Icons)"
+ },
+ "nodedotjs": {
+  "title": "Node.js",
+  "hex": "5FA04E",
+  "source": "https://nodejs.org/en/about/branding",
+  "license": "CC0-1.0 (Simple Icons)"
+ },
+ "octave": {
+  "title": "Octave",
+  "hex": "0790C0",
+  "source": "https://www.gnu.org/software/octave/",
+  "license": "CC0-1.0 (Simple Icons)"
+ },
+ "openscad": {
+  "title": "OpenSCAD",
+  "hex": "F9D72C",
+  "source": "https://commons.wikimedia.org/wiki/File:Openscad.svg",
+  "license": "CC0-1.0 (Simple Icons)"
+ },
+ "pandoc": {
+  "title": "Pandoc",
+  "hex": "4093DA",
+  "source": "https://github.com/tarleb/pandoc-logo/blob/1c547bbfaefa7e842c67e617775a44bc2342db8e/pandoc.svg",
+  "license": "CC-BY-SA-4.0"
+ },
+ "postgresql": {
+  "title": "PostgreSQL",
+  "hex": "4169E1",
+  "source": "https://wiki.postgresql.org/wiki/Logo",
+  "license": "CC0-1.0 (Simple Icons)"
+ },
+ "python": {
+  "title": "Python",
+  "hex": "3776AB",
+  "source": "https://www.python.org/community/logos/",
+  "license": "CC0-1.0 (Simple Icons)"
+ },
+ "qgis": {
+  "title": "QGIS",
+  "hex": "589632",
+  "source": "https://www.qgis.org/en/site/getinvolved/styleguide.html",
+  "license": "CC0-1.0 (Simple Icons)"
+ },
+ "r": {
+  "title": "R",
+  "hex": "276DC3",
+  "source": "https://www.r-project.org/logo/",
+  "license": "CC-BY-SA-4.0"
+ },
+ "rust": {
+  "title": "Rust",
+  "hex": "000000",
+  "source": "https://www.rust-lang.org",
+  "license": "CC-BY-SA-4.0"
+ },
+ "sqlite": {
+  "title": "SQLite",
+  "hex": "003B57",
+  "source": "https://github.com/sqlite/sqlite/blob/43e862723ec680542ca6f608f9963c0993dd7324/art/sqlite370.eps",
+  "license": "CC0-1.0 (Simple Icons)"
+ },
+ "tailscale": {
+  "title": "Tailscale",
+  "hex": "242424",
+  "source": "https://tailscale.com/press",
+  "license": "CC0-1.0 (Simple Icons)"
+ },
+ "trello": {
+  "title": "Trello",
+  "hex": "0052CC",
+  "source": "https://atlassian.design/resources/logo-library",
+  "license": "CC0-1.0 (Simple Icons)"
+ }
+}

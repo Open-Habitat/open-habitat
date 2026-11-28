@@ -1,0 +1,151 @@
+/* open-habitat.ai's front page. Loaded after the design-system tokens, the
+   brand's Päivä theme (website brand.css), the v1 engine's page, screen,
+   product and views CSS and the shown blocks' own CSS. Page pieces .j-*, the
+   feature rows .b-*, the connectors hub .hub-*, the program cloud .pc-*, the
+   install prompt .ag-* and the live demo .demo-*. */
+
+/* ===================== Page ===================== */
+.j-page { padding-bottom: 96px; }
+.j-top nav { flex-wrap: wrap; justify-content: flex-end; }
+.j-sec { max-width: 1240px; margin: 0 auto; padding: clamp(72px, 10vw, 120px) clamp(20px, 4vw, 40px) 0; }
+.j-head { max-width: 800px; margin: 0 auto clamp(32px, 5vw, 52px); text-align: center; }
+.pg .j-head h2 { font-size: clamp(30px, 4.4vw, 52px); line-height: 1.06; letter-spacing: -0.03em; font-weight: 600; margin-bottom: 18px; }
+.pg .j-lead { font-size: clamp(17px, 1.8vw, 20px); color: var(--ah-ink-2); margin: 0; }
+.pg .j-head:has(h2:last-child) h2 { margin-bottom: 0; }
+.j-page .cta { display: flex; gap: 12px; flex-wrap: wrap; margin: 0; }
+.pg .btn .oh-mark { margin-right: 8px; color: currentColor; }
+
+.j-copy { border: 1px solid var(--ah-control-line); background: var(--ah-surface); border-radius: var(--ah-r-pill); padding: 3px 12px; font: 600 12px var(--ah-font); color: var(--ah-ink); cursor: pointer; transition: background-color 150ms ease-out; }
+.j-copy:hover { background: var(--ah-hover); }
+.j-copy:focus-visible { outline: 2px solid var(--ah-focus); outline-offset: 2px; }
+.pg .foot.j-foot { margin-top: clamp(72px, 10vw, 120px); }
+@media (max-width: 900px) {
+  .j-top nav a:not(:last-child) { display: none; }
+}
+
+/* ===================== Feature rows ===================== */
+.b-rows { display: flex; flex-direction: column; gap: clamp(56px, 8vw, 104px); }
+.b-row { display: grid; grid-template-columns: minmax(0, .75fr) minmax(0, 1.25fr); gap: clamp(24px, 4vw, 56px); align-items: center; }
+.b-flip { grid-template-columns: minmax(0, 1.25fr) minmax(0, .75fr); }
+.b-flip .b-txt { order: 2; }
+.pg .b-n { margin: 0 0 10px; font: 500 12px var(--ah-mono); color: var(--ah-accent-ink); }
+.pg .b-txt h3 { font-size: clamp(26px, 3vw, 38px); line-height: 1.08; letter-spacing: -0.03em; font-weight: 600; margin-bottom: 14px; }
+.pg .b-txt > p:nth-of-type(2) { font-size: 17.5px; color: var(--ah-ink-2); }
+.b-scr { position: relative; max-height: 640px; overflow: hidden; border: 1px solid var(--ah-line); border-radius: 14px; background: var(--ah-bg); box-shadow: var(--ah-shadow-app); }
+/* The screen is cut, never scrolled: a fade says there is more below. */
+.b-scr:not(.b-scr-open)::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 72px; background: linear-gradient(180deg, transparent, var(--ah-bg)); pointer-events: none; }
+.b-scr > .blk > .scr, .b-scr > .blk > .ph-stage { border: 0; border-radius: 0; box-shadow: none; }
+.b-scr > .blk > .scr > .scr-bar { position: relative; }
+@media (max-width: 900px) {
+  .b-row, .b-flip { grid-template-columns: minmax(0, 1fr); }
+  .b-flip .b-txt { order: 0; }
+  .b-scr { max-height: none; }
+}
+
+/* ===================== Hero and core facts ===================== */
+.j-hero h1 { max-width: 900px; margin-left: auto; margin-right: auto; }
+.pg .j-hero .lede { max-width: 760px; }
+.j-hero .cta { justify-content: center; }
+.j-coresec { padding-top: clamp(40px, 5vw, 64px); }
+.j-coresec + .hero-band { margin-top: clamp(40px, 5vw, 64px); }
+.j-core { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid var(--ah-line); }
+.j-core li { display: flex; flex-direction: column; gap: 4px; padding: 16px 18px 18px 0; border-bottom: 1px solid var(--ah-line); }
+.j-core li:not(:nth-child(4n + 1)) { padding-left: 18px; border-left: 1px solid var(--ah-line); }
+.j-core b { font: 500 14.5px var(--ah-mono); color: var(--ah-ink); letter-spacing: -0.01em; }
+.j-core span { font-size: 14.5px; line-height: 1.45; color: var(--ah-ink-2); }
+@media (max-width: 1000px) { .j-core { grid-template-columns: 1fr 1fr; } .j-core li:not(:nth-child(4n + 1)) { padding-left: 0; border-left: 0; } .j-core li:nth-child(even) { padding-left: 18px; border-left: 1px solid var(--ah-line); } }
+@media (max-width: 560px) {
+  .j-core { grid-template-columns: minmax(0, 1fr); }
+  .j-core li:nth-child(even) { padding-left: 0; border-left: 0; }
+}
+
+.b-scr.b-scr-open { max-height: none; overflow: visible; border: 0; background: none; box-shadow: none; }
+.b-notes { list-style: none; margin: 18px 0 0; padding: 0; display: flex; flex-direction: column; gap: 0; border-top: 1px solid var(--ah-line); }
+.b-notes li { display: flex; flex-direction: column; gap: 2px; padding: 10px 0; border-bottom: 1px solid var(--ah-line); font-size: 14.5px; color: var(--ah-ink-2); }
+.b-notes b { font-size: 13px; font-weight: 600; color: var(--ah-ink); }
+/* Window dots, as in the install prompt's window bar */
+.bw-dots { display: inline-flex; gap: 4px; }
+.bw-dots i { width: 7px; height: 7px; border-radius: 50%; background: #c7ced6; }
+
+/* ===================== Connectors: a hub with lines into Open Habitat ===================== */
+.b-scr.b-scr-open:has(.hub) { align-self: center; }
+.hub { position: relative; margin: 88px auto 72px; aspect-ratio: 1 / .9; max-width: 640px; margin-inline: auto; width: 100%; }
+.hub-lines { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.hub-lines line { vector-effect: non-scaling-stroke; fill: none; }
+.hub-base line { stroke: var(--ah-line-strong); stroke-width: 1.2; }
+.hub-pulse line { stroke: var(--ah-accent); stroke-width: 2.2; stroke-linecap: round; stroke-dasharray: 5 95; stroke-dashoffset: 105; opacity: 0; animation: hub-pulse 3s cubic-bezier(.4, 0, .6, 1) infinite; animation-delay: var(--d); }
+@keyframes hub-pulse { 0% { stroke-dashoffset: 105; opacity: 0; } 12% { opacity: 1; } 80% { opacity: 1; } 100% { stroke-dashoffset: 5; opacity: 0; } }
+.hub-c { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 16px 22px; border-radius: 16px; background: var(--ah-surface); border: 1.5px solid var(--ah-accent-line); box-shadow: var(--ah-shadow-app); }
+.hub-c .oh-mark { color: var(--ah-accent); }
+.hub-c b { font-size: 16px; font-weight: 600; white-space: nowrap; }
+.hub-c small { font-size: 12px; color: var(--ah-muted); }
+.hub-ts { list-style: none; margin: 0; padding: 0; }
+.hub-t { position: absolute; left: var(--x); top: var(--y); transform: translate(-50%, -23px); z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; width: 104px; text-align: center; }
+.hub-l { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 12px; background: var(--ah-surface); border: 1px solid var(--ah-line); color: var(--ah-ink); margin-bottom: 4px; }
+/* In the upper half the label sits above the logo, so a line reaches the logo from inside without crossing text. */
+.hub-up { flex-direction: column-reverse; transform: translate(-50%, calc(-100% + 23px)); }
+.hub-up .hub-l { margin: 4px 0 0; }
+.hub-l svg { width: 24px; height: 24px; }
+.hub-t b { font-size: 12.5px; font-weight: 600; line-height: 1.2; }
+.hub-t small { font-size: 11px; line-height: 1.25; color: var(--ah-muted); }
+@media (prefers-reduced-motion: reduce) { .hub-pulse { display: none; } }
+@media (max-width: 640px) {
+  .hub { aspect-ratio: auto; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+  .hub-lines { display: none; }
+  .hub-c { position: static; transform: none; }
+  .hub-ts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 8px; width: 100%; }
+  .hub-t, .hub-up { position: static; transform: none; width: auto; flex-direction: column; }
+  .hub-up .hub-l { margin: 0 0 4px; }
+}
+
+/* Programs: a scattered cloud of logos in their own colours (positions from screens.mjs) */
+.pc { list-style: none; position: relative; margin: 0 auto; padding: 0; max-width: 1040px; aspect-ratio: 1040 / 440; }
+.pc-i { position: absolute; left: var(--x); top: var(--y); transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.pc-l { display: grid; place-items: center; color: var(--c); }
+.pc-l svg { width: var(--s); height: var(--s); }
+.pc-i b { font-size: 12.5px; font-weight: 500; color: var(--ah-ink-2); white-space: nowrap; }
+@media (max-width: 640px) {
+  .pc { aspect-ratio: 350 / 760; max-width: 350px; }
+  .pc-i { left: var(--mx); top: var(--my); }
+  .pc-l svg { width: var(--ms); height: var(--ms); }
+  .pc-i b { font-size: 11.5px; }
+}
+
+/* Install: the prompt in a coding agent's window */
+.ag-win { max-width: 860px; margin: 0 auto; border: 1px solid var(--ah-line); border-radius: 14px; background: var(--ah-surface); box-shadow: var(--ah-shadow-app); overflow: hidden; }
+.ag-bar { display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 16px; border-bottom: 1px solid var(--ah-line-soft); font: 500 12.5px var(--ah-mono); color: var(--ah-muted); }
+.ag-bar .j-copy { margin-left: auto; padding: 5px 16px; font-size: 13px; }
+.ag-body { display: flex; align-items: flex-start; gap: 12px; padding: 22px 24px 26px; background: var(--ah-sunken); font: 400 16px/1.6 var(--ah-mono); }
+.ag-p { color: var(--ah-accent); font-weight: 500; }
+.pg .ag-text { flex: 1; min-width: 0; margin: 0; padding: 0; border: 0; background: none; font: inherit; color: var(--ah-ink); white-space: pre-wrap; overflow-wrap: anywhere; }
+.ag-caret { display: inline-block; vertical-align: -0.2em; width: 9px; height: 1.2em; margin-left: 4px; background: var(--ah-accent); animation: ag-blink 1.1s steps(1) infinite; }
+@keyframes ag-blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .ag-caret { animation: none; } }
+@media (max-width: 640px) { .ag-body { font-size: 14px; padding: 16px; } }
+
+.hub-pill { width: auto; padding: 0 14px; font: 600 13px var(--ah-font); white-space: nowrap; }
+.pg .foot .j-credit { font-size: 12.5px; }
+.hub-back line { animation-name: hub-pulse-back; animation-delay: calc(var(--d) + 1.5s); }
+@keyframes hub-pulse-back { 0% { stroke-dashoffset: 5; opacity: 0; } 12% { opacity: 1; } 80% { opacity: 1; } 100% { stroke-dashoffset: 105; opacity: 0; } }
+.m-still { display: block; width: 100%; height: auto; }
+/* The phone screen's feed keeps its newest messages in view without scrolling on its own. */
+.j-page [data-block="alice-07-lunch-phone"] .lp-feed { overflow: hidden; }
+
+/* ===================== The live demo in the browser row ===================== */
+.demo { margin: 0; }
+.demo-box { position: relative; aspect-ratio: 16 / 9; border: 1px solid var(--ah-line); border-radius: 14px; overflow: hidden; background: var(--ah-sunken); box-shadow: var(--ah-shadow-app); }
+.demo-poster, .demo-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.demo-poster { object-fit: cover; }
+.demo-frame { pointer-events: none; background: transparent; }
+.demo-ctl { position: absolute; right: 12px; bottom: 12px; z-index: 2; display: grid; place-items: center; width: 40px; height: 40px; border: 0; border-radius: 50%; background: rgba(10, 10, 10, .72); color: #fff; cursor: pointer; transition: background-color 150ms ease-out; }
+.demo-ctl:hover { background: rgba(10, 10, 10, .86); }
+.demo-ctl:focus-visible { outline: 2px solid var(--ah-focus); outline-offset: 2px; }
+.demo-i-pause { width: 12px; height: 14px; border-left: 4px solid currentColor; border-right: 4px solid currentColor; }
+.demo-i-play svg { width: 18px; height: 18px; margin-left: 2px; }
+.demo-ctl[data-paused="false"] .demo-i-play, .demo-ctl[data-paused="true"] .demo-i-pause { display: none; }
+.demo figcaption { margin-top: 10px; font-size: 13.5px; color: var(--ah-ink-2); }
+@media (max-width: 640px) { .demo-ctl { width: 32px; height: 32px; right: 8px; bottom: 8px; } .demo-i-pause { width: 10px; height: 12px; border-width: 0 3px; } }
+
+/* The release line's caveat under the hero's buttons. */
+.pg .j-hero .j-release { margin: 16px auto 0; max-width: 640px; font-size: 14px; color: var(--ah-muted); }
+.pg .j-hero .j-release a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
