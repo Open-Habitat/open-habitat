@@ -1,5 +1,14 @@
 # Tulokset
 
+### Jarin vastaukset kierrokseen 2 (28.11.2026)
+
+- Kierros 2 on hyvä.
+- Kioskitila: **sopii** (ponnahdusikkunat koko näytön kokoisiksi).
+- **Avaa osoite… tarvitaan.** Lisäksi selaimen historian selaaminen ja
+  mahdollisesti kirjanmerkit. Prototyypataan (kierros 3) ennen toteutusta.
+- Toteutus vasta, kun osoitteen kirjoittaminen, historia ja kirjanmerkit on
+  prototyypattu.
+
 ## Kierros 2
 
 Prototyyppi: `design-system/prototypes/rounds/2026-11-27-palvelinselain-kehys-2/`
