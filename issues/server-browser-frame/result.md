@@ -1,12 +1,110 @@
 # Tulokset
 
-### Jarin päätös kierroksen 3 jälkeen (28.11.2026)
+## Kierros 4
 
-Näytetään **koko Chrome-ikkuna** omine välilehtineen, osoiterivineen,
+Prototyyppi: `design-system/prototypes/rounds/2026-11-28-palvelinselain-kehys-4/`
+(`NOTES.md`), tulos
+`design-system/prototypes/dist/2026-11-28-palvelinselain-kehys-4/offline.html`.
+Valitsimessa **1 Koko ikkuna** ja **Nykyinen**. Tarkistettu 1440 × 900,
+1440 × 780 ja 390 px, Päivä ja Yö, palkin ohjainten vierekkäisyys mukaan
+lukien. Avautuu Habitatin teemassa.
+
+### Päätös (Jari 28.11.)
+
+Näytetään **koko Chrome-ikkuna** omine välilehtineen, osoiteriveineen,
 historioineen ja kirjanmerkkeineen. Habitatin omassa näkymässä ei ole
 välilehtiä eikä osoitekenttää, historiaa tai kirjanmerkkejä; kioskitilaa ei
 käytetä. Kierrosten 2–3 välilehtipalkki, komentoarkki ja historialukija
-jäävät pois. Kierros 4 näyttää tämän.
+jäävät pois.
+
+### Mitä muuttui
+
+- **Kuvassa on Chrome-ikkuna sellaisena kuin host sen ajaa.** Mittasin
+  google-chromen Xvfb:ssä ilman ikkunanhallintaa: välilehtirivi on 40 px ja
+  työkalurivi 47 px, joten sivulle jää 1280 × 713. Kirjanmerkkipalkki vie
+  34 px lisää, kun Chrome näyttää sen (oletuksena vain uudella
+  välilehdellä). Ikkunapainikkeita ei ole, joten ikkunaa ei voi kuvasta
+  pienentää eikä sulkea.
+- **Habitatin palkissa** ovat *Oma selain*, vuoro, puhelimen
+  näppäimistöpainike, ⋯ sekä Valmis tai ×. Välilehtiä, originia ja
+  *Sulje välilehti* -toimintoa ei ole.
+- **Chromen omat ohjaimet ovat osa kuvaa.** Klikkaus välilehteen, ×, +,
+  ←, ↻, osoiteriviin, ☆ tai kirjanmerkkiin ottaa ohjauksen kuten klikkaus
+  sivulle. Jos agentti on kesken, tulee tuttu kysymys, ja klikkaus tehdään
+  vasta *Ota ohjaus nyt* -valinnan jälkeen.
+- **⋯-valikko** on kierroksen 2 valikko ilman *Sulje välilehti*
+  -toimintoa. Siihen tuli kaksi lisäystä. *Sulje ponnahdusikkuna* näkyy
+  vain, kun ponnahdusikkuna on edessä, koska ponnahdusikkunassa ei ole omaa
+  sulkemispainiketta ja pääikkuna jää sen alle. Työpöydällä valikon lopussa
+  on lisäksi lause pikanäppäimistä.
+- **Ponnahdusikkuna:** 420 × 520 kokoiseksi pyydetty ikkuna avautui
+  mittauksessa koko näytön kokoisena. Siinä oli vain luku -osoiterivi
+  (34 px) eikä sulkemispainiketta. Henkilö näkee siis ponnahdussivun koko
+  kuvassa osoitteineen. Se sulkeutuu, kun sivu sulkee itsensä (tavallinen
+  kirjautumisen kulku), tai ⋯ › *Sulje ponnahdusikkuna* -valinnasta.
+  **Hostin pitää** sovittaa uusi ponnahdusikkuna näyttöön heti sen
+  auetessa samalla `activateWindow`-kutsulla, jota valinta jo käyttää,
+  ja merkitä se statusiin, jotta ⋯ osaa tarjota sulkemisen. Sulkeminen
+  käyttää hostin nykyistä ikkunan sulkupyyntöä.
+- **Pikanäppäimet:** oma selain pitää ⌘T, ⌘W ja ⌘N itsellään, eikä sivu voi
+  ottaa niitä. ⌘L, ⌘R ja Alt+← sivu voi ottaa, joten ne menevät
+  etä-Chromelle kuten muutkin näppäimet. Tämä pitää vielä tarkistaa
+  labissa. Valitsin vihjeeksi yhden lauseen ⋯-valikkoon enkä mitään
+  kuvaan, koska kuvan + ja × ovat näkyvissä ja pysyvä rivi veisi kuvasta
+  tilaa. ⌘W on ainoa näppäin, josta on haittaa, koska se sulkisi Habitatin
+  kesken työn. Siksi Habitat pyytää selainta varmistamaan sivulta
+  poistumisen silloin, kun ohjaat, ja ⌘W kysyy ensin eikä sulje.
+- **Viimeisen välilehden × kuvassa sulkee Chromen**, kuten Chrome tekee.
+  Habitat sulkee silloin näkymän ja kertoo syyn, ja agentti avaa selaimen
+  uudelleen, kun tarvitsee sitä.
+- **Kuvan koko (kuva · sivulle jäävä korkeus, kirjanmerkkipalkki pois):**
+
+  | Ikkuna | 1 Koko ikkuna | Nykyinen |
+  | --- | --- | --- |
+  | 1440 × 900 | 1097 × 686 · 611 px | 1139 × 712 · 635 px |
+  | 1440 × 780 (läppäri) | 1097 × 686 · 611 px | 966 × 604 · 538 px |
+  | 390 × 844 | 386 × 241 · 215 px | 372 × 233 · 207 px |
+
+  Kuvan sisältö on nyt sama kuin tuotannossa, joten ero tulee vain
+  kehyksestä. Läppärillä sivu on 73 px korkeampi kuin nyt. 1440 × 900
+  -ikkunassa se on 24 px matalampi, koska paneelin leveys rajaa kuvaa.
+  Kierroksen 2 kioskitilassa sivu oli 686 px. Kirjanmerkkipalkki vie
+  29 px (puhelimessa 10 px).
+
+### Mitä host ei enää tarvitse kierroksista 2–3
+
+- `--kiosk`-tilaa eikä koko näytön ponnahdusikkunoita.
+- `active`-kenttää statusiin eikä Habitatin välilehtilistaa.
+- Osoitteen avaamispyyntöä (`Page.navigate` / `Target.createTarget`),
+  http(s)-rajausta eikä oletushakukoneen lukemista `Preferences`-tiedostosta.
+- Historian SQLite-lukijaa (uusi Go-riippuvuus) eikä historiapyyntöä.
+- Kirjanmerkkilaajennusta tai Habitatin omaa kirjanmerkkilistaa.
+- Takaisin- ja päivitysnäppäinten lähettämistä ⋯-valikosta.
+
+Edelleen tarvitaan kierroksen 2 etäleikepöydän luku kopioinnin jälkeen ja
+uutena ponnahdusikkunan sovitus ja merkintä (yllä).
+
+### Päätökset myöhempää katselmointia varten
+
+- Klikkaus Chromen omiin ohjaimiin ottaa ohjauksen kuten klikkaus sivulle,
+  ja kesken se kysyy ensin. Habitat ei erottele niitä, koska kuva on yksi
+  etänäyttö.
+- Historia ja kirjanmerkit ovat Chromen omia. Agentti voi siis avata
+  `chrome://history`-sivun kuten minkä tahansa sivun. Kierroksen 3 ajatus,
+  ettei historiaa näytetä agentille, ei enää päde. Raja on sama Unix-raja
+  kuin ennenkin, koska agentti voi jo nyt lukea profiilin tiedostot.
+- Viimeisen välilehden sulkeminen sulkee selaimen, eikä sitä estetä.
+- Kun ohjaat, ⌘W kysyy varmistuksen (`beforeunload`).
+- Kirjanmerkkipalkki noudattaa Chromen asetusta, eikä sitä pakoteta päälle.
+  Sen saa näkyviin Chromen omasta valikosta kuvassa.
+- Leikepöydän turvaominaisuudet ja Valmis säilyvät kierroksen 2 mukaisina.
+
+### Kysymys Jarille
+
+1. Saako host merkitä statusiin, mikä ikkuna on ponnahdusikkuna (pieni
+   sopimusmuutos), jotta ⋯ voi tarjota *Sulje ponnahdusikkuna*? Ilman sitä
+   ponnahdusikkunaa, joka ei sulje itseään, ei saa kuvasta kiinni, koska
+   oma selain ottaa ⌘W:n.
 
 ## Kierros 3
 

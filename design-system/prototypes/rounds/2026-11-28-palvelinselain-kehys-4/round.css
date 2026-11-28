@@ -1,0 +1,199 @@
+/* Review chrome above the production shell, and this round's own pieces:
+   the slim bar, the picture, the phone's keyboard field, the drawn
+   third-party pages and Chrome's window. Tokens only, except the drawn pages, which are another
+   site's and do not follow Habitat's theme. */
+html, body { margin: 0; background: var(--ah-bg); }
+:root { --picker-h: 60px; }
+html[data-measure="1"] { --picker-h: 0px; }
+html[data-measure="1"] .proto-picker { display: none; }
+.ra-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: grid; gap: 4px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: var(--ah-size-meta)/1.4 var(--ah-font);
+}
+.ra-bar[hidden] { display: none; }
+.ra-controls, .ra-stepper { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
+.ra-stepper { gap: 4px; }
+.ra-bar strong { font-weight: 600; }
+.ra-bar select { font: inherit; }
+.ra-muted { color: var(--ah-muted); }
+.ra-event {
+  font: inherit; padding: 2px 10px; cursor: pointer;
+  color: var(--ah-ink); background: var(--ah-surface);
+  border: 1px solid var(--ah-line-strong, var(--ah-line)); border-radius: var(--ah-r-md);
+}
+.ra-event[aria-pressed="true"] { background: var(--ah-accent-soft); color: var(--ah-accent-ink, var(--ah-ink)); border-color: var(--ah-accent); font-weight: 600; }
+.ra-size { margin-inline-start: 8px; color: var(--ah-ink-2); font-variant-numeric: tabular-nums; }
+.ra-lines { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; color: var(--ah-ink-2); }
+.ra-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+@media (max-width: 600px) {
+  .ra-bar { padding: 6px 10px; gap: 2px; }
+  .ra-controls { gap: 2px 10px; }
+  .ra-controls > strong, .ra-muted { display: none; }
+  .ra-step { padding: 1px 6px; }
+  .ra-size { flex-basis: 100%; margin: 0; }
+  .ra-lines li:not([aria-current]) { display: none; }
+}
+.ra-stage .ah-app-shell {
+  top: var(--review-h, 0px);
+  height: calc(100dvh - var(--review-h, 0px) - var(--picker-h));
+}
+.ra-stage .ah-rail { top: var(--review-h, 0px); }
+@media (max-width: 800px) {
+  .ra-stage .ah-shell-body.ah-mobile-open > .ah-rail-slot { top: var(--review-h, 0px); bottom: var(--picker-h); }
+}
+.bp-main { height: 100%; min-width: 0; display: flex; }
+.kh-reply { display: grid; gap: var(--ah-s3); }
+
+/* ---------- Production's sheet (Nykyinen): below the review bar ---------- */
+.ah-overlay.sb-sheet-overlay { top: var(--review-h, 0px); bottom: var(--picker-h); height: auto; }
+
+/* ---------- 1 Koko ikkuna: production's panel, the browser fills it ---------- */
+.kh-pane { position: relative; }
+
+/* ---------- The slim bar ---------- */
+.kh-bar {
+  display: flex; align-items: center; gap: var(--ah-s2);
+  min-height: 44px; padding: 0 var(--ah-s2) 0 var(--ah-s2);
+  border-bottom: 1px solid var(--ah-line);
+  background: var(--ah-surface);
+}
+.kh-bar-title { display: inline-flex; align-items: center; gap: 6px; min-width: 0; color: var(--ah-ink-2); font-size: var(--ah-size-meta); font-weight: 600; white-space: nowrap; }
+.kh-bar-title svg { width: 15px; height: 15px; flex: none; }
+.kh-bar-end { display: flex; align-items: center; gap: var(--ah-s1); margin-inline-start: auto; flex: none; }
+.kh-fav { width: 10px; height: 10px; flex: none; border-radius: 3px; background: var(--ah-muted); }
+.kh-fav[data-site="energia.example"] { background: #1f7a4d; }
+.kh-fav[data-site="tunnistus.example"] { background: #2d4fa3; }
+.kh-fav[data-site="kirjasto.example"] { background: #a2552b; }
+.kh-fav[data-site="www.google.com"] { background: #4285f4; }
+.kh-fav[data-site=""] { background: #9aa0a6; }
+.kh-turn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px;
+  border: 1px dashed var(--ah-line-strong); border-radius: var(--ah-r-pill);
+  font-size: var(--ah-size-meta); white-space: nowrap; color: var(--ah-ink-2);
+}
+.kh-turn strong { font-weight: 600; overflow: hidden; text-overflow: ellipsis; max-width: 22em; }
+.kh-turn svg { width: 15px; height: 15px; flex: none; }
+.kh-turn[data-control="person"] { border-style: solid; border-color: var(--ah-accent); background: var(--ah-accent-soft); color: var(--ah-accent-ink, var(--ah-ink)); }
+.kh-says {
+  margin: 0; padding: var(--ah-s1) var(--ah-s3);
+  border-bottom: 1px solid var(--ah-accent-line); background: var(--ah-accent-soft);
+  font-size: var(--ah-size-meta); line-height: 1.4; overflow-wrap: anywhere;
+}
+.kh-phone-only { display: none; }
+/* The shared picker is fixed at left: 50%, so its shrink-to-fit width is half
+   the phone; these labels are longer than earlier rounds'. */
+.proto-picker-item { white-space: nowrap; }
+.kh-menu [data-ah-primitive="menu-item"] { display: flex; align-items: center; gap: var(--ah-s2); }
+.kh-menu svg { width: 15px; height: 15px; flex: none; }
+.kh-sep { height: 1px; margin: var(--ah-s1) 0; background: var(--ah-line); border: 0; }
+.kh-more { max-width: 22rem; }
+.kh-truth { margin: var(--ah-s2) 0 0; padding: var(--ah-s2) var(--ah-s1) 0; border-top: 1px solid var(--ah-line); color: var(--ah-ink-2); font-size: var(--ah-size-meta); line-height: 1.4; }
+
+/* ---------- The frame and picture ---------- */
+.sb-frame.kh-frame { flex: 1; min-height: 0; margin: 0; border-radius: 0; border-width: 3px; }
+.kh-screen { position: relative; flex: 1; min-height: 0; overflow: hidden; background: var(--ah-surface-2); }
+.kh-picture { position: absolute; inset: 0; overflow: hidden; outline: none; cursor: default; }
+.kh-picture:focus-visible { box-shadow: inset 0 0 0 2px var(--ah-accent); }
+.kh-remote { position: absolute; transform-origin: 50% 50%; overflow: hidden; }
+.kh-page { position: absolute; left: 0; right: 0; bottom: 0; }
+.kh-hint { z-index: 2; top: auto; bottom: var(--ah-s3); }
+.kh-foot { z-index: 3; }
+.kh-toast { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s2); max-width: min(560px, 100%); }
+.kh-toast-action {
+  font: inherit; font-weight: 600; padding: 1px 8px; cursor: pointer;
+  color: var(--ah-surface); background: transparent; border: 1px solid var(--ah-surface); border-radius: var(--ah-r-pill);
+}
+.kh-app-toast { position: fixed; left: 50%; bottom: calc(var(--picker-h) + 16px); transform: translateX(-50%); z-index: 60; max-width: calc(100vw - 32px); box-shadow: var(--ah-shadow-float); }
+/* production's sheet in compare mode: the stand-in picture fills its viewer box */
+.sb-viewer.kh-picture { position: absolute; inset: 0; }
+
+@media (max-width: 600px) {
+  .kh-desk-only { display: none !important; }
+  .kh-phone-only { display: inline-flex; }
+  .kh-bar { gap: var(--ah-s1); padding: 0 var(--ah-s1); }
+  .kh-turn { padding: 3px 8px; }
+  .sb-frame.kh-frame { border-width: 2px; }
+    /* While you drive, Valmis and the solid border say it; the chip keeps its icon. */
+  .kh-turn[data-control="person"] { padding: 3px 6px; }
+  .kh-turn[data-control="person"] strong { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .kh-turn strong { max-width: 9.5em; }
+  /* production makes the foot static on phones, below its own picture box */
+  .sb-frame-foot.kh-foot { position: absolute; left: 8px; right: 8px; bottom: 8px; padding: 0; }
+}
+
+/* ---------- Drawn third-party pages (fixed colours on purpose) ---------- */
+.fp { position: absolute; inset: 0; font: 16px/1.45 system-ui, sans-serif; color: #1d232a; background: #ffffff; overflow: hidden; }
+.fp-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 32px; padding: 18px 40px; background: #1f7a4d; color: #fff; }
+.fp-head b { font-size: 22px; }
+.fp-head nav { font-size: 15px; opacity: .9; }
+.fp-kirjasto .fp-head { background: #a2552b; }
+.fp-main { padding: 32px 40px; max-width: 900px; }
+.fp-main h1 { margin: 0 0 20px; font-size: 30px; }
+.fp-table { border-collapse: collapse; width: 100%; }
+.fp-table td { padding: 12px 8px; border-bottom: 1px solid #d8dde3; }
+.fp-link { color: #1f5fbf; text-decoration: underline; }
+.fp-tunnistus { background: #eef1f6; display: grid; place-items: center; }
+.fp-card { display: grid; gap: 14px; width: min(420px, calc(100% - 32px)); box-sizing: border-box; padding: 32px; background: #fff; border: 1px solid #d0d6e0; border-radius: 10px; box-shadow: 0 6px 24px rgba(20, 30, 60, .12); }
+.fp-card h1 { margin: 0; font-size: 24px; color: #1e2f63; }
+.fp-card p { margin: 0; color: #4a5568; }
+.fp-field { display: grid; gap: 4px; font-size: 14px; color: #374151; }
+.fp-input { display: flex; align-items: center; min-height: 40px; padding: 0 10px; border: 1px solid #a0aab8; border-radius: 6px; background: #fff; font-size: 16px; color: #111; cursor: text; }
+.fp-input[data-focus] { border-color: #2d4fa3; box-shadow: 0 0 0 3px rgba(45, 79, 163, .25); }
+.fp-caret { display: inline-block; width: 1px; height: 20px; margin-inline-start: 1px; background: #111; }
+.fp-button { display: grid; place-items: center; height: 44px; border-radius: 6px; background: #2d4fa3; color: #fff; font-weight: 600; }
+.fp-popup { background: #f7f8fb; }
+@media (prefers-reduced-motion: no-preference) { .kh-toast { transition: opacity .15s; } }
+/* Cut, copy, paste: the shortcut sits at the item's end. */
+.kh-menu-label { flex: 1; padding-inline-start: 23px; }
+.kh-kbd { margin-inline-start: var(--ah-s4); color: var(--ah-ink-2); font: 12px var(--ah-mono); }
+@media (max-width: 600px) { .kh-kbd { display: none; } }
+/* The phone's keyboard field: invisible, but focusable so the system
+   keyboard opens; the note says where the typing goes. */
+.kh-ime { position: absolute; left: 0; bottom: 0; width: 1px; height: 1px; padding: 0; border: 0; opacity: 0; resize: none; font-size: 16px; }
+.kh-ime-note {
+  position: absolute; left: 50%; top: var(--ah-s2); transform: translateX(-50%); z-index: 3; margin: 0;
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px;
+  border: 1px solid var(--ah-accent); border-radius: var(--ah-r-pill); background: var(--ah-surface);
+  color: var(--ah-ink); font-size: var(--ah-size-meta); white-space: nowrap; box-shadow: var(--ah-shadow-float);
+}
+.kh-ime-note svg { width: 14px; height: 14px; }
+
+/* ---------- Chrome's own window (fixed colours: Chrome's, not Habitat's), as measured with no window manager ---------- */
+.cr-window { position: absolute; left: 0; right: 0; top: 0; display: flex; flex-direction: column; background: #d3e3fd; font: 13px/1 system-ui, sans-serif; color: #1f1f1f; overflow: hidden; }
+.cr-tabs { display: flex; align-items: end; gap: 2px; padding: 0 6px; flex: none; }
+.cr-btn { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; font-size: 18px; color: #444; cursor: default; flex: none; }
+.cr-btn[data-off] { color: #b0b4ba; }
+.cr-tabsearch { align-self: center; width: 28px; height: 28px; background: #e8effc; border-radius: 8px; font-size: 14px; }
+.cr-tab { display: flex; align-items: center; gap: 8px; width: 232px; min-width: 60px; flex: 0 1 232px; height: 34px; padding: 0 8px 0 12px; box-sizing: border-box; border-radius: 10px 10px 0 0; cursor: default; }
+.cr-tab[data-active] { background: #fff; }
+.cr-tab-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cr-tab-x { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; font-size: 15px; flex: none; }
+.cr-tab-x:hover, .cr-btn:hover { background: rgba(0, 0, 0, .08); }
+.cr-plus { align-self: center; }
+.cr-toolbar { display: flex; align-items: center; gap: 4px; padding: 0 8px; background: #fff; flex: none; }
+.cr-omni { display: flex; align-items: center; flex: 1; min-width: 0; height: 34px; margin: 0 6px; padding: 0 8px 0 16px; border-radius: 17px; background: #e9eef6; font-size: 14px; cursor: text; }
+.cr-omni[data-editing] { background: #fff; box-shadow: 0 0 0 2px #0b57d0; }
+.cr-omni-text { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.cr-omni-text [data-selected] { background: #a8c7fa; }
+.cr-omni-hint { color: #5f6368; }
+.cr-star { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; font-size: 17px; color: #444; cursor: default; }
+.cr-star[data-on] { color: #0b57d0; }
+.cr-bookmarks { display: flex; align-items: center; gap: 4px; padding: 0 10px; background: #fff; border-top: 0; flex: none; }
+.cr-bookmark { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border-radius: 14px; font-size: 12px; color: #3c4043; cursor: default; }
+.cr-bookmark:hover { background: #f1f3f4; }
+.cr-window::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: #c4c7c5; }
+.cr-popup { position: absolute; inset: 0; z-index: 1; background: #f7f8fb; }
+.cr-popup-strip { position: absolute; left: 0; right: 0; top: 0; display: flex; align-items: center; gap: 8px; padding: 0 10px; box-sizing: border-box; background: #edf2fa; border-bottom: 1px solid #c4c7c5; font: 13px/1 system-ui, sans-serif; color: #1f1f1f; }
+.cr-lock { font-size: 13px; color: #444; }
+/* The new tab page and a search result, drawn. */
+.fp-ntp { display: grid; place-content: center; justify-items: center; gap: 28px; background: #fff; }
+.fp-ntp-logo { font-size: 72px; font-weight: 500; color: #4285f4; letter-spacing: -2px; }
+.fp-ntp-box { display: block; width: 560px; padding: 14px 22px; border: 1px solid #dfe1e5; border-radius: 26px; color: #5f6368; font-size: 16px; box-sizing: border-box; }
+.fp-haku-head { display: flex; align-items: center; gap: 32px; padding: 20px 40px; border-bottom: 1px solid #ebebeb; }
+.fp-haku-head b { font-size: 26px; color: #4285f4; }
+.fp-haku-head .fp-ntp-box { width: 600px; padding: 10px 20px; color: #202124; }
+.fp-haku-row { display: grid; gap: 4px; margin: 0 0 24px; font-size: 19px; }
+.fp-haku-row small { color: #4d5156; font-size: 13px; }
+.fp-input, .fp-button { cursor: default; }
