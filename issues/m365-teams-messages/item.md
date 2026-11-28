@@ -12,7 +12,7 @@ originating_run: 01m72a87fs3bc4k0f73bdsg4sa
 originating_run_kind: spinoff
 lane: m365-teams
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Microsoft 365: the agent cannot read the person's Teams chats and channel messages
