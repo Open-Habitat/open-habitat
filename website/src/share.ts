@@ -7,13 +7,13 @@
 export const siteName = 'Open Habitat';
 
 export const siteDescription =
-  'Open Habitat gives everyone on your team a real coding agent with its own Linux account, in a browser tab. Open source, early pre-release.';
+  'Open Habitat runs coding-grade agents on a Linux server you control. Each person on the team is a Linux user there and works with their agents in a browser tab. Open source, early pre-release.';
 
 export const shareImage = {
   path: '/og.png',
   width: 1200,
   height: 630,
-  alt: 'Open Habitat: coding-grade AI agents for your whole team. A conversation with an agent in the browser, on a desktop and a phone.',
+  alt: 'Open Habitat: coding-grade agents on a server for you and your team. A conversation with an agent in the browser, on a desktop and a phone.',
 };
 
 type Head = { tag: 'meta'; attrs: Record<string, string> }[];

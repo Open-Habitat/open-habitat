@@ -1,31 +1,30 @@
 // node scripts/sync-landing-assets.mjs [--check]
 // Makes public/landing/ hold exactly the binary assets the front page uses
-// (images, video, audio), copied from $ETUSIVU_ASSETS/<block>/<name> (default
-// ~/src/open-habitat-dev/worker-results/etusivu-assets), where the block
-// workers leave them outside git. Files the page no longer uses are removed.
-// Exits 1 listing the assets the page uses that the source does not have; a
-// block's assets.mjs, where it has one, makes its files. With --check it
+// (images, video, audio, the live demo's HTML), copied from
+// $ETUSIVU_ASSETS/<id>/<name>, where the workers that make them leave them
+// outside git. Files the page no longer uses are removed. Exits 1 listing the
+// assets the page uses that the source does not have. With --check it
 // changes nothing and exits 1 when public/landing/ is not in sync.
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
-import { homedir } from 'node:os';
 import path from 'node:path';
-import { renderLanding, landingAssetsDir, landingRound } from '../landing.mjs';
+import { renderLanding, landingAssetsDir } from '../landing.mjs';
 
 // Same bytes in both files (a missing destination is not the same).
 const cmpSync = (a, b) => existsSync(b) && statSync(a).size === statSync(b).size && readFileSync(a).equals(readFileSync(b));
 
 const check = process.argv.includes('--check');
-const source = process.env.ETUSIVU_ASSETS || path.join(homedir(), 'src/open-habitat-dev/worker-results/etusivu-assets');
+const source = process.env.ETUSIVU_ASSETS;
+if (!source) {
+  console.error('set ETUSIVU_ASSETS to the directory that holds the assets as <id>/<name>');
+  process.exit(2);
+}
 const { assets } = await renderLanding();
 const wanted = new Set(assets.map(({ id, name }) => path.join(id, name)));
 
 const missing = [...wanted].filter((f) => !existsSync(path.join(source, f)));
 if (missing.length) {
   console.error(`the page uses ${missing.length} asset(s) not in ${source}:`);
-  for (const f of missing) {
-    const gen = path.join(landingRound, 'blocks', f.split(path.sep)[0], 'assets.mjs');
-    console.error(`  ${f}${existsSync(gen) ? `  (made by ${path.relative(process.cwd(), gen)})` : ''}`);
-  }
+  for (const f of missing) console.error(`  ${f}`);
   process.exit(1);
 }
 

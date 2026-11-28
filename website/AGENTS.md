@@ -8,42 +8,53 @@ build` here writes `dist/`; `npm run dev` previews it.
 
 English only, at the root (`/`).
 
-The English front page (`src/pages/index.astro`) is the landing page's
-blocks, rendered at build time by the round's own `render.mjs`, the same
-renderer its `build.mjs` uses, so a block change reaches the site with no
-change here. `landing.mjs` holds the blocks' location in one constant
-(`landingRound`, today `design-system/prototypes/rounds/2026-11-23-etusivu-v1/`;
-moving the round changes that line), and a Vite plugin that gives the page the
-rendered HTML, the engine's and blocks' CSS and the browser script
-(`engine/client.js` plus each block's `client.js`). The blocks render in the
-build's Node process, not in Vite's bundle, because they find their own files
-through `import.meta.url`. The page's shell is thin: the head and a footer line with the
-documentation's links and the font licence; the blocks bring their own top
-bar and footer, and the round's engine its navigation (a rail at the left
-edge on the desktop, a sticky bar on the phone), so nothing here adds
-another. The blocks are drawn and checked in the light theme only, so
+The English front page (`src/pages/index.astro`) is rendered at build time
+by its round's own `render.mjs`, so a change in the round reaches the site
+with no change here. `landing.mjs` holds the round's location in one constant
+(`landingRound`, today `design-system/prototypes/rounds/2026-11-28-oss-etusivu/`)
+and a Vite plugin that gives the page the rendered HTML, CSS and browser
+script. The round renders in the build's Node process, not in Vite's bundle,
+because it finds its own files through `import.meta.url`. Its `content.mjs`
+holds every sentence on the page; `page.mjs` lays them out; feature rows show
+screens from the landing page v1 round beside it (`2026-11-23-etusivu-v1/`,
+read in place) or the round's own (`screens.mjs`: the connectors hub, the
+program cloud and the browser row's live demo). The logos are inline SVG from
+`logos/`, whose `index.json` records each one's source and licence; the six
+that are not CC0 are credited by name in the page's footer, which also carries
+the font licence. The page brings its own top bar and footer, so the Astro
+shell is only the head. It is drawn and checked in the light theme only, so
 the page is Päivä whatever the theme menu on the documentation says.
 
-The blocks' binary assets (images, video, audio) are not in the round. Block
-workers leave them in `$ETUSIVU_ASSETS`, outside git;
-`node scripts/sync-landing-assets.mjs` copies exactly the files the page
-uses into `public/landing/<block>/` (served as `/landing/<block>/<name>`) and
-removes files it no longer uses, and `--check` only reports. The conductor
-reviews each file at full size and commits `public/landing/` by hand. The
-build fails, listing the files, while an asset the page uses is missing
-there. `node scripts/check-landing.mjs dist <shots>` serves a build, scrolls
-`/` at 1440 and 390 px, opens work (on the phone, where each story is a
-timeline of rows, it opens the row first), plays a video and fails on a
-console error, a failed request or a request to another origin; the round's
-`check.mjs` checks each block in depth.
+The browser row's demo is a self-contained HTML scene in an iframe sandboxed
+to `allow-scripts` (no same origin), over its poster. The iframe takes no
+pointer events, so the wheel over it scrolls the page; the page's control
+talks to it by `postMessage` (`{scenecast:'pause'|'play'}`, answered by
+`{scenecast:'state', playing, t}`, accepted only from that iframe's window).
+Under reduced motion the poster shows until the reader presses play.
+
+The page's binary assets (images, the demo scene and its poster) are not in
+the round. The workers that make them leave them in `$ETUSIVU_ASSETS`,
+outside git, as `<id>/<name>`; `ETUSIVU_ASSETS=<dir> node
+scripts/sync-landing-assets.mjs` copies exactly the files the page uses into
+`public/landing/<id>/` (served as `/landing/<id>/<name>`) and removes files it
+no longer uses, and `--check` only reports. The conductor reviews each file at
+full size and commits `public/landing/` by hand. The build fails, listing the
+files, while an asset the page uses is missing there. `node
+scripts/check-landing.mjs dist <shots>` serves a build and checks `/` at 1440
+and 390 px: it scrolls the page, opens Show work, presses Copy and reads the
+clipboard, pauses and resumes the demo (play continues from the paused frame
+in the same iframe), turns the wheel over the demo and the screens, checks the
+reduced-motion poster, and fails on a console error or warning, a failed
+request, a request to another origin, a broken image or sideways scrolling.
 
 What a shared link shows is in `src/share.ts`: the site's description and
 one share image for every page, which the front page's head and the
 documentation's route middleware (`src/routeData.ts`) both use; Starlight
 writes the rest of the documentation's tags. `public/og.png` and
 `public/apple-touch-icon.png` are rendered by `node scripts/og-image.mjs`
-from the hero's headline and capture, and nothing notices when the hero
-changes under them, so re-render and look at the image when it does.
+from the hero's headline and eyebrow (the round's `content.mjs`) and the hero
+capture. Nothing notices when the hero changes under them, so re-render and
+look at the image when it does.
 
 The site is English only. The Finnish pages (the old `/fi/` landing page and
 the translated documentation) were removed on 24.11.2026 at Jari's request.
@@ -59,7 +70,7 @@ The look is the product's design system itself: `astro.config.mjs` loads
 A missing value is added to the tokens, not hard-coded here. The one
 exception is `src/styles/brand.css`, the new brand's themes and mark copied
 unchanged; it goes once the design system's tokens carry them. The front
-page loads the same two files and adds the round's engine CSS.
+page loads the same two files and adds the round's CSS.
 
 The documentation's themes are Päivä (light) and Yö (dark), from the system
 or Starlight's theme menu, which names them Day/Night (`src/content/i18n/`).

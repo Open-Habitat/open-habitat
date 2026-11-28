@@ -1,24 +1,24 @@
-// The English front page is the landing page's blocks, rendered at build time
-// by the round's own renderer (render.mjs beside its build.mjs), so a block
-// change reaches the site without a change here. The blocks' binary assets are
-// not in the round: scripts/sync-landing-assets.mjs copies the ones the page
-// uses into public/landing/, and the build fails while one of them is missing.
+// The English front page, rendered at build time by its round's own renderer
+// (render.mjs), so a change in the round reaches the site without a change
+// here. The page's binary assets are not in the round:
+// scripts/sync-landing-assets.mjs copies the ones the page uses into
+// public/landing/, and the build fails while one of them is missing.
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-// Where the blocks are. Moving the round into the website changes only this.
+// Where the page's round is. Moving it changes only this.
 export const landingRound = fileURLToPath(
-  new URL('../design-system/prototypes/rounds/2026-11-23-etusivu-v1/', import.meta.url),
+  new URL('../design-system/prototypes/rounds/2026-11-28-oss-etusivu/', import.meta.url),
 );
 
 const websiteDir = fileURLToPath(new URL('.', import.meta.url));
-// The page's assets, served from the site's own origin as /landing/<block>/<name>.
+// The page's assets, served from the site's own origin as /landing/<id>/<name>.
 export const landingAssetsDir = path.join(websiteDir, 'public', 'landing');
 const assetUrl = (id, name) => `/landing/${id}/${name}`;
 
 // Renders the page: { html, css, js, assets: [{ id, name }] }. The HTML refers
-// to an asset as assets/<block>/<name> (the round's engine/kit.mjs); exactly
+// to an asset as assets/<id>/<name>; exactly
 // those strings are rewritten to the site's URLs.
 export async function renderLanding() {
   const { render } = await import(pathToFileURL(path.join(landingRound, 'render.mjs')).href);
@@ -37,7 +37,7 @@ export function missingLandingAssets(assets) {
 
 // Vite plugin: `import landing from 'virtual:landing'` gives the page what
 // renderLanding() returns. It renders here, in the build's Node process, not
-// in Vite's bundle, because the blocks find their own files through
+// in Vite's bundle, because the round finds its own files through
 // import.meta.url.
 const VIRTUAL = 'virtual:landing';
 export function landingPlugin() {
