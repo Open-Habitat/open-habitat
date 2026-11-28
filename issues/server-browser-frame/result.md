@@ -1,5 +1,121 @@
 # Tulokset
 
+## Kierros 3
+
+Prototyyppi: `design-system/prototypes/rounds/2026-11-28-palvelinselain-kehys-3/`
+(`NOTES.md`), tulos
+`design-system/prototypes/dist/2026-11-28-palvelinselain-kehys-3/offline.html`.
+Valitsimessa **1 Osoite palkissa** ja **2 Komentoarkki**. Tarkistettu
+1440 × 900, 1440 × 780 ja 390 px, Päivä ja Yö, palkin ohjainten
+vierekkäisyys mukaan lukien. Avautuu Habitatin teemassa.
+
+### Päätökset (Jari 28.11.)
+
+Kierroksen 2 kehys ja kioskitila hyväksytty. *Avaa osoite…* tarvitaan, ja
+lisäksi historia ja mahdollisesti kirjanmerkit.
+
+### Mitä muuttui (sama molemmissa suunnissa)
+
+- **Osoite.** Aktiivisen välilehden origin palkissa on painike. Sen voi
+  avata myös ⋯ › *Avaa osoite…* tai ⌘L/Ctrl+L. Kentässä on valmiina sivun
+  osoite valittuna, joten kirjoittaminen korvaa sen. ↵ avaa sivun nykyisessä
+  välilehdessä. ⌥↵/Alt+Enter ja palkin **+** (puhelimessa välilehtivalikon
+  *Uusi välilehti*) avaavat uudessa. ⌘T:tä ei voi käyttää, koska oma selain
+  ottaa sen.
+- **Ehdotukset** kirjoittaessa: ensin osuma, jonka origin alkaa
+  kirjoitetulla, sitten kirjoitettu itse (osoite tai *Hae Googlella: …*).
+  Sen jälkeen tulevat avoimet välilehdet (*Vaihda välilehteen*),
+  kirjanmerkit ja historia. Tyhjä kenttä näyttää kirjanmerkit ja viimeisimmät
+  sivut.
+- **Haku:** teksti, joka ei ole osoite, haetaan palvelinselaimen
+  oletushakukoneella, ja rivi nimeää sen. Vain http- ja https-osoitteet
+  avautuvat. Esimerkiksi `javascript:` ja `file:` näyttävät syyn eivätkä
+  avaudu.
+- **Kun agentti ohjaa:** kentän avaaminen ei ota ohjausta, koska kenttä on
+  Habitatin eikä sivun. Sivun avaaminen ottaa ohjauksen kuten välilehden
+  valinta. Jos agentti on kesken, tulee tuttu kysymys, ja sivu avautuu
+  vasta *Ota ohjaus nyt* -valinnan jälkeen tai kun agentin toiminto päättyy.
+  Kentän alareunassa sanotaan tämä etukäteen.
+- **Takaisin ja Lataa uudelleen** ovat ⋯-valikossa pikanäppäimineen
+  (Alt+← / ⌘[, Ctrl/⌘R). Ne tarvitaan, koska kioskitila vei Chromen omat
+  painikkeet, eikä puhelimessa tai kosketuksella ole näppäimiä. Molemmat
+  muuttavat sivua, joten ne ottavat ohjauksen samalla tavalla.
+- **Historia** (⋯ › *Historia*, ⌘Y/Ctrl+H): kirjanmerkit, *Tänään* ja
+  *Aiemmin*, otsikko, origin ja aika, sekä haku. Rivi avaa sivun nykyisessä
+  välilehdessä. Alalaidassa lukee, mistä tieto tulee. *Tyhjennä historia…*
+  avaa Chromen oman *Poista selaustiedot* -sivun uuteen välilehteen. Siinä
+  on oletuksena valittuna vain *Selaushistoria*, eikä evästeitä eli
+  kirjautumisia poisteta, ellei niitä valitse.
+- **Kirjanmerkit (minimi):** ☆ kentässä tai ⋯ › *Lisää kirjanmerkki*
+  (⌘D/Ctrl+D), lista ehdotusten ja historian alussa ja × poistaa.
+  Katselmointipalkin *Kirjanmerkit* poistaa ne näkyvistä vertailua varten.
+
+### Suunnat
+
+1. **Osoite palkissa:** origin muuttuu kentäksi palkissa, ja ehdotukset
+   avautuvat sen alle. Historia on paneeli kuvan oikeassa reunassa.
+2. **Komentoarkki (suositus):** yksi arkki kuvan päällä osoitteelle,
+   ehdotuksille, kirjanmerkeille ja historialle. ⋯ › *Historia* avaa saman
+   arkin tyhjällä kentällä.
+
+Suosittelen kakkosta. Sama yksi pinta palvelee osoitetta, historiaa ja
+kirjanmerkkejä, ja se on sama työpöydällä ja puhelimessa. Lisäksi kierroksella
+2 hyväksytty palkki pysyy ennallaan eikä vaihdu kesken kentäksi. Ykkönen on
+tutumpi selaimen näköisenä, mutta siinä on kaksi pintaa (pudotuslista ja
+paneeli).
+
+### Mistä historia ja kirjanmerkit tulevat, ja mitä host tarvitsee
+
+- **Historia on palvelinselaimen oma** eli Chromen `History`-tietokanta
+  profiilissa. Siinä ovat myös agentin avaamat sivut, koska Chrome ei
+  kirjaa, kuka sivun avasi. Chrome lukitsee tiedoston käytön ajaksi, joten
+  hostin pitää lukea siitä kopio. CDP:ssä ei ole historiarajapintaa.
+  Tarvitaan **SQLite-lukija Go:hon (uusi riippuvuus)** ja henkilön näkymälle
+  oma pyyntö (haku ja raja). Tieto näytetään Habitatin listana eikä
+  `chrome://history`-sivuna kuvassa, jotta agentin kuvakaappaukset eivät
+  näe sitä.
+- **Agentti ei saa uutta komentoa.** Historia, kirjanmerkit ja avaaminen
+  kulkevat henkilön ohjausreittiä samaan tapaan kuin välilehden sulkeminen
+  nyt. Agentin kiinteä komentojoukko (`agentpolicy_linux.go`) pysyy
+  ennallaan. Agentti ajaa samana Unix-käyttäjänä ja voi yhä lukea profiilin
+  tiedostoja suoraan. Tämä on sama raja kuin nyt, eikä kierros muuta sitä.
+- **Avaaminen:** uusi henkilön ohjauspyyntö (osoite, välilehti tai uusi).
+  Host tekee `Page.navigate` tai `Target.createTarget` ja ottaa ohjauksen.
+  Host hyväksyy vain http(s)-osoitteet sekä yhden
+  `chrome://settings/clearBrowserData`-osoitteen. Hakuosoitteen host muodostaa
+  Chromen oman oletushakukoneen asetuksesta (`Preferences`, Google, ellei
+  sitä ole vaihdettu).
+- **Tyhjennys** on Chromen oma sivu, joten hostissa ei ole omaa
+  poistokoodia, ja Chrome itse sanoo, mitä poistuu.
+- **Takaisin ja Lataa uudelleen** lähetetään näppäiminä kuvan läpi
+  (Alt+←, F5), joten ne eivät vaadi hostilta mitään. Labissa pitää vielä
+  tarkistaa, että kioskitilan Chrome tottelee niitä.
+- **Kirjanmerkit:** Chromen oman `Bookmarks`-tiedoston lukeminen on
+  helppoa, mutta lisääminen ja poistaminen eivät onnistu. CDP:ssä ei ole
+  kirjanmerkkirajapintaa, ja Chrome kirjoittaa tiedoston muistista päälle.
+  Kirjoittaminen vaatisi joko hostin lataaman laajennuksen kirjautuneeseen
+  selaimeen (uusi komponentti) tai Habitatin oman listan (toinen paikka
+  totuudelle). **Suosittelen jättämään kirjanmerkit pois.** Historian
+  ehdotukset vievät takaisin käytyihin sivuihin jo kahdella merkillä.
+
+### Päätökset myöhempää katselmointia varten
+
+- Kentän avaaminen ei ota ohjausta, mutta sivun avaaminen, Takaisin ja
+  Lataa uudelleen ottavat. Kun agentti on kesken, ne kysyvät ensin.
+- Vain http(s). Haku käyttää palvelinselaimen oletushakukonetta, ei
+  Habitatin valitsemaa.
+- Historiaa ei näytetä agentille, eikä sitä ole kuvassa.
+- Pikanäppäimet toimivat vain, kun fokus on näkymässä. Muuten ne menevät
+  omalle selaimelle.
+
+### Kysymykset Jarille
+
+1. Komentoarkki (suositus) vai Osoite palkissa?
+2. Saako host lukea Chromen historian SQLite-kopiosta? Se on uusi
+   Go-riippuvuus.
+3. Jätetäänkö kirjanmerkit pois (suositus)? Jos ne halutaan: laajennus
+   palvelinselaimeen vai Habitatin oma lista?
+
 ### Jarin vastaukset kierrokseen 2 (28.11.2026)
 
 - Kierros 2 on hyvä.
