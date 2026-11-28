@@ -62,6 +62,17 @@ The packages divide the work as follows.
   and the workspace editor (`editor_linux.go`: code-server run as the
   person, its relay, and file links through `editor-extension/`).
   `search_linux.go` serves the ⌘K switcher's search from `searchindex/`.
+- `browserhost/`: the person's server browser (Xvnc and Chrome), run as them.
+  The person signs in by typing into the same browser the agent drives, so the
+  agent's DevTools socket forwards only a fixed set of commands rebuilt from
+  validated parameters, and page scripts come only from the host's own
+  templates. Agent-supplied JavaScript, DOM, DOMSnapshot, accessibility,
+  network, fetch, debugger or keyboard commands, non-http(s) addresses and
+  nested sessions must never reach Chrome: any of them reads what the person
+  typed. A new agent capability is a new fixed command or template that
+  reads no input value, never a pass-through. This holds against the agent's
+  browser routes only; the agent is the same Unix user and can reach that
+  user's own sockets and files.
 - `searchindex/`: the person's conversation search index (ADR 0036), the one
   store the daemon derives from native history and keeps between requests.
   It is a cache in the person's state directory (0600): deleted and rebuilt

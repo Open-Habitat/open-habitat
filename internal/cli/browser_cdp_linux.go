@@ -168,6 +168,9 @@ func (c *browserCDP) call(method string, params any, out any) error {
 				// sent: the page may now be different.
 				return &cliError{code: "browser_person_took_control", message: "the person took control during this command and it was not carried out; inspect the page before continuing", exit: 1}
 			}
+			if e.Message == browserhost.RevealedRefused || e.Message == browserhost.GuardFailed {
+				return browserActionRefused(e.Message)
+			}
 			return &browserCDPRejected{method: method}
 		}
 		if out == nil {
@@ -183,14 +186,24 @@ func (e *browserCDPRejected) Error() string {
 	return e.method + " refused; inspect the page before retrying"
 }
 
-func (c *browserCDP) evaluate(expression string) (json.RawMessage, error) {
+// pageAction runs one of the host's page scripts. The agent has no
+// JavaScript of its own in the page: the host refuses it, because a script
+// could read what the person typed there.
+func (c *browserCDP) pageAction(action, selector, value string) (json.RawMessage, error) {
 	var out struct {
 		Result struct {
 			Value json.RawMessage `json:"value"`
 		} `json:"result"`
 		Exception json.RawMessage `json:"exceptionDetails"`
 	}
-	err := c.call("Runtime.evaluate", map[string]any{"expression": expression, "awaitPromise": true, "returnByValue": true}, &out)
+	params := map[string]any{"action": action}
+	if selector != "" {
+		params["selector"] = selector
+	}
+	if value != "" {
+		params["value"] = value
+	}
+	err := c.call(browserhost.PageActionMethod, params, &out)
 	if err != nil {
 		return nil, err
 	}
@@ -203,10 +216,9 @@ func (c *browserCDP) evaluate(expression string) (json.RawMessage, error) {
 	return out.Result.Value, nil
 }
 
-// Wait on the document's load event, not a guessed sleep or network-idle
-// heuristic (a signed-in application may keep connections open indefinitely).
+// Wait on the document's load event (browserhost.PageLoaded).
 func (c *browserCDP) loaded() error {
-	_, err := c.evaluate(`new Promise(resolve => { if (document.readyState === 'complete') resolve(true); else window.addEventListener('load', () => resolve(true), {once:true}); })`)
+	_, err := c.pageAction(browserhost.PageLoaded, "", "")
 	return err
 }
 
@@ -278,7 +290,7 @@ func (c *browserCDP) settleClick() error {
 }
 
 func (c *browserCDP) pageMetadata(result map[string]any) error {
-	v, err := c.evaluate(`({url:location.href,title:document.title})`)
+	v, err := c.pageAction(browserhost.PageMetadata, "", "")
 	if err != nil {
 		return err
 	}

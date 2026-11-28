@@ -26,7 +26,7 @@ type browserAction struct {
 
 func isBrowserAction(s string) bool {
 	switch s {
-	case "goto", "text", "links", "click", "type", "screenshot", "download", "tabs", "close", "eval":
+	case "goto", "text", "links", "click", "type", "screenshot", "download", "tabs", "close":
 		return true
 	}
 	return false
@@ -57,24 +57,14 @@ func parseBrowserAction(args []string) (browserAction, error) {
 	}
 	a.tab, a.selector, a.name = values["--tab"], values["--selector"], values["--name"]
 	switch a.verb {
-	case "goto", "download", "eval":
-		expected := "a URL"
-		if a.verb == "eval" {
-			expected = "JavaScript"
-		}
+	case "goto", "download":
 		if len(positional) != 1 || strings.TrimSpace(positional[0]) == "" {
-			return a, usage(a.verb + " requires exactly one positional argument: " + expected)
+			return a, usage(a.verb + " requires exactly one positional argument: a URL")
 		}
 		a.value = positional[0]
-		if a.verb == "eval" {
-			if len(a.value) > 64<<10 {
-				return a, usage("eval JavaScript exceeds 64 KiB")
-			}
-		} else {
-			u, err := url.Parse(a.value)
-			if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.User != nil || strings.ContainsAny(a.value, "\r\n\x00") {
-				return a, usage("expected an absolute http(s) URL without embedded credentials")
-			}
+		u, err := url.Parse(a.value)
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.User != nil || strings.ContainsAny(a.value, "\r\n\x00") {
+			return a, usage("expected an absolute http(s) URL without embedded credentials")
 		}
 	case "click", "type":
 		_, named := values["--selector"]
@@ -102,7 +92,7 @@ func parseBrowserAction(args []string) (browserAction, error) {
 	if a.verb != "tabs" && a.verb != "goto" && a.tab == "" {
 		return a, usage("--tab is required; use the id returned by goto")
 	}
-	if (a.verb == "click" || a.verb == "type") && (strings.TrimSpace(a.selector) == "" || len(a.selector) > 4096) {
+	if (a.verb == "click" || a.verb == "type") && (strings.TrimSpace(a.selector) == "" || len(a.selector) > browserhost.SelectorLimit) {
 		return a, usage("expected a nonempty CSS selector of at most 4096 bytes, positional or --selector")
 	}
 	if a.verb == "download" || a.verb == "screenshot" {
@@ -336,35 +326,14 @@ func runBrowserAction(c *browserCDP, a browserAction, downloads string) (any, er
 			result["path"] = path
 			result["bytes"] = len(b)
 		} else {
-			expr := ""
-			switch a.verb {
-			case "text":
-				expr = `({url:location.href,title:document.title,text:document.body?.innerText.slice(0,200000) || '',truncated:(document.body?.innerText.length || 0)>200000})`
-			case "links":
-				expr = `({links:Array.from(document.querySelectorAll('a[href]')).slice(0,2000).flatMap(a=>{try{return [{text:(a.innerText ?? a.textContent ?? '').slice(0,1000),url:new URL(a.getAttribute('href'),a.baseURI).href}]}catch{return []}}),truncated:document.querySelectorAll('a[href]').length>2000})`
-			case "eval":
-				expr = a.value
-			case "click", "type":
-				sel, _ := json.Marshal(a.selector)
-				expr = `(()=>{let es;try{es=document.querySelectorAll(` + string(sel) + `)}catch{return {refused:'invalid_selector'}};if(es.length!==1)return {refused:'selector_must_match_one',count:es.length};const e=es[0];if(e.disabled)return {refused:'disabled'};`
-				if a.verb == "click" {
-					expr += clickPointExpression
-				} else {
-					val, _ := json.Marshal(a.value)
-					expr += `
-if(!(e instanceof HTMLInputElement || e instanceof HTMLTextAreaElement))return {refused:'expected_input_or_textarea'};
-if(e.readOnly || ['password','file','checkbox','radio','button','submit','reset','image','hidden'].includes(e.type))return {refused:'unsupported_input'};
-const value=` + string(val) + `;
-const p=e instanceof HTMLTextAreaElement?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;
-const set=Object.getOwnPropertyDescriptor(p,'value').set;
-const probe=e.cloneNode(false);set.call(probe,value);
-if(probe.value!==value)return {refused:'value_rejected'};
-e.focus();set.call(e,value);
-if(e.value!==value)throw Error('live input rejected value');
-e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));return {typed:true};})()`
-				}
+			action, selector, value := a.verb, "", ""
+			if a.verb == "click" || a.verb == "type" {
+				selector = a.selector
 			}
-			if a.verb == "click" || a.verb == "type" || a.verb == "eval" {
+			if a.verb == "type" {
+				value = a.value
+			}
+			if a.verb == "click" || a.verb == "type" {
 				if err := c.pageMetadata(result); err != nil {
 					return nil, err
 				}
@@ -375,7 +344,7 @@ e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('ch
 					return nil, err
 				}
 			}
-			v, err := c.evaluate(expr)
+			v, err := c.pageAction(action, selector, value)
 			if err != nil {
 				return nil, err
 			}
@@ -416,30 +385,6 @@ e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('ch
 	}
 	return result, nil
 }
-
-// clickPointExpression finishes the selector guard for click: it scrolls the
-// element into view and returns the visible centre that a real pointer click
-// will hit. Widgets that select on pointerdown or mousedown (ARIA listbox
-// options in React selects, for example) ignore a synthetic element.click(),
-// so the click itself goes through Input.dispatchMouseEvent. Hit-testing here
-// refuses before anything is sent when another element would receive the press.
-const clickPointExpression = `
-e.scrollIntoView({block:'center',inline:'center',behavior:'instant'});
-if(e.checkVisibility && !e.checkVisibility({visibilityProperty:true}))return {refused:'not_visible',count:1};
-const vw=document.documentElement.clientWidth||innerWidth, vh=document.documentElement.clientHeight||innerHeight;
-let x, y;
-for(const r of e.getClientRects()){
-  const l=Math.max(r.left,0), t=Math.max(r.top,0), rr=Math.min(r.right,vw), b=Math.min(r.bottom,vh);
-  if(rr-l>=1 && b-t>=1){x=(l+rr)/2;y=(t+b)/2;break;}
-}
-if(x===undefined)return {refused:'not_visible',count:1};
-const hit=document.elementFromPoint(x,y);
-if(!hit || (hit!==e && !e.contains(hit))){
-  let d='nothing';
-  if(hit){d=hit.localName+(hit.id?'#'+hit.id:'');for(const c of Array.from(hit.classList).slice(0,3))d+='.'+c;}
-  return {refused:'covered',count:1,covered:d.slice(0,200)};
-}
-return {x,y};})()`
 
 // pointerClick sends the press a person's mouse would: move, left press and
 // release at one point in the viewport's CSS pixels, so the page receives

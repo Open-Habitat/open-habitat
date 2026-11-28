@@ -143,6 +143,10 @@ func agentBrowserRequest(args []string) (method, path string, body []byte, err e
 			return "", "", nil, usage(args[0] + " expects no positional arguments or command-specific flags")
 		case "request":
 			return "", "", nil, usage("request expects no positional arguments; use --text TEXT [--window ID] or --clear")
+		case "eval":
+			// Agent JavaScript in the page could read what the person typed
+			// there, so the host refuses it and the CLI no longer offers it.
+			return "", "", nil, usage("eval is not available: the agent cannot run its own JavaScript in the person's browser; use text, links, click, type or screenshot")
 		}
 	}
 	return "", "", nil, usage("expected a browser subcommand; see open-habitat agent browser --help")

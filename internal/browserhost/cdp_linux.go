@@ -34,10 +34,12 @@ import (
 // aimed at the page before the person changed it would land on something
 // else. The agent inspects the page again before it continues.
 //
-// The agent may not grant itself clipboard permissions: with one, a page
-// script could read what the person pasted into the browser while they had
-// control. The agent runs as the same Unix user, so this is hygiene against
-// the obvious route, not isolation.
+// The agent reaches Chrome only through a fixed set of commands and the
+// host's own page scripts (agentpolicy_linux.go): with its own script, DOM
+// or network access it could read what the person typed while they had
+// control. Nor may it grant itself clipboard permissions, with which a page
+// could read what the person pasted. The agent runs as the same Unix user,
+// so this closes the browser's routes, not that user's files and sockets.
 
 var errAgentBusy = errors.New("another agent is using the browser")
 
@@ -522,16 +524,27 @@ func (m *cdpMux) fromAgent(a *agentConn, msg []byte) error {
 	if _, ok := fields["id"]; !ok {
 		return errors.New("invalid message")
 	}
-	if grantsClipboard(fields) {
-		m.mu.Lock()
-		own := m.agent == a
-		m.mu.Unlock()
-		if !own {
-			return io.EOF
-		}
-		a.deliver(errorReply(fields, clipboardRefused))
+	cmd, refusal := agentCommand(fields)
+	m.mu.Lock()
+	own, person := m.agent == a, m.person
+	m.mu.Unlock()
+	if !own {
+		return io.EOF
+	}
+	if refusal == "" && !person && string(cmd["method"]) == `"Page.captureScreenshot"` {
+		// Checked before the picture, outside dispatch: the check is one of
+		// the host's own commands. A screenshot held while the person drives
+		// is never taken.
+		var session string
+		_ = json.Unmarshal(cmd["sessionId"], &session)
+		refusal = m.screenshotGuard(session)
+	}
+	if refusal != "" {
+		a.deliver(errorReply(fields, refusal))
 		return nil
 	}
+	msg, _ = json.Marshal(cmd)
+	fields = cmd
 	m.dispatchMu.Lock()
 	defer m.dispatchMu.Unlock()
 	m.mu.Lock()

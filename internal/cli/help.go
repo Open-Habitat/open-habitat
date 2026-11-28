@@ -87,11 +87,10 @@ var helpSpecs = []helpSpec{
 	{"agent browser links", "Read loaded page links (bounded to 2000)", "agent browser links --tab 0123456789ABCDEF0123456789ABCDEF --json", []string{"--tab", "--timeout-seconds"}},
 	{"agent browser click", "Real mouse click at the visible centre of exactly one CSS match, scrolled into view; refuses hidden or covered elements", "agent browser click --tab 0123456789ABCDEF0123456789ABCDEF --selector 'a.receipts' --json", []string{"--tab", "--selector", "--timeout-seconds", "--dry-run"}},
 	{"agent browser type", "Replace an input value from a UTF-8 file or stdin; never submits", "agent browser type --tab 0123456789ABCDEF0123456789ABCDEF --selector 'input[name=query]' --text-file query.txt --json", []string{"--tab", "--selector", "--text-file", "--timeout-seconds", "--dry-run"}},
-	{"agent browser screenshot", "Save a PNG in the default download directory; refuses existing names", "agent browser screenshot --tab 0123456789ABCDEF0123456789ABCDEF --name page.png --json", []string{"--tab", "--name", "--timeout-seconds", "--dry-run"}},
+	{"agent browser screenshot", "Save a PNG in the default download directory; refuses existing names and pages showing a password in clear", "agent browser screenshot --tab 0123456789ABCDEF0123456789ABCDEF --name page.png --json", []string{"--tab", "--name", "--timeout-seconds", "--dry-run"}},
 	{"agent browser download", "Fetch original HTTP(S) response using Chrome credentials (64 MiB max), never print the PDF viewer", "agent browser download https://example.com/receipt.pdf --tab 0123456789ABCDEF0123456789ABCDEF --name receipt.pdf --json", []string{"--tab", "--name", "--timeout-seconds", "--dry-run"}},
 	{"agent browser tabs", "List page targets in the existing browser", "agent browser tabs --json", []string{"--timeout-seconds"}},
 	{"agent browser close", "Close only the explicitly selected tab, not the browser", "agent browser close --tab 0123456789ABCDEF0123456789ABCDEF --json", []string{"--tab", "--timeout-seconds", "--dry-run"}},
-	{"agent browser eval", "Evaluate JavaScript in the signed-in page; ask before consequential actions", "agent browser eval document.title --tab 0123456789ABCDEF0123456789ABCDEF --json", []string{"--tab", "--timeout-seconds", "--dry-run"}},
 	{"agent browser start", "Start the person's server browser if it is not running; it stops after a day unused", "agent browser start --json", nil},
 	{"agent browser request", "Ask the person to handle one window (sign-in, MFA code); the window id comes from status; --clear withdraws the request", "agent browser request --text \"Enter the confirmation code\" --window 0123456789ABCDEF0123456789ABCDEF --json", []string{"--text", "--window", "--clear"}},
 	{"version", "Show binary and skill provenance", "version --json", nil},
@@ -319,8 +318,6 @@ func commandHelp(args []string) (any, error) {
 		arguments = append(arguments, map[string]any{"name": "url", "required": true, "description": "Absolute HTTP(S) URL without embedded credentials; before or after flags"})
 	case "agent browser click", "agent browser type":
 		arguments = append(arguments, map[string]any{"name": "selector", "required": false, "description": "Exactly one CSS selector, positional or --selector, not both; before or after flags"})
-	case "agent browser eval":
-		arguments = append(arguments, map[string]any{"name": "javascript", "required": true, "description": "JavaScript expression (up to 64 KiB), before or after flags; awaited if a Promise; same ask-first rule as clicks"})
 	case "agent experimental update":
 		arguments = append(arguments, map[string]any{"name": "id", "required": true, "description": "Exact experimental feature id from agent experimental list"})
 	case "host operation show":
