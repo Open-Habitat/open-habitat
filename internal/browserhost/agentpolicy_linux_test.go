@@ -4,9 +4,12 @@ package browserhost
 
 import (
 	"encoding/json"
+	"io"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/open-habitat/open-habitat/internal/wsframe"
 )
 
 // Each of these would let the agent run its own script in a page, read the
@@ -218,5 +221,72 @@ func TestAScreenshotIsCheckedOnTheCurrentPage(t *testing.T) {
 	case m := <-c.got:
 		t.Fatalf("Chrome got %v", m)
 	case <-time.After(100 * time.Millisecond):
+	}
+}
+
+// A command that waited for the host's own check while the person took and
+// gave back control is answered as held, never sent onto their changed page;
+// so is a picture taken while they took control.
+func TestNothingCrossesThePersonsTurn(t *testing.T) {
+	c := newFakeChrome(t)
+	ag := connectAgent(t, c)
+	ag.send(map[string]any{"id": 1, "sessionId": "S1", "method": "Input.dispatchMouseEvent", "params": map[string]any{"type": "mousePressed", "button": "left", "x": 5, "y": 5}})
+	record := c.next()
+	c.mux.setControl(true)
+	c.mux.setControl(false)
+	c.send(boolResult(record["id"], true))
+	if m := ag.recv(); m["id"] != float64(1) || m["error"].(map[string]any)["message"] != PersonTookControl {
+		t.Fatalf("press across the turn: %v", m)
+	}
+	select {
+	case m := <-c.got:
+		t.Fatalf("Chrome got %v", m)
+	case <-time.After(100 * time.Millisecond):
+	}
+	ag.send(map[string]any{"id": 2, "sessionId": "S1", "method": "Page.captureScreenshot", "params": map[string]any{"format": "png"}})
+	c.send(boolResult(c.expect("Runtime.evaluate")["id"], false))
+	shot := c.expect("Page.captureScreenshot")
+	c.mux.setControl(true)
+	c.send(map[string]any{"id": shot["id"], "sessionId": "S1", "result": map[string]any{"data": "c3ludGhldGlj"}})
+	m := ag.recv()
+	if e, _ := m["error"].(map[string]any); m["id"] != float64(2) || m["sessionId"] != "S1" || e["message"] != PersonTookControl || m["result"] != nil {
+		t.Fatalf("picture from the person's turn: %v", m)
+	}
+}
+
+// An agent whose screenshot is never answered is disconnected rather than
+// let send a press that could land before the picture.
+func TestAnUnansweredScreenshotEndsTheAgent(t *testing.T) {
+	c := newFakeChrome(t)
+	c.mux.shotWait = 100 * time.Millisecond
+	ag := connectAgent(t, c)
+	ag.send(map[string]any{"id": 1, "sessionId": "S1", "method": "Page.captureScreenshot"})
+	c.send(boolResult(c.expect("Runtime.evaluate")["id"], false))
+	c.expect("Page.captureScreenshot")
+	go io.Copy(io.Discard, ag.conn)
+	go func() {
+		b, _ := json.Marshal(map[string]any{"id": 2, "sessionId": "S1", "method": "Input.dispatchMouseEvent", "params": map[string]any{"type": "mouseMoved", "button": "none", "x": 5, "y": 5}})
+		_, _ = ag.conn.Write(wsframe.AppendFrame(nil, wsframe.OpText, b, true))
+	}()
+	for deadline := time.Now().Add(3 * time.Second); ; time.Sleep(10 * time.Millisecond) {
+		c.mux.mu.Lock()
+		gone := c.mux.agent == nil
+		c.mux.mu.Unlock()
+		if gone {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("agent kept")
+		}
+	}
+	for {
+		select {
+		case m := <-c.got:
+			if m["method"] == "Input.dispatchMouseEvent" {
+				t.Fatalf("press after an untaken picture: %v", m)
+			}
+		case <-time.After(100 * time.Millisecond):
+			return
+		}
 	}
 }

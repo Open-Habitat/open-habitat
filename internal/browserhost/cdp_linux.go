@@ -67,7 +67,9 @@ type agentConn struct {
 var hostOwner = &agentConn{}
 
 type route struct {
-	owner    *agentConn
+	owner *agentConn
+	// epoch is the control epoch the command was sent in.
+	epoch    uint64
 	id       json.RawMessage
 	method   string
 	targetID string
@@ -123,12 +125,15 @@ type cdpMux struct {
 	ambiguous map[string][][]byte
 	// cleaning is closed when a departed agent's cleanup is in Chrome's
 	// pipe; the next agent waits for it so its commands come after.
-	cleaning   chan struct{}
-	agent      *agentConn
-	person     bool
+	cleaning chan struct{}
+	agent    *agentConn
+	person   bool
 	// controlEpoch counts changes of control, so a check made before one
 	// is known to be stale.
 	controlEpoch uint64
+	// shotWait bounds how long a screenshot may hold the agent's next
+	// commands.
+	shotWait   time.Duration
 	held       [][]byte
 	heldSize   int
 	pointer    pointer
@@ -142,7 +147,7 @@ type cdpMux struct {
 
 func newCDPMux(out io.Writer, log *slog.Logger, now func() time.Time) *cdpMux {
 	return &cdpMux{out: out, log: log, now: now, pending: map[int64]*route{}, owner: map[string]*agentConn{},
-		parent: map[string]string{}, target: map[string]string{}, page: map[string]bool{}, hostSession: map[string]string{}, hostAttaching: map[string]int{}, ambiguous: map[string][][]byte{}, activity: now()}
+		parent: map[string]string{}, target: map[string]string{}, page: map[string]bool{}, hostSession: map[string]string{}, hostAttaching: map[string]int{}, ambiguous: map[string][][]byte{}, activity: now(), shotWait: 30 * time.Second}
 }
 
 func (m *cdpMux) writeChrome(msg []byte) error {
@@ -319,8 +324,19 @@ func (m *cdpMux) fromChrome(msg []byte) {
 			return
 		}
 		agent := m.agent
+		stale := r.method == "Page.captureScreenshot" && r.epoch != m.controlEpoch
 		m.mu.Unlock()
 		if r.dropped || r.owner != agent {
+			return
+		}
+		if stale {
+			// The person took control while it was taken: the picture may
+			// show what they typed or unmasked.
+			reply := map[string]json.RawMessage{"id": r.id}
+			if head.SessionID != "" {
+				reply["sessionId"], _ = json.Marshal(head.SessionID)
+			}
+			agent.deliver(errorReply(reply, PersonTookControl))
 			return
 		}
 		agent.deliver(rewriteID(msg, r.id))
@@ -563,9 +579,10 @@ func (m *cdpMux) fromAgent(a *agentConn, msg []byte) error {
 		m.dispatchMu.Unlock()
 		return io.EOF
 	}
-	if shot && !m.person && m.controlEpoch != epoch {
-		// The person had control while it was checked or skipped: the page
-		// may now show what they unmasked.
+	if !m.person && m.controlEpoch != epoch {
+		// The person had control since this command arrived (while the host
+		// checked the page, for example): the page may have changed and
+		// show what they unmasked.
 		m.mu.Unlock()
 		m.dispatchMu.Unlock()
 		a.deliver(errorReply(fields, PersonTookControl))
@@ -586,10 +603,10 @@ func (m *cdpMux) fromAgent(a *agentConn, msg []byte) error {
 	m.mu.Unlock()
 	err := m.writeChrome(out)
 	m.dispatchMu.Unlock()
-	if shot && err == nil {
-		// Nothing the agent sends next reaches the page before the picture
-		// is taken.
-		m.agentIdle(a, 30*time.Second)
+	if shot && err == nil && !m.agentIdle(a, m.shotWait) {
+		// Nothing the agent sends next may reach the page before the
+		// picture is taken; an agent whose picture never comes is let go.
+		return errors.New("screenshot unanswered")
 	}
 	return err
 }
@@ -600,7 +617,7 @@ func (m *cdpMux) forwardLocked(a *agentConn, fields map[string]json.RawMessage) 
 	var method, session string
 	_ = json.Unmarshal(fields["method"], &method)
 	_ = json.Unmarshal(fields["sessionId"], &session)
-	r := &route{owner: a, id: fields["id"], method: method}
+	r := &route{owner: a, id: fields["id"], method: method, epoch: m.controlEpoch}
 	if method == "Target.attachToTarget" {
 		var t struct {
 			TargetID string `json:"targetId"`
