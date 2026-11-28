@@ -3,7 +3,7 @@ created: 2026-11-28
 updated: 2026-11-28
 type: bug
 reporter: jari
-status: open
+status: testing
 priority: high
 provenance: chat
 source_ref: chat:conductor-2711/eval-passwords
