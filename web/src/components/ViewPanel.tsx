@@ -94,6 +94,7 @@ function RecoverableViewFrame({
     <div
       className="ah-view-frame-status"
       data-testid="view-blocked"
+      data-reason={blocked}
       role="status"
     >
       <p>{blocked === "embed" ? txt.embedBlocked : txt.navigationBlocked}</p>

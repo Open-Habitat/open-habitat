@@ -8,6 +8,7 @@
       "!node_modules",
       "!test-results",
       "!test-results-lab",
+      "!test-results-engines",
       "!playwright-report"
     ]
   },

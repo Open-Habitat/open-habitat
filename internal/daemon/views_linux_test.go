@@ -260,8 +260,12 @@ func TestViewExportReadsOnlyFilesOfThatExport(t *testing.T) {
 	if w := readExport(export, ViewExportPrefix+a.View.ID+"/"); w.Code != 200 || !strings.Contains(w.Body.String(), `"entry":"index.html"`) {
 		t.Fatalf("summary: %d %s", w.Code, w.Body.String())
 	}
-	if w := readExport(export, ViewExportPath(a.View.ID, "sub/x.css")); w.Code != 200 || w.Body.String() != "p{}" {
-		t.Fatalf("nested file: %d %q", w.Code, w.Body.String())
+	if w := readExport(export, ViewExportPath(a.View.ID, "sub/x.css")); w.Code != 200 || w.Body.String() != "p{}" || w.Header().Get(ViewEntryHeader) != "" {
+		t.Fatalf("nested file: %d %q %v", w.Code, w.Body.String(), w.Header())
+	}
+	// Only the entry is marked: the gateway frames it more strictly.
+	if w := readExport(export, ViewExportPath(a.View.ID, "index.html")); w.Code != 200 || w.Header().Get(ViewEntryHeader) != "1" {
+		t.Fatalf("entry: %d %v", w.Code, w.Header())
 	}
 	// A file planted in the export after the fact as a symlink, or a special
 	// file, is not served: the reader opens beneath the export only.

@@ -13,6 +13,10 @@ import (
 
 // This is a presentation signal, never authorization. The opaque sandbox and
 // CSP remain the enforcement boundary even if a view spoofs or removes it.
+// A view's own pages may be framed inside it and carry the same script, but
+// only the view's document holds the app's challenge, so a page framed below
+// it passes a refusal up to its parent ('*': the parent's origin is opaque)
+// and the view reports it as its own. Only a direct child is heard.
 func viewBootstrap(origin string) string {
 	parent, _ := json.Marshal(origin)
 	return `<script>(function () {
@@ -20,16 +24,23 @@ func viewBootstrap(origin string) string {
  function report() {
   if (challenge) parent.postMessage({type: "oh-view-status", challenge: challenge, blocked: blocked}, origin);
  }
+ function refuse() {
+  blocked = true;
+  report();
+  if (parent !== window) parent.postMessage({type: "oh-view-frame-blocked"}, "*");
+ }
+ function child(source) {
+  for (var i = 0; i < frames.length; i++) if (frames[i] === source) return true;
+  return false;
+ }
  addEventListener("message", function (event) {
+  if (event.data && event.data.type === "oh-view-frame-blocked" && event.source && child(event.source)) return refuse();
   if (event.source !== parent || event.origin !== origin || !event.data || event.data.type !== "oh-view-check" || typeof event.data.challenge !== "string") return;
   challenge = event.data.challenge;
   report();
  });
  addEventListener("securitypolicyviolation", function (event) {
-  if (event.disposition === "enforce" && (event.effectiveDirective === "frame-src" || event.effectiveDirective === "child-src")) {
-   blocked = true;
-   report();
-  }
+  if (event.disposition === "enforce" && (event.effectiveDirective === "frame-src" || event.effectiveDirective === "child-src")) refuse();
  });
 })();</script>`
 }

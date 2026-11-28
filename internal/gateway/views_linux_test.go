@@ -40,6 +40,7 @@ func newViewDesk(t *testing.T) *viewDesk {
 		"/view-export/" + viewTestB + "/":                                  `{"schema_version":1,"view":{"title":"Toinen","entry":"secret/index.html"}}`,
 		"/view-export/" + viewTestA + "/site/index.html":                   "<script src=app.js></script>",
 		"/view-export/" + viewTestA + "/site/app.js":                       "1",
+		"/view-export/" + viewTestA + "/site/part.html":                    "<p>osa</p>",
 		"/view-export/" + viewTestA + "/site/cut.html":                     "<p>alku</p><script>render(" + strings.Repeat("x", 64<<10),
 		"/view-export/" + viewTestA + "/site/cut.js":                       "render(" + strings.Repeat("x", 64<<10),
 		"/view-export/" + viewTestA + "/site/data.bin":                     "\x00",
@@ -65,6 +66,9 @@ func newViewDesk(t *testing.T) *viewDesk {
 		w.Header().Set("Content-Type", "text/html")
 		http.SetCookie(w, &http.Cookie{Name: viewCookie, Value: "from-daemon"})
 		w.Header().Set("Content-Length", strconv.Itoa(len(body)))
+		if strings.HasSuffix(r.URL.Path, "/index.html") {
+			w.Header().Set(viewEntryHeader, "1")
+		}
 		if strings.Contains(r.URL.Path, "/cut.") {
 			// The daemon's stream ends before its announced length, as one
 			// cut by a socket deadline does.
@@ -462,5 +466,64 @@ func TestOfferedHTMLFileOpensOnItsOwnViewHost(t *testing.T) {
 	}
 	if res := d.do("GET", d.host(viewTestA), "/site/index.html", "", withCookie(cookie)); res.StatusCode != 401 {
 		t.Fatalf("offer cookie on a view's host: %d", res.StatusCode)
+	}
+}
+
+// framedAs sets the fetch metadata a browser sends for a frame load.
+func framedAs(c *http.Cookie, dest, site string) func(*http.Request) {
+	return func(r *http.Request) {
+		if c != nil {
+			r.AddCookie(c)
+		}
+		r.Header.Set("Sec-Fetch-Dest", dest)
+		r.Header.Set("Sec-Fetch-Site", site)
+	}
+}
+
+// A view may frame its own host and nothing else, and its non-entry HTML
+// pages answer without frame-ancestors only to a sandboxed document's frame
+// load, since an opaque framer matches no frame-ancestors source. The entry,
+// other files and every other request shape keep the app as the only framer.
+func TestViewFramesOnlyItsOwnPages(t *testing.T) {
+	d := newLinkDesk(t)
+	host := d.host(viewTestA)
+	cookie := d.openView(viewTestA)
+	l := d.publish(d.ensure(viewTestA).AddressID, 7)
+	link, _ := url.Parse(l.ContentURL)
+	offer := d.host(offerPageA)
+	offerCookie := d.openOfferPage(offerPageA, "proto/Sivu (1).html")
+	d.mu.Lock()
+	d.files["/api/v1/file-offers/"+offerPageA+"/files/proto/osa.html"] = "<p>osa</p>"
+	d.mu.Unlock()
+	type probe struct {
+		what, host, path string
+		edit             func(*http.Request)
+		released         bool
+	}
+	for _, p := range []probe{
+		{"private sub-page as a view's frame", host, "/site/part.html", framedAs(cookie, "iframe", "cross-site"), true},
+		{"published sub-page as a view's frame", link.Host, link.Path + "site/part.html", framedAs(nil, "iframe", "cross-site"), true},
+		{"offered sub-page as a page's frame", offer, "/proto/osa.html", framedAs(offerCookie, "iframe", "cross-site"), true},
+		{"private entry as a frame", host, "/site/index.html", framedAs(cookie, "iframe", "cross-site"), false},
+		{"published entry as a frame", link.Host, link.Path + "site/index.html", framedAs(nil, "iframe", "cross-site"), false},
+		{"offered entry as a frame", offer, "/proto/Sivu%20(1).html", framedAs(offerCookie, "iframe", "cross-site"), false},
+		{"script as a frame", host, "/site/app.js", framedAs(cookie, "iframe", "cross-site"), false},
+		{"sub-page framed same-site", host, "/site/part.html", framedAs(cookie, "iframe", "same-site"), false},
+		{"sub-page as a document", host, "/site/part.html", framedAs(cookie, "document", "cross-site"), false},
+		{"sub-page without fetch metadata", host, "/site/part.html", withCookie(cookie), false},
+		{"sub-page without a session", host, "/site/part.html", framedAs(nil, "iframe", "cross-site"), false},
+	} {
+		res := d.do("GET", p.host, p.path, "", p.edit)
+		csp := res.Header.Get("Content-Security-Policy")
+		self := "https://" + p.host
+		if !strings.Contains(csp, "; frame-src "+self+"; child-src "+self+"; ") || strings.Contains(csp, "*") {
+			t.Fatalf("%s: frame sources %q", p.what, csp)
+		}
+		if released := !strings.Contains(csp, "frame-ancestors"); released != p.released || !p.released && !strings.HasSuffix(csp, "; frame-ancestors https://host.test") {
+			t.Fatalf("%s: %d %q", p.what, res.StatusCode, csp)
+		}
+		if p.released && res.StatusCode != 200 {
+			t.Fatalf("%s: %d", p.what, res.StatusCode)
+		}
 	}
 }

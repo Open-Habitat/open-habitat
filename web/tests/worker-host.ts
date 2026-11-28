@@ -61,8 +61,13 @@ export function createHostTest(
     ],
     hostProcess: [
       async ({ browserName }, use, testInfo) => {
-        if (browserName !== "chromium")
-          throw new Error("Synthetic host requires Chromium");
+        // CPU throttling goes through the Chrome DevTools protocol; the host
+        // itself serves any engine (playwright.engines.config.ts).
+        if (
+          browserName !== "chromium" &&
+          Number(process.env.OH_CPU_THROTTLE ?? 1) > 1
+        )
+          throw new Error("OH_CPU_THROTTLE requires Chromium");
         const port = (lab ? labWorkerHostPort : workerHostPort)(
           testInfo.parallelIndex,
         );

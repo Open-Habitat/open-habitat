@@ -11,6 +11,7 @@ web/dist/
 web/storybook-static/
 web/test-results/
 web/test-results-lab/
+web/test-results-engines/
 web/playwright-report/
 *.test
 # `go build ./test/browser-host` from the root writes here; the test harness

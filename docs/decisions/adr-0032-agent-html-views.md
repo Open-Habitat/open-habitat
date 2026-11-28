@@ -72,3 +72,35 @@ changes, as with the editor origin.
   offline-artifact policy, said plainly rather than relaxed quietly.
 - The agent listener gains one offer operation, not a way to drive the
   person's browser: it cannot open, focus, or learn whether anything was seen.
+
+## Amendment: a view may frame its own pages (2026-11-28, Jari)
+
+The offline-artifact policy first refused every nested frame. A view may now
+frame another file of the same view by URL, so a prototype can show its own
+page at phone width without rewriting it as `srcdoc`.
+
+- The view's CSP names its exact own host in `frame-src` and `child-src`. A
+  link host's files sit below its token on a host of their own, so the rule
+  is the same for private and published views, and a prototype does not
+  break when it is published.
+- A sandboxed view has an opaque origin, which no `frame-ancestors` source
+  matches (checked in Chromium and Firefox). A non-entry HTML page of a view
+  therefore answers without `frame-ancestors` when the request is a frame
+  load from a cross-site initiator, which a sandboxed document's always is.
+  The entry, other files and every other request keep `frame-ancestors`
+  naming only the app.
+- So an outside site that knows a view host can frame its non-entry pages.
+  The page is still read-only, sandboxed with an opaque origin and without
+  network; a private view still needs its own view cookie, and a published
+  one is public anyway. The fetch-metadata condition keeps the pages out of
+  same-site framers and out of browsers that send no fetch metadata.
+- Still refused: Habitat's app and its pages and the editor (their own
+  `frame-ancestors` and `X-Frame-Options` stay as they are, and a view's
+  `frame-src` refuses them too), other views, outside pages, and `data:` and
+  `blob:` documents. An outside frame is the one exfiltration channel the
+  view's `frame-src` alone closes, so it stays closed. Embedding another view
+  would need a session minted without a handoff; copying its files into the
+  same offer does the same job.
+- The panel's injected check reports a refused embed from any depth: a page
+  framed inside the view passes the refusal up to the view, which reports it
+  to the app with its challenge.

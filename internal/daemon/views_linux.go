@@ -39,6 +39,7 @@ const (
 	AgentViewRemovePath = "/agent/v1/views/remove"
 	ViewsPath           = "/api/v1/views"
 	ViewExportPrefix    = "/view-export/"
+	ViewEntryHeader     = "Open-Habitat-View-Entry"
 
 	maxViewFiles = 500
 	maxViewBytes = 50 << 20
@@ -844,7 +845,8 @@ func listViewFiles(parent int, prefix string, depth int, out *[]viewFile, budget
 // the export's summary; `/view-export/<id>/<path>` is one regular file of
 // that export, opened beneath it without following any symlink. The bytes go
 // out as opaque octets: the gateway alone decides how a view host presents
-// them.
+// them. The entry file is marked as such, since the gateway frames the entry
+// more strictly than the view's other pages.
 func ViewExportHandler(cfg transport.Config, trusted func(*http.Request) bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !historyAuthorized(cfg, trusted, r) {
@@ -907,6 +909,9 @@ func ViewExportHandler(cfg transport.Config, trusted func(*http.Request) bool) h
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("Content-Length", strconv.FormatInt(st.Size, 10))
+		if rel == m.Entry {
+			w.Header().Set(ViewEntryHeader, "1")
+		}
 		w.WriteHeader(200)
 		if r.Method == http.MethodGet {
 			_, _ = io.Copy(w, io.LimitReader(f, st.Size))
@@ -1140,7 +1145,8 @@ func (c *ConversationController) fixtureView(target string, native bool) (string
 		"assets/style.css": "body{color:rgb(1, 2, 3)}\n",
 		"assets/mark.svg":  `<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8"/></svg>`,
 		"bundle.html":      viewFixtureBundle,
-		"nested.html":      `<!doctype html><html><head><meta charset="utf-8"><title>Upotus</title></head><body><iframe src="bundle.html"></iframe></body></html>` + "\n",
+		"nested.html":      viewFixtureNested,
+		"part.html":        `<!doctype html><html><head><meta charset="utf-8"><title>Osa</title></head><body><p id="part">Osa</p><script>parent.postMessage("part:" + innerWidth, "*");</script></body></html>` + "\n",
 		"srcdoc.html":      viewFixtureSrcdoc,
 		".secret":          "hidden",
 	} {
@@ -1224,6 +1230,11 @@ render(document.body);
 try { document.body.dataset.wasm = new WebAssembly.Module(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0])) ? "yes" : "no"; } catch (e) { document.body.dataset.wasm = "denied"; }
 try { var w = new Worker(URL.createObjectURL(new Blob(["postMessage(1)"], { type: "text/javascript" }))); w.onmessage = function () { document.body.dataset.worker = "allowed"; }; w.onerror = function () { document.body.dataset.worker = "denied"; }; } catch (e) { document.body.dataset.worker = "denied"; }
 </script></body></html>
+`
+
+// viewFixtureNested frames another page of the same view by URL, which the
+// view's frame-src admits; the child reports its own width by message.
+const viewFixtureNested = `<!doctype html><html><head><meta charset="utf-8"><title>Upotus</title></head><body><iframe id="part" width="200" height="100" src="part.html"></iframe><script>addEventListener("message", function (e) { if (typeof e.data === "string") document.body.dataset.nested = e.data; });</script></body></html>
 `
 
 // viewFixtureSrcdoc embeds a narrow page the way the agent guide tells agents

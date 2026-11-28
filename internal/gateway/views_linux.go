@@ -45,10 +45,13 @@ import (
 // origin still presents an offered file only as media or an attachment.
 
 const (
-	viewCookie        = "__Host-oh-view"
-	viewHandoffPath   = "/auth/view"
-	viewsPath         = "/api/v1/views"
-	viewHandoffRoute  = "/_open-habitat/handoff"
+	viewCookie       = "__Host-oh-view"
+	viewHandoffPath  = "/auth/view"
+	viewsPath        = "/api/v1/views"
+	viewHandoffRoute = "/_open-habitat/handoff"
+	// viewEntryHeader is the daemon's mark on a view's entry file
+	// (daemon.ViewEntryHeader).
+	viewEntryHeader   = "Open-Habitat-View-Entry"
 	viewGrantLifetime = 60 * time.Second
 	// A view session also ends with its app session; this only bounds a tab
 	// left open for days.
@@ -300,7 +303,8 @@ func (a *Auth) viewZip(w http.ResponseWriter, r *http.Request) {
 
 // viewHeaders are set before anything else on a view host, so an error from
 // any layer still runs sandboxed. Sources name the exact view host, never a
-// sibling, and frames are allowed only inside the app. Eval (which also
+// sibling, and only the app frames a response unless viewRelay releases a
+// non-entry page (viewCSP). Eval (which also
 // lets WebAssembly compile) is allowed: the content's own scripts already
 // run, so code built from a string gains nothing they lack and stays under
 // the same policy, while bundles that compile at load (schema validators,
@@ -308,18 +312,47 @@ func (a *Auth) viewZip(w http.ResponseWriter, r *http.Request) {
 // rest on each browser carrying this policy into the worker.
 func (a *Auth) viewHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		self := "'none'"
-		if a.isViewHost(r.Host) {
-			self = "https://" + r.Host
-		}
 		h := w.Header()
-		h.Set("Content-Security-Policy", "sandbox allow-scripts; default-src 'none'; script-src "+self+" 'unsafe-inline' 'unsafe-eval'; style-src "+self+" 'unsafe-inline'; img-src "+self+" data: blob:; font-src "+self+" data:; media-src "+self+" data: blob:; connect-src 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; object-src 'none'; manifest-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors "+a.cfg.Origin)
+		h.Set("Content-Security-Policy", a.viewCSP(r.Host, true))
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("Referrer-Policy", "no-referrer")
 		h.Set("Cache-Control", "no-store")
 		h.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), usb=(), serial=(), bluetooth=(), payment=(), clipboard-read=(), clipboard-write=()")
 		next.ServeHTTP(w, r)
 	})
+}
+
+// viewCSP is a view host's policy. A view may frame only its own host,
+// whose files are the view's (a link host's sit below its token), so a
+// same-view page can embed another; the app, the editor, other views,
+// external pages and data:/blob: documents stay refused. framedByApp keeps
+// frame-ancestors, which every response carries except a view's non-entry
+// HTML page loaded as a frame (viewFrameable): a sandboxed view's origin is
+// opaque and matches no frame-ancestors source, so only a page without the
+// directive can load inside it.
+func (a *Auth) viewCSP(host string, framedByApp bool) string {
+	self := "'none'"
+	if a.isViewHost(host) {
+		self = "https://" + host
+	}
+	csp := "sandbox allow-scripts; default-src 'none'; script-src " + self + " 'unsafe-inline' 'unsafe-eval'; style-src " + self + " 'unsafe-inline'; img-src " + self + " data: blob:; font-src " + self + " data:; media-src " + self + " data: blob:; connect-src 'none'; frame-src " + self + "; child-src " + self + "; worker-src 'none'; object-src 'none'; manifest-src 'none'; form-action 'none'; base-uri 'none'"
+	if framedByApp {
+		csp += "; frame-ancestors " + a.cfg.Origin
+	}
+	return csp
+}
+
+// viewFrameable reports whether an HTML page of a view may answer without
+// frame-ancestors. The entry keeps the app as its only framer; another page
+// is released only for a request shaped as a sandboxed document's frame
+// load (a frame destination from a cross-site initiator, which an opaque
+// origin always is). That does not stop an outside site from framing the
+// page if it knows the host: the page is still read-only, sandboxed with an
+// opaque origin and no network, and a private view still needs its cookie.
+// It does keep the page out of frames opened by same-site pages and out of
+// browsers that send no fetch metadata.
+func viewFrameable(r *http.Request, entry bool) bool {
+	return !entry && r.Header.Get("Sec-Fetch-Dest") == "iframe" && r.Header.Get("Sec-Fetch-Site") == "cross-site"
 }
 
 // A view host's own failure is a short page the person reads in place of
@@ -447,8 +480,9 @@ func (a *Auth) redeemViewHandoff(w http.ResponseWriter, r *http.Request) {
 	// SameSite=None: a sandboxed document has an opaque origin, so its own
 	// subresource requests count as cross-site and a Lax or Strict cookie
 	// would not go with them. The cookie authorizes only reading this one
-	// view on this one host, the host has no state-changing route, and only
-	// the app may frame it. The app always frames a view, in its own tab too:
+	// view on this one host, and the host has no state-changing route; only
+	// the app may frame its entry, and a page framed elsewhere is still read
+	// in the view's opaque sandbox. The app always frames a view, in its own tab too:
 	// a browser that blocks third-party cookies drops even this one from
 	// every request of a top-level sandboxed document (no top-level site is
 	// the same as an opaque one), while a frame keeps the app's site.
@@ -637,6 +671,15 @@ func (a *Auth) viewRelay(w http.ResponseWriter, r *http.Request, target Identity
 	bootstrap := ""
 	if strings.HasPrefix(kind, "text/html") {
 		bootstrap = viewBootstrap(a.cfg.Origin)
+		// The daemon marks a view's entry; an offered file's is the page the
+		// app opened.
+		isEntry := res.Header.Get(viewEntryHeader) == "1"
+		if offer {
+			isEntry = rel == entry
+		}
+		if viewFrameable(r, isEntry) {
+			w.Header().Set("Content-Security-Policy", a.viewCSP(r.Host, false))
+		}
 	}
 	w.Header().Set("Content-Type", kind)
 	if bootstrap == "" {

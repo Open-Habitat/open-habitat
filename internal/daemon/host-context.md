@@ -221,8 +221,10 @@ open-habitat agent view offer --current --source report.html --title "Quarterly 
 A directory needs `--entry-file index.html`. The person gets a card and opens
 the view beside the conversation or in a new tab. It is a frozen copy that
 runs sandboxed without network access, so inline or bundle its assets and
-offer again after a change. A frame inside it must be `<iframe srcdoc=…>` or
-inlined into the page: an `<iframe src=…>` makes the view fail. It opens
+offer again after a change. A frame inside it may show another file of the same
+view (`<iframe src="part.html">`) or be `<iframe srcdoc=…>`; a frame of
+anything else (Habitat, another view, an outside address, `data:` or `blob:`)
+makes the view fail, and so does framing the view's entry page. It opens
 with `#ah-theme=light` or `#ah-theme=dark` in its URL fragment, Habitat's
 current theme, so a page with a theme switch can start from it. Where `site.views` in the environment output is
 false, the offer fails with `views_unavailable`: say so and offer the file
