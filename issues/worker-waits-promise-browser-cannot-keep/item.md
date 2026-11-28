@@ -3,7 +3,7 @@ created: 2026-11-14
 updated: 2026-11-28
 type: bug
 reporter: jari
-status: open
+status: testing
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-14/worker-waits-promise-browser-cannot-keep
