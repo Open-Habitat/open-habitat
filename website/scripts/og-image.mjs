@@ -3,7 +3,8 @@
 // apple-touch-icon from HTML with Playwright into public/og.png and
 // public/apple-touch-icon.png, or into <out-dir>. The share image is the product's own
 // look: the design system's tokens and fonts, the mark from
-// src/components/mark.ts, the hero's headline and the hero capture
+// src/components/mark.ts, the hero's headline and eyebrow (read from the
+// front page's content.mjs) and the hero capture
 // (public/landing/hero/hero.webp, the fictional Example Studio). Everything it
 // loads is a local file, so the image has no outside resources.
 //
@@ -21,6 +22,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { mark } from '../src/components/mark.ts';
+import { landingRound } from '../landing.mjs';
 
 const site = fileURLToPath(new URL('..', import.meta.url));
 const repo = path.join(site, '..');
@@ -30,9 +32,10 @@ const { chromium } = require('playwright');
 const outDir = path.resolve(process.argv[2] || path.join(site, 'public'));
 const file = (p) => pathToFileURL(path.join(site, p)).href;
 
-// The hero's headline (the round's blocks/hero/block.js) and its eyebrow.
-const headline = 'Coding-grade AI agents<br>for your whole team.';
-const eyebrow = 'Open source · on your own server · in a browser tab';
+// The hero's headline and eyebrow, as the front page says them.
+const { hero, eyebrow } = await import(pathToFileURL(path.join(landingRound, 'content.mjs')).href);
+const esc = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+const headline = esc(hero.h1);
 
 const og = `<!doctype html>
 <html lang="en" data-theme="light">
@@ -54,8 +57,8 @@ const og = `<!doctype html>
   }
   .brand .oh-mark { color: var(--ah-accent); }
   h1 {
-    margin: 22px 0 0; font-size: 66px; line-height: 1.04;
-    letter-spacing: -0.03em; font-weight: 600;
+    margin: 22px auto 0; max-width: 1060px; font-size: 62px; line-height: 1.04;
+    letter-spacing: -0.03em; font-weight: 600; text-wrap: balance;
   }
   .eyebrow { margin: 16px 0 0; font-size: 22px; color: var(--ah-muted); letter-spacing: 0.01em; }
   /* The capture spans the full width: its background is a soft vignette, so
@@ -69,7 +72,7 @@ const og = `<!doctype html>
   <div class="head">
     <div class="brand">${mark('idle', 40)}<span>Open Habitat</span></div>
     <h1>${headline}</h1>
-    <p class="eyebrow">${eyebrow}</p>
+    <p class="eyebrow">${esc(eyebrow)}</p>
   </div>
 </body>
 </html>`;
@@ -92,7 +95,7 @@ const icon = `<!doctype html>
 </html>`;
 
 const shots = [
-  { name: 'og.png', html: og, width: 1200, height: 630, fonts: ['600 66px "Instrument Sans"'] },
+  { name: 'og.png', html: og, width: 1200, height: 630, fonts: ['600 62px "Instrument Sans"'] },
   { name: 'apple-touch-icon.png', html: icon, width: 180, height: 180, fonts: [] },
 ];
 
