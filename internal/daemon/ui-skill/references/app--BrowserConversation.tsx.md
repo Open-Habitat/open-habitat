@@ -52,6 +52,13 @@ import { ContextRing } from "../components/ContextRing";
 import { ContextView } from "../components/ContextView";
 import { ControlButton, controlClassName } from "../components/ControlElements";
 import { ArchivedFoot } from "../components/ConversationArchive";
+import {
+  LinkCard,
+  LinkDroppedNotice,
+  LinkHeldNotice,
+  LinkHiddenNotice,
+  LinkMark,
+} from "../components/ConversationLink";
 import { ConversationWeight } from "../components/ConversationWeight";
 import { CommandRun } from "../components/composer/CommandRun";
 import { EditorReplaceNote } from "../components/EditorReplaceNote";
@@ -124,6 +131,12 @@ import {
 import { useContextDetail } from "./contextDetail";
 import { contextUsage } from "./contextUsage";
 import { provisionalItems } from "./conversationEvents";
+import {
+  appendLinkMessage,
+  linkMessageLimit,
+  setLinkArrival,
+  useLinkArrival,
+} from "./conversationLink";
 import type { ConversationStore } from "./conversationStore";
 import { useAgentNotices } from "./conversationStore";
 import {
@@ -358,7 +371,13 @@ function BrowserConversationContent({
   nextWaiting,
   creation,
   viewKey,
+  onOpenLinkSetting,
+  onRestoreWorkspace,
 }: {
+  /** Opens Settings on the conversation links row, over this view. */
+  onOpenLinkSetting?: () => void;
+  /** Shows the hidden workspace a conversation link pointed at again. */
+  onRestoreWorkspace?: () => void;
   /** A conversation this tab is creating, shown until it has an ID. */
   creation?: Creation;
   /** Names the view instead of the conversation ID; see BrowserConversation. */
@@ -1785,6 +1804,91 @@ function BrowserConversationContent({
       : undefined;
   // A goal chosen before this conversation existed keeps its selection.
   usePreparedField(guide, section);
+  // What a conversation link left for this new conversation
+  // (app/conversationLink.ts). A message held while links were not allowed
+  // is released by App once they are and Settings has closed; it then goes
+  // into an empty field, or waits in the card beside the person's own text.
+  const arrival = useLinkArrival(guide);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: draftNow and changeDraft read the field as it is when the message arrives.
+  useEffect(() => {
+    if (!guide || !arrival) return;
+    const link = arrival.link;
+    if (link?.state === "released") {
+      if (draftNow().trim())
+        setLinkArrival(guide, {
+          ...arrival,
+          link: { state: "card", text: link.text },
+        });
+      else {
+        prepareField(guide, {
+          text: link.text,
+          start: link.text.length,
+          end: link.text.length,
+        });
+        changeDraft(link.text);
+        setLinkArrival(guide, { ...arrival, link: { state: "mark" } });
+      }
+    } else if (link?.state === "mark" && !draft.trim())
+      // Sent, or emptied by the person: the text is no longer the link's.
+      setLinkArrival(guide, { ...arrival, link: undefined });
+    else if (
+      entries.length &&
+      (link?.state === "dropped" || (!link && arrival.hidden))
+    )
+      setLinkArrival(guide, {
+        link: link?.state === "dropped" ? undefined : link,
+      });
+  }, [guide, arrival, draft, entries.length]);
+  const linkNotices = arrival ? (
+    <>
+      {arrival.link?.state === "held" ? (
+        <LinkHeldNotice
+          workspace={workspace.display_name ?? workspace.name}
+          onOpenSetting={() => onOpenLinkSetting?.()}
+        />
+      ) : null}
+      {arrival.hidden && workspace.visibility === "hidden" ? (
+        <LinkHiddenNotice
+          workspace={workspace.display_name ?? workspace.name}
+          onRestore={onRestoreWorkspace}
+        />
+      ) : null}
+      {arrival.link?.state === "dropped" ? (
+        <LinkDroppedNotice
+          reason={arrival.link.reason}
+          length={arrival.link.length}
+          limit={linkMessageLimit}
+        />
+      ) : null}
+      {arrival.link?.state === "card" && guide ? (
+        <LinkCard
+          text={arrival.link.text}
+          onAppend={() => {
+            if (arrival.link?.state !== "card") return;
+            changeDraft(appendLinkMessage(draftNow(), arrival.link.text));
+            setLinkArrival(guide, { ...arrival, link: undefined });
+          }}
+          onReplace={() => {
+            if (arrival.link?.state !== "card") return;
+            changeDraft(arrival.link.text);
+            setLinkArrival(guide, { ...arrival, link: { state: "mark" } });
+          }}
+          onDismiss={() =>
+            setLinkArrival(guide, { ...arrival, link: undefined })
+          }
+        />
+      ) : null}
+    </>
+  ) : null;
+  const linkMark =
+    arrival?.link?.state === "mark" && guide ? (
+      <LinkMark
+        onRemove={() => {
+          changeDraft("");
+          setLinkArrival(guide, { ...arrival, link: undefined });
+        }}
+      />
+    ) : undefined;
   const loadedGoal = conversationGoal(page, startedGoal, entries, draft);
   // Older history holds the first message: read just its start, once.
   const [first, setFirst] = useState<{ key: string; skill?: string }>();
@@ -4001,7 +4105,11 @@ function BrowserConversationContent({
                   <Composer
                     {...composer}
                     fieldQuote={
-                      view === "opened" && controlled && replyOn && replyNow ? (
+                      linkMark ??
+                      (view === "opened" &&
+                      controlled &&
+                      replyOn &&
+                      replyNow ? (
                         <ComposerQuote
                           excerpt={replyNow.excerpt}
                           offer={replyNow.offer}
@@ -4011,11 +4119,12 @@ function BrowserConversationContent({
                           }
                           onRemove={() => setReplyTarget(undefined)}
                         />
-                      ) : undefined
+                      ) : undefined)
                     }
                     beforeField={
                       view === "opened" && controlled ? (
                         <>
+                          {linkNotices}
                           <BackgroundStrip
                             agentIdle={
                               presentation.activity === "waiting_background" ||
@@ -4033,7 +4142,9 @@ function BrowserConversationContent({
                             />
                           ) : null}
                         </>
-                      ) : null
+                      ) : (
+                        linkNotices
+                      )
                     }
                   />
                 </div>

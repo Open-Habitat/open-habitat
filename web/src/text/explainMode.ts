@@ -1094,6 +1094,55 @@ const fi = {
       lead: "Poistaa lainauksen kentästä. Kirjoittamasi teksti jää.",
       try: "Poista",
     },
+    CL01: {
+      name: "Viesti linkistä",
+      lead: "Kertoo, että kentän teksti tuli painamastasi keskustelulinkistä eikä sitä ole lähetetty.",
+      know: "Lue viesti ennen kuin painat Lähetä: linkin tekijä kirjoitti sen. Voit muokata sitä vapaasti.",
+    },
+    CL02: {
+      name: "Poista linkin viesti",
+      lead: "Tyhjentää kentän linkin viestistä. Mitään ei lähetetä.",
+      try: "Poista",
+    },
+    CL03: {
+      name: "Lisää viestisi perään",
+      lead: "Lisää linkin viestin kentässä jo olevan tekstisi perään.",
+      know: "Mitään ei lähetetä. Voit muokata yhdistettyä viestiä ennen lähettämistä.",
+      try: "Lisää perään",
+    },
+    CL04: {
+      name: "Korvaa",
+      lead: "Vaihtaa kentän tekstin linkin viestiin.",
+      know: "Kentässä ollut keskeneräinen tekstisi poistuu.",
+      try: "Korvaa",
+    },
+    CL05: {
+      name: "Hylkää",
+      lead: "Sulkee linkin viestin. Oma tekstisi jää kenttään.",
+      try: "Hylkää",
+    },
+    CL06: {
+      name: "Avaa asetus",
+      lead: "Avaa asetuksista keskustelulinkkien rivin, jossa voit sallia linkit.",
+      know: "Jos sallit linkit ja suljet asetukset, linkin viesti tulee tämän keskustelun kenttään. Ilman sallimista mitään ei muutu.",
+      try: "Avaa asetus",
+    },
+    CL07: {
+      name: "Palauta työtila näkyviin",
+      lead: "Palauttaa piilotetun työtilan sivupalkkiin.",
+      know: "Keskustelu toimii samoin, vaikka työtila pysyisi piilotettuna.",
+    },
+    CL08: {
+      name: "Kopioi viesti",
+      lead: "Kopioi linkin viestin leikepöydälle.",
+      try: "Kopioi",
+    },
+    CL09: {
+      name: "Toinen työtila",
+      lead: "Avaa saman linkin uuteen keskusteluun tässä työtilassa.",
+      know: "Viesti tulee kenttään lähettämättä, kuten linkki olisi osoittanut tähän työtilaan.",
+      try: "Aloita tässä",
+    },
     V33: {
       name: "Muut ilmoitukset",
       lead: "Näyttää myös keskustelun ja luonnoksen muut ilmoitukset.",
@@ -3249,6 +3298,55 @@ export const explainModeText = catalog(
         name: "Remove quote",
         lead: "Removes the quote from the field. Your text stays.",
         try: "Remove",
+      },
+      CL01: {
+        name: "Message from a link",
+        lead: "Says the field's text came from a conversation link you pressed and has not been sent.",
+        know: "Read the message before you press Send: whoever made the link wrote it. You can edit it freely.",
+      },
+      CL02: {
+        name: "Remove the link's message",
+        lead: "Clears the link's message from the field. Nothing is sent.",
+        try: "Remove",
+      },
+      CL03: {
+        name: "Add after your message",
+        lead: "Adds the link's message after the text already in the field.",
+        know: "Nothing is sent. You can edit the combined message before sending it.",
+        try: "Add after",
+      },
+      CL04: {
+        name: "Replace",
+        lead: "Changes the field's text to the link's message.",
+        know: "Your unfinished text in the field is removed.",
+        try: "Replace",
+      },
+      CL05: {
+        name: "Discard",
+        lead: "Closes the link's message. Your own text stays in the field.",
+        try: "Discard",
+      },
+      CL06: {
+        name: "Open the setting",
+        lead: "Opens the conversation links row in Settings, where you can allow links.",
+        know: "If you allow links and close Settings, the link's message goes into this conversation's field. Without allowing, nothing changes.",
+        try: "Open the setting",
+      },
+      CL07: {
+        name: "Show the workspace again",
+        lead: "Brings the hidden workspace back to the sidebar.",
+        know: "The conversation works the same even if the workspace stays hidden.",
+      },
+      CL08: {
+        name: "Copy message",
+        lead: "Copies the link's message to the clipboard.",
+        try: "Copy",
+      },
+      CL09: {
+        name: "Another workspace",
+        lead: "Opens the same link as a new conversation in this workspace.",
+        know: "The message goes into the field unsent, as if the link had pointed to this workspace.",
+        try: "Start here",
       },
       V33: {
         name: "More notices",

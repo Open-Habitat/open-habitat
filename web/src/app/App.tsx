@@ -27,6 +27,10 @@ import {
 import { accountLabel } from "../components/Account";
 import { ArchiveNotice } from "../components/ArchiveNotice";
 import { LinkRow } from "../components/ControlElements";
+import {
+  LinkMissingWorkspace,
+  LinkSignInNotice,
+} from "../components/ConversationLink";
 import { ExplainMode } from "../components/ExplainMode";
 import { HomeWorkspaces } from "../components/HomeWorkspaces";
 import { Landing } from "../components/Landing";
@@ -43,6 +47,7 @@ import {
 import { setPersonalLanguage, textNow, useLanguage } from "../i18n";
 import { agentResourcesText } from "../text/agentResources";
 import { appText } from "../text/app";
+import { conversationLinkText } from "../text/conversationLink";
 import { multiplayerText } from "../text/multiplayer";
 import { navigationText } from "../text/navigation";
 import { sharesText } from "../text/shares";
@@ -77,6 +82,19 @@ import {
 import { WorkspaceArchive } from "./ConversationArchiveFlow";
 import { CloneJobs } from "./cloneJobs";
 import { ConversationJournal } from "./conversationJournal";
+import {
+  conversationLinkAt,
+  findLinkWorkspace,
+  forgetConversationLink,
+  isLinkRoute,
+  keepConversationLinkForSignIn,
+  type LinkArrival,
+  type LinkMessage,
+  linkWorkspaceName,
+  releaseHeldLinks,
+  retargetConversationLink,
+  setLinkArrival,
+} from "./conversationLink";
 import { ConversationStore } from "./conversationStore";
 import {
   canRecheckCreation,
@@ -2183,6 +2201,94 @@ export function App() {
     setAutoStart(undefined);
     startFromHome(created.workspace_id);
   }, [autoStart, snapshot, identity, defaultStart, csrf, phase, route]);
+  // Conversation links (app/conversationLink.ts): `/new/<workspace>` opens
+  // a new conversation in that workspace, as its + does. The link's message
+  // goes into the new conversation's draft only when the person allows links
+  // (Settings › Vaaralliset toiminnot); otherwise it stays in this tab's
+  // memory until Settings closes with links allowed, and a draft the person
+  // already has there is never overwritten.
+  const linksAllowed = !!confirmedPreferences.risky["conversation-links"];
+  const [linkMissing, setLinkMissing] = useState<{
+    path: string;
+    name: string;
+    message: LinkMessage;
+  }>();
+  const linkHandled = useRef<string | undefined>(undefined);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new snapshot, preference or default-agent observation can make the start possible.
+  useEffect(() => {
+    if (!isLinkRoute(route.pathname) || linkHandled.current === route.key)
+      return;
+    if (
+      phase !== "authenticated" ||
+      !snapshot ||
+      !identity ||
+      !csrf ||
+      !confirmedPreferences.loaded ||
+      source !== "confirmed"
+    )
+      return;
+    const link = conversationLinkAt(route.pathname);
+    const name = linkWorkspaceName(route.pathname) ?? "";
+    const workspace = findLinkWorkspace(snapshot.workspaces, name);
+    if (!workspace) {
+      setLinkMissing({ path: route.pathname, name, message: link.message });
+      return;
+    }
+    const ws = workspace.workspace_id;
+    // The + waits for the default agent's observation; so does the link.
+    if (defaultStart?.identity !== identity || createPending.has(ws)) return;
+    linkHandled.current = route.key;
+    forgetConversationLink();
+    setLinkMissing(undefined);
+    const owner = creationGuideOwner(identity, ws);
+    const key = creationKeys(identity, ws).draft;
+    const message = link.message;
+    const arrival: LinkArrival = {
+      hidden: workspace.visibility === "hidden" || undefined,
+    };
+    if (message.kind === "text" && !linksAllowed)
+      arrival.link = { state: "held", text: message.text };
+    else if (message.kind === "text" && sessionStorage.getItem(key)?.trim())
+      arrival.link = { state: "card", text: message.text };
+    else if (message.kind === "text") {
+      // Like the home view's request to an agent: the draft waits in the
+      // new conversation's field, unsent, with no goal naming it.
+      setGuide(owner, undefined);
+      sessionStorage.setItem(key, message.text);
+      prepareField(owner, {
+        text: message.text,
+        start: message.text.length,
+        end: message.text.length,
+      });
+      arrival.link = { state: "mark" };
+    } else if (message.kind === "dropped" && linksAllowed)
+      arrival.link = {
+        state: "dropped",
+        reason: message.reason,
+        length: message.length,
+      };
+    setLinkArrival(owner, arrival);
+    // The link's address is replaced, so Back does not open it again.
+    navigate(`/workspaces/${ws}`, { replace: true });
+    if (!createReason(ws)) startFromHome(ws);
+  }, [
+    route,
+    phase,
+    snapshot,
+    identity,
+    csrf,
+    confirmedPreferences.loaded,
+    source,
+    defaultStart,
+    createPending,
+    linksAllowed,
+  ]);
+  // A message held while links were not allowed goes to its conversation
+  // once they are and Settings, which lies over it, has closed.
+  const underSettings = !!settingsOver;
+  useEffect(() => {
+    if (linksAllowed && !underSettings) releaseHeldLinks();
+  }, [linksAllowed, underSettings]);
   // A worktree's run names the conversation that started it; the workspace
   // page's worktree section shows its title and whether it is archived.
   const ownerConversation = (id: string) => {
@@ -2755,12 +2861,18 @@ export function App() {
       <LoginCard
         onLogin={() => {
           if (syntheticDemo) return;
+          keepConversationLinkForSignIn(location.pathname);
           window.location.assign(
             `/auth/github/start?return_to=${encodeURIComponent(safeRoute(location.pathname))}`,
           );
         }}
         notice={
           <>
+            {isLinkRoute(location.pathname) ? (
+              <LinkSignInNotice
+                workspace={linkWorkspaceName(location.pathname) ?? ""}
+              />
+            ) : null}
             {new URLSearchParams(location.search).has("auth_error") && (
               <LoginErrorNotice
                 code={new URLSearchParams(location.search).get("auth_error")}
@@ -2828,11 +2940,12 @@ export function App() {
         onRetry={refresh}
         failure={landingFailure}
         retry={{ ...landingRetry, attempting: landingAttempting }}
-        onSignIn={() =>
+        onSignIn={() => {
+          keepConversationLinkForSignIn(location.pathname);
           window.location.assign(
             `/auth/github/start?return_to=${encodeURIComponent(safeRoute(location.pathname))}`,
-          )
-        }
+          );
+        }}
       />
     ) : selectedAgent &&
       agentWorkspace &&
@@ -2909,6 +3022,31 @@ export function App() {
         key={identity}
         github={snapshot?.auth?.native_github}
       />
+    ) : isLinkRoute(location.pathname) ? (
+      linkMissing?.path === location.pathname ? (
+        <LinkMissingWorkspace
+          workspace={linkMissing.name}
+          text={
+            linksAllowed && linkMissing.message.kind === "text"
+              ? linkMissing.message.text
+              : undefined
+          }
+          others={visible.map((w) => ({
+            id: w.workspace_id,
+            name: w.display_name ?? w.name,
+          }))}
+          onStart={(name) => {
+            // The same link, in the workspace chosen here.
+            const path = `/new/${encodeURIComponent(name)}`;
+            retargetConversationLink(location.pathname, path);
+            navigate(path, { replace: true });
+          }}
+        />
+      ) : (
+        <p role="status" data-testid="link-opening">
+          {conversationLinkText[language].opening}
+        </p>
+      )
     ) : location.pathname === "/workspaces/new" ? (
       <NewWorkspacePage
         github={githubWarning}
@@ -3116,6 +3254,16 @@ export function App() {
                   <BrowserConversation
                     viewKey={viewKey}
                     creation={creation}
+                    onOpenLinkSetting={() =>
+                      openSettings(
+                        settingsHref("vaaralliset", "conversation-links"),
+                      )
+                    }
+                    onRestoreWorkspace={
+                      selected.visibility === "hidden"
+                        ? () => void changeVisibility(selected, false)
+                        : undefined
+                    }
                     github={
                       <GitHubConnectionNotice
                         warning={

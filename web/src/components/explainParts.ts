@@ -384,6 +384,18 @@ export const parts: Record<CardId, Part> = {
     sel: '[data-testid="quote-jump"], [data-testid="sent-quote"]',
   },
   K35: { kind: "once", sel: '[data-testid="quote-remove"]' },
+  CL01: { kind: "info", sel: '[data-testid="link-mark"]' },
+  CL02: { kind: "once", sel: '[data-testid="link-remove"]' },
+  CL03: { kind: "once", sel: '[data-testid="link-append"]' },
+  CL04: { kind: "once", sel: '[data-testid="link-replace"]' },
+  CL05: { kind: "once", sel: '[data-testid="link-dismiss"]' },
+  CL06: { kind: "nav", sel: '[data-testid="link-open-setting"]' },
+  CL07: { kind: "once", sel: '[data-testid="link-restore-workspace"]' },
+  CL08: { kind: "once", sel: '[data-testid="link-missing-copy"]' },
+  CL09: {
+    kind: "nav",
+    sel: '[data-testid="link-missing-workspace-start"]',
+  },
   K20: { kind: "once", sel: '[data-testid="markdown-preview-toggle"]' },
   K21: { kind: "once", sel: '[data-testid="markdown-preview-expand"]' },
   K22: {
@@ -807,6 +819,8 @@ export const parts: Record<CardId, Part> = {
 export const waiting: ReadonlySet<CardId> = new Set<CardId>([
   "RK02",
   "RK03",
+  "CL04",
+  "CL07",
   "AS08",
   "AS10",
   "AS11",

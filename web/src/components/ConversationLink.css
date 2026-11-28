@@ -1,0 +1,81 @@
+/* Conversation links (round 2026-11-27-keskustelulinkit-3): the field's
+   mark and the card share the reply quote's shape, with a dashed accent
+   border that says the text came from a link. */
+.ah-link-mark {
+  border-style: dashed;
+  border-color: var(--ah-accent);
+}
+.ah-link-card {
+  margin: 0 0 var(--ah-s2);
+  gap: var(--ah-s2);
+  padding: var(--ah-s2) var(--ah-s3);
+  border-style: dashed;
+  border-color: var(--ah-accent);
+  background: var(--ah-surface);
+}
+.ah-link-card .ah-reply-quote-head > span {
+  min-width: 0;
+}
+.ah-link-text {
+  margin: 0;
+  padding: var(--ah-s2) var(--ah-s3);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-sunken, var(--ah-bg));
+  color: var(--ah-ink);
+  max-height: 9em;
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+.ah-link-text p {
+  margin: 0;
+}
+.ah-link-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ah-control-gap, 6px);
+}
+.ah-link-copied {
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+}
+
+/* The page of a link whose workspace is not found. */
+.ah-link-missing {
+  display: grid;
+  gap: var(--ah-s3);
+  align-content: start;
+  max-width: 680px;
+  padding: var(--ah-s6, 32px) var(--ah-s5);
+}
+.ah-link-missing h1 {
+  margin: 0;
+  font-size: var(--ah-size-title, 22px);
+}
+.ah-link-missing h1:focus {
+  outline: none;
+}
+.ah-link-missing h2 {
+  margin: var(--ah-s3) 0 0;
+  font-size: var(--ah-size-body, 15px);
+}
+.ah-link-missing p {
+  margin: 0;
+}
+.ah-link-missing code {
+  font: 12.5px / 1.4 var(--ah-mono);
+  overflow-wrap: anywhere;
+}
+.ah-link-workspaces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ah-control-gap, 6px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+@media (max-width: 600px) {
+  .ah-link-missing {
+    padding: var(--ah-s4);
+  }
+}

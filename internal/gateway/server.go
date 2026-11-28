@@ -263,6 +263,10 @@ func (s *Server) index(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	http.ServeFile(w, r, filepath.Join(s.staticDir, "index.html"))
 }
+
+// knownUIRoute: `/new/<workspace>` is a conversation link; the browser finds
+// the workspace and reads the message from the fragment, which never reaches
+// the host.
 func knownUIRoute(path string) bool {
-	return path == "/" || path == "/link" || path == "/view" || path == "/offer" || (path == "/settings" || strings.HasPrefix(path, "/settings/")) || path == "/administration" || path == "/resources" || path == "/shares" || path == "/workspaces" || strings.HasPrefix(path, "/workspaces/") || strings.HasPrefix(path, "/agents/pi:") || strings.HasPrefix(path, "/operations/")
+	return path == "/" || path == "/link" || path == "/view" || path == "/offer" || (path == "/settings" || strings.HasPrefix(path, "/settings/")) || path == "/administration" || path == "/resources" || path == "/shares" || path == "/workspaces" || strings.HasPrefix(path, "/workspaces/") || strings.HasPrefix(path, "/agents/pi:") || strings.HasPrefix(path, "/operations/") || strings.HasPrefix(path, "/new/")
 }

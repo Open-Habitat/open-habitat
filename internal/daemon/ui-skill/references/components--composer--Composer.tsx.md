@@ -97,6 +97,7 @@ import {
   splitGoal,
   unwrapGoal,
 } from "./GoalChip";
+import { useRowFit } from "./rowFit";
 import "./composer.css";
 
 const isMac =
@@ -921,6 +922,8 @@ export function Composer({
     };
   }, [csrf, addFiles]);
   const box = useRef<HTMLDivElement>(null);
+  const row = useRef<HTMLDivElement>(null);
+  useRowFit(row);
   const listId = useId().replace(/:/g, "");
   const shellLabelId = `${listId}-shell`;
   const [open, setOpen] = useState<Open | null>(null);
@@ -2172,6 +2175,7 @@ export function Composer({
         />
         {fieldList}
         <div
+          ref={row}
           className={`ah-crow${busy ? " ah-crow-busy" : ""}${dictating ? " ah-crow-dictating" : ""}`}
         >
           <span className="ah-crow-lz">

@@ -7,6 +7,7 @@ import "../../design-system/styles.css";
 import "./app.css";
 import { App } from "./app/App";
 import { ChunkLoadBoundary } from "./app/ChunkLoadBoundary";
+import { takeConversationLink } from "./app/conversationLink";
 import { LinkPage, takeLinkToken } from "./app/LinkPage";
 import { OfferOpenPage } from "./app/OfferOpenPage";
 import { store } from "./app/store";
@@ -14,6 +15,9 @@ import { atViewEntry, ViewOpenPage } from "./app/ViewOpenPage";
 import { loadSiteLanguage } from "./i18n/siteLanguage";
 
 void loadSiteLanguage();
+// A conversation link's message leaves the address bar before anything else
+// runs (app/conversationLink.ts).
+takeConversationLink();
 const viewTab = window.location.pathname === "/view" || atViewEntry();
 const offerTab = window.location.pathname === "/offer";
 const standalone = window.location.pathname === "/link" || viewTab || offerTab;

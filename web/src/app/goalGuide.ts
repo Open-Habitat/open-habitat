@@ -7,6 +7,7 @@ import {
   goalStartsImmediately,
 } from "../components/StartHere";
 import { readCommands, type StartGoal, type StartPage } from "./composerReads";
+import { adoptLinkArrival } from "./conversationLink";
 import { conversationName } from "./conversationName";
 import { creationKeys, readHeld, writeHeld } from "./heldMessages";
 import { type HistoryEntry, readHistory } from "./history";
@@ -72,14 +73,15 @@ export function readGuide(owner: string) {
 }
 
 /** The created conversation takes over the guide started while it was being
- * created, and the prepared field's selection, as it takes over the draft
- * (adoptCreation). */
+ * created, the prepared field's selection and what a conversation link left
+ * for it, as it takes over the draft (adoptCreation). */
 export function adoptGuide(
   identity: string,
   workspaceId: string,
   agentId: string,
 ) {
   const from = creationGuideOwner(identity, workspaceId);
+  adoptLinkArrival(from, guideOwner(identity, agentId));
   const field = preparedFields.get(from);
   if (field) {
     preparedFields.delete(from);

@@ -47,7 +47,7 @@ const fi = {
   /** No shared (multi-tenant) application is set, so a listed client
    * organisation cannot connect yet. */
   noShared:
-    "Muiden organisaatioiden ihmiset voivat yhdistää vasta, kun usean organisaation sovellukset on asetettu palvelimelle.",
+    "Muiden organisaatioiden ihmiset voivat yhdistää vasta, kun usean organisaation sovellukset on asetettu (Tasot › Useita organisaatioita).",
   listInvalid:
     "Palvelimen organisaatiolista on virheellinen, joten mitään organisaatiota ei palvella yhteisillä sovelluksilla. Sen voi korjata vain palvelimella.",
   setupOff:
@@ -153,7 +153,7 @@ export const microsoftOrganisationsText = catalog(
       "The list is not a security boundary: the apps are shared, and a person's own agent can sign in around Habitat. A client's data is limited by the client's Entra (Assignment required, removing the approval or the guest account).",
     ],
     noShared:
-      "People in other organizations can connect only once the multi-organization apps are set on the server.",
+      "People in other organizations can connect only once the multi-organization apps are set (Levels › Several organizations).",
     listInvalid:
       "The server's organization list is invalid, so no organization is served with the shared apps. Only the server can fix it.",
     setupOff:
@@ -231,7 +231,7 @@ export const microsoftOrganisationsText = catalog(
       "The list is not a security boundary: the apps are shared, and a person's own agent can sign in around Habitat. A client's data is limited by the client's Entra (Assignment required, removing the approval or the guest account).",
     ],
     noShared:
-      "People in other organisations can connect only once the multi-organisation apps are set on the server.",
+      "People in other organisations can connect only once the multi-organisation apps are set (Levels › Several organisations).",
     listInvalid:
       "The server's organisation list is invalid, so no organisation is served with the shared apps. Only the server can fix it.",
     setupOff:

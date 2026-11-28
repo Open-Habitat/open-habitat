@@ -97,6 +97,8 @@ const fi = {
   newSecret:
     "Google ei näytä vanhaa salaisuutta uudelleen. Lisää asiakkaalle uusi ja kopioi se ikkunasta.",
   levelOf: (provider: string, level: string) => `${provider}, taso ${level}`,
+  sharedLevelOf: (provider: string, level: string) =>
+    `${provider}, taso ${level}, usean organisaation sovellus`,
   haveClient: "Minulla on jo asiakas",
   haveApp: "Minulla on jo sovellus",
   newSecretTitle: "Uusi salaisuus",
@@ -118,6 +120,8 @@ const fi = {
     `Poistetaanko tason tunnukset (${section})?`,
   levelGone: "Tasoa ei voi enää valita yhdistettäessä.",
   levelRelogin: "Tällä tasolla yhdistetyt tilit eivät voi kirjautua uudelleen.",
+  sharedGone:
+    "Koskee kaikkia listan organisaatioita, joilla ei ole tälle tasolle omaa sovellusta.",
   removeCredentials: "Poista tunnukset",
   removeTitle: (provider: string) => `Poistetaanko ${provider}-tunnukset?`,
   noNew: "Uusia tilejä ei voi yhdistää.",
@@ -268,6 +272,8 @@ export const serverIntegrationsText = catalog(
     newSecret:
       "Google does not show the old secret again. Add a new one to the client and copy it from the window.",
     levelOf: (provider, level) => `${provider}, level ${level}`,
+    sharedLevelOf: (provider, level) =>
+      `${provider}, level ${level}, multi-organization app`,
     haveClient: "I already have a client",
     haveApp: "I already have an app",
     newSecretTitle: "New secret",
@@ -289,6 +295,8 @@ export const serverIntegrationsText = catalog(
       `Remove the level's credentials (${section})?`,
     levelGone: "The level can no longer be chosen when connecting.",
     levelRelogin: "Accounts connected at this level cannot sign in again.",
+    sharedGone:
+      "Applies to every organization on the list that has no app of its own for this level.",
     removeCredentials: "Remove credentials",
     removeTitle: (provider) => `Remove the ${provider} credentials?`,
     noNew: "No new accounts can be connected.",
@@ -368,6 +376,10 @@ export const serverIntegrationsText = catalog(
     dropboxName: "Open Habitat <organisation>",
     dropboxOwner:
       "The app belongs to the account you create it with. Use the organisation's shared Dropbox account.",
+    sharedLevelOf: (provider, level) =>
+      `${provider}, level ${level}, multi-organisation app`,
+    sharedGone:
+      "Applies to every organisation on the list that has no app of its own for this level.",
     refusals: {
       integration_tenants_full:
         "The list already has 32 organisations; no more can be added. Nothing was changed.",
