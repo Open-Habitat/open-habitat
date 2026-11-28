@@ -9,7 +9,7 @@ provenance: chat
 source_ref: chat:2026-11-24/ai-provider-registry
 lane: ai-providers
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # AI options: a provider registry with GLM, Kimi, MiniMax, Qwen and other Pi providers, global and China endpoints
