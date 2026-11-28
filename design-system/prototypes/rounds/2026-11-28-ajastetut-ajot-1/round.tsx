@@ -56,8 +56,8 @@ setPersonalLanguage('fi');
 const noop = () => {};
 const NAMES = ['A · Paikka', 'B · Työtila'];
 const LINES = [
-  'A · Ajastukset-paikka: sivupalkin yläosassa Tuotokset-paikan vieressä on Ajastukset. Sen sivulla on kaikki ajastukset ja valitun ajastuksen tiedot. Työtilan sivu näyttää saman listan vain siltä työtilalta.',
-  'B · Työtilan sivu: sivupalkissa ei ole paikkaa. Ajastukset ovat vain työtilansa sivulla, ja ajastuksen tiedot avautuvat siellä. Epäonnistuneesta ajosta kertoo vain Sinun vuorosi -rivi.',
+  'A · Paikka: sivupalkin yläosassa Tuotokset-paikan vieressä on Ajastukset. Sen sivulla on kaikki ajastukset ja valitun ajastuksen tiedot. Työtilan sivu näyttää saman listan vain siltä työtilalta.',
+  'B · Työtila: sivupalkissa ei ole paikkaa. Ajastukset ovat vain työtilansa sivulla, ja ajastuksen tiedot avautuvat siellä. Epäonnistuneesta ajosta kertoo vain Sinun vuorosi -rivi.',
 ];
 const RECOMMEND = 'Suositus: A. Ajastus toimii henkilön puolesta, kun kukaan ei katso, joten yksi näkymä kaikesta, mitä ajetaan, on se, jonka varassa ominaisuuteen voi luottaa. Työtilan sivulla lista on kummassakin.';
 
