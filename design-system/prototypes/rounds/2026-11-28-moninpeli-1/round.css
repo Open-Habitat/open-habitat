@@ -1,0 +1,166 @@
+/* Review chrome above the production shell, as in the 21.11. rounds. */
+html, body { margin: 0; background: var(--ah-bg); }
+.ra-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: grid; gap: 4px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: var(--ah-size-meta)/1.4 var(--ah-font);
+}
+.ra-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
+.ra-bar strong { font-weight: 600; white-space: nowrap; }
+.ra-bar label { white-space: nowrap; }
+.ra-bar select { font: inherit; }
+.ra-event {
+  font: inherit; padding: 2px 10px; cursor: pointer;
+  color: var(--ah-ink); background: var(--ah-surface);
+  border: 1px solid var(--ah-line); border-radius: var(--ah-r-md);
+}
+.ra-event:disabled { opacity: .5; cursor: default; }
+.ra-lines { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; color: var(--ah-muted); }
+.ra-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.proto-picker-item { white-space: nowrap; }
+@media (max-width: 600px) {
+  .ra-bar { padding: 6px 10px; }
+  .ra-controls { gap: 4px 10px; }
+  .ra-controls > strong { display: none; }
+  .ra-lines li:not([aria-current]) { display: none; }
+  .ra-lines { line-height: 1.3; }
+}
+.ra-stage .ah-app-shell {
+  top: var(--review-h, 0px);
+  height: calc(100dvh - var(--review-h, 0px) - 60px);
+}
+.ra-stage .ah-rail { top: var(--review-h, 0px); }
+@media (max-width: 800px) {
+  .ra-stage .ah-shell-body.ah-mobile-open > .ah-rail-slot { top: var(--review-h, 0px); bottom: 60px; }
+}
+.mp1-main { height: 100%; min-width: 0; overflow: auto; }
+
+/* ---------- The multiplayer mark: in the header, the workspace list and
+   the invite. Words and an icon, never colour alone. ---------- */
+.mp1-mark {
+  display: inline-flex; align-items: center; gap: 4px; flex: none;
+  padding: 0 8px; border-radius: 999px;
+  font: 600 var(--ah-size-meta)/20px var(--ah-font);
+  color: var(--ah-accent-ink); background: var(--ah-accent-soft);
+  border: 1px solid var(--ah-accent-line);
+  white-space: nowrap;
+}
+.mp1-mark svg { width: 14px; height: 14px; }
+.mp1-head-extra { display: inline-flex; align-items: center; gap: var(--ah-s2); }
+
+/* The rail: a multiplayer row carries the people glyph after its title (the
+   production icon's path as a mask, so it follows the theme); its detail
+   line, which the row's description and tooltip read, says Moninpeli. */
+[data-testid^="agent-item-mp-"] .ah-nav-label { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+[data-testid^="agent-item-mp-"] .ah-nav-label::after {
+  content: ""; flex: none; width: 14px; height: 14px; background: var(--ah-accent-ink);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='9' cy='8.5' r='3'/%3E%3Cpath d='M3.5 19c.9-3 3-4.5 5.5-4.5s4.6 1.5 5.5 4.5M16 6a3 3 0 0 1 0 5.6M17.5 14.6c1.6.6 2.6 2 3 4.4'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='9' cy='8.5' r='3'/%3E%3Cpath d='M3.5 19c.9-3 3-4.5 5.5-4.5s4.6 1.5 5.5 4.5M16 6a3 3 0 0 1 0 5.6M17.5 14.6c1.6.6 2.6 2 3 4.4'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+/* Moninpeli + as an icon (direction 2): people with a small plus. */
+.mp1-users-plus { position: relative; display: inline-grid; place-items: center; }
+.mp1-users-plus svg:last-child {
+  position: absolute; right: -6px; bottom: -5px; width: 11px; height: 11px;
+  background: var(--ah-surface); border-radius: 50%;
+}
+
+/* ---------- Workspace page (2 Aloitus) ---------- */
+.mp1-ws { padding: var(--ah-s6); }
+.mp1-ws .ah-workspace-page-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s4); }
+.mp1-ws .ah-workspace-page-title { flex: 1 1 200px; min-width: 0; }
+.mp1-ws .ah-workspace-page-title h1 { margin: 0; font-size: var(--ah-size-h2); }
+.mp1-ws .ah-workspace-page-title p { margin: 2px 0 0; color: var(--ah-muted); }
+.mp1-ws-actions { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
+.mp1-ws-actions[data-direction="1"] { gap: 0; }
+.mp1-ws-actions[data-direction="1"] > .ah-workspace-icon-row { gap: 0; }
+.mp1-ws-list {
+  list-style: none; margin: var(--ah-s6) 0 0; padding: 0;
+  border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface);
+}
+.mp1-ws-list li {
+  display: flex; align-items: center; gap: var(--ah-s3);
+  padding: var(--ah-s3) var(--ah-s4); color: var(--ah-ink);
+}
+.mp1-ws-list li + li { border-top: 1px solid var(--ah-line-soft); }
+.mp1-ws-list li > svg { width: 16px; height: 16px; color: var(--ah-muted); flex: none; }
+.mp1-ws-list li > span:not(.mp1-mark) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- Empty conversation's kind choice (direction 3) ---------- */
+.mp1-empty { max-width: 640px; margin: var(--ah-s8, 48px) auto 0; padding: 0 var(--ah-s4); }
+.mp1-empty h2 { font-size: var(--ah-size-h3, 1.1rem); margin: 0 0 var(--ah-s3); }
+.mp1-kinds .s-prov-opt { align-items: flex-start; }
+.mp1-kinds .s-prov-opt > svg { width: 20px; height: 20px; flex: none; margin-top: 2px; }
+.mp1-kinds .s-prov-opt span { display: grid; gap: 2px; }
+.mp1-kinds .s-prov-opt strong { display: inline-flex; align-items: center; gap: 4px; }
+.mp1-kinds .s-prov-opt strong svg { width: 12px; height: 12px; }
+.mp1-kinds .s-prov-opt small { color: var(--ah-muted); font-size: var(--ah-size-meta); line-height: 1.4; }
+
+/* ---------- Dialogs ---------- */
+.mp1-dialog { display: grid; gap: var(--ah-s3); max-width: min(520px, calc(100vw - 32px)); }
+.mp1-dialog p { margin: 0; }
+.mp1-help { color: var(--ah-muted); font-size: var(--ah-size-meta); line-height: 1.4; margin: 0; }
+.mp1-input { width: 100%; box-sizing: border-box; }
+.mp1-invite { border: 0; margin: 0; padding: 0; display: grid; gap: var(--ah-s2); }
+.mp1-invite legend { padding: 0; margin-bottom: var(--ah-s2); }
+.mp1-invite-row { display: flex; align-items: center; gap: var(--ah-s2); }
+.mp1-people { max-height: min(50vh, 420px); overflow: auto; }
+
+/* ---------- Conversation ---------- */
+.mp1-band { flex-wrap: wrap; }
+.mp1-more {
+  display: inline-grid; place-items: center; min-width: 24px; height: 24px; padding: 0 4px;
+  border-radius: 999px; background: var(--ah-surface-2, var(--ah-control));
+  font: 600 11px/1 var(--ah-font); color: var(--ah-ink); box-sizing: border-box;
+}
+.mp1-held {
+  display: flex; align-items: center; gap: var(--ah-s2); margin: 4px 0 0;
+  color: var(--ah-muted); font-size: var(--ah-size-meta);
+}
+.mp1-msg[data-held] .ah-mp-message, .mp1-msg[data-held] article { opacity: .75; }
+.mp1-gone {
+  margin: 0; padding: var(--ah-s2) var(--ah-s3); border-radius: var(--ah-r-md);
+  background: var(--ah-warning-soft, var(--ah-accent-soft)); color: var(--ah-ink);
+}
+.mp1-op-actions { display: inline-flex; gap: 4px; margin-left: auto; }
+.ah-mp-rows li { flex-wrap: wrap; }
+.mp1-banner { padding: 0 0 var(--ah-s3); }
+.mp1-away {
+  margin: 0; padding: var(--ah-s2) var(--ah-s4);
+  color: var(--ah-muted); font-size: var(--ah-size-meta);
+  border-bottom: 1px solid var(--ah-line-soft);
+}
+
+/* ---------- Invite and unavailable pages ---------- */
+.mp1-invite-page { max-width: 560px; margin: var(--ah-s8, 48px) auto; padding: 0 var(--ah-s5); display: grid; gap: var(--ah-s3); }
+.mp1-invite-page h1 { display: flex; align-items: center; gap: var(--ah-s3); font-size: var(--ah-size-h2); margin: 0; }
+.mp1-invite-page p { margin: 0; }
+.mp1-invite-page p strong + .mp1-mark { margin-left: var(--ah-s2); }
+.mp1-invite-actions { display: flex; gap: var(--ah-s2); }
+
+/* ---------- Settings (1 Asetukset) ---------- */
+.mp1-settings { padding: var(--ah-s6); }
+.mp1-settings-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--ah-s3); margin-bottom: var(--ah-s4); }
+.mp1-settings-head h2 { margin: 0; font-size: var(--ah-size-h2); }
+.mp1-h3 { font-size: var(--ah-size-body, 1rem); margin: var(--ah-s5) 0 var(--ah-s2); }
+.mp1-settings .ah-field-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.mp1-dialog .ah-field-label { position: static; }
+@media (max-width: 600px) {
+  .mp1-ws, .mp1-settings { padding: var(--ah-s4); }
+  .mp1-settings .s-row { grid-template-columns: 1fr; }
+  .mp1-settings .s-val { justify-content: flex-start; }
+}
+
+/* On a phone the header keeps the title's room: the mark is its glyph, and
+   the word stays for assistive tech. */
+@media (max-width: 600px) {
+  .ah-agent-header .mp1-mark { padding: 0 5px; }
+  .ah-agent-header .mp1-mark-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+.mp1-input {
+  font: inherit; color: var(--ah-ink); background: var(--ah-control, var(--ah-surface));
+  border: 1px solid var(--ah-control-line, var(--ah-line)); border-radius: var(--ah-r-md);
+  padding: 8px 12px; min-height: 40px;
+}
+.mp1-input:focus-visible { outline: var(--ah-focus-width) solid var(--ah-focus); outline-offset: var(--ah-focus-offset); }

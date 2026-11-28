@@ -9,7 +9,7 @@ provenance: chat
 source_ref: chat:2026-11-24/multiplayer-own-kind
 lane: multiplayer
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Multiplayer conversations are their own kind, started with a multiplayer button, always on an API-key model
