@@ -1,5 +1,13 @@
 # Tulokset
 
+### Jarin päätös kierroksen 3 jälkeen (28.11.2026)
+
+Näytetään **koko Chrome-ikkuna** omine välilehtineen, osoiterivineen,
+historioineen ja kirjanmerkkeineen. Habitatin omassa näkymässä ei ole
+välilehtiä eikä osoitekenttää, historiaa tai kirjanmerkkejä; kioskitilaa ei
+käytetä. Kierrosten 2–3 välilehtipalkki, komentoarkki ja historialukija
+jäävät pois. Kierros 4 näyttää tämän.
+
 ## Kierros 3
 
 Prototyyppi: `design-system/prototypes/rounds/2026-11-28-palvelinselain-kehys-3/`
