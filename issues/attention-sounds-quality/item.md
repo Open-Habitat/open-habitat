@@ -9,7 +9,7 @@ provenance: chat
 source_ref: chat:conductor-2711/sounds-quality
 lane: sounds-quality
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Attention sounds are not yet as good as a reference system sound (e.g. Apple Glass)
