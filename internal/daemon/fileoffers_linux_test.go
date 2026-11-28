@@ -25,10 +25,11 @@ type fileOfferReply struct {
 	Plan          struct {
 		Names []string `json:"names"`
 	} `json:"plan"`
-	Notice struct {
-		AgentID string `json:"agent_id"`
-	} `json:"notice"`
-	Error struct {
+	// OfferCard is the reply's offer object read for the fields view offer
+	// has there too; Notice is their deprecated alias.
+	OfferCard offerCard `json:"-"`
+	Notice    offerCard `json:"notice"`
+	Error     struct {
 		Code string `json:"code"`
 	} `json:"error"`
 }
@@ -45,9 +46,13 @@ func offerFiles(t *testing.T, c *ConversationController, query string, body map[
 	w := httptest.NewRecorder()
 	c.agentFileOffers(w, r)
 	var v fileOfferReply
-	if err := json.Unmarshal(w.Body.Bytes(), &v); err != nil {
+	var card struct {
+		Offer offerCard `json:"offer"`
+	}
+	if json.Unmarshal(w.Body.Bytes(), &v) != nil || json.Unmarshal(w.Body.Bytes(), &card) != nil {
 		t.Fatalf("reply %d %q", w.Code, w.Body.String())
 	}
+	v.OfferCard = card.Offer
 	return w.Code, v
 }
 
@@ -119,8 +124,13 @@ func TestFileOfferFreezesOnlyWhatItNames(t *testing.T) {
 		t.Fatalf("offer without conversation: %d %+v", code, v)
 	}
 	code, single := offerFiles(t, c, h.q, map[string]any{"idempotency_key": key("02"), "workspace_id": ws, "paths": []string{"raportti.pdf"}})
-	if code != 200 || single.Offer.Title != "raportti.pdf" || single.Offer.Files != 1 || single.Offer.Folder != "" || single.Notice.AgentID != strings.TrimPrefix(h.q, "id=") {
+	if code != 200 || single.Offer.Title != "raportti.pdf" || single.Offer.Files != 1 || single.Offer.Folder != "" || single.OfferCard.AgentID != strings.TrimPrefix(h.q, "id=") {
 		t.Fatalf("file offer: %d %+v", code, single)
+	}
+	// Persistence is at offer.persistence as in view offer's reply, and the
+	// deprecated notice alias still carries the same values.
+	if single.OfferCard.Persistence == "" || single.Notice != single.OfferCard {
+		t.Fatalf("file offer persistence: offer %+v notice %+v", single.OfferCard, single.Notice)
 	}
 	code, folder := offerFiles(t, c, h.q, map[string]any{"idempotency_key": key("03"), "workspace_id": ws, "paths": []string{"out"}})
 	if code != 200 || folder.Offer.Files != 4 || folder.SkippedHidden != 2 || folder.Offer.Folder != "out" || folder.Offer.Title != "out" {

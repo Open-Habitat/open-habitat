@@ -22,6 +22,12 @@ it carries. To upgrade, deliver the successor release and change only
 
 ### Changed
 
+- `agent file offer --json` reports the card's persistence at `data.result.offer.persistence`, where `agent view offer` has it, so an agent reads one path for every offer.
+
+### Deprecated
+
+- `data.result.notice` in `agent file offer --json` is an alias of `data.result.offer.agent_id` and `data.result.offer.persistence`. It stays through the 0.2 releases and is removed after them.
+
 ### Fixed
 <!-- oss-changelog:unreleased-end -->
 

@@ -1040,7 +1040,21 @@ func (c *ConversationController) agentFileOffers(w http.ResponseWriter, r *http.
 		snapshotError(w, status, code)
 		return
 	}
-	historyJSON(w, map[string]any{"schema_version": 1, "dry_run": false, "reused": existing != nil, "offer": summary, "skipped_hidden": skipped, "notice": map[string]any{"agent_id": q.id, "persistence": n.Persistence}})
+	// offer.agent_id and offer.persistence sit where view offer has them, so
+	// an agent reads one path for every offer. notice is the earlier path,
+	// kept as a deprecated alias through the 0.2 release line (CHANGELOG
+	// "Deprecated"); nothing in the product reads it.
+	offer := fileOfferReplyOffer{fileOfferSummary: summary, AgentID: q.id, Persistence: n.Persistence}
+	historyJSON(w, map[string]any{"schema_version": 1, "dry_run": false, "reused": existing != nil, "offer": offer, "skipped_hidden": skipped, "notice": map[string]any{"agent_id": q.id, "persistence": n.Persistence}})
+}
+
+// fileOfferReplyOffer is the offer object of a file offer's reply: the frozen
+// offer's summary plus the card's conversation and persistence, the same two
+// fields view offer's reply has under offer.
+type fileOfferReplyOffer struct {
+	fileOfferSummary
+	AgentID     string `json:"agent_id"`
+	Persistence string `json:"persistence"`
 }
 
 // FixtureFiles freezes synthetic files from the controller's home through

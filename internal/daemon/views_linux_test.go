@@ -27,12 +27,17 @@ type viewReply struct {
 	DryRun        bool        `json:"dry_run"`
 	View          viewSummary `json:"view"`
 	SkippedHidden int         `json:"skipped_hidden"`
-	Offer         struct {
-		AgentID string `json:"agent_id"`
-	} `json:"offer"`
-	Error struct {
+	Offer         offerCard   `json:"offer"`
+	Error         struct {
 		Code string `json:"code"`
 	} `json:"error"`
+}
+
+// offerCard is the card fields every offer reply carries under offer: the
+// conversation it was published in and the notice's persistence.
+type offerCard struct {
+	AgentID     string `json:"agent_id"`
+	Persistence string `json:"persistence"`
 }
 
 func offerView(t *testing.T, c *ConversationController, query string, body map[string]any) (int, viewReply) {
@@ -413,7 +418,7 @@ func TestViewOfferInConversationIsANativeNotice(t *testing.T) {
 		t.Fatal("refused offer left an export")
 	}
 	code, v := offerView(t, c, "id=pi:"+id, body)
-	if code != 200 || v.Offer.AgentID != "pi:"+id || v.View.ConversationID != "pi:"+id || calls.Load() != 1 {
+	if code != 200 || v.Offer.AgentID != "pi:"+id || v.Offer.Persistence == "" || v.View.ConversationID != "pi:"+id || calls.Load() != 1 {
 		t.Fatalf("conversation offer: %d %+v", code, v)
 	}
 	notices, err := readNativeNotices(path, os.Geteuid(), id, cwd)

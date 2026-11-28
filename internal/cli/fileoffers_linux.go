@@ -167,16 +167,16 @@ func runAgentFileCommand(args []string, exchange func(string, string, []byte) (j
 	if !dry {
 		var reply struct {
 			SkippedHidden int `json:"skipped_hidden"`
-			Notice        struct {
+			Offer         struct {
 				Persistence string `json:"persistence"`
-			} `json:"notice"`
+			} `json:"offer"`
 		}
 		if json.Unmarshal(data, &reply) != nil {
 			return nil, system("invalid_agent_response", "invalid file offer result")
 		}
 		warnings = append(warnings, "the offer was published to the person's open browsers; that is not proof anyone downloaded or saw it")
-		if reply.Notice.Persistence != "persisted" {
-			warnings = append(warnings, "the offer card's persistence is "+reply.Notice.Persistence+"; it may not reappear after reload; do not retry with a new key")
+		if reply.Offer.Persistence != "persisted" {
+			warnings = append(warnings, "the offer card's persistence is "+reply.Offer.Persistence+"; it may not reappear after reload; do not retry with a new key")
 		}
 		if reply.SkippedHidden > 0 {
 			warnings = append(warnings, fmt.Sprintf("%d hidden entries (names starting with a dot) were not offered", reply.SkippedHidden))

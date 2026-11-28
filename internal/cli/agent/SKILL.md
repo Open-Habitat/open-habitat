@@ -159,6 +159,10 @@ and download, also listed in the conversation's file panel. It is frozen like
 a view. Use it instead of pasting attachment links, and remove an offer that
 is wrong or outdated (`file remove`); its card then says so.
 
+Both offers report the card's persistence at `data.result.offer.persistence`,
+with the values a notice has. A file offer's `data.result.notice` is a
+deprecated alias of the same fields; do not read it.
+
 For both, the title is what the person reads on the card, so give `--title` in
 their language naming the content and, when useful, the iteration
 ("Viimeisimmät sivupalkissa – prototyyppi, kierros 2"); without it a single-source
