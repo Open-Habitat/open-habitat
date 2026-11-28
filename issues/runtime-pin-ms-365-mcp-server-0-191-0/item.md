@@ -1,14 +1,17 @@
 ---
 created: 2026-11-24
-updated: 2026-11-24
+updated: 2026-11-28
 type: chore
 reporter: runtime-pin-watch
-status: untriaged
+status: open
 priority: normal
 labels: [runtime-pin]
 provenance: other
 provenance_detail: runtime pin watch
 source_ref: runtime-pin:@softeria/ms-365-mcp-server@0.191.0
+lane: runtime-pins
+lane_seq: 0
+preparation: ready
 ---
 
 # Runtime pin: @softeria/ms-365-mcp-server 0.191.0 is available (pinned 0.170.1)
@@ -27,3 +30,7 @@ A research run assesses this release before it is scheduled and writes its
 findings and a verdict (safe-to-bump, needs-work or hold) to research.md in
 this issue directory. A safe-to-bump release is raised automatically; anything
 else stays here for the conductor.
+
+### 2026-11-28 · @jari (via conductor)
+
+Bump approved.

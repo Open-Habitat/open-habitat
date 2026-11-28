@@ -1,15 +1,18 @@
 ---
 created: 2026-11-10
-updated: 2026-11-10
+updated: 2026-11-28
 type: feature
 reporter: jari
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: Jari 10.11.2026, Contoso pilot; split from m365-teams-files-and-messages direction 2
 source_ref: taskfleet:01m72a87fs3bc4k0f73bdsg4sa/split:m365-teams-messages
 originating_run: 01m72a87fs3bc4k0f73bdsg4sa
 originating_run_kind: spinoff
+lane: m365-teams
+lane_seq: 1
+preparation: ready
 ---
 
 # Microsoft 365: the agent cannot read the person's Teams chats and channel messages
@@ -37,3 +40,7 @@ To design with Jari:
   levels carry these scopes.
 - What the agent may read on the person's behalf (all chats, or chosen
   ones) is a product and privacy decision.
+
+### 2026-11-28 · @jari (via conductor)
+
+Not implemented yet; it should be. Design and build it (design first, levels and privacy, then implementation).

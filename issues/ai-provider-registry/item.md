@@ -1,14 +1,15 @@
 ---
 created: 2026-11-24
-updated: 2026-11-25
+updated: 2026-11-28
 type: feature
 reporter: Jari
-status: untriaged
+status: open
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-24/ai-provider-registry
 lane: ai-providers
 lane_seq: 1
+preparation: ready
 ---
 
 # AI options: a provider registry with GLM, Kimi, MiniMax, Qwen and other Pi providers, global and China endpoints
@@ -69,3 +70,7 @@ Agent quality on these models is a separate question from wiring. A short
 evaluation of real Open Habitat tasks (files, Git, integrations, workers) on
 DeepSeek, GLM, Kimi, MiniMax and Qwen should say which ones can carry the
 "coding-grade" promise before any Chinese-language announcement names them.
+
+### 2026-11-28 · @jari (via conductor)
+
+We want to support Chinese developers. Research the providers' models and plans (subscription vs API key), add Google and xAI Grok, and prototype how every model surface looks with them, subscription and API-key flows visible.

@@ -1,14 +1,15 @@
 ---
 created: 2026-11-24
-updated: 2026-11-25
+updated: 2026-11-28
 type: feature
 reporter: Jari
-status: untriaged
+status: open
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-24/oidc-sign-in
 lane: sign-in
 lane_seq: 1
+preparation: ready
 ---
 
 # Sign-in with generic OpenID Connect beside GitHub, configured by the administrator
@@ -59,3 +60,7 @@ CONTRIBUTING):
   the GitHub connection are separate from sign-in and stay available as a
   code-host connection);
 - multiplayer and sharing, which today name people by provider subject.
+
+### 2026-11-28 · @jari (via conductor)
+
+Research how this would be implemented and what it means in practice.

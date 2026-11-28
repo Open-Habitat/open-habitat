@@ -1,14 +1,17 @@
 ---
 created: 2026-11-21
-updated: 2026-11-21
+updated: 2026-11-28
 type: feature
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: worker proposal answering the maintainer's question in new-user-agent-instructions-template
 source_ref: taskfleet:01m7zbxs4sc2a2kmjkfb4dpxeh/proposal:admin-note-questions
 originating_run: 01m7zbxs4sc2a2kmjkfb4dpxeh
 originating_run_kind: spinoff
+lane: onboarding-note
+lane_seq: 1
+preparation: ready
 ---
 
 # Administrator-defined questions for the person's agent note in onboarding
@@ -51,3 +54,7 @@ person belongs to, or the house rules for publishing).
 
 A site-wide instructions file that every person's agent reads without seeing
 it would be a different, host-level authority and is not proposed here.
+
+### 2026-11-28 · @jari (via conductor)
+
+Prototype round first.

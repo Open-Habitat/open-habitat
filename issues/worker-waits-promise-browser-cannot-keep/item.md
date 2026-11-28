@@ -1,13 +1,14 @@
 ---
 created: 2026-11-14
-updated: 2026-11-14
+updated: 2026-11-28
 type: bug
 reporter: jari
-status: untriaged
+status: open
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-14/worker-waits-promise-browser-cannot-keep
-preparation: pending
+preparation: ready
+lane: unlaned
 ---
 
 # Worker 'odottaa sinua' and its banner promise an answer the browser cannot give
@@ -31,3 +32,7 @@ Either the label says what is expected and where (e.g. "odottaa päätöstä:
 pyydä agenttia yhdistämään tai hylkäämään", with a direct action), or the
 browser gets a way to answer. Relates to `worker-asks-parent` (the parent
 agent answers workers and asks the person only when needed).
+
+### 2026-11-28 · @jari (via conductor)
+
+Fix approved.

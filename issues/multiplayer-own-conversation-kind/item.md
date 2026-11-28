@@ -1,14 +1,15 @@
 ---
 created: 2026-11-24
-updated: 2026-11-25
+updated: 2026-11-28
 type: feature
 reporter: Jari
-status: untriaged
+status: open
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-24/multiplayer-own-kind
 lane: multiplayer
 lane_seq: 1
+preparation: ready
 ---
 
 # Multiplayer conversations are their own kind, started with a multiplayer button, always on an API-key model
@@ -71,3 +72,7 @@ A prototype round of how a multiplayer conversation is started and how it is
 recognisable in the rail and the conversation, compared with an ordinary one.
 Then the daemon change: the model of a multiplayer conversation comes only
 from API-key providers, and the invite into an ordinary conversation goes.
+
+### 2026-11-28 · @jari (via conductor)
+
+Check that working prototypes exist for: configuration, starting, owner's view, others' view, corner cases. Fill the gaps with prototypes.

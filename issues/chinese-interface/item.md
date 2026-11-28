@@ -1,14 +1,15 @@
 ---
 created: 2026-11-24
-updated: 2026-11-25
+updated: 2026-11-28
 type: feature
 reporter: Jari
-status: untriaged
+status: open
 priority: normal
 provenance: chat
 source_ref: chat:2026-11-24/chinese-interface
 lane: i18n
 lane_seq: 1
+preparation: ready
 ---
 
 # Chinese interface (zh-CN, zh-TW), after opening the text catalogs to more languages
@@ -59,3 +60,7 @@ Chinese forums forbid AI-written posts and readers expect a product they can
 use in their own language; the agent already answers in Chinese, the
 interface around it does not. The same catalog opening makes Japanese and
 Korean possible and lets an English announcement invite translators honestly.
+
+### 2026-11-28 · @jari (via conductor)
+
+Prototype it, then plan a good code-level implementation (catalogs open to more languages).

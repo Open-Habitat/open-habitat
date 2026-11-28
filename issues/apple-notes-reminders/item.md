@@ -1,12 +1,12 @@
 ---
 created: 2026-11-23
-updated: 2026-11-24
+updated: 2026-11-28
 type: task
 reporter: jari
 status: open
 priority: normal
 lane: unlaned
-preparation: pending
+preparation: ready
 ---
 
 # Apple Notes and Reminders for agents (research)
@@ -64,3 +64,7 @@ Attended session 24.11.2026 (conductor, person at the desktop Mac):
   - Reminders via AppleScript: create list, an all-day and a timed reminder with a remind-me time, complete one, read dates back: works in ~7 s. The JXA variant (`reminders-jxa.js`) created reminders and then hung; use plain AppleScript.
 - remindctl (EventKit) from a Terminal window the agent opened with `open -a Terminal` after `remindctl authorize` (grant goes to Terminal, not SSH): date-only, timed with alarm, weekly and every-3-days recurrence, list as JSON in system TZ, UTC and America/New_York, completing the weekly one created the next occurrence one week later (24.11. -> 1.12.), edit and clearing a due date: all succeeded. All-day reminders are stored at local midnight and keep their day.
 - Conclusion: over SSH, AppleScript automation is enough for Notes (read + new notes) and basic Reminders; recurrence needs EventKit, which needs a desktop-session launcher (Terminal or a helper). Synthetic list/folder still on the Mac for the person's phone sync check; then removed with the trial directory.
+
+### 2026-11-28 · @jari (via conductor)
+
+Start the research.
