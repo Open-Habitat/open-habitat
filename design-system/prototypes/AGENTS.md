@@ -64,6 +64,10 @@ muotoon 12.10.2026, ja rakennettu vedos todettiin kuvavertailussa samaksi.
   sitä vaaleaksi; kierroksen oma `?theme=` voittaa edelleen. Näkymät ovat
   jäädytettyjä kopioita, joten vanha kierros muuttuu vasta rakennettuna ja
   tarjottuna uudelleen.
+- Puhelinlevyinen esikatselu tai muu upotettu sivu tehdään
+  `<iframe srcdoc=…>`-kehyksenä: näkymä ei salli `<iframe src=…>`-kehystä,
+  ja Habitat korvaa koko näkymän ilmoituksella. Srcdoc-kehyksellä on oma
+  leveytensä, joten mediakyselyt toimivat siinä sellaisinaan.
 - Valitsin, joka hakee ylöspäin attribuutilla, kuten `closest('[data-theme]')`,
   osuu myös sivun juureen, jolla on sama attribuutti. Dokumenttitason
   kuuntelija nielee silloin kaikki klikkaukset, joten valitsin rajataan

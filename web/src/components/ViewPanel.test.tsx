@@ -39,7 +39,9 @@ it("recovers without replaying a spent handoff; foreign and stale replies do not
   const first = load();
   reply(window, first.challenge);
   act(() => vi.advanceTimersByTime(3000));
-  expect(screen.getByTestId("view-blocked")).toBeTruthy();
+  expect(screen.getByTestId("view-blocked").textContent).toContain(
+    "Näkymä yritti avata toisen sivun",
+  );
   fireEvent.click(screen.getByTestId("reopen-view"));
   expect(reopen).toHaveBeenCalledOnce();
   // Only the caller supplies a fresh grant; the frame never guesses a URL.
@@ -72,4 +74,8 @@ it("accepts the current document, then replaces it on a blocked nested frame rep
   expect(screen.queryByTestId("view-blocked")).toBeNull();
   reply(frame.contentWindow, challenge, true);
   expect(screen.queryByTestId("view-frame")).toBeNull();
+  // An embedding is not a navigation; the notice names what was refused.
+  expect(screen.getByTestId("view-blocked").textContent).toContain(
+    "Näkymä yritti upottaa sivun, jota ei voi näyttää",
+  );
 });

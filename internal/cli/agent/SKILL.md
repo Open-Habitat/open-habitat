@@ -153,6 +153,8 @@ The view is a frozen copy: later edits do not reach it, so offer again with a
 new key after a change. It runs sandboxed on its own origin with scripts but
 without network, so everything it needs is inline or in the offered directory
 and referenced by relative path (no CDN, `fetch`, forms, popups or storage).
+A nested frame must be `<iframe srcdoc=…>` or inlined into one document; an
+`<iframe src=…>` is refused and the whole view is replaced by a notice.
 Where `site.views` is false the offer fails with `views_unavailable`; say the
 page cannot be shown here and hand it over as a file offer. The person can
 share a view with others through the globe on its card where the site

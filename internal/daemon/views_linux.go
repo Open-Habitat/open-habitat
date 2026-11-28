@@ -1140,6 +1140,8 @@ func (c *ConversationController) fixtureView(target string, native bool) (string
 		"assets/style.css": "body{color:rgb(1, 2, 3)}\n",
 		"assets/mark.svg":  `<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8"/></svg>`,
 		"bundle.html":      viewFixtureBundle,
+		"nested.html":      `<!doctype html><html><head><meta charset="utf-8"><title>Upotus</title></head><body><iframe src="bundle.html"></iframe></body></html>` + "\n",
+		"srcdoc.html":      viewFixtureSrcdoc,
 		".secret":          "hidden",
 	} {
 		if os.WriteFile(filepath.Join(site, name), []byte(text), 0600) != nil {
@@ -1222,6 +1224,12 @@ render(document.body);
 try { document.body.dataset.wasm = new WebAssembly.Module(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0])) ? "yes" : "no"; } catch (e) { document.body.dataset.wasm = "denied"; }
 try { var w = new Worker(URL.createObjectURL(new Blob(["postMessage(1)"], { type: "text/javascript" }))); w.onmessage = function () { document.body.dataset.worker = "allowed"; }; w.onerror = function () { document.body.dataset.worker = "denied"; }; } catch (e) { document.body.dataset.worker = "denied"; }
 </script></body></html>
+`
+
+// viewFixtureSrcdoc embeds a narrow page the way the agent guide tells agents
+// to: srcdoc is not a fetch, so the view's frame-src does not refuse it. The
+// sandbox gives the child its own opaque origin, so it reports by message.
+const viewFixtureSrcdoc = `<!doctype html><html><head><meta charset="utf-8"><title>Srcdoc</title></head><body><iframe id="phone" width="200" height="100" srcdoc="<style>@media (max-width: 300px){body{color:rgb(4, 5, 6)}}</style><p id=inner>Puhelin</p><script>parent.postMessage(getComputedStyle(document.body).color, &quot;*&quot;);</script>"></iframe><script>addEventListener("message", function (e) { if (typeof e.data === "string") document.body.dataset.inner = e.data; });</script></body></html>
 `
 
 const viewFixtureScript = `document.body.dataset.script = "yes";

@@ -313,35 +313,44 @@ test("a refused frame navigation offers recovery of the frozen view", async ({
   expect(foreign).toEqual([]);
 });
 
-test("nested same-view frames stay blocked and offer recovery", async ({
+test("nested same-view frames stay blocked and offer recovery; srcdoc frames work", async ({
   page,
 }) => {
   const id = await conversation(page);
   await offer(page, id);
   await page.getByTestId("view-offer").getByTestId("offer-open").click();
-  await expect(
-    page.frameLocator('[data-testid="view-frame"]').locator("body"),
-  ).toHaveAttribute("data-script", "yes");
-  const view = page.frames().find((frame) => frame.url().includes("oh-view-"));
-  if (!view) throw new Error("missing view frame");
-  let nested = true;
-  await page.route("https://oh-view-*/index.html", async (route) => {
-    const response = await route.fetch();
-    const body = await response.text();
-    await route.fulfill({
-      response,
-      body: nested
-        ? body.replace("</body>", '<iframe src="bundle.html"></iframe></body>')
-        : body,
-    });
-  });
+  const body = page.frameLocator('[data-testid="view-frame"]').locator("body");
+  await expect(body).toHaveAttribute("data-script", "yes");
+  const view = () => {
+    const frame = page.frames().find((f) => f.url().includes("oh-view-"));
+    if (!frame) throw new Error("missing view frame");
+    return frame;
+  };
   const requested: string[] = [];
   page.on("request", (request) => {
     if (request.url().endsWith("/bundle.html")) requested.push(request.url());
   });
-  // Without its theme fragment: a fragment-only change would not reload.
-  await view.goto(view.url().split("#")[0]);
-  await expect(page.getByTestId("view-blocked")).toBeVisible();
+
+  // The guide's way to embed a page: a srcdoc frame is not a fetch, keeps
+  // its own width for media queries and leaves the view standing.
+  await view().evaluate(() => {
+    location.href = "srcdoc.html";
+  });
+  await expect(body).toHaveAttribute("data-inner", "rgb(4, 5, 6)");
+  // Past the panel's 3 s answer window, so a refusal would have shown.
+  await page.waitForTimeout(3500);
+  await expect(page.getByTestId("view-frame")).toBeVisible();
+
+  // A sibling page of the same view with <iframe src>: refused before any
+  // request, and the notice names the embedding rather than a navigation.
+  await view().evaluate(() => {
+    location.href = "nested.html";
+  });
+  const blocked = page.getByTestId("view-blocked");
+  await expect(blocked).toBeVisible();
+  await expect(blocked).toContainText(
+    /Näkymä yritti upottaa sivun, jota ei voi näyttää|The view tried to embed a page that cannot be shown/,
+  );
   expect(requested).toEqual([]);
   await expect(
     (
@@ -350,11 +359,8 @@ test("nested same-view frames stay blocked and offer recovery", async ({
         .analyze()
     ).violations,
   ).toEqual([]);
-  nested = false;
   await page.getByTestId("reopen-view").click();
-  await expect(
-    page.frameLocator('[data-testid="view-frame"]').locator("body"),
-  ).toHaveAttribute("data-script", "yes");
+  await expect(body).toHaveAttribute("data-script", "yes");
 });
 
 test("the own tab frames the view on the app's page, with no opener", async ({

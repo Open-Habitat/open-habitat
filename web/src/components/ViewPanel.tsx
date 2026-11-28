@@ -49,7 +49,10 @@ function RecoverableViewFrame({
 }: ViewFrameProps) {
   const [src] = useState(() => themedViewURL(handoff));
   const frame = useRef<HTMLIFrameElement>(null);
-  const [blocked, setBlocked] = useState(false);
+  // A frame-src/child-src report means the view tried to embed a page; a
+  // missing answer means its document was replaced, normally because it
+  // navigated somewhere the app's frame-src refuses.
+  const [blocked, setBlocked] = useState<false | "embed" | "navigation">(false);
   const check = useRef<{ challenge: string; timer?: number } | undefined>(
     undefined,
   );
@@ -65,7 +68,7 @@ function RecoverableViewFrame({
       )
         return;
       window.clearTimeout(check.current.timer);
-      if (event.data.blocked) setBlocked(true);
+      if (event.data.blocked) setBlocked("embed");
     };
     window.addEventListener("message", receive);
     return () => {
@@ -78,7 +81,7 @@ function RecoverableViewFrame({
     const challenge = crypto.randomUUID();
     check.current = {
       challenge,
-      timer: window.setTimeout(() => setBlocked(true), 3000),
+      timer: window.setTimeout(() => setBlocked("navigation"), 3000),
     };
     // An opaque document needs '*'; the payload carries no authority or data.
     // A fresh challenge rejects queued replies from the previous document.
@@ -93,7 +96,7 @@ function RecoverableViewFrame({
       data-testid="view-blocked"
       role="status"
     >
-      <p>{txt.navigationBlocked}</p>
+      <p>{blocked === "embed" ? txt.embedBlocked : txt.navigationBlocked}</p>
       <ControlButton
         data-testid="reopen-view"
         size="row"
