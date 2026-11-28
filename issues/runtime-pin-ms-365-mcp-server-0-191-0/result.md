@@ -98,6 +98,21 @@ All on Linux arm64 (native) with Node 22.23.5 from the integrations lock:
   `TestTrelloCatalogAddsAnotherConnection` failed once under full-package
   load. It passed alone three times here and on the base commit. It is
   unrelated to Microsoft.
+- I ran `./scripts/ci-local.sh --clean --json` once on the committed change,
+  with the host's load average around 18 from other work. It failed and wrote
+  no receipt. Packaging passed, the lab browser suite passed (347), the
+  ordinary browser suite passed 789 of 799 (9 skipped, 1 failed), and every Go
+  package passed except `./internal/daemon`. The two failures:
+  - the ordinary suite's `browser-conversation.spec.ts:2531` ("unsupported
+    account model is not mistaken for expired login") hit its 30 s timeout
+    waiting for the send button;
+  - `./internal/daemon` reached the 10-minute package timeout while
+    `TestTurnMarksKeepTheNewestWithinTheBound` was running.
+
+  Neither touches Microsoft. Run alone on the same commit, both passed: the
+  spec in 6.9 s through `test-focused.sh --area browser`, and the daemon
+  package in 269 s through `test-focused.sh --area go`. I did not rerun the
+  clean gate.
 
 ## Limits
 
