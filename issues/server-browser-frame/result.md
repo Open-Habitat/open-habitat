@@ -1,5 +1,17 @@
 # Tulokset
 
+### Jarin vastaukset kierrokseen 4 (28.11.2026)
+
+- Ponnahdusikkunan merkintä statusiin: **kyllä**.
+- **Toteutetaan kierroksen 4 mukaan.**
+- Kysyi, miten historia ja kirjanmerkit saa näkyviin, kun Habitatin palkissa
+  niitä ei ole: oikeassa Chromessa ne ovat Chromen omassa ⋮-valikossa ja
+  pikanäppäimillä (etäkone on Linux: Ctrl+H historia, Ctrl+Shift+O
+  kirjanmerkit, Ctrl+Shift+B kirjanmerkkipalkki). ⋯-valikon pikanäppäinlause
+  nimeää ne.
+- Havainto: etä-Chrome näytti oman päivitys-/uudelleenkäynnistyskehotteensa →
+  `server-browser-chrome-update-prompt`.
+
 ## Kierros 4
 
 Prototyyppi: `design-system/prototypes/rounds/2026-11-28-palvelinselain-kehys-4/`
