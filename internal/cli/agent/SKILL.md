@@ -35,10 +35,16 @@ missing reply proves nothing either way, and doing it again can do it twice
 the matching `list` or `show` tells what exists. Where a command takes
 `--idempotency-key`, the key names one intent: the same key with the same
 content returns the stored result or is refused as already spent, and a new
-key makes a second one. Use a fresh UUID (`uuidgen`, or
-`cat /proc/sys/kernel/random/uuid`) per intent and keep it until you know the
-outcome. Creating a conversation, a workspace or an attachment has no key, so
-there only looking protects against a duplicate.
+key makes a second one. Make one fresh UUID per intent before the command
+and print it, since each shell forgets its variables:
+
+    KEY=$(cat /proc/sys/kernel/random/uuid); echo "key $KEY"
+
+A retry of the same intent passes that printed key, never a new one, and an
+uncertain result is first checked in the matching list (`notice list`,
+`view list`, `file list`, `wake list`). Creating a conversation, a workspace
+or an attachment has no key, so there only looking protects against a
+duplicate.
 
 **Destructive commands act on what you observed.** Listings return observation
 or listing tokens, and a delete takes the token from the listing that showed
@@ -94,7 +100,7 @@ Your reply is the normal way. These are for what a reply cannot do.
 **A notice** (`notice create`) puts a marked agent message with a timestamp
 into a conversation: a blocker or a completion the person should find there,
 also from outside a turn or into another of their conversations. It needs a
-running daemon-owned Pi in the target. The result's `persistence` tells what
+running daemon-owned Pi in the target. `data.result.notice.persistence` tells what
 happened: `persisted` is in the native history; `not_persisted` reached only
 the browser tabs open right now and vanishes with them; `unknown` is unknown.
 A successful command does not mean the person saw it. It is not an alarm and
@@ -138,8 +144,8 @@ conversation cancels its wakes.
 cannot open the person's browser or show them a dev server; the offer puts a
 card in the conversation and they open it beside the conversation or in a tab.
 
-    open-habitat agent view offer --current --source report.html --title "Quarterly report" --idempotency-key UUID --json
-    open-habitat agent view offer --current --source site --entry-file index.html --title "Recent sidebar – prototype, round 2" --idempotency-key UUID --json
+    open-habitat agent view offer --current --source report.html --title "Quarterly report" --idempotency-key "$KEY" --json
+    open-habitat agent view offer --current --source site --entry-file index.html --title "Recent sidebar – prototype, round 2" --idempotency-key "$KEY" --json
 
 The view is a frozen copy: later edits do not reach it, so offer again with a
 new key after a change. It runs sandboxed on its own origin with scripts but

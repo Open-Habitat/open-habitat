@@ -3,7 +3,7 @@ created: 2026-11-28
 updated: 2026-11-28
 type: bug
 reporter: conductor
-status: open
+status: testing
 priority: normal
 provenance: chat
 source_ref: chat:conductor-2711/guide-idempotency-key

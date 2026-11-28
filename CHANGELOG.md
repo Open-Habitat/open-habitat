@@ -22,7 +22,7 @@ it carries. To upgrade, deliver the successor release and change only
 
 ### Changed
 
-- `agent file offer --json` reports the card's persistence at `data.result.offer.persistence`, where `agent view offer` has it, so an agent reads one path for every offer.
+- `agent file offer --json` reports the card's persistence at `data.result.offer.persistence`, where `agent view offer` has it, so an agent reads one path for every offer. The agent guide, the agent skill and the offer and notice `--help` now make the idempotency key first and print it, reuse that key to retry the same card, and check `view list`, `file list` or `notice list` after an uncertain result, so a lost reply no longer invites a second card.
 
 ### Deprecated
 

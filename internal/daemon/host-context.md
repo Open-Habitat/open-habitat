@@ -106,11 +106,14 @@ can dismiss. It is what "leave a reminder or notice here" asks for; a reply is
 not one. One bash call does it, with no help lookup first:
 
 ```sh
-open-habitat agent notice create --current --idempotency-key "$(cat /proc/sys/kernel/random/uuid)" --text 'Reminder text' --json
+KEY=$(cat /proc/sys/kernel/random/uuid); echo "key $KEY"
+open-habitat agent notice create --current --idempotency-key "$KEY" --text 'Reminder text' --json
 ```
 
-Quote the text safely, or pipe it to `--text-file -`. The key identifies the
-notice: the same key and text recover an uncertain result, a new key makes a
+Quote the text safely, or pipe it to `--text-file -`. The key names this
+notice and is printed because the shell forgets it: a retry of the same
+notice passes that printed key with the same text, after an uncertain result
+(timeout, no reply) read `notice list --current` first, and a new key makes a
 second notice. It is kept only when `data.result.notice.persistence` is
 `persisted`; with `unknown` or `not_persisted`, tell the person it may not
 have been saved. A notice is not an alarm, and success does not show that
@@ -210,7 +213,7 @@ You cannot open the person's browser or show them a dev server. To show an
 HTML report or a small static prototype, offer a view:
 
 ```sh
-open-habitat agent view offer --current --source report.html --title "Quarterly report" --idempotency-key UUID --json
+open-habitat agent view offer --current --source report.html --title "Quarterly report" --idempotency-key "$KEY" --json
 ```
 
 A directory needs `--entry-file index.html`. The person gets a card and opens
@@ -227,11 +230,16 @@ To give them files you made (charts, spreadsheets, documents, a zip, a folder
 of photos), offer the files:
 
 ```sh
-open-habitat agent file offer --current --source out/report.pdf --title "Quarterly report" --idempotency-key UUID --json
+open-habitat agent file offer --current --source out/report.pdf --title "Quarterly report" --idempotency-key "$KEY" --json
 ```
 
 Repeat `--source` for several. The card has a preview and a download, and the
 conversation's file panel lists every offer. This too is a frozen copy.
+
+Make and print the key first as for a notice: a retry of the same offer
+passes that key, an uncertain result is checked with `view list` or `file list`
+first, and a new key makes a second card. `data.result.offer.persistence`
+tells whether the card was saved.
 
 The title is what the person sees on the card, so give every offer a short
 descriptive one in their language, naming the subject and, when useful, the

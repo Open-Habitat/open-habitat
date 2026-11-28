@@ -169,6 +169,30 @@ func TestHostContextOfferGuidance(t *testing.T) {
 	}
 }
 
+// A key made inside the command is lost with its shell, and a retry with a new
+// key publishes a second card; the guide keeps the key, says where the list
+// is checked first and where every offer reports persistence.
+func TestHostContextKeepsIdempotencyKeys(t *testing.T) {
+	guide := strings.Join(strings.Fields(hostContext), " ")
+	for _, want := range []string{
+		`KEY=$(cat /proc/sys/kernel/random/uuid); echo "key $KEY"`,
+		`--idempotency-key "$KEY" --text`,
+		"notice list --current",
+		"`view list` or `file list`",
+		"data.result.notice.persistence",
+		"data.result.offer.persistence",
+	} {
+		if !strings.Contains(guide, want) {
+			t.Errorf("missing key guidance: %s", want)
+		}
+	}
+	for _, stale := range []string{`--idempotency-key "$(`, "--idempotency-key UUID"} {
+		if strings.Contains(guide, stale) {
+			t.Errorf("guide makes or names a key inline: %s", stale)
+		}
+	}
+}
+
 // Every conversation launch gets the helper recipe; auxiliary launches do not.
 func TestLaunchContextHelperRecipe(t *testing.T) {
 	home := t.TempDir()

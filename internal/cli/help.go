@@ -265,6 +265,13 @@ func commandHelp(args []string) (any, error) {
 				flag["description"] = "Required provider whose app credentials change; microsoft_nosend, microsoft_drafts, microsoft_read and dropbox_app_folder are the applications of a narrower account level, and microsoft_shared and its levels the multi-tenant applications for the allowed organisations"
 				flag["possible_values"] = integrationapps.Providers
 			}
+			if f == "--idempotency-key" {
+				if list, ok := map[string]string{"agent notice create": "agent notice list --current", "agent view offer": "agent view list", "agent file offer": "agent file list"}[key]; ok {
+					// The key must outlive the shell that made it: a retry with a
+					// fresh key is a second card, not a recovery.
+					flag["description"] = "UUID naming this one intent; make it before the command and print it (KEY=$(cat /proc/sys/kernel/random/uuid); echo \"key $KEY\"), because the shell forgets it; a retry of the same intent passes that printed key with the same content, never a new one; after an uncertain result (timeout, no reply) read " + list + " before retrying"
+				}
+			}
 			if f == "--workspace" && (key == "agent view offer" || key == "agent file offer") {
 				flag["description"] = "Own conversation workspace ws_ ID the offer belongs to; defaults to the launch context's workspace with --current"
 			}

@@ -73,6 +73,10 @@ func TestAgentHelpDescribesProcessLifetimeAndCommandSpecificIO(t *testing.T) {
 		{"agent conversation create", "--provider", []string{"Optional", "requires --model", "inherit native defaults"}, []string{"Required"}},
 		{"agent conversation create", "--model", []string{"Optional", "inherit native defaults"}, []string{"Required"}},
 		{"agent model update", "--provider", []string{"Required"}, nil},
+		// A card's key is made once and kept; the reply-less retry looks first.
+		{"agent notice create", "--idempotency-key", []string{"before the command and print it", "passes that printed key", "agent notice list --current before retrying"}, nil},
+		{"agent view offer", "--idempotency-key", []string{"before the command and print it", "passes that printed key", "agent view list before retrying"}, nil},
+		{"agent file offer", "--idempotency-key", []string{"before the command and print it", "passes that printed key", "agent file list before retrying"}, nil},
 	} {
 		t.Run(tc.path+"/"+tc.flag, func(t *testing.T) {
 			args := append(strings.Fields(tc.path), "--help", "--json")
@@ -167,5 +171,23 @@ func TestVersionAliasJSONAndText(t *testing.T) {
 	}
 	if code, _, _ := call(t, "--version", "--unknown", "--json"); code != 1 {
 		t.Fatal("version alias ignored unexpected argument")
+	}
+}
+
+// The agent skill keeps the idempotency key past its shell and names the one
+// persistence path each card command reports.
+func TestAgentSkillKeepsIdempotencyKeys(t *testing.T) {
+	var raw, stderr bytes.Buffer
+	if code := Run([]string{"skill", "print", "agent"}, &raw, &stderr); code != 0 {
+		t.Fatal(code, stderr.String())
+	}
+	skill := strings.Join(strings.Fields(raw.String()), " ")
+	for _, want := range []string{`KEY=$(cat /proc/sys/kernel/random/uuid); echo "key $KEY"`, "passes that printed key", "`view list`, `file list`", "data.result.notice.persistence", "data.result.offer.persistence"} {
+		if !strings.Contains(skill, want) {
+			t.Errorf("agent skill lacks %q", want)
+		}
+	}
+	if strings.Contains(skill, "--idempotency-key UUID") {
+		t.Error("agent skill example names the key inline")
 	}
 }
