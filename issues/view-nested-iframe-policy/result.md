@@ -89,6 +89,13 @@ views stay blocked.
   sends no view session cookie after the hand-off, so the view never loads,
   independently of frames (filed as `webkit-view-session-cookie`). Real
   Safari was not tested.
+- Full clean gate (`ci-local.sh --clean`), run twice on a loaded machine:
+  no receipt. The second run had Go, contracts, packaging and all 790
+  ordinary browser cases green; two lab cases of
+  `lab-phone-account-sheet.spec.ts` (the rail header intercepting a tap)
+  failed and pass when run on their own. The first run's failures
+  (daemon package timeout, five ordinary and three lab specs, none about
+  views) also passed when rerun.
 - `/llm-review` (critical, gpt-6-astra) found two reporting gaps (entry
   framing, srcdoc intermediary); both were reproduced and fixed.
 
