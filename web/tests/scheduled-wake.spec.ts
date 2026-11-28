@@ -5,8 +5,8 @@ import { expect, type Page, test } from "./worker-host";
 
 // Scheduled wake: the agent's wake (here created by the
 // fixture as the conversation's Pi would run agent wake create --current
-// during its turn) holds the conversation in Hiljaiset with the wake time at
-// the row's end, the bar lets the person move or cancel it, and archiving
+// during its turn, followed by section update --section quiet for a turn that
+// only waits) shows the wake time at the row's end in Hiljaiset, the bar lets the person move or cancel it, and archiving
 // asks first in the archive window, whose notice's undo brings the wake back.
 test.use({
   baseURL: hostOrigin,
@@ -44,7 +44,9 @@ async function start(page: Page): Promise<string> {
   return new URL(page.url()).searchParams.get("conversation") ?? "";
 }
 
-/** The agent sets a wake during its running turn. */
+/** The agent sets a wake during its running turn and, since the turn only
+ * waits for it, places the conversation in Hiljaiset: the wake alone does
+ * not move it. */
 async function wake(page: Page, id: string, at: Date, note: string) {
   await expect
     .poll(
@@ -57,6 +59,13 @@ async function wake(page: Page, id: string, at: Date, note: string) {
       { timeout: 15000 },
     )
     .toBe(204);
+  expect(
+    (
+      await page.request.get(
+        `/fixture/agent-section?id=${encodeURIComponent(id)}&section=quiet`,
+      )
+    ).status(),
+  ).toBe(204);
 }
 
 const inDays = (days: number, hour = 9) => {
@@ -211,10 +220,15 @@ test("@scheduled-wake archiving asks in the window with focus on archive, and th
   expect(writes).toBe(1);
   await expect(page.getByTestId("archive-notice-detail")).toHaveCount(1);
 
-  // The notice's Palauta brings back the conversation and its wake.
+  // The notice's Palauta brings back the conversation and its wake; the
+  // archive cleared the agent's quiet choice, so the row may stand in any
+  // section, still showing its wake time.
   await page.getByTestId("restore-notice").click();
   await expect(
-    row(page, "rail-quiet", id).getByTestId("rail-wake-time"),
+    page
+      .getByRole("navigation")
+      .getByTestId(`agent-item-${id}`)
+      .getByTestId("rail-wake-time"),
   ).toHaveAttribute("datetime", at.toISOString(), { timeout: 15000 });
   expect(writes).toBe(2);
 });

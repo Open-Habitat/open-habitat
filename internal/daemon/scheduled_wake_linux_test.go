@@ -64,7 +64,7 @@ func future(d time.Duration) string { return time.Now().Add(d).UTC().Format(time
 
 // The agent sets, lists, replays, moves and cancels its own conversation's
 // wakes through its live launch; the person has a cap of 100 pending, and
-// creating places the conversation in Hiljaiset while its turn runs.
+// creating leaves the rail section alone.
 func TestAgentWakeCommandsAndTheCap(t *testing.T) {
 	h := newHeldHarness(t)
 	c, stop := h.daemon()
@@ -102,6 +102,14 @@ func TestAgentWakeCommandsAndTheCap(t *testing.T) {
 	}
 	made := out["wake"].(map[string]any)
 	wakeID := made["id"].(string)
+	// Setting a wake leaves the rail section alone: the same turn may ask the
+	// person something, and Hiljaiset would hide it.
+	if _, ok := out["agent_section"]; ok {
+		t.Fatalf("create chose a section: %v", out)
+	}
+	if marks, _ := readTurnMarks(h.root); marks.Sections["pi:"+id].Section != "" {
+		t.Fatalf("create moved the conversation: %+v", marks.Sections)
+	}
 	// A lost reply is recovered by repeating the same key: the same wake.
 	code, out = h.agentWake(c, "POST", "", cur, body(at, "muistuta poistamaan backup-2024", key))
 	if code != 200 || out["replayed"] != true || out["wake"].(map[string]any)["id"] != wakeID {
@@ -394,9 +402,10 @@ func TestArchiveCancelsWakesUndoRestoresLaterRestoreTells(t *testing.T) {
 	if w := h.storedWakes()[0]; w.Status != "pending" || w.At != mustTime(t, at).UTC().Format(time.RFC3339Nano) {
 		t.Fatalf("undo: %+v", w)
 	}
-	// ...and puts the conversation back in Hiljaiset to wait for it.
-	if marks, _ := readTurnMarks(h.root); marks.Sections["pi:"+id].Section != "quiet" {
-		t.Fatalf("undo left the conversation out of Hiljaiset: %+v", marks.Sections)
+	// ...without moving the conversation to Hiljaiset: a pending wake is no
+	// reason for it.
+	if marks, _ := readTurnMarks(h.root); marks.Sections["pi:"+id].Section != "" {
+		t.Fatalf("undo chose a section: %+v", marks.Sections)
 	}
 	change(true, false)
 	restore(false) // later, from the archive

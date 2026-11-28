@@ -563,11 +563,9 @@ func (c *ConversationController) createWake(q agentConversationQuery, at, note, 
 	reply := map[string]any{"schema_version": 1, "wake": wakeView(made), "replayed": replayed}
 	if !replayed {
 		diagnostic.New(os.Stderr, "daemon").Info("scheduled_wake", "outcome", "created", "agent_id", q.id, "wake_id", made.ID)
-		// Waiting for a wake is the reason Hiljaiset needs; one command, so
-		// the agent cannot leave a waiting conversation in Sinun vuorosi.
-		if section, s, _ := c.chooseSection(q, "quiet"); s == 0 {
-			reply["agent_section"] = section["agent_section"]
-		}
+		// Setting a wake does not choose the rail section: the same turn may
+		// ask the person something, and Hiljaiset would hide it. An agent
+		// whose turn only waits for the wake sets quiet itself.
 		c.wakesChanged(q.id)
 	}
 	return reply, 0, ""
@@ -770,11 +768,8 @@ func (c *ConversationController) restoreWakes(agentID, archivedAt string, restor
 	if err != nil || len(touched) == 0 {
 		return undo, err
 	}
-	// The undo puts the conversation back as it was: waiting for its wake in
-	// Hiljaiset, until the next turn or the person's message.
-	if restoreArchived {
-		_, _, _ = setAgentSection(c.home, agentID, "quiet", c.wakeNow())
-	}
+	// The rail section is not restored: archiving cleared the agent's choice
+	// and keeps no copy, and a pending wake is no reason for Hiljaiset.
 	c.scheduleWakes()
 	undo = func() {
 		if restoreArchived {

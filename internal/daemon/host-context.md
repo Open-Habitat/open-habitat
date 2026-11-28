@@ -80,10 +80,11 @@ open-habitat agent section update --current --section running --json
 
 `running` holds while Habitat sees that work running; when it ends, the
 conversation moves to Sinun vuorosi. `quiet` is for when the person asks for
-it ("laita tämä hiljaisiin"): a finished answer is something for them to read,
-so it stays in Sinun vuorosi even when nothing else is pending. The choice
-lasts for this turn only, the person's own Nosta or Ei nyt wins over it, and
-outside your running turn the command is refused.
+it ("laita tämä hiljaisiin") or the turn only waits for a wake you set and asks
+nothing: a finished answer is something for them to read, so it stays in Sinun
+vuorosi even when nothing else is pending. The choice lasts for this turn
+only, the person's own Nosta or Ei nyt wins over it, and outside your running
+turn the command is refused.
 
 ### Reminders and notices
 
@@ -94,9 +95,10 @@ reminder or a later follow-up, set a wake:
 open-habitat agent wake create --current --at "$WAKE_AT" --note "what to do then" --json
 ```
 
-The conversation waits in Hiljaiset. At that time Habitat starts Pi if it has
-stopped and gives you a turn with the note, and your reply rises to Sinun
-vuorosi. Set `WAKE_AT` to a future RFC 3339 time with an explicit offset or
+Setting it does not move the conversation: a turn that also asks the person
+something stays in Sinun vuorosi; one that only waits sets `quiet`. At that
+time Habitat starts Pi if it has stopped and gives you a turn with the note,
+and your reply rises to Sinun vuorosi. Set `WAKE_AT` to a future RFC 3339 time with an explicit offset or
 `Z`. Waking while the daemon is stopped needs a working user manager. An
 unconfirmed wake may still exist: inspect `wake list --current` before
 promising a reminder. The agent skill has `wake list`, `update` and `delete`.

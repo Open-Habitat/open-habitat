@@ -803,7 +803,7 @@
           "$ref": "agent-section.schema.json#/$defs/choice"
         },
         "wakes": {
-          "description": "The conversation's pending scheduled wakes in time order (scheduled-wake; agent-wake.schema.json). The conversation waits in Hiljaiset meanwhile and its rail row shows the next time. Absent when none is pending, when the conversation is archived, or when the daemon cannot read its wakes.",
+          "description": "The conversation's pending scheduled wakes in time order (scheduled-wake; agent-wake.schema.json). Its rail row shows the next time in whichever section it stands; the wake does not choose the section. Absent when none is pending, when the conversation is archived, or when the daemon cannot read its wakes.",
           "type": "array",
           "minItems": 1,
           "maxItems": 100,

@@ -117,9 +117,10 @@ and the reply asks nothing: set `running`, as the last tool call before the
 final message, because the final message ends the turn and nothing runs after
 it. It holds while Habitat sees that work running and falls back to Sinun
 vuorosi when the work ends without a new turn. `quiet` is for when the person
-asked for it ("laita tämä hiljaisiin"); a finished answer is something for
-them to read, so "nothing is pending" is not a reason. The choice lasts for
-the turn it was made in: the next turn or the person's next message clears it,
+asked for it ("laita tämä hiljaisiin") or the turn only waits for a wake you
+set and asks nothing; a finished answer is something for them to read, so
+"nothing is pending" is not a reason. The choice lasts for the turn it was
+made in: the next turn or the person's next message clears it,
 and their own *Nosta* or *Ei nyt* always wins. Outside a running turn the
 daemon refuses with `conversation_not_running`.
 
@@ -131,10 +132,11 @@ the time Habitat starts your Pi if it has stopped and gives you a turn with
 the note, saying also if the wake is late or the person moved it. So write the
 note for your later self, what to do and why; the person sees it in the
 conversation. Resolve "Thursday morning" in the person's time zone and ask
-when it is unclear, since `--at` wants an explicit offset. While it waits the
-conversation sits in Hiljaiset by itself, and your reply at the wake rises to
-Sinun vuorosi. There is no recurrence: set the next wake when you wake. Tell
-the person what you set and for when, and only promise a reminder the command
+when it is unclear, since `--at` wants an explicit offset. Setting it does not
+move the conversation: a turn that also asks something stays in Sinun vuorosi,
+and one that only waits for the wake sets `quiet` itself. Your reply at the
+wake rises to Sinun vuorosi. There is no recurrence: set the next wake when
+you wake. Tell the person what you set and for when, and only promise a reminder the command
 confirmed (waking while the daemon is stopped needs a working user manager;
 `wake_limit_reached` at 100 pending means none was set). `wake list|update|delete`
 manage them; the person can move or cancel one too, and archiving the

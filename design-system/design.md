@@ -147,8 +147,8 @@ tiedosto on himmeä katkoviivamerkki ja sana Odottaa tallennusta, katkennut
 on virheväriä ja kertoo, kuinka pitkälle ehti. Prosentti on aina näkyvissä
 numerona ja seisoo nimestä kokonaisen välin (`--ah-s3`) päässä.
 
-Kokeiluna (Ajastettu herätys, Jari 21.11.2026) herätystä odottava keskustelu
-pysyy Hiljaisissa, ja rivin lopussa on kello ja herätysaika iän paikalla:
+Kokeiluna (Ajastettu herätys, Jari 21.11.2026) herätystä odottavan keskustelun
+rivin lopussa on kello ja herätysaika iän paikalla:
 kellonaika tänään, viikonpäivä ja aika viikon sisällä, päivämäärä ja aika
 sen jälkeen. Herätyksen lukematon vastaus näyttää samalla paikalla vuoron
 värillä, milloin se herätettiin. Keskustelussa odottava herätys on palkki

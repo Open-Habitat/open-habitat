@@ -9,6 +9,5 @@
     "set_at": "2026-11-17T13:12:00Z",
     "status": "pending"
   },
-  "replayed": false,
-  "agent_section": { "section": "quiet", "at": "2026-11-17T13:12:00Z" }
+  "replayed": false
 }
