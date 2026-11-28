@@ -14,31 +14,59 @@ import (
 // This is a presentation signal, never authorization. The opaque sandbox and
 // CSP remain the enforcement boundary even if a view spoofs or removes it.
 // A view's own pages may be framed inside it and carry the same script, but
-// only the view's document holds the app's challenge, so a page framed below
-// it passes a refusal up to its parent ('*': the parent's origin is opaque)
-// and the view reports it as its own. Only a direct child is heard.
+// only the view's document holds the app's challenge. So a refusal is passed
+// to every ancestor ('*': their origins are opaque), and a document accepts
+// one from any frame below it, past a srcdoc frame that has no script of its
+// own. A refusal the framer's policy does not see (the entry, a non-HTML
+// file or an error, all of which keep frame-ancestors) shows as a URL frame
+// that loaded without its document announcing itself; a srcdoc or non-URL
+// frame is not fetched, and one sandboxed without scripts cannot announce.
 func viewBootstrap(origin string) string {
 	parent, _ := json.Marshal(origin)
 	return `<script>(function () {
- var origin = ` + string(parent) + `, challenge, blocked = false;
+ var origin = ` + string(parent) + `, challenge, blocked = false, seen = [];
  function report() {
   if (challenge) parent.postMessage({type: "oh-view-status", challenge: challenge, blocked: blocked}, origin);
  }
  function refuse() {
+  if (blocked) return;
   blocked = true;
   report();
-  if (parent !== window) parent.postMessage({type: "oh-view-frame-blocked"}, "*");
+  for (var w = window; w !== w.parent; ) {
+   w = w.parent;
+   w.postMessage({type: "oh-view-frame-blocked"}, "*");
+  }
  }
- function child(source) {
-  for (var i = 0; i < frames.length; i++) if (frames[i] === source) return true;
+ function below(source, w, depth) {
+  for (var i = 0; i < w.frames.length; i++) {
+   if (w.frames[i] === source || depth < 8 && below(source, w.frames[i], depth + 1)) return true;
+  }
   return false;
  }
+ function record(w) {
+  for (var i = 0; i < seen.length; i++) if (seen[i].w === w) return seen[i];
+  seen.push({w: w, ready: 0, loads: 0});
+  return seen[seen.length - 1];
+ }
+ if (parent !== window) parent.postMessage({type: "oh-view-frame-ready"}, "*");
  addEventListener("message", function (event) {
-  if (event.data && event.data.type === "oh-view-frame-blocked" && event.source && child(event.source)) return refuse();
-  if (event.source !== parent || event.origin !== origin || !event.data || event.data.type !== "oh-view-check" || typeof event.data.challenge !== "string") return;
-  challenge = event.data.challenge;
+  var data = event.data;
+  if (!data || !event.source) return;
+  if (data.type === "oh-view-frame-blocked" && below(event.source, window, 0)) return refuse();
+  if (data.type === "oh-view-frame-ready") {
+   for (var i = 0; i < frames.length; i++) if (frames[i] === event.source) record(event.source).ready++;
+   return;
+  }
+  if (event.source !== parent || event.origin !== origin || data.type !== "oh-view-check" || typeof data.challenge !== "string") return;
+  challenge = data.challenge;
   report();
  });
+ document.addEventListener("load", function (event) {
+  var frame = event.target;
+  if (!frame || frame.tagName !== "IFRAME" || frame.hasAttribute("srcdoc") || !frame.contentWindow || !/^https?:/.test(frame.src) || frame.hasAttribute("sandbox") && !frame.sandbox.contains("allow-scripts")) return;
+  var r = record(frame.contentWindow), n = ++r.loads;
+  setTimeout(function () { if (r.ready < n) refuse(); }, 1500);
+ }, true);
  addEventListener("securitypolicyviolation", function (event) {
   if (event.disposition === "enforce" && (event.effectiveDirective === "frame-src" || event.effectiveDirective === "child-src")) refuse();
  });

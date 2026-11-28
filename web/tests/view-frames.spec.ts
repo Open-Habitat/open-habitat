@@ -109,7 +109,12 @@ function embed(src: string) {
 test("a view frames its own page in the panel and the own tab, and nothing else", async ({
   page,
   context,
+  browserName,
 }) => {
+  // WebKit's Linux build keeps no view session cookie in the app's frame:
+  // the panel already shows the session-ended page before any frame policy
+  // applies, so there is nothing of this case for it to show.
+  test.skip(browserName === "webkit", "no view session in WebKit's frame");
   await offered(page);
   const csp = policies(page);
   // Anything a foreign site would serve is recorded, never shown.
@@ -176,6 +181,33 @@ test("a view frames its own page in the panel and the own tab, and nothing else"
     }, target);
     await expect(blocked, target).toHaveAttribute("data-reason", "embed");
   }
+  expect(foreign).toEqual([]);
+
+  // The entry keeps the app as its only framer, so the view framing its own
+  // entry is refused by the entry's response rather than the view's policy;
+  // the view notices the frame that never answered.
+  await page.getByTestId("reopen-view").click();
+  await expect(body).toHaveAttribute("data-script", "yes");
+  await viewFrame(page).evaluate(embed, "index.html");
+  await expect(blocked).toHaveAttribute("data-reason", "embed");
+
+  // A refusal below a srcdoc frame, which carries no injected check of its
+  // own, still reaches the view.
+  await page.getByTestId("reopen-view").click();
+  await expect(body).toHaveAttribute("data-script", "yes");
+  await viewFrame(page).evaluate(() => {
+    const wrapper = document.createElement("iframe");
+    wrapper.srcdoc = '<iframe src="part.html"></iframe>';
+    document.body.append(wrapper);
+  });
+  await expect
+    .poll(() => page.frames().some((f) => f.url().endsWith("/part.html")))
+    .toBe(true);
+  await page
+    .frames()
+    .find((f) => f.url().endsWith("/part.html"))
+    ?.evaluate(embed, "https://foreign.example/wrapped");
+  await expect(blocked).toHaveAttribute("data-reason", "embed");
   expect(foreign).toEqual([]);
 
   // The own tab frames the view on the app's page; its own page works there.

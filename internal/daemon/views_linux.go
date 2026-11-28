@@ -1146,7 +1146,7 @@ func (c *ConversationController) fixtureView(target string, native bool) (string
 		"assets/mark.svg":  `<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8"/></svg>`,
 		"bundle.html":      viewFixtureBundle,
 		"nested.html":      viewFixtureNested,
-		"part.html":        `<!doctype html><html><head><meta charset="utf-8"><title>Osa</title></head><body><p id="part">Osa</p><script>parent.postMessage("part:" + innerWidth, "*");</script></body></html>` + "\n",
+		"part.html":        `<!doctype html><html><head><meta charset="utf-8"><title>Osa</title></head><body><p id="part">Osa</p><script>addEventListener("load", function () { parent.postMessage("part:" + innerWidth, "*"); });</script></body></html>` + "\n",
 		"srcdoc.html":      viewFixtureSrcdoc,
 		".secret":          "hidden",
 	} {
