@@ -92,7 +92,6 @@ import {
   type LinkMessage,
   linkWorkspaceName,
   releaseHeldLinks,
-  retargetConversationLink,
   setLinkArrival,
 } from "./conversationLink";
 import { ConversationStore } from "./conversationStore";
@@ -2214,35 +2213,15 @@ export function App() {
     message: LinkMessage;
   }>();
   const linkHandled = useRef<string | undefined>(undefined);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: a new snapshot, preference or default-agent observation can make the start possible.
-  useEffect(() => {
-    if (!isLinkRoute(route.pathname) || linkHandled.current === route.key)
-      return;
-    if (
-      phase !== "authenticated" ||
-      !snapshot ||
-      !identity ||
-      !csrf ||
-      !confirmedPreferences.loaded ||
-      source !== "confirmed"
-    )
-      return;
-    const link = conversationLinkAt(route.pathname);
-    const name = linkWorkspaceName(route.pathname) ?? "";
-    const workspace = findLinkWorkspace(snapshot.workspaces, name);
-    if (!workspace) {
-      setLinkMissing({ path: route.pathname, name, message: link.message });
-      return;
-    }
-    const ws = workspace.workspace_id;
-    // The + waits for the default agent's observation; so does the link.
-    if (defaultStart?.identity !== identity || createPending.has(ws)) return;
-    linkHandled.current = route.key;
+  /** Opens the new conversation a link asked for, leaving the message for
+   * it as the person's choice allows. */
+  const arriveByLink = (workspace: WorkspaceRecord, message: LinkMessage) => {
+    if (!identity) return;
     forgetConversationLink();
     setLinkMissing(undefined);
+    const ws = workspace.workspace_id;
     const owner = creationGuideOwner(identity, ws);
     const key = creationKeys(identity, ws).draft;
-    const message = link.message;
     const arrival: LinkArrival = {
       hidden: workspace.visibility === "hidden" || undefined,
     };
@@ -2268,9 +2247,40 @@ export function App() {
         length: message.length,
       };
     setLinkArrival(owner, arrival);
-    // The link's address is replaced, so Back does not open it again.
+    // The link's address is replaced, so Back does not open it again. A
+    // start that cannot go ahead now (no connection, models unconfirmed)
+    // leaves the workspace page, whose + then carries the message.
     navigate(`/workspaces/${ws}`, { replace: true });
     if (!createReason(ws)) startFromHome(ws);
+  };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new snapshot, preference or default-agent observation can make the start possible.
+  useEffect(() => {
+    if (!isLinkRoute(route.pathname) || linkHandled.current === route.key)
+      return;
+    if (
+      phase !== "authenticated" ||
+      !snapshot ||
+      !identity ||
+      !csrf ||
+      !confirmedPreferences.loaded ||
+      source !== "confirmed"
+    )
+      return;
+    const link = conversationLinkAt(route.pathname);
+    const name = linkWorkspaceName(route.pathname) ?? "";
+    const workspace = findLinkWorkspace(snapshot.workspaces, name);
+    if (!workspace) {
+      setLinkMissing({ path: route.pathname, name, message: link.message });
+      return;
+    }
+    // The + waits for the default agent's observation; so does the link.
+    if (
+      defaultStart?.identity !== identity ||
+      createPending.has(workspace.workspace_id)
+    )
+      return;
+    linkHandled.current = route.key;
+    arriveByLink(workspace, link.message);
   }, [
     route,
     phase,
@@ -2434,6 +2444,8 @@ export function App() {
     for (const key of Object.values(creationKeys(identity ?? "", ws)))
       sessionStorage.removeItem(key);
     setGuide(creationGuideOwner(identity ?? "", ws), undefined);
+    // A link's message closes with the creation it came for, not the next +.
+    setLinkArrival(creationGuideOwner(identity ?? "", ws), {});
   };
   const railArchive = {
     closes: (id: string) => {
@@ -3035,11 +3047,10 @@ export function App() {
             id: w.workspace_id,
             name: w.display_name ?? w.name,
           }))}
-          onStart={(name) => {
+          onStart={(id) => {
             // The same link, in the workspace chosen here.
-            const path = `/new/${encodeURIComponent(name)}`;
-            retargetConversationLink(location.pathname, path);
-            navigate(path, { replace: true });
+            const chosen = visible.find((w) => w.workspace_id === id);
+            if (chosen) arriveByLink(chosen, linkMissing.message);
           }}
         />
       ) : (

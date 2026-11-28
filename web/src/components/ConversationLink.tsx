@@ -202,7 +202,7 @@ export function LinkMissingWorkspace({
   workspace: string;
   text?: string;
   others: { id: string; name: string }[];
-  onStart: (name: string) => void;
+  onStart: (id: string) => void;
 }) {
   const t = useText(conversationLinkText);
   const [copy, setCopy] = useState<"copied" | "failed">();
@@ -262,7 +262,7 @@ export function LinkMissingWorkspace({
                 data-workspace={w.name}
                 size="row"
                 variant="secondary"
-                onPress={() => onStart(w.name)}
+                onPress={() => onStart(w.id)}
               >
                 <Icon name="folder" />
                 <code>{w.name}</code>

@@ -9,6 +9,7 @@ import {
   linkWorkspaceName,
   parseLinkFragment,
   takeConversationLink,
+  watchConversationLinks,
 } from "./conversationLink";
 
 /** A link as an agent makes it: URL-encoded, `n` in code points. */
@@ -32,6 +33,12 @@ describe("parseLinkFragment", () => {
     expect(parseLinkFragment(cut)).toEqual({ kind: "dropped", reason: "cut" });
     // Counting UTF-16 units instead of characters is a mismatch too.
     expect(parseLinkFragment(fragment("🙂", 2))).toEqual({
+      kind: "dropped",
+      reason: "cut",
+    });
+    // Cut inside a character: invalid UTF-8 is not a replacement character
+    // that would still count as one.
+    expect(parseLinkFragment("#n=1&draft=%C3")).toEqual({
       kind: "dropped",
       reason: "cut",
     });
@@ -112,6 +119,19 @@ describe("the link's address", () => {
     forgetConversationLink();
     expect(conversationLinkAt("/new/kotisivu").message).toEqual({
       kind: "none",
+    });
+  });
+
+  it("takes a link opened again at the address the tab already shows", () => {
+    window.history.replaceState(null, "", "/new/kotisivu");
+    takeConversationLink();
+    watchConversationLinks();
+    window.history.replaceState(null, "", `/new/kotisivu${fragment("Uusi")}`);
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+    expect(window.location.hash).toBe("");
+    expect(conversationLinkAt("/new/kotisivu").message).toEqual({
+      kind: "text",
+      text: "Uusi",
     });
   });
 

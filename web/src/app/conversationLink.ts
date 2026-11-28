@@ -24,12 +24,35 @@ export type LinkMessage =
 
 const count = (text: string) => [...text].length;
 
+/** A fragment's fields, form-decoded (`+` is a space). A value whose
+ * percent-encoding is not valid UTF-8, as when a link was cut inside a
+ * character, is `undefined`: URLSearchParams would quietly turn it into a
+ * replacement character that still counts as one. */
+function fields(fragment: string) {
+  const found = new Map<string, string | undefined>();
+  for (const part of fragment.replace(/^#/, "").split("&")) {
+    if (!part) continue;
+    const at = part.indexOf("=");
+    const name = at < 0 ? part : part.slice(0, at);
+    const value = at < 0 ? "" : part.slice(at + 1);
+    if (found.has(name)) continue;
+    try {
+      found.set(name, decodeURIComponent(value.replace(/\+/g, " ")));
+    } catch {
+      found.set(name, undefined);
+    }
+  }
+  return found;
+}
+
 /** The message of a link's fragment (without or with its `#`). */
 export function parseLinkFragment(fragment: string): LinkMessage {
-  const params = new URLSearchParams(fragment.replace(/^#/, ""));
-  const draft = params.get("draft");
-  const n = params.get("n");
-  if (draft === null && n === null) return { kind: "none" };
+  const params = fields(fragment);
+  if (!params.has("draft") && !params.has("n")) return { kind: "none" };
+  const draft = params.has("draft") ? (params.get("draft") ?? null) : null;
+  const n = params.get("n") ?? null;
+  if (params.has("draft") && draft === null)
+    return { kind: "dropped", reason: "cut" };
   const declared = n !== null && /^\d{1,9}$/.test(n) ? Number(n) : undefined;
   const length = draft === null ? undefined : count(draft);
   if ((declared ?? 0) > linkMessageLimit || (length ?? 0) > linkMessageLimit)
@@ -114,6 +137,17 @@ export function takeConversationLink(): void {
   }
 }
 
+/** A link opened in this tab at the address it already shows is a
+ * fragment change, not a new load: take it the same way. */
+export function watchConversationLinks() {
+  window.addEventListener("hashchange", () => {
+    const { pathname, hash } = window.location;
+    if (!isLinkRoute(pathname) || !hash) return;
+    pending = { path: pathname, message: parseLinkFragment(hash) };
+    window.history.replaceState(window.history.state, "", pathname);
+  });
+}
+
 /** The link that opened this address, if it is still to be acted on. A
  * `/new/` address without one (a reload, Back) opens a plain new
  * conversation. */
@@ -127,11 +161,6 @@ export function conversationLinkAt(pathname: string): ConversationLink {
  * conversation without its message. */
 export function forgetConversationLink() {
   pending = undefined;
-}
-
-/** The missing-workspace page starts the same link in another workspace. */
-export function retargetConversationLink(from: string, to: string) {
-  if (pending?.path === from) pending = { ...pending, path: to };
 }
 
 /** Called as the person leaves for sign-in from a link's address. */
